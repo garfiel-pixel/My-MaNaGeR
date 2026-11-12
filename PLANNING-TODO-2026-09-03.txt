@@ -2672,3 +2672,12 @@ narrower reading of §14.3).
   real wrangler dev + D1, qa-controls-ia 10/10, qa-search 29/29, qa-copy-gate
   11/11, verify-navigation-anchors 2/2, verify-icons, verify-actions,
   qa-code-names 34/34. Shell v643.
+  DEPLOYED: PR #7 merged dcd6ebb, CI green on 13af655, version
+  dec0324d-dbb2-4470-9fd7-67d54a57fe75, shell v645. Production probe:
+  POST /api/mcp without a token -> 401 + resource_metadata; both PRM
+  forms 200; open DCR 201 with no cookie; authorize signed out 401
+  HTML; live /admin shows the URL, five steps, Copy and Retry with no
+  console errors. CI re-baselines in the same pass: qa-mcp-parity P6
+  (app-wide uses the 401 challenge, not MCP_AUTH_REFUSAL), qa-appshell
+  (field-guide link stays same-tab), CodeQL (no response object in the
+  harness log).

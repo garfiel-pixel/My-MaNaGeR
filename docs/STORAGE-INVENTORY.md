@@ -87,6 +87,11 @@ fails the gate.
 | `mmgr_first_project_tour_v1` | Set once the first-project walkthrough has been shown, so it only appears automatically once per device and can still be replayed from Settings. | necessary |
 | `mmgr_autosave_cloud` | Cloud-project auto-backup preference (admin header backup panel, on unless the user turns it off; off is stored as '0'). A setting the owner asked to remember, so it is necessary and `INVENTORY_VERSION` stays 2 - same reasoning as `mmgr_rail_nudge`: re-asking every visitor for an unchanged question is not a privacy gain. | necessary |
 | `mmgr_drive_token` , `mmgr_drive_token_exp` , `mmgr_drive_auto` , `mmgr_drive_last` , `mmgr_drive_granted` , `mmgr_drive_enc` | Google Drive backup connection and its state. Opt-in feature; nothing is stored until you connect Drive. | necessary |
+| `mmgr_skin` | Selected launcher skin (e.g. `vellum`, `obsidian`). Applied at load so the launcher opens on your chosen look. | necessary |
+| `mmgr_team_signedin` | Team-cloud sign-in flag for the shared workspace. | necessary |
+| `mmgr_at_<token>` | Opaque MCP access token issued to an authorised MCP client (app-wide server, OAuth 2.1). Short lived; presented as a bearer credential, never as a cookie. | necessary |
+| `mmgr_rt_<token>` | MCP refresh token that mints a new access token when the old one expires, without re-prompting. | necessary |
+| `mmgr_ac_<token>` | One-time MCP authorization code exchanged by the OAuth flow for the access and refresh tokens. | necessary |
 
 ## localStorage - calculator
 

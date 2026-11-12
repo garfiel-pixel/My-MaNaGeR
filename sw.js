@@ -755,7 +755,9 @@
 // v640 - T-22 PHONE TOP BAR (UI-IA-AND-MCP 2026-11-11): css/mmgr.css changed.
 // Below 600px the calculator bar wraps its action cluster onto a second row
 // so the T-15 search button no longer rides over the wordmark.
-const CACHE = 'mmgr-shell-v640';
+// v641 - T-25 ADMIN MCP PANEL (2026-11-12): admin.html is a shell asset and
+// js/app/mcp-admin.js joins the shell. The account-scoped MCP panel is new UI.
+const CACHE = 'mmgr-shell-v641';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated
@@ -1669,6 +1671,8 @@ const SHELL = [
   // launcher and admin bundles, and calculator.html loads it standalone, so
   // the offline shell must carry the copy the calculator tag points at.
   'js/app/search.js',
+  // T-25 (2026-11-12): the admin MCP panel module, cached for offline admin.
+  'js/app/mcp-admin.js',
   // UI-1 (REFINEMENT-DIRECTIVE-2026-10-24): the owned listbox that replaces the
   // native popup on the two long trade lists. Loaded by <script src> on
   // calculator.html, so it is not in any bundle; offline-first means the trade

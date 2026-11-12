@@ -1401,6 +1401,15 @@ jobs:
         id: qa-search
         run: node tools/qa-search.cjs
 
+      # T-25 (2026-11-12): the account-scoped MCP panel on admin.html. Proves
+      # the signed-out 403 hint, the signed-in render (enable, policy, tool
+      # subset, clients, projects), the policy-driven tool picker, and the
+      # exact PUT/POST bodies of save / project toggle / revoke. Reuses the
+      # serve.cjs server started above.
+      - name: "T4: MCP admin panel gate (qa-mcp-admin-panel)"
+        id: qa-mcp-admin-panel
+        run: node tools/qa-mcp-admin-panel.cjs
+
       # M-5 keyboard shortcuts + the shortcut help sheet (audit 2026-10-18):
       # "?" opens the sheet, "/" reaches the assistant, Enter works out the
       # estimate on the calculator, and neither one eats what the user is

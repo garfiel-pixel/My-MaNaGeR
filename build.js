@@ -284,6 +284,9 @@ const ADMIN_MODULES = [
   // T-15 (UI-IA-AND-MCP 2026-11-11): the search palette, indexing this page's
   // rail, cards and project rows. DOM is read at open time only.
   'js/app/search.js',
+  // T-25 (2026-11-12): the account-scoped MCP server panel. Delegated actions
+  // only, so the admin page's inline script and its CSP hashes stay untouched.
+  'js/app/mcp-admin.js',
   // bfcache sprite restore (2026-10-09): admin.html is a back/forward-cache
   // restore target too - returning to it left its rail icons unpainted. Same
   // module as the project + launcher bundles; load-order independent, it only

@@ -594,7 +594,11 @@ export async function handleMcpAdminConfig(request, env) {
   const accountSub = session.sub;
   if (request.method === 'GET') {
     const cfg = await getMcpConfig(env, accountSub);
-    return json({ ok: true, config: cfg, tools: ALL_TOOL_NAMES }, 200);
+    // The admin panel renders the per-project opt-out beside the account
+    // policy, so the same GET carries the account's projects. Reuses the
+    // list_projects query so the two surfaces cannot drift.
+    const projects = await listProjectsForAccount(env, accountSub);
+    return json({ ok: true, config: cfg, tools: ALL_TOOL_NAMES, projects: projects }, 200);
   }
   if (request.method === 'PUT') {
     let body;

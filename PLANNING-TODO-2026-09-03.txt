@@ -2582,3 +2582,28 @@ narrower reading of §14.3).
   exit 0, nightly 43179026640 green (T3 22/22). Commit a84fc23. Skill guard
   added: skeptical-code-audit checklist item 10 (harness contract drift) and a
   no-slacking failure pattern.
+
+- T-25 ADMIN MCP PANEL 2026-11-12 (owner report: "i still cant see the apwide
+  mcp ui in the admin panel"): the app-wide MCP server had API routes but no
+  management UI on admin.html - the directive had listed it as deferred, so
+  the owner was looking at a page that genuinely had nothing to show. Built
+  the account-scoped panel: enable switch, four connect policies, tool picker
+  (only for "Only the tools I pick"), connected clients with Revoke, and a
+  per-project allow switch for owned projects. Files: js/app/mcp-admin.js
+  (new module in ADMIN_MODULES, delegated data-mcp-act listeners so the inline
+  action map and its CSP hashes stay untouched, every value via textContent),
+  css/src/37-mcp-admin.css (35th layer), admin.html card above #project-list,
+  src/mcp/appwide.js GET /api/mcp/config now also returns listProjectsForAccount.
+  serve.cjs dev mirror now answers the four admin routes with 403 instead of
+  matching "config" as a project id and answering "requires POST".
+  Field guide: A-27 gains "One switchboard for the whole account" (no new
+  sheet, so the A-00..A-35 numbering and T-18 parity gate are untouched).
+  New gate tools/qa-mcp-admin-panel.cjs (11/11): signed-out hint, signed-in
+  render with stubbed Worker shapes, policy-driven picker, exact PUT/POST
+  bodies for save / project toggle / revoke, no console errors, 390 no
+  overflow. Registered in docs/CI-TEST-COVERAGE.md and wired into the
+  browser-app job. Shell v641 forces the stale-cache refresh the owner needs.
+  VERIFIED locally: npm run verify exit 0 (359 tests, sizes, registry),
+  verify-icons, verify-actions, qa-controls-ia 10/10, qa-search 29/29,
+  verify-controls-admin, qa-copy-gate 11/11, verify-navigation-anchors 2/2,
+  verify-a11y-labels, qa-code-names 34/34, verify-ci-coverage 12/12.

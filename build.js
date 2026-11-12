@@ -136,6 +136,9 @@ const APP_MODULES = [
   // from the project.html inline script. Must load before mmgr-app.js so the
   // data-action dispatcher can route ctlToggle.
   'js/app/controls-nav.js',
+  // T-13 (UI-IA-AND-MCP 2026-11-11): the search index + scoring core. Reads
+  // MMGR.App / MMGR.AppControls / MMGR.Shortcuts at call time only.
+  'js/app/search.js',
   'js/mmgr-app.js',
   'js/app/weather.js',
   'js/app/backup.js',

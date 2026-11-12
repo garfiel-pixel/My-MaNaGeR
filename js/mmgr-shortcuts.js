@@ -426,6 +426,10 @@
     close: close,
     toggle: toggle,
     isOpen: isOpen,
-    rows: rows
+    rows: rows,
+    // T-13 (UI-IA-AND-MCP 2026-11-11): the raw table, so the search index can
+    // list every shortcut from the one source of truth. Consumers must guard
+    // with window.MMGR && MMGR.Shortcuts (this module is not on every page).
+    table: TABLE
   };
 })();

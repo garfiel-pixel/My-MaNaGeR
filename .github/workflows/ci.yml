@@ -1370,6 +1370,15 @@ jobs:
         id: qa-controls-ia
         run: node tools/qa-controls-ia.cjs
 
+      # T-13 (UI-IA-AND-MCP-DIRECTIVE 2026-11-11): the search index + scoring
+      # core - index size, zero network, mcp / model-context-protocol ordering,
+      # alias coverage, the exposed shortcut table, [hidden] exclusion and pack
+      # gating. Reuses the serve.cjs server started above.
+
+      - name: "T4: Search core gate (qa-search-core)"
+        id: qa-search-core
+        run: node tools/qa-search-core.cjs
+
       # M-5 keyboard shortcuts + the shortcut help sheet (audit 2026-10-18):
       # "?" opens the sheet, "/" reaches the assistant, Enter works out the
       # estimate on the calculator, and neither one eats what the user is

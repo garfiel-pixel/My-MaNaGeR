@@ -752,7 +752,10 @@
 // v639 - T-20 PROJECT NAV (UI-IA-AND-MCP 2026-11-11): project.html is a shell
 // asset. The six nav groups were relabelled (Plan / Money / Govern / Field /
 // Close) with the same buttons, so the cache name moves.
-const CACHE = 'mmgr-shell-v639';
+// v640 - T-22 PHONE TOP BAR (UI-IA-AND-MCP 2026-11-11): css/mmgr.css changed.
+// Below 600px the calculator bar wraps its action cluster onto a second row
+// so the T-15 search button no longer rides over the wordmark.
+const CACHE = 'mmgr-shell-v640';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

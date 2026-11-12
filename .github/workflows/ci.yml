@@ -1379,6 +1379,16 @@ jobs:
         id: qa-search-core
         run: node tools/qa-search-core.cjs
 
+      # T-16 (UI-IA-AND-MCP-DIRECTIVE 2026-11-11): the palette on every
+      # surface. Project: eight real queries, a setting reveal, pack gating,
+      # a client-scope grant and zero network while typing. Launcher, admin
+      # and calculator: their own surface name, button and indexed UI. Reuses
+      # the serve.cjs server started above.
+
+      - name: "T4: Search surfaces gate (qa-search)"
+        id: qa-search
+        run: node tools/qa-search.cjs
+
       # M-5 keyboard shortcuts + the shortcut help sheet (audit 2026-10-18):
       # "?" opens the sheet, "/" reaches the assistant, Enter works out the
       # estimate on the calculator, and neither one eats what the user is

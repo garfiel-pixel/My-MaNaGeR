@@ -254,11 +254,6 @@ export async function handleCloudCreate(request, env) {
       }
     }
   }
-  const salt = randomSaltHex();
-  const ownerCode = randomOwnerCode();
-  const hash = await hashOwnerCode(ownerCode, salt);
-  const ownerFp = await fingerprintOf(ownerCode);
-  const now = new Date().toISOString();
   const ownerEmail = session ? await provenEmail(session, env) : null;
   // B (2026-11-09): isFirst is computed HERE, from the account's own rows,
   // never trusted from the client. An anonymous create has no account to
@@ -280,45 +275,79 @@ export async function handleCloudCreate(request, env) {
   // Unknown values fall back to the defaults rather than failing the create.
   const createStatus = normaliseProjectStatus(read.body.status);
   const createSyncMode = normaliseSyncMode(read.body.syncMode);
-  try {
-    await env.DB.prepare(
-      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_code_fingerprint, owner_label, google_sub, google_name, owner_email, latest_r2_key, created_at, updated_at, last_owner_seen_at, status, sync_mode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-    )
-      .bind(
-        projectId,
-        salt,
-        hash,
-        ownerFp,
-        name,
-        session ? session.sub : null,
-        session ? session.name : null,
-        ownerEmail,
-        null,
-        now,
-        now,
-        now,
-        createStatus,
-        createSyncMode
-      )
-      .run();
-  } catch (e) {
-    const raced = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?')
-      .bind(projectId)
-      .first();
-    if (raced) {
-      return json({ ok: false, code: 'id_taken', error: 'that project id is taken' }, 409);
-    }
-    throw e;
+  // APP-WIDE MCP (Wave 1): the row insert is shared with the MCP create_project
+  // tool via insertCloudProject so the two surfaces cannot drift on owner-code
+  // generation, fingerprint, timestamps or id-taken handling.
+  const ins = await insertCloudProject(env, {
+    projectId: projectId,
+    name: name,
+    accountSub: session ? session.sub : null,
+    googleName: session ? session.name : null,
+    email: ownerEmail,
+    status: createStatus,
+    syncMode: createSyncMode
+  });
+  if (!ins.ok) {
+    return json({ ok: false, code: ins.code, error: ins.error }, 409);
   }
   trackEvent(env, 'project_created', { first: firstProject }, request);
   return json({
     ok: true,
     projectId: projectId,
-    ownerCode: ownerCode,
+    ownerCode: ins.ownerCode,
     linked: !!session,
     status: createStatus,
     syncMode: createSyncMode
   });
+}
+
+// APP-WIDE MCP (Wave 1) + the REST create both need the identical project-row
+// insert: owner-code generation, fingerprint, timestamps, status/sync. Extracted
+// so the two surfaces cannot drift. Returns { ok:true, projectId, ownerCode,
+// status, syncMode } or { ok:false, code:'id_taken', error } on a race.
+export async function insertCloudProject(env, p) {
+  const salt = randomSaltHex();
+  const ownerCode = randomOwnerCode();
+  const hash = await hashOwnerCode(ownerCode, salt);
+  const ownerFp = await fingerprintOf(ownerCode);
+  const now = new Date().toISOString();
+  try {
+    await env.DB.prepare(
+      'INSERT INTO cloud_projects (project_id, owner_code_salt, owner_code_hash, owner_code_fingerprint, owner_label, google_sub, google_name, owner_email, latest_r2_key, created_at, updated_at, last_owner_seen_at, status, sync_mode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+    )
+      .bind(
+        p.projectId,
+        salt,
+        hash,
+        ownerFp,
+        p.name || '',
+        p.accountSub || null,
+        p.googleName || null,
+        p.email || null,
+        null,
+        now,
+        now,
+        now,
+        p.status || 'active',
+        p.syncMode || 'auto'
+      )
+      .run();
+  } catch (e) {
+    const raced = await env.DB.prepare('SELECT project_id FROM cloud_projects WHERE project_id = ?')
+      .bind(p.projectId)
+      .first();
+    if (raced) {
+      return { ok: false, code: 'id_taken', error: 'that project id is taken' };
+    }
+    throw e;
+  }
+  return {
+    ok: true,
+    projectId: p.projectId,
+    ownerCode,
+    status: p.status || 'active',
+    syncMode: p.syncMode || 'auto'
+  };
 }
 
 export async function queueEditorProposal(env, projectId, a, submitted, prev, now) {

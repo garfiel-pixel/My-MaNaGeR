@@ -86,7 +86,9 @@ export const MCP_PREMIUM_REFUSAL =
 
 // ---- Tool definitions (MCP schema format) ----
 
-const TOOLS = [
+// App-wide server (src/mcp/appwide.js) reuses this exact tool catalog and the
+// read engine below, so the two surfaces never disagree about a project.
+export const TOOLS = [
   {
     name: 'get_project_summary',
     description: 'Get the project name, description, health score, and completion percentage.',
@@ -987,7 +989,7 @@ function weeklySummary(state, weekISO, taskSource) {
   };
 }
 
-function executeTool(name, state, projectId, label, scope, args, auth, fullState) {
+export function executeTool(name, state, projectId, label, scope, args, auth, fullState) {
   if (!state) {
     return {
       content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }],
@@ -1612,346 +1614,9 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // is written to live project state here - the owner accepts or rejects
     // inside the project, and only the accept applies the change.
     if (result.pendingApply) {
-      const diffs = Array.isArray(toolArgs.diffs) ? toolArgs.diffs : [];
-      const creates = Array.isArray(toolArgs.creates) ? toolArgs.creates : [];
-      const budgetRaw = Array.isArray(toolArgs.budget) ? toolArgs.budget : [];
-      if (diffs.length === 0 && creates.length === 0 && budgetRaw.length === 0) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text: 'Nothing provided. Supply diffs as {path, recordId, field, after}, creates as {path, record} objects, or budget changes as {kind, ...} objects.'
-              }
-            ],
-            isError: true
-          }
-        };
-      }
-      // H-5: the write switch. A key without it cannot queue a budget
-      // proposal AT ALL - the whole call is refused rather than silently
-      // dropping the budget part and queuing the rest.
-      if (budgetRaw.length && !budgetWriteAllowed(auth)) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: { content: [{ type: 'text', text: BUDGET_WRITE_REFUSAL }], isError: true }
-        };
-      }
-      if (budgetRaw.length > BUDGET_PROPOSAL_LIMIT) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text:
-                  'A proposal can carry at most ' +
-                  BUDGET_PROPOSAL_LIMIT +
-                  ' budget changes. Split this into smaller proposals.'
-              }
-            ],
-            isError: true
-          }
-        };
-      }
-
-      const granted = Array.isArray(auth.scope) ? auth.scope : Object.keys(CLOUD_SECTIONS);
-      let prev = state; // the full stored state fetched above (pre-scope)
-      // CREATE into an empty project (owner 2026-09-17): a brand-new cloud
-      // project has no snapshot yet - the owner's lazy-PM scenario starts
-      // exactly there. With creates only, seed a minimal prev instead of
-      // refusing; the review-accept path writes the merged state either way.
-      if (!prev && diffs.length === 0 && creates.length > 0) {
-        prev = { schemaVersion: 19, projectId: projectId, updatedAt: new Date().toISOString() };
-      }
-      if (!prev) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text: 'No project data available. Save a snapshot first, or use creates to add new records to the empty project.'
-              }
-            ],
-            isError: true
-          }
-        };
-      }
-      const base = JSON.parse(JSON.stringify(prev));
-      const submitted = {};
-      const refused = [];
-      for (let i = 0; i < diffs.length; i++) {
-        const d = diffs[i];
-        if (!d || typeof d !== 'object') {
-          refused.push('diff ' + i + ': invalid');
-          continue;
-        }
-        const path = String(d.path || '');
-        const rec = String(d.recordId || '');
-        const field = String(d.field || '');
-        const sec = CLOUD_KEY_TO_SECTION[path];
-        if (!sec) {
-          refused.push((path || '(empty)') + ': not a project section');
-          continue;
-        }
-        if (granted.indexOf(sec) === -1) {
-          refused.push(path + ': outside the granted sections');
-          continue;
-        }
-        const arr = base[path];
-        if (!Array.isArray(arr)) {
-          refused.push(path + ': not an editable list');
-          continue;
-        }
-        let item = null;
-        for (let j = 0; j < arr.length; j++) {
-          if (arr[j] && String(arr[j].id) === rec) {
-            item = arr[j];
-            break;
-          }
-        }
-        if (!item) {
-          refused.push((rec || '(no record id)') + ': not found in ' + path);
-          continue;
-        }
-        if (!field) {
-          refused.push('diff ' + i + ': missing field');
-          continue;
-        }
-        item[field] = d.after !== undefined ? d.after : null;
-        submitted[path] = arr;
-      }
-      // CREATE support (owner 2026-09-17): append new records to editable
-      // list paths, defaults per list, ids server-assigned. Same scope and
-      // review-queue rules as diffs.
-      const refusedCreates = [];
-      const counterRef = { n: 0 };
-      const nowMs = Date.now();
-      for (let i = 0; i < creates.length; i++) {
-        const c = creates[i];
-        if (!c || typeof c !== 'object') {
-          refusedCreates.push('create ' + i + ': invalid');
-          continue;
-        }
-        const cpath = String(c.path || '');
-        const recInput = c.record;
-        const csec = CLOUD_KEY_TO_SECTION[cpath];
-        if (!csec) {
-          refusedCreates.push((cpath || '(empty)') + ': not a project section');
-          continue;
-        }
-        if (granted.indexOf(csec) === -1) {
-          refusedCreates.push(cpath + ': outside the granted sections');
-          continue;
-        }
-        if (!recInput || typeof recInput !== 'object') {
-          refusedCreates.push('create ' + i + ': missing record');
-          continue;
-        }
-        // TITLE-KEYED LISTS (2026-09-26): meetings, logEntries and commsEntries
-        // are title-keyed by the app's own creators (mmgr-meetings.js,
-        // mmgr-decisions.js, mmgr-closure.js) AND by CREATE_DEFAULTS below, so
-        // the gate must accept name OR title. A title-only create used to be
-        // refused with 'record needs at least a name', silently shrinking the
-        // queued proposal (found via the bank-renovation #20 field-count gap).
-        const titleVal =
-          recInput.title !== undefined && recInput.title !== null
-            ? String(recInput.title).trim()
-            : '';
-        const hasName =
-          (recInput.name !== undefined &&
-            recInput.name !== null &&
-            String(recInput.name).trim() !== '') ||
-          titleVal !== '';
-        if (!hasName) {
-          refusedCreates.push(
-            'create ' + i + ' (' + cpath + '): record needs at least a name or title'
-          );
-          continue;
-        }
-        if (!CREATE_DEFAULTS[cpath]) {
-          refusedCreates.push(cpath + ': not a list that accepts new records');
-          continue;
-        }
-        const arr2 = Array.isArray(base[cpath]) ? base[cpath] : (base[cpath] = []);
-        arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef));
-        submitted[cpath] = arr2;
-      }
-      // H-5: budget proposals. Built and validated on the server, then folded
-      // into the same review row as any other change set.
-      let budgetBuilt = { submitted: {}, changes: [], refused: [], summary: '' };
-      if (budgetRaw.length) {
-        if (granted.indexOf('bud') === -1) {
-          refusedCreates.push('budget: outside the granted sections');
-        } else {
-          budgetBuilt = buildBudgetProposal(base, budgetRaw, base.currency);
-          Object.keys(budgetBuilt.submitted).forEach(function (k) {
-            submitted[k] = budgetBuilt.submitted[k];
-          });
-          if (budgetBuilt.refused.length) {
-            refusedCreates.push.apply(refusedCreates, budgetBuilt.refused);
-          }
-          // Q5 + the per-key daily cap: a large change is 10 percent of the
-          // line or 50,000 in project currency, whichever is smaller. Count
-          // what this key already queued today before accepting more.
-          const newLarge = budgetBuilt.changes.filter(function (c) {
-            return c.large;
-          }).length;
-          if (newLarge) {
-            const dayStart = new Date();
-            dayStart.setUTCHours(0, 0, 0, 0);
-            let usedLarge = 0;
-            try {
-              const todayRows = await env.DB.prepare(
-                "SELECT proposal_json FROM cloud_reviews WHERE project_id = ? AND source_type = 'api' AND source_label = ? AND proposed_at >= ?"
-              )
-                .bind(projectId, auth.label || 'MCP AI', dayStart.toISOString())
-                .all();
-              (todayRows.results || []).forEach(function (r) {
-                try {
-                  const p = r.proposal_json ? JSON.parse(r.proposal_json) : null;
-                  if (p && Array.isArray(p.changes)) {
-                    usedLarge += p.changes.filter(function (c) {
-                      return c.large;
-                    }).length;
-                  }
-                } catch (e) {
-                  /* a malformed old row must not block a new proposal */
-                }
-              });
-            } catch (e) {
-              usedLarge = 0;
-            }
-            if (usedLarge + newLarge > BUDGET_LARGE_PER_DAY) {
-              return {
-                jsonrpc: '2.0',
-                id,
-                result: {
-                  content: [
-                    {
-                      type: 'text',
-                      text:
-                        'This key has already queued ' +
-                        usedLarge +
-                        ' large budget change(s) today and a day allows ' +
-                        BUDGET_LARGE_PER_DAY +
-                        '. Ask the owner to decide those first, then send this one.'
-                    }
-                  ],
-                  isError: true
-                }
-              };
-            }
-          }
-        }
-      }
-      const allRefused = refused.concat(refusedCreates);
-      if (!Object.keys(submitted).length) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text:
-                  'Nothing to propose. ' +
-                  (allRefused.length ? 'Refused: ' + allRefused.join('; ') + '.' : '')
-              }
-            ],
-            isError: true
-          }
-        };
-      }
-      const merged = cloudScopeMerge(prev, submitted, granted);
-      if (!merged.applied.length) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text:
-                  'No changes were within the granted sections.' +
-                  (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '')
-              }
-            ],
-            isError: true
-          }
-        };
-      }
-      const now = new Date().toISOString();
-      const diffsJson = (cloudDiffState(prev, merged.next) || []).filter(function (d) {
-        return String(d.path).indexOf('fieldTs') !== 0;
-      });
-      let res;
-      const proposalJson = budgetBuilt.changes.length
-        ? JSON.stringify({
-            summary: budgetBuilt.summary,
-            currency: budgetBuilt.currency,
-            changes: budgetBuilt.changes
-          })
-        : null;
-      try {
-        res = await env.DB.prepare(
-          'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
-        )
-          .bind(
-            projectId,
-            'mcp',
-            'api',
-            auth.label || 'MCP AI',
-            null,
-            JSON.stringify(granted),
-            JSON.stringify(submitted),
-            JSON.stringify(diffsJson),
-            'pending',
-            now,
-            proposalJson
-          )
-          .run();
-      } catch (e) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text: 'Could not queue the proposal: ' + (e.message || 'database error')
-              }
-            ],
-            isError: true
-          }
-        };
-      }
-      return {
-        jsonrpc: '2.0',
-        id,
-        result: {
-          content: [
-            {
-              type: 'text',
-              text:
-                'Queued ' +
-                diffsJson.length +
-                ' field change(s) for owner review (proposal #' +
-                res.meta.last_row_id +
-                ').' +
-                (budgetBuilt.summary ? ' ' + budgetBuilt.summary + '.' : '') +
-                (allRefused.length ? ' Refused: ' + allRefused.join('; ') + '.' : '') +
-                ' Nothing changes until the owner accepts it inside the project.'
-            }
-          ]
-        }
-      };
+      // APP-WIDE MCP (Wave 1): the proposal-queue engine is now a shared,
+      // exported function so the per-project and app-wide servers cannot drift.
+      return await queueMcpProposal(env, projectId, auth, toolArgs, id, state);
     }
 
     return { jsonrpc: '2.0', id, result };
@@ -1961,6 +1626,354 @@ async function handleMcpRequest(body, projectId, env, auth) {
     jsonrpc: '2.0',
     id,
     error: { code: -32601, message: 'Method not found: ' + method }
+  };
+}
+
+// ---- Shared proposal queue (per-project + app-wide MCP) ------------------
+// APP-WIDE MCP (Wave 1): extracted from handleMcpRequest so the per-project
+// and app-wide servers build identical review-queue proposals. It materialises
+// diffs/creates/budget changes onto a copy of the stored state, merges them
+// under the caller's section scope, and inserts a single PENDING cloud_reviews
+// row (proposal_type 'mcp'). Nothing reaches live project state until the
+// owner accepts it inside the project.
+export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state) {
+  const diffs = Array.isArray(toolArgs.diffs) ? toolArgs.diffs : [];
+  const creates = Array.isArray(toolArgs.creates) ? toolArgs.creates : [];
+  const budgetRaw = Array.isArray(toolArgs.budget) ? toolArgs.budget : [];
+  if (diffs.length === 0 && creates.length === 0 && budgetRaw.length === 0) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text: 'Nothing provided. Supply diffs as {path, recordId, field, after}, creates as {path, record} objects, or budget changes as {kind, ...} objects.'
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  // H-5: the write switch. A key without it cannot queue a budget
+  // proposal AT ALL - the whole call is refused rather than silently
+  // dropping the budget part and queuing the rest.
+  if (budgetRaw.length && !budgetWriteAllowed(auth)) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: { content: [{ type: 'text', text: BUDGET_WRITE_REFUSAL }], isError: true }
+    };
+  }
+  if (budgetRaw.length > BUDGET_PROPOSAL_LIMIT) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'A proposal can carry at most ' +
+              BUDGET_PROPOSAL_LIMIT +
+              ' budget changes. Split this into smaller proposals.'
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+
+  const granted = Array.isArray(auth.scope) ? auth.scope : Object.keys(CLOUD_SECTIONS);
+  let prev = state; // the full stored state fetched above (pre-scope)
+  // CREATE into an empty project (owner 2026-09-17): a brand-new cloud
+  // project has no snapshot yet - the owner's lazy-PM scenario starts
+  // exactly there. With creates only, seed a minimal prev instead of
+  // refusing; the review-accept path writes the merged state either way.
+  if (!prev && diffs.length === 0 && creates.length > 0) {
+    prev = { schemaVersion: 19, projectId: projectId, updatedAt: new Date().toISOString() };
+  }
+  if (!prev) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text: 'No project data available. Save a snapshot first, or use creates to add new records to the empty project.'
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  const base = JSON.parse(JSON.stringify(prev));
+  const submitted = {};
+  const refused = [];
+  for (let i = 0; i < diffs.length; i++) {
+    const d = diffs[i];
+    if (!d || typeof d !== 'object') {
+      refused.push('diff ' + i + ': invalid');
+      continue;
+    }
+    const path = String(d.path || '');
+    const rec = String(d.recordId || '');
+    const field = String(d.field || '');
+    const sec = CLOUD_KEY_TO_SECTION[path];
+    if (!sec) {
+      refused.push((path || '(empty)') + ': not a project section');
+      continue;
+    }
+    if (granted.indexOf(sec) === -1) {
+      refused.push(path + ': outside the granted sections');
+      continue;
+    }
+    const arr = base[path];
+    if (!Array.isArray(arr)) {
+      refused.push(path + ': not an editable list');
+      continue;
+    }
+    let item = null;
+    for (let j = 0; j < arr.length; j++) {
+      if (arr[j] && String(arr[j].id) === rec) {
+        item = arr[j];
+        break;
+      }
+    }
+    if (!item) {
+      refused.push((rec || '(no record id)') + ': not found in ' + path);
+      continue;
+    }
+    if (!field) {
+      refused.push('diff ' + i + ': missing field');
+      continue;
+    }
+    item[field] = d.after !== undefined ? d.after : null;
+    submitted[path] = arr;
+  }
+  // CREATE support (owner 2026-09-17): append new records to editable
+  // list paths, defaults per list, ids server-assigned. Same scope and
+  // review-queue rules as diffs.
+  const refusedCreates = [];
+  const counterRef = { n: 0 };
+  const nowMs = Date.now();
+  for (let i = 0; i < creates.length; i++) {
+    const c = creates[i];
+    if (!c || typeof c !== 'object') {
+      refusedCreates.push('create ' + i + ': invalid');
+      continue;
+    }
+    const cpath = String(c.path || '');
+    const recInput = c.record;
+    const csec = CLOUD_KEY_TO_SECTION[cpath];
+    if (!csec) {
+      refusedCreates.push((cpath || '(empty)') + ': not a project section');
+      continue;
+    }
+    if (granted.indexOf(csec) === -1) {
+      refusedCreates.push(cpath + ': outside the granted sections');
+      continue;
+    }
+    if (!recInput || typeof recInput !== 'object') {
+      refusedCreates.push('create ' + i + ': missing record');
+      continue;
+    }
+    // TITLE-KEYED LISTS (2026-09-26): meetings, logEntries and commsEntries
+    // are title-keyed by the app's own creators (mmgr-meetings.js,
+    // mmgr-decisions.js, mmgr-closure.js) AND by CREATE_DEFAULTS below, so
+    // the gate must accept name OR title. A title-only create used to be
+    // refused with 'record needs at least a name', silently shrinking the
+    // queued proposal (found via the bank-renovation #20 field-count gap).
+    const titleVal =
+      recInput.title !== undefined && recInput.title !== null ? String(recInput.title).trim() : '';
+    const hasName =
+      (recInput.name !== undefined &&
+        recInput.name !== null &&
+        String(recInput.name).trim() !== '') ||
+      titleVal !== '';
+    if (!hasName) {
+      refusedCreates.push(
+        'create ' + i + ' (' + cpath + '): record needs at least a name or title'
+      );
+      continue;
+    }
+    if (!CREATE_DEFAULTS[cpath]) {
+      refusedCreates.push(cpath + ': not a list that accepts new records');
+      continue;
+    }
+    const arr2 = Array.isArray(base[cpath]) ? base[cpath] : (base[cpath] = []);
+    arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef));
+    submitted[cpath] = arr2;
+  }
+  // H-5: budget proposals. Built and validated on the server, then folded
+  // into the same review row as any other change set.
+  let budgetBuilt = { submitted: {}, changes: [], refused: [], summary: '' };
+  if (budgetRaw.length) {
+    if (granted.indexOf('bud') === -1) {
+      refusedCreates.push('budget: outside the granted sections');
+    } else {
+      budgetBuilt = buildBudgetProposal(base, budgetRaw, base.currency);
+      Object.keys(budgetBuilt.submitted).forEach(function (k) {
+        submitted[k] = budgetBuilt.submitted[k];
+      });
+      if (budgetBuilt.refused.length) {
+        refusedCreates.push.apply(refusedCreates, budgetBuilt.refused);
+      }
+      // Q5 + the per-key daily cap: a large change is 10 percent of the
+      // line or 50,000 in project currency, whichever is smaller. Count
+      // what this key already queued today before accepting more.
+      const newLarge = budgetBuilt.changes.filter(function (c) {
+        return c.large;
+      }).length;
+      if (newLarge) {
+        const dayStart = new Date();
+        dayStart.setUTCHours(0, 0, 0, 0);
+        let usedLarge = 0;
+        try {
+          const todayRows = await env.DB.prepare(
+            "SELECT proposal_json FROM cloud_reviews WHERE project_id = ? AND source_type = 'api' AND source_label = ? AND proposed_at >= ?"
+          )
+            .bind(projectId, auth.label || 'MCP AI', dayStart.toISOString())
+            .all();
+          (todayRows.results || []).forEach(function (r) {
+            try {
+              const p = r.proposal_json ? JSON.parse(r.proposal_json) : null;
+              if (p && Array.isArray(p.changes)) {
+                usedLarge += p.changes.filter(function (c) {
+                  return c.large;
+                }).length;
+              }
+            } catch (e) {
+              /* a malformed old row must not block a new proposal */
+            }
+          });
+        } catch (e) {
+          usedLarge = 0;
+        }
+        if (usedLarge + newLarge > BUDGET_LARGE_PER_DAY) {
+          return {
+            jsonrpc: '2.0',
+            id,
+            result: {
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    'This key has already queued ' +
+                    usedLarge +
+                    ' large budget change(s) today and a day allows ' +
+                    BUDGET_LARGE_PER_DAY +
+                    '. Ask the owner to decide those first, then send this one.'
+                }
+              ],
+              isError: true
+            }
+          };
+        }
+      }
+    }
+  }
+  const allRefused = refused.concat(refusedCreates);
+  if (!Object.keys(submitted).length) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'Nothing to propose. ' +
+              (allRefused.length ? 'Refused: ' + allRefused.join('; ') + '.' : '')
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  const merged = cloudScopeMerge(prev, submitted, granted);
+  if (!merged.applied.length) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'No changes were within the granted sections.' +
+              (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '')
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  const now = new Date().toISOString();
+  const diffsJson = (cloudDiffState(prev, merged.next) || []).filter(function (d) {
+    return String(d.path).indexOf('fieldTs') !== 0;
+  });
+  let res;
+  const proposalJson = budgetBuilt.changes.length
+    ? JSON.stringify({
+        summary: budgetBuilt.summary,
+        currency: budgetBuilt.currency,
+        changes: budgetBuilt.changes
+      })
+    : null;
+  try {
+    res = await env.DB.prepare(
+      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+    )
+      .bind(
+        projectId,
+        'mcp',
+        'api',
+        auth.label || 'MCP AI',
+        null,
+        JSON.stringify(granted),
+        JSON.stringify(submitted),
+        JSON.stringify(diffsJson),
+        'pending',
+        now,
+        proposalJson
+      )
+      .run();
+  } catch (e) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text: 'Could not queue the proposal: ' + (e.message || 'database error')
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  return {
+    jsonrpc: '2.0',
+    id,
+    result: {
+      content: [
+        {
+          type: 'text',
+          text:
+            'Queued ' +
+            diffsJson.length +
+            ' field change(s) for owner review (proposal #' +
+            res.meta.last_row_id +
+            ').' +
+            (budgetBuilt.summary ? ' ' + budgetBuilt.summary + '.' : '') +
+            (allRefused.length ? ' Refused: ' + allRefused.join('; ') + '.' : '') +
+            ' Nothing changes until the owner accepts it inside the project.'
+        }
+      ]
+    }
   };
 }
 

@@ -642,8 +642,11 @@ export default {
       const url = new URL(request.url);
       let normalized = normalizePathname(url.pathname);
 
-      // API routes run BEFORE the ASSETS binding.
-      if (normalized.indexOf('/api/') === 0) {
+      // API routes run BEFORE the ASSETS binding. The OAuth discovery
+      // documents (RFC 8414 / RFC 9728) live under /.well-known/oauth* and are
+      // routed through the API handler too, so they are served by the same
+      // code that answers the OAuth + app-wide MCP endpoints.
+      if (normalized.indexOf('/api/') === 0 || normalized.indexOf('/.well-known/oauth') === 0) {
         return routeApi(request, env, url);
       }
 

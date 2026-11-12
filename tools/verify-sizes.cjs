@@ -46,7 +46,11 @@ const EXACT = {
   // skin's own --gold-text token (3 lines) so gold-as-words is readable on the
   // near-black canvas and the T-GOLD gate passes (the light-page bronze is
   // unreadable there). Needed, not bloat; the delta is 83 bytes.
-  'css/mmgr.css': 591000,
+  // 2026-11-12 (T-14 search palette): raised 591000 -> 598000 for the new
+  // css/src/36-search.css layer (overlay, combobox rows, group headings and
+  // the reduced-motion search-hit outline, ~2.9 KB). One additive layer; the
+  // next CSS wave should split a layer rather than raise this again.
+  'css/mmgr.css': 598000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

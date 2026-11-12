@@ -234,6 +234,154 @@ function check(name, val, detail) {
     core && { money: core.money, hasMoneyPack: core.hasMoneyPack, hasBudget: core.hasBudget }
   );
 
+  // ---- T-14 palette: open / type / move / run / close ------------------
+  const pal1 = await ev(`(function(){
+    if (!(window.MMGR && MMGR.AppSearch && MMGR.AppSearch.open)) { return { err: 'no palette api' }; }
+    document.dispatchEvent(new KeyboardEvent('keydown', { key:'k', ctrlKey:true, bubbles:true, cancelable:true }));
+    var pal = document.getElementById('app-search');
+    var q = document.getElementById('app-search-q');
+    var out = {
+      open: !!(pal && !pal.hidden),
+      focused: document.activeElement === q,
+      role: pal ? pal.getAttribute('role') : '',
+      ariaModal: pal ? pal.getAttribute('aria-modal') : ''
+    };
+    q.value = 'mcp';
+    q.dispatchEvent(new Event('input', { bubbles:true }));
+    var opts = Array.prototype.slice.call(document.querySelectorAll('#app-search-list .search-opt'));
+    out.options = opts.length;
+    out.first = opts.length ? opts[0].querySelector('.search-opt-label').textContent : '';
+    out.live = document.getElementById('app-search-live').textContent;
+    out.expanded = q.getAttribute('aria-expanded');
+    out.activeDesc = q.getAttribute('aria-activedescendant');
+    out.selected0 = opts.length ? opts[0].getAttribute('aria-selected') : '';
+    var before = q.getAttribute('aria-activedescendant');
+    q.dispatchEvent(new KeyboardEvent('keydown', { key:'ArrowDown', bubbles:true, cancelable:true }));
+    out.moved = q.getAttribute('aria-activedescendant') !== before;
+    out.selected1 = opts.length > 1 ? opts[1].getAttribute('aria-selected') : '';
+    return out;
+  })()`);
+  check(
+    'S10 palette: Ctrl+K opens a dialog with a focused combobox',
+    pal1 &&
+      pal1.open === true &&
+      pal1.focused === true &&
+      pal1.role === 'dialog' &&
+      pal1.ariaModal === 'true',
+    pal1
+  );
+  check(
+    'S11 palette: typing mcp lists Connect an AI first with combobox + live-region semantics',
+    pal1 &&
+      pal1.options > 0 &&
+      pal1.first === 'Connect an AI' &&
+      pal1.expanded === 'true' &&
+      pal1.activeDesc === 'search-opt-0' &&
+      pal1.selected0 === 'true' &&
+      /results?$/.test(pal1.live || ''),
+    pal1
+  );
+  check(
+    'S12 palette: ArrowDown moves the active option',
+    pal1 && pal1.moved === true && pal1.selected1 === 'true',
+    pal1
+  );
+
+  const pal2 = await ev(`(function(){
+    var q = document.getElementById('app-search-q');
+    q.value = 'theme';
+    q.dispatchEvent(new Event('input', { bubbles:true }));
+    var first = document.querySelector('#app-search-list .search-opt .search-opt-label');
+    var label = first ? first.textContent : '';
+    q.dispatchEvent(new KeyboardEvent('keydown', { key:'Enter', bubbles:true, cancelable:true }));
+    var pal = document.getElementById('app-search');
+    var drw = document.getElementById('drw');
+    var ctrl = document.getElementById('db-ctrl');
+    return {
+      label: label,
+      closed: !!(pal && pal.hidden),
+      drawerOpen: !!(drw && drw.classList.contains('open')),
+      ctrlVisible: !!(ctrl && !ctrl.classList.contains('is-hide'))
+    };
+  })()`);
+  check(
+    'S13 palette: Enter runs the top result and closes the palette (Theme reveals the Controls drawer)',
+    pal2 &&
+      pal2.label === 'Theme' &&
+      pal2.closed === true &&
+      pal2.drawerOpen === true &&
+      pal2.ctrlVisible === true,
+    pal2
+  );
+
+  const pal3 = await ev(`(function(){
+    if (window.MMGR && MMGR.App && MMGR.App.closeDrw) { MMGR.App.closeDrw(); }
+    // A temporary focusable button is the invoker, so the restore assertion is
+    // deterministic regardless of which page controls happen to be visible.
+    var inv = document.createElement('button');
+    inv.type = 'button';
+    inv.id = 'qa-search-invoker';
+    inv.textContent = 'invoker';
+    document.body.appendChild(inv);
+    inv.focus();
+    var invOk = document.activeElement === inv;
+    document.dispatchEvent(new KeyboardEvent('keydown', { key:'k', ctrlKey:true, bubbles:true, cancelable:true }));
+    var pal = document.getElementById('app-search');
+    var opened = !!(pal && !pal.hidden);
+    var q = document.getElementById('app-search-q');
+    q.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape', bubbles:true, cancelable:true }));
+    var out = {
+      invOk: invOk,
+      opened: opened,
+      closed: !!(pal && pal.hidden),
+      focusRestored: document.activeElement === inv
+    };
+    inv.remove();
+    return out;
+  })()`);
+  check(
+    'S14 palette: Escape closes it and restores focus to the invoker',
+    pal3 &&
+      pal3.invOk === true &&
+      pal3.opened === true &&
+      pal3.closed === true &&
+      pal3.focusRestored === true,
+    pal3
+  );
+
+  const net = await ev(`(function(){
+    var before = performance.getEntriesByType('resource').length;
+    MMGR.AppSearch.open();
+    var q = document.getElementById('app-search-q');
+    ['m','mc','mcp','theme','budget','risk','drive'].forEach(function (v) {
+      q.value = v;
+      q.dispatchEvent(new Event('input', { bubbles:true }));
+    });
+    var after = performance.getEntriesByType('resource').length;
+    MMGR.AppSearch.close(true);
+    return { delta: after - before };
+  })()`);
+  check('S15 palette: typing makes ZERO network requests', net && net.delta === 0, net);
+
+  // Reduced motion: the reveal flash becomes a static outline (animation none).
+  await send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: 'reduce' }]
+  });
+  const rm = await ev(`(function(){
+    var el = document.querySelector('.sec-btn[data-section="dash"]') || document.body;
+    el.classList.add('search-hit');
+    var s = getComputedStyle(el);
+    var out = { animationName: s.animationName, outlineWidth: s.outlineWidth };
+    el.classList.remove('search-hit');
+    return out;
+  })()`);
+  await send('Emulation.setEmulatedMedia', { features: [] });
+  check(
+    'S16 palette: prefers-reduced-motion removes the flash animation (static outline)',
+    rm && rm.animationName === 'none',
+    rm
+  );
+
   // ---- Tear down -------------------------------------------------------
   try {
     await send('Page.close');

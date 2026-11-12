@@ -302,6 +302,21 @@
     }
     return false;
   }
+  // The visible label of a row, with form-control text stripped. A theme row
+  // reads "Theme" from its <label>, never "ThemeLightDarkSystem...".
+  function labelOf(el) {
+    if (!el) {
+      return '';
+    }
+    var clone = el.cloneNode(true);
+    var controls = clone.querySelectorAll('select, option, input, button, textarea');
+    for (var i = 0; i < controls.length; i++) {
+      if (controls[i].parentNode) {
+        controls[i].parentNode.removeChild(controls[i]);
+      }
+    }
+    return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+  }
   function iconFrom(el, fallback) {
     var use = el ? el.querySelector('use') : null;
     if (use) {
@@ -479,7 +494,7 @@
         var groupKey = body ? body.getAttribute('data-ctl-group-body') : '';
         var groupSec = groupKey ? $('.ctl-sec[data-ctl-group="' + groupKey + '"]') : null;
         var groupLabel = txt(groupSec);
-        var label = txt(sl);
+        var label = labelOf(sl);
         if (!label) {
           return;
         }
@@ -585,7 +600,7 @@
         if (!fn) {
           return;
         }
-        var label = txt(fn);
+        var label = labelOf(fn);
         var fd = fi.querySelector('.fd');
         var drawerTab = rootSel === '#db-feat' ? 'feat' : 'qa';
         push({
@@ -877,12 +892,300 @@
     });
   }
 
+  // ---- Palette UI (T-14) ------------------------------------------------
+  // DOM built in JS and appended to <body>; role=dialog + aria-modal and
+  // hidden until opened. Zero inline scripts, so the CSP hash never moves.
+  var _pal = null;
+  var _lastFocus = null;
+  var _flat = [];
+  var _active = -1;
+
+  var KIND_HEAD = {
+    section: 'Sections',
+    'setting-group': 'Settings',
+    setting: 'Settings',
+    tab: 'Tabs',
+    guide: 'Guide',
+    prompt: 'Prompts',
+    shortcut: 'Shortcuts',
+    action: 'Actions',
+    page: 'Pages'
+  };
+
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function buildPalette() {
+    if (_pal) {
+      return _pal;
+    }
+    var el = document.createElement('div');
+    el.id = 'app-search';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-labelledby', 'app-search-title');
+    el.hidden = true;
+    el.innerHTML =
+      '<div class="mb">' +
+      '<div class="mh">' +
+      '<span class="mt" id="app-search-title">' +
+      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg>' +
+      ' Search</span>' +
+      '<button type="button" class="dc" data-search="close" aria-label="Close search">' +
+      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg>' +
+      '</button>' +
+      '</div>' +
+      '<div class="mbody">' +
+      '<input id="app-search-q" type="text" role="combobox" aria-expanded="false" ' +
+      'aria-controls="app-search-list" aria-autocomplete="list" aria-activedescendant="" ' +
+      'placeholder="Search every feature and setting" autocomplete="off" spellcheck="false">' +
+      '<div id="app-search-list" role="listbox" aria-label="Search results"></div>' +
+      '<div id="app-search-live" class="sr-only" aria-live="polite"></div>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    _pal = el;
+
+    var q = el.querySelector('#app-search-q');
+    q.addEventListener('input', function () {
+      renderResults(q.value);
+    });
+
+    el.addEventListener('keydown', function (e) {
+      if (_pal.hidden) {
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closePalette(true);
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActive(_active + 1);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActive(_active - 1);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runActive(_active);
+        return;
+      }
+      if (e.key === 'Tab') {
+        trapTab(e);
+      }
+    });
+
+    el.addEventListener('click', function (e) {
+      var close = e.target.closest ? e.target.closest('[data-search="close"]') : null;
+      if (close) {
+        e.preventDefault();
+        closePalette(true);
+        return;
+      }
+      var opt = e.target.closest ? e.target.closest('.search-opt') : null;
+      if (opt) {
+        e.preventDefault();
+        runActive(parseInt(opt.getAttribute('data-idx'), 10));
+      }
+    });
+
+    return el;
+  }
+
+  function trapTab(e) {
+    var f = _pal.querySelectorAll('input, button, [tabindex]');
+    if (!f.length) {
+      return;
+    }
+    var first = f[0];
+    var last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  function setActive(i) {
+    if (!_flat.length) {
+      _active = -1;
+      return;
+    }
+    if (i < 0) {
+      i = 0;
+    }
+    if (i >= _flat.length) {
+      i = _flat.length - 1;
+    }
+    _active = i;
+    var opts = _pal.querySelectorAll('.search-opt');
+    for (var k = 0; k < opts.length; k++) {
+      var on = k === i;
+      opts[k].setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on && opts[k].scrollIntoView) {
+        opts[k].scrollIntoView({ block: 'nearest' });
+      }
+    }
+    var q = _pal.querySelector('#app-search-q');
+    q.setAttribute('aria-activedescendant', 'search-opt-' + i);
+  }
+
+  function renderResults(query) {
+    var list = _pal.querySelector('#app-search-list');
+    var live = _pal.querySelector('#app-search-live');
+    var q = _pal.querySelector('#app-search-q');
+    list.innerHTML = '';
+    _flat = [];
+    _active = -1;
+    var raw = String(query === undefined || query === null ? '' : query);
+    if (!raw.trim()) {
+      q.setAttribute('aria-expanded', 'false');
+      q.setAttribute('aria-activedescendant', '');
+      live.textContent = '';
+      return;
+    }
+    var res = search(raw);
+    if (!res.length) {
+      list.innerHTML = '<div class="search-empty">No matches for "' + esc(raw) + '"</div>';
+      q.setAttribute('aria-expanded', 'false');
+      q.setAttribute('aria-activedescendant', '');
+      live.textContent = 'No results';
+      return;
+    }
+    // Group by kind in first-appearance order, preserving score order within.
+    var order = [];
+    var map = {};
+    res.forEach(function (e) {
+      if (!map[e.kind]) {
+        map[e.kind] = [];
+        order.push(e.kind);
+      }
+      map[e.kind].push(e);
+    });
+    order.forEach(function (kind) {
+      var head = document.createElement('div');
+      head.className = 'search-group-head';
+      head.textContent = KIND_HEAD[kind] || kind;
+      list.appendChild(head);
+      map[kind].forEach(function (e) {
+        var idx = _flat.length;
+        _flat.push(e);
+        var opt = document.createElement('div');
+        opt.className = 'search-opt';
+        opt.id = 'search-opt-' + idx;
+        opt.setAttribute('role', 'option');
+        opt.setAttribute('aria-selected', 'false');
+        opt.setAttribute('data-idx', String(idx));
+        opt.innerHTML =
+          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' +
+          esc(e.icon || 'i-search') +
+          '"></use></svg>' +
+          '<span class="search-opt-text">' +
+          '<span class="search-opt-label">' +
+          esc(e.label) +
+          '</span>' +
+          '<span class="search-opt-hint">' +
+          esc(e.hint || '') +
+          '</span></span>';
+        list.appendChild(opt);
+      });
+    });
+    q.setAttribute('aria-expanded', 'true');
+    live.textContent = res.length + (res.length === 1 ? ' result' : ' results');
+    setActive(0);
+  }
+
+  function runActive(i) {
+    if (i < 0 || i >= _flat.length) {
+      return;
+    }
+    var entry = _flat[i];
+    // Close WITHOUT restoring focus: the reveal decides where focus lands.
+    closePalette(false);
+    try {
+      entry.run();
+    } catch (e) {
+      /* a broken reveal must never break the app */
+    }
+  }
+
+  function openPalette() {
+    buildPalette();
+    // The first-open tour owns Escape/Enter in the CAPTURE phase; step it
+    // aside (without marking it seen) so the palette owns its own keys.
+    if (window.MMGR && MMGR.Tour && MMGR.Tour.isOpen && MMGR.Tour.isOpen() && MMGR.Tour.end) {
+      MMGR.Tour.end(false);
+    }
+    _lastFocus = document.activeElement;
+    // Fresh index on every open (T-13 rule: never a stale pack state).
+    _index = buildIndex();
+    var q = _pal.querySelector('#app-search-q');
+    q.value = '';
+    renderResults('');
+    _pal.hidden = false;
+    q.focus();
+  }
+
+  function closePalette(restore) {
+    if (!_pal || _pal.hidden) {
+      return;
+    }
+    _pal.hidden = true;
+    if (restore && _lastFocus && _lastFocus.focus && document.contains(_lastFocus)) {
+      _lastFocus.focus();
+    }
+    _lastFocus = null;
+  }
+
+  function togglePalette() {
+    if (_pal && !_pal.hidden) {
+      closePalette(true);
+    } else {
+      openPalette();
+    }
+  }
+
+  function isPaletteOpen() {
+    return !!(_pal && !_pal.hidden);
+  }
+
+  // Ctrl/⌘+K opens the palette. Capture phase so it wins before any page
+  // handler; '/' stays the assistant's key (mmgr-shortcuts.js owns it).
+  document.addEventListener(
+    'keydown',
+    function (e) {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePalette();
+      }
+    },
+    true
+  );
+
   MMGR.AppSearch = {
     buildIndex: function () {
       _index = buildIndex();
       return _index;
     },
     search: search,
+    open: openPalette,
+    close: closePalette,
+    toggle: togglePalette,
+    isOpen: isPaletteOpen,
     MAX_RESULTS: MAX_RESULTS
   };
 })(window.MMGR || (window.MMGR = {}));

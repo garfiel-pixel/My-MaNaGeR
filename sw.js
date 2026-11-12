@@ -749,11 +749,10 @@
 // cache-first shell would keep serving the pre-fix bundle to return visitors.
 // Bumping the cache name re-fetches the bundle and the section buttons stop
 // losing clicks to the pin dot.
-// v637 - T-18 FIELD GUIDE (UI-IA-AND-MCP 2026-11-11): mymanager-field-guide.html
-// and dist/bundle.js are shell assets. The guide's sheets now read A-00..A-35
-// in order (Signing In moved from the duplicate A-26 to A-35), so the cache
-// name must move with them.
-const CACHE = 'mmgr-shell-v637';
+// v638 - T-19 ADMIN NITS (UI-IA-AND-MCP 2026-11-11): admin.html is a shell
+// asset. The dead Premium row left the rail's Customize disclosure (the
+// header plan badge is its one home), so the cache name moves.
+const CACHE = 'mmgr-shell-v638';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

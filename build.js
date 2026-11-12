@@ -263,6 +263,9 @@ const APP_LAUNCHER_MODULES = [
   'js/mmgr-glass.js',
   // Launcher rail: hover-peek (I-14) + one-shot first-load reveal (B7 parity).
   'js/app/launcher-rail.js',
+  // T-15 (UI-IA-AND-MCP 2026-11-11): the same search palette as the project
+  // page, indexing this page's rail and projects. Reads DOM at open time only.
+  'js/app/search.js',
   // bfcache sprite restore (2026-09-30): same module as the project
   // bundle - load-order independent, DOM-only, sits last.
   'js/mmgr-icon-restore.js'
@@ -278,6 +281,9 @@ const ADMIN_MODULES = [
   // Self-contained (delegated clicks, no inline script) so adding it changes
   // no CSP hash.
   'js/mmgr-billing-manage.js',
+  // T-15 (UI-IA-AND-MCP 2026-11-11): the search palette, indexing this page's
+  // rail, cards and project rows. DOM is read at open time only.
+  'js/app/search.js',
   // bfcache sprite restore (2026-10-09): admin.html is a back/forward-cache
   // restore target too - returning to it left its rail icons unpainted. Same
   // module as the project + launcher bundles; load-order independent, it only

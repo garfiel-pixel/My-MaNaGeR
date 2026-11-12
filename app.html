@@ -491,8 +491,11 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
          and Search. Hidden until a verified session answers, so a signed-out
          visitor never sees a control that can only 403. -->
     <button type="button" id="db-team-bell" class="db-quick" data-team-bell aria-label="Invitations and collaborators" aria-haspopup="dialog" aria-expanded="false" aria-controls="team-pop" hidden style="right:50px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg><span class="team-badge" id="team-bell-count" hidden>0</span></button>
-    <!-- SEARCH: project search for users with many projects -->
-    <button type="button" id="db-search-btn" class="db-quick" data-action="openProjectSearch" aria-label="Search projects" title="Search projects" style="right:88px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
+    <!-- SEARCH (T-15, UI-IA-AND-MCP 2026-11-11): the one search door. It opens
+         the palette, which folds in the same project list #ps-modal reads
+         (searchCandidates) and adds the rail and every page. #ps-modal stays
+         for its keyboard path and the harnesses that use it. -->
+    <button type="button" id="db-search-btn" class="db-quick" data-app-search-open aria-label="Search everything" title="Search everything (Ctrl+K)" style="right:88px;"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
     <!-- SIGNED-IN INDICATOR (hidden - sign-in lives in sidebar only) -->
     <button type="button" id="db-user-avatar" class="db-avatar" data-action="openSignIn" aria-label="Sign in" title="Sign in" style="display:none;">
       <span class="db-avatar-box"><span class="db-avatar-ring"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span><span class="db-avatar-dot" hidden></span></span>

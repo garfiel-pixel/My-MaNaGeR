@@ -64,6 +64,11 @@
          rate book -> theme, both parked on the right. Wrapped in .bcp-top-right
          so justify-content:space-between keeps the cluster intact. -->
     <div class="bcp-top-right">
+      <!-- T-15 (UI-IA-AND-MCP 2026-11-11): search this page's cards and the
+           How to use steps. Ctrl+K opens the same palette. -->
+      <button type="button" class="bcp-search" data-app-search-open aria-label="Search the calculator" title="Search (Ctrl+K)">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg>
+      </button>
       <button type="button" class="bcp-ratebook" data-action="openRateBook" title="My MaNaGeR Rate Book 2025-2027" aria-haspopup="dialog">
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
         <span class="bcp-ratebook-text">My MaNaGeR Rate Book</span>
@@ -970,11 +975,15 @@
 <script src="js/mmgr-glass.js?v=2"></script>
 <script src="js/xlsx-lite.js?v=1"></script>
 <script src="js/mmgr-combobox.js?v=2"></script>
-<script src="js/calculator-page.js?v=49"></script>
+<script src="js/calculator-page.js?v=50"></script>
 <script src="js/calc-ai.js?v=11"></script>
 <!-- AUDIT 2026-10-18 M-5: keyboard shortcuts + the shortcut sheet.
      Its own script tag (not in the bundle) so the CSP inline-script
      hashes never move. -->
 <script src="js/mmgr-shortcuts.js?v=1"></script>
+<!-- T-15 (UI-IA-AND-MCP 2026-11-11): the search palette. Standalone because
+     this page loads no bundle; the v must move with the file, or returning
+     calculator-only visitors keep the old copy for a year. -->
+<script src="js/app/search.js?v=1"></script>
 </body>
 </html>

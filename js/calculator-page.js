@@ -16982,6 +16982,23 @@
   // G-9: the Print / PDF button (the assistant's panel uses the same path as
   // the on-page button) - prints the page's current lastResult.
   window.MMGR_CALC_PRINT = ACTIONS.calcPrint;
+  // T-15 (UI-IA-AND-MCP 2026-11-11): the page search indexes the How to use
+  // steps. They live in GUIDE_STEPS, not in the DOM (one is rendered at a
+  // time), so the palette reads the list here and jumps through this hook.
+  window.MMGR_CALC_GUIDE = GUIDE_STEPS.slice();
+  window.MMGR_CALC_GUIDE_GOTO = function (i) {
+    const n = Math.max(0, Math.min(GUIDE_STEPS.length - 1, parseInt(i, 10) || 0));
+    guideIdx = n;
+    try {
+      localStorage.setItem('mmgr_calc_guide_open', '1');
+    } catch (e) {}
+    setGuideTab('steps');
+    renderGuide();
+    const card = $('calc-guide-card');
+    if (card && card.scrollIntoView) {
+      card.scrollIntoView({ block: 'center' });
+    }
+  };
 
   /* OWNER 2026-10-08: the Assistant panel (js/calc-ai.js).
      #calc-ai-mount is the SWAP POINT - a later full-page takeover calls

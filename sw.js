@@ -749,7 +749,12 @@
 // cache-first shell would keep serving the pre-fix bundle to return visitors.
 // Bumping the cache name re-fetches the bundle and the section buttons stop
 // losing clicks to the pin dot.
-const CACHE = 'mmgr-shell-v634';
+// v635 - T-15 SEARCH SURFACES (UI-IA-AND-MCP 2026-11-11): the search palette
+// now rides the project, launcher, admin and calculator pages. project.html,
+// app.html, admin.html and calculator.html are shell assets, and the three
+// bundles plus css/mmgr.css carry the new surface collectors and button
+// styles, so the cache name must move or return visitors keep the old pages.
+const CACHE = 'mmgr-shell-v635';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated
@@ -1659,6 +1664,10 @@ const SHELL = [
   'js/reset.js',
   'js/calculator-page.js',
   'js/calc-ai.js',
+  // T-15 (UI-IA-AND-MCP 2026-11-11): the search palette. It rides the project,
+  // launcher and admin bundles, and calculator.html loads it standalone, so
+  // the offline shell must carry the copy the calculator tag points at.
+  'js/app/search.js',
   // UI-1 (REFINEMENT-DIRECTIVE-2026-10-24): the owned listbox that replaces the
   // native popup on the two long trade lists. Loaded by <script src> on
   // calculator.html, so it is not in any bundle; offline-first means the trade

@@ -426,6 +426,10 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
     </div>
     <div class="hdr-actions">
+      <!-- T-15 (UI-IA-AND-MCP 2026-11-11): search this panel's rail, cards and
+           project rows. The palette is built by js/app/search.js; Ctrl+K opens
+           it too. -->
+      <button type="button" class="btn btn-n btn-s" data-app-search-open aria-label="Search the admin panel" title="Search (Ctrl+K)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search</button>
       <!-- YOUR PLAN (owner 2026-11-06): visible in the header, not buried in
            the off-canvas rail. Free -> "Upgrade to Premium" opens the pricing
            page; paid -> "Premium" opens a popover with Manage subscription and

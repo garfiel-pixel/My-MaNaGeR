@@ -14,7 +14,8 @@
        event subscriptions.
      - Scoring is deterministic and library-free: label exact 1000,
        label prefix 800, word-boundary prefix 600, alias exact 500,
-       subsequence 300 (gap-penalised), hint/group contains 200.
+       alias prefix 450 (compact project titles), subsequence 300
+       (gap-penalised), hint/group contains 200.
        Tie-break: weight desc, label length asc, DOM order. Cap 12.
      - Gating reuses the existing guards, never a copy: pack-off
        sections are replaced by one synthetic "turn the pack on"
@@ -22,7 +23,14 @@
        result; [hidden] rows are excluded by the visibility filter.
      - Zero network requests: every source is DOM or a static table.
 
-   Exports: MMGR.AppSearch = { buildIndex, search, MAX_RESULTS }.
+   T-15 (same directive): the palette rides every surface. Each page gets
+   its own index - the project workspace indexes its sections and drawer,
+   the launcher indexes its rail and projects, the admin panel indexes its
+   rail and cards, the calculator indexes its cards and guide steps - so a
+   result always names real UI on the page the reader is looking at.
+
+   Exports: MMGR.AppSearch = { buildIndex, search, open, close, toggle,
+   isOpen, surface, MAX_RESULTS }.
    ============================================================ */
 (function (MMGR) {
   'use strict';
@@ -287,6 +295,27 @@
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
   }
+  // Compact form: punctuation and spaces stripped. The launcher's own project
+  // search matches "newtown" against "New Town Hotel Renovation" this way,
+  // and the palette must not lose that behaviour (owner bug 2026-09-17).
+  function compact(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  }
+  // Which page is this? Each surface indexes its own real UI.
+  function surfaceName() {
+    if (document.body && document.body.classList.contains('calculator-page')) {
+      return 'calculator';
+    }
+    if (document.getElementById('admin-app')) {
+      return 'admin';
+    }
+    if (document.getElementById('sec-nav') || document.getElementById('db-ctrl')) {
+      return 'project';
+    }
+    return 'launcher';
+  }
   // The [hidden] attribute is the gate. We deliberately do NOT use computed
   // display:none here: a setting that lives in a non-active tab panel is
   // display:none via .is-hide, and it must still be searchable.
@@ -309,7 +338,9 @@
       return '';
     }
     var clone = el.cloneNode(true);
-    var controls = clone.querySelectorAll('select, option, input, button, textarea');
+    var controls = clone.querySelectorAll(
+      'select, option, input, button, textarea, .bcp-hist-note'
+    );
     for (var i = 0; i < controls.length; i++) {
       if (controls[i].parentNode) {
         controls[i].parentNode.removeChild(controls[i]);
@@ -384,10 +415,226 @@
     }
   }
 
+  // ---- Surface collectors (T-15) ---------------------------------------
+  // Launcher: the rail plus every project the page can open. Projects come
+  // from the SAME source the #ps-modal reads (searchCandidates), so the two
+  // searches can never disagree about what exists.
+  function collectLauncher(push) {
+    $$('#db-sidebar .db-link, #sidebar-icons .sidebar-icon').forEach(function (el) {
+      if (isHidden(el)) {
+        return;
+      }
+      var sub = el.closest ? el.closest('.db-sub') : null;
+      if (sub && sub.hidden) {
+        return;
+      }
+      var label = txt(el) || el.getAttribute('aria-label') || el.getAttribute('title') || '';
+      if (!label) {
+        return;
+      }
+      push({
+        id: 'lnav-' + slug(label),
+        kind: 'section',
+        label: label,
+        hint: 'Launcher',
+        group: 'Go to',
+        icon: iconFrom(el, 'i-arrow-right'),
+        weight: 70,
+        run: function () {
+          el.click();
+        }
+      });
+    });
+
+    if (typeof window.searchCandidates !== 'function') {
+      return;
+    }
+    var list = [];
+    try {
+      list = window.searchCandidates() || [];
+    } catch (e) {
+      list = [];
+    }
+    list.forEach(function (p) {
+      var title = p.title || p.id || 'Untitled';
+      var where = p.demo ? 'Demo project' : p._src === 'cloud' ? 'Cloud project' : 'Project';
+      push({
+        id: 'lproj-' + (p.id || slug(title)),
+        kind: 'project',
+        label: title,
+        hint: p.description ? String(p.description).slice(0, 90) : where,
+        group: 'Projects',
+        icon: 'i-folder',
+        weight: 130,
+        aliases: [compact(title)],
+        run: function () {
+          location.href = 'project.html?id=' + encodeURIComponent(p.id || '');
+        }
+      });
+    });
+  }
+
+  // Admin: its rail (including the closed Site operator tools disclosure) and
+  // its cards, plus the project rows the panel is showing.
+  function collectAdmin(push) {
+    $$('#db-nav .db-link').forEach(function (el) {
+      if (isHidden(el)) {
+        return;
+      }
+      var sub = el.closest ? el.closest('.db-sub') : null;
+      if (sub && sub.hidden) {
+        return;
+      }
+      var label = txt(el);
+      if (!label) {
+        return;
+      }
+      push({
+        id: 'adnav-' + slug(label),
+        kind: 'section',
+        label: label,
+        hint: 'Admin menu',
+        group: 'Go to',
+        icon: iconFrom(el, 'i-arrow-right'),
+        weight: 70,
+        run: function () {
+          var href = el.getAttribute ? el.getAttribute('href') : '';
+          var target = href && href.charAt(0) === '#' ? document.querySelector(href) : null;
+          if (target && target.tagName === 'DETAILS') {
+            target.open = true;
+          }
+          el.click();
+          if (target && target.scrollIntoView) {
+            target.scrollIntoView({ block: 'start' });
+          }
+        }
+      });
+    });
+
+    $$('#admin-app .card').forEach(function (card) {
+      if (isHidden(card)) {
+        return;
+      }
+      var titleEl = card.querySelector('.card-title');
+      var label = labelOf(titleEl);
+      if (!label) {
+        return;
+      }
+      push({
+        id: 'adcard-' + slug(label),
+        kind: 'setting-group',
+        label: label,
+        hint: 'Admin card',
+        group: 'Admin',
+        icon: iconFrom(titleEl, 'i-list'),
+        weight: 60,
+        run: function () {
+          var d = card.closest ? card.closest('details') : null;
+          if (d) {
+            d.open = true;
+          }
+          if (card.scrollIntoView) {
+            card.scrollIntoView({ block: 'center' });
+          }
+          flash(card);
+        }
+      });
+    });
+
+    $$('#project-list .prow').forEach(function (row) {
+      if (isHidden(row)) {
+        return;
+      }
+      var titleEl = row.querySelector('.prow-title');
+      var label = labelOf(titleEl);
+      if (!label) {
+        return;
+      }
+      push({
+        id: 'adproj-' + slug(label),
+        kind: 'project',
+        label: label,
+        hint: 'Open this project from the admin panel',
+        group: 'Projects',
+        icon: 'i-folder',
+        weight: 130,
+        aliases: [compact(label)],
+        run: function () {
+          var a = row.querySelector('.prow-actions a[href^="project.html"]');
+          if (a) {
+            a.click();
+          }
+        }
+      });
+    });
+  }
+
+  // Calculator: its cards and the How to use steps. The steps live in JS, not
+  // in the DOM (one is rendered at a time), so calculator-page.js exports the
+  // list and a jump-to-step hook.
+  function collectCalculator(push) {
+    $$('#main .card').forEach(function (card) {
+      if (isHidden(card)) {
+        return;
+      }
+      var titleEl = card.querySelector('.card-title');
+      var label = labelOf(titleEl);
+      if (!label) {
+        return;
+      }
+      push({
+        id: 'calccard-' + slug(label),
+        kind: 'setting-group',
+        label: label,
+        hint: 'Calculator card',
+        group: 'Calculator',
+        icon: iconFrom(titleEl, 'i-calculator'),
+        weight: 70,
+        run: function () {
+          if (card.scrollIntoView) {
+            card.scrollIntoView({ block: 'center' });
+          }
+          flash(card);
+        }
+      });
+    });
+
+    var steps = window.MMGR_CALC_GUIDE;
+    if (!steps || !steps.length) {
+      return;
+    }
+    steps.forEach(function (text, i) {
+      var label = String(text || '')
+        .split(/[.!?]/)[0]
+        .trim();
+      if (!label) {
+        return;
+      }
+      if (label.length > 72) {
+        label = label.slice(0, 69) + '...';
+      }
+      push({
+        id: 'calcstep-' + i,
+        kind: 'guide',
+        label: label,
+        hint: 'How to use, step ' + (i + 1) + ' of ' + steps.length,
+        group: 'How to use',
+        icon: 'i-book',
+        weight: 40,
+        run: function () {
+          if (typeof window.MMGR_CALC_GUIDE_GOTO === 'function') {
+            window.MMGR_CALC_GUIDE_GOTO(i);
+          }
+        }
+      });
+    });
+  }
+
   // ---- Index build ------------------------------------------------------
   function buildIndex() {
     var entries = [];
     var order = 0;
+    var SURFACE = surfaceName();
     function push(e) {
       e.order = order++;
       e.aliases = e.aliases || [];
@@ -670,27 +917,30 @@
       });
     }
 
-    // 6) Action allow-list.
-    ACTIONS.forEach(function (a) {
-      push({
-        id: 'action-' + a.id,
-        kind: 'action',
-        label: a.label,
-        hint: a.hint,
-        group: 'Actions',
-        icon: a.icon,
-        weight: 65,
-        run: (function (action, id) {
-          return function () {
-            if (id === 'settings') {
-              openDrawerTab('ctrl');
-              return;
-            }
-            runAction(action);
-          };
-        })(a.action, a.id)
+    // 6) Action allow-list. These are project commands; other surfaces must
+    //    not offer a result that can only no-op.
+    if (SURFACE === 'project') {
+      ACTIONS.forEach(function (a) {
+        push({
+          id: 'action-' + a.id,
+          kind: 'action',
+          label: a.label,
+          hint: a.hint,
+          group: 'Actions',
+          icon: a.icon,
+          weight: 65,
+          run: (function (action, id) {
+            return function () {
+              if (id === 'settings') {
+                openDrawerTab('ctrl');
+                return;
+              }
+              runAction(action);
+            };
+          })(a.action, a.id)
+        });
       });
-    });
+    }
 
     // 7) Static pages.
     PAGES.forEach(function (p) {
@@ -724,24 +974,37 @@
       });
     });
 
-    // 9) Explicit Connect an AI entry (the directive's MCP example). It is
-    //    added even when the cloud-rendered MCP block is absent, so search
-    //    for mcp / model context protocol is deterministic.
-    push({
-      id: 'ctrl-connect-ai',
-      kind: 'setting',
-      label: 'Connect an AI',
-      hint: 'Connect an outside AI to this project',
-      group: 'Connect & Sync',
-      icon: 'i-sparkle',
-      weight: 95,
-      aliases: ['mcp', 'model context protocol', 'claude', 'cursor', 'api'],
-      run: function () {
-        focusSetting('connect', 'ai', 'ctrl-mcp');
-      }
-    });
+    // 9) Surface-specific UI (T-15). Project collectors above already ran
+    //    inert on other pages, so this only adds what that page really has.
+    if (SURFACE === 'launcher') {
+      collectLauncher(push);
+    } else if (SURFACE === 'admin') {
+      collectAdmin(push);
+    } else if (SURFACE === 'calculator') {
+      collectCalculator(push);
+    }
 
-    // 10) Apply aliases by target label / action id.
+    // 10) Explicit Connect an AI entry (the directive's MCP example). It is
+    //    added even when the cloud-rendered MCP block is absent, so search
+    //    for mcp / model context protocol is deterministic. Project only:
+    //    the reveal opens the workspace drawer.
+    if (SURFACE === 'project') {
+      push({
+        id: 'ctrl-connect-ai',
+        kind: 'setting',
+        label: 'Connect an AI',
+        hint: 'Connect an outside AI to this project',
+        group: 'Connect & Sync',
+        icon: 'i-sparkle',
+        weight: 95,
+        aliases: ['mcp', 'model context protocol', 'claude', 'cursor', 'api'],
+        run: function () {
+          focusSetting('connect', 'ai', 'ctrl-mcp');
+        }
+      });
+    }
+
+    // 11) Apply aliases by target label / action id.
     ALIASES.forEach(function (row) {
       var target = row.target;
       var hit = null;
@@ -768,7 +1031,7 @@
       }
     });
 
-    // 11) Exclude client/editor-scope sections with no synthetic result.
+    // 12) Exclude client/editor-scope sections with no synthetic result.
     entries = entries.filter(function (e) {
       if (e.kind !== 'section') {
         return true;
@@ -785,7 +1048,7 @@
       return true;
     });
 
-    // 12) Dedupe by kind + label + group (first wins, preserving order).
+    // 13) Dedupe by kind + label + group (first wins, preserving order).
     var seen = {};
     entries = entries.filter(function (e) {
       var k = e.kind + '|' + e.label + '|' + (e.group || '');
@@ -840,8 +1103,14 @@
       }
     }
     for (var a = 0; a < e.aliases.length; a++) {
-      if (String(e.aliases[a]).toLowerCase() === q) {
+      var al = String(e.aliases[a]).toLowerCase();
+      if (al === q) {
         return 500;
+      }
+      // Compact titles ("newtown" -> "New Town Hotel Renovation") are stored
+      // as aliases; a prefix hit keeps the launcher's unspaced search working.
+      if (al.indexOf(q) === 0) {
+        return 450;
       }
     }
     var sub = subsequenceScore(label, q);
@@ -901,6 +1170,7 @@
   var _active = -1;
 
   var KIND_HEAD = {
+    project: 'Projects',
     section: 'Sections',
     'setting-group': 'Settings',
     setting: 'Settings',
@@ -910,6 +1180,13 @@
     shortcut: 'Shortcuts',
     action: 'Actions',
     page: 'Pages'
+  };
+
+  var PLACEHOLDER = {
+    project: 'Search every feature and setting',
+    launcher: 'Search projects, pages and settings',
+    admin: 'Search the admin panel',
+    calculator: 'Search the calculator'
   };
 
   function esc(s) {
@@ -944,7 +1221,9 @@
       '<div class="mbody">' +
       '<input id="app-search-q" type="text" role="combobox" aria-expanded="false" ' +
       'aria-controls="app-search-list" aria-autocomplete="list" aria-activedescendant="" ' +
-      'placeholder="Search every feature and setting" autocomplete="off" spellcheck="false">' +
+      'placeholder="' +
+      esc(PLACEHOLDER[surfaceName()] || PLACEHOLDER.project) +
+      '" autocomplete="off" spellcheck="false">' +
       '<div id="app-search-list" role="listbox" aria-label="Search results"></div>' +
       '<div id="app-search-live" class="sr-only" aria-live="polite"></div>' +
       '</div>' +
@@ -1176,6 +1455,18 @@
     true
   );
 
+  // Every surface carries its own button: <button data-app-search-open>.
+  // Delegated, so the markup needs no per-page handler and no inline script.
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-app-search-open]') : null;
+    if (!t) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    openPalette();
+  });
+
   MMGR.AppSearch = {
     buildIndex: function () {
       _index = buildIndex();
@@ -1186,6 +1477,7 @@
     close: closePalette,
     toggle: togglePalette,
     isOpen: isPaletteOpen,
+    surface: surfaceName,
     MAX_RESULTS: MAX_RESULTS
   };
 })(window.MMGR || (window.MMGR = {}));

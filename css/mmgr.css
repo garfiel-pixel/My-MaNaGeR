@@ -12251,6 +12251,40 @@ body.dark-mode .ltr-roll td {
     max-height: 84vh;
   }
 }
+/* T-15: the calculator's top bar search button. Same footprint and hover as
+   .bcp-theme beside it, one icon, no sun/moon swap. */
+.bcp-search {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  color: var(--slate);
+  cursor: pointer;
+  transition: color var(--tr);
+}
+.bcp-search:hover {
+  color: var(--gold-text);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.bcp-search:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.bcp-search .ico {
+  width: 18px;
+  height: 18px;
+}
+@media (max-width: 560px) {
+  .bcp-search {
+    width: 44px;
+    height: 44px;
+  }
+}
 /* ---- AI Assistant window (chat-style) ---- */
 /* TRACK B3: distinct visual presence - the AI is the strongest
    differentiator and its entry point should feel like one.  A persistent

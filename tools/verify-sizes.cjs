@@ -56,7 +56,11 @@ const EXACT = {
   // drawer's readable type scale and the non-wrapping tab bar (~1.4 KB). The
   // old 0.66rem flat diff grid and 10.9px hints were unreadable; this is the
   // replacement surface.
-  'css/mmgr.css': 604000,
+  // 2026-11-12 (UI-IA Phase 4): raised 604000 -> 607000 for the admin rail's
+  // dropdown language (group rows, sub-rows, nested MCP menu, ~1.2 KB) and the
+  // MCP card disclosure (summary, state chip, brand mark, ~1.6 KB). Both are
+  // admin-only selectors; the next admin wave should split a layer first.
+  'css/mmgr.css': 607000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

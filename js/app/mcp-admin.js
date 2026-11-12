@@ -9,6 +9,7 @@
 
   var card = null;
   var state = null;
+  var clientList = [];
 
   function $(sel) {
     return card ? card.querySelector(sel) : null;
@@ -30,6 +31,37 @@
     }
     s.textContent = msg || '';
     s.setAttribute('data-kind', kind || '');
+  }
+  // T-28: the summary carries the real state, so a folded card still answers
+  // "is this connected?" without a click. "On" alone would repeat the bug the
+  // owner reported (a panel that claimed cloud while nothing was connected),
+  // so the chip counts live clients.
+  function setChip(text, kind) {
+    var chip = document.getElementById('mcp-admin-chip');
+    if (!chip) {
+      return;
+    }
+    chip.textContent = text;
+    chip.setAttribute('data-kind', kind || '');
+  }
+  function syncChip() {
+    if (!state) {
+      setChip('Signed out', 'muted');
+      return;
+    }
+    var cfg = state.config || {};
+    if (cfg.enabled === 0 || cfg.enabled === false) {
+      setChip('Off', 'muted');
+      return;
+    }
+    var live = (clientList || []).filter(function (c) {
+      return c && !c.revoked;
+    });
+    if (!live.length) {
+      setChip('On, no client yet', 'warn');
+      return;
+    }
+    setChip('On, ' + live.length + ' client' + (live.length === 1 ? '' : 's'), 'ok');
   }
   function api(path, opts) {
     var init = {
@@ -111,6 +143,8 @@
   }
 
   function renderClients(clients) {
+    clientList = Array.isArray(clients) ? clients : [];
+    syncChip();
     var host = $('#mcp-clients');
     if (!host) {
       return;
@@ -208,6 +242,7 @@
     renderTools(data.tools, subset);
     syncSubsetVisibility();
     renderProjects(data.projects);
+    syncChip();
   }
 
   function syncSubsetVisibility() {
@@ -229,9 +264,12 @@
       urlInput.value = location.origin + '/api/mcp';
     }
     setStatus('Loading MCP settings...');
+    setChip('Checking...', 'busy');
     api('/api/mcp/config')
       .then(function (r) {
         if (r.status === 403 || r.status === 401) {
+          state = null;
+          syncChip();
           setStatus(
             'Sign in to your account to manage the MCP server: open the app, use Sign in, then press Retry. The connection URL above still works: Claude sends you here to sign in.',
             'muted'
@@ -243,6 +281,7 @@
           return null;
         }
         if (!r.ok || !r.data.ok) {
+          setChip('Unavailable', 'err');
           setStatus(errorText(r), 'err');
           return null;
         }
@@ -263,6 +302,7 @@
       })
       .catch(function () {
         var offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        setChip(offline ? 'Offline' : 'Unavailable', 'err');
         setStatus(
           offline
             ? 'You are offline. Reconnect, then press Retry.'
@@ -272,7 +312,7 @@
       });
   }
 
-  function copyUrl() {
+  function copyUrl(after) {
     var input = document.getElementById('mcp-connect-url');
     if (!input) {
       return;
@@ -288,6 +328,9 @@
     }
     function done() {
       setStatus('Connection URL copied. Paste it into your connector.', 'ok');
+      if (after) {
+        after();
+      }
     }
     function fallback() {
       input.removeAttribute('readonly');
@@ -317,6 +360,64 @@
       return;
     }
     fallback();
+  }
+
+  // T-28: the rail's MCP Server dropdown drives the same card. Opening it is
+  // the one action that makes the folded state visible again; scroll honours
+  // prefers-reduced-motion instead of always animating.
+  function openPanel() {
+    card = document.getElementById('mcp-admin-card');
+    if (!card) {
+      return;
+    }
+    if (card.tagName === 'DETAILS') {
+      card.open = true;
+    }
+    var reduce =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    card.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    var sum = card.querySelector('summary');
+    if (sum && sum.focus) {
+      try {
+        sum.focus({ preventScroll: true });
+      } catch (e) {
+        sum.focus();
+      }
+    }
+    if (!state) {
+      load();
+    }
+  }
+
+  function scrollInside(target) {
+    if (!target) {
+      return;
+    }
+    var reduce =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+  }
+
+  function sideAction(kind) {
+    if (kind === 'open') {
+      openPanel();
+      return;
+    }
+    if (kind === 'clients') {
+      openPanel();
+      scrollInside(document.getElementById('mcp-clients'));
+      return;
+    }
+    if (kind === 'copy') {
+      openPanel();
+      copyUrl(function () {
+        if (typeof window.toast === 'function') {
+          window.toast('Connection URL copied. Paste it into your connector.', 'ok');
+        }
+      });
+    }
   }
 
   function save() {
@@ -418,6 +519,12 @@
 
   document.addEventListener('DOMContentLoaded', load);
   document.addEventListener('click', function (e) {
+    var side = e.target && e.target.closest ? e.target.closest('[data-mcp-side]') : null;
+    if (side) {
+      e.preventDefault();
+      sideAction(side.getAttribute('data-mcp-side'));
+      return;
+    }
     var t = e.target && e.target.closest ? e.target.closest('[data-mcp-act]') : null;
     if (!t || !card || !card.contains(t)) {
       return;
@@ -451,5 +558,5 @@
     }
   });
 
-  MMGR.McpAdmin = { load: load };
+  MMGR.McpAdmin = { load: load, open: openPanel, copyUrl: copyUrl };
 })(window.MMGR || (window.MMGR = {}));

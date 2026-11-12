@@ -12510,6 +12510,87 @@ body.dark-mode .ltr-roll td {
 }
 /* T-25 (2026-11-12): admin MCP server panel. Rows reuse the app's border and
    slate tokens; the tool subset wraps instead of forcing a horizontal scroll. */
+/* T-28 (2026-11-12): the card is a native disclosure. Folded, it is one row
+   that still states the truth in a chip (On / Off / Signed out), and the title
+   carries the app's own brand mark. */
+.mcp-admin-card {
+  padding: 0;
+}
+.mcp-admin-sum {
+  margin: 0;
+  padding: 16px 20px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.mcp-admin-sum::-webkit-details-marker {
+  display: none;
+}
+.mcp-admin-sum:focus-visible {
+  outline: 2px solid var(--gold-text);
+  outline-offset: -2px;
+  border-radius: var(--squircle-md);
+}
+.mcp-admin-card[open] > .mcp-admin-sum {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.mcp-admin-inner {
+  padding: 0 20px 18px;
+}
+.mcp-admin-sum-l,
+.mcp-admin-sum-r {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.mcp-admin-sum .ico-caret {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.18s ease;
+}
+.mcp-admin-card[open] .mcp-admin-sum .ico-caret {
+  transform: rotate(90deg);
+}
+.mcp-brand-ico {
+  color: var(--gold-text);
+}
+.mcp-admin-chip {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--slate);
+  white-space: nowrap;
+}
+.mcp-admin-chip[data-kind='ok'] {
+  color: var(--dot-green);
+  border-color: color-mix(in oklch, var(--dot-green) 45%, transparent);
+  background: color-mix(in oklch, var(--dot-green) 10%, transparent);
+}
+.mcp-admin-chip[data-kind='warn'] {
+  color: var(--dot-yellow);
+  border-color: color-mix(in oklch, var(--dot-yellow) 45%, transparent);
+  background: color-mix(in oklch, var(--dot-yellow) 10%, transparent);
+}
+.mcp-admin-chip[data-kind='err'] {
+  color: var(--dot-red);
+  border-color: color-mix(in oklch, var(--dot-red) 45%, transparent);
+  background: color-mix(in oklch, var(--dot-red) 10%, transparent);
+}
+.mcp-admin-chip[data-kind='busy'] {
+  color: var(--slate);
+  border-color: var(--border);
+}
+#mcp-admin-status[data-kind='ok'] {
+  color: var(--dot-green);
+}
+#mcp-admin-status[data-kind='err'] {
+  color: var(--dot-red);
+}
 .mcp-admin-rows {
   display: grid;
   gap: 8px;
@@ -18337,6 +18418,42 @@ body.db-page [data-rail-toggle] .ico-caret {
 }
 body.db-page [data-rail-toggle].open .ico-caret {
   transform: rotate(90deg);
+}
+/* T-28 (owner 2026-11-12): the admin rail is dropdown groups. A group row
+   reads as a destination header (a little more weight than a plain link and
+   air above it); a sub-row is the same language one step down, so the rail
+   never turns into an undifferentiated list. */
+body.db-page .db-grp {
+  font-weight: 700;
+  margin-top: 8px;
+}
+body.db-page .db-grp:first-child {
+  margin-top: 0;
+}
+body.db-page .db-link-sub {
+  padding: 7px 10px 7px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+body.db-page .db-link-sub .ico {
+  width: 15px;
+  height: 15px;
+}
+body.db-page .db-sub-nest {
+  padding: 0 0 2px 6px;
+  border-left: 1px solid var(--border);
+  margin-left: 8px;
+}
+body.db-page .db-sub-nest .db-link-sub {
+  padding-left: 9px;
+  gap: 8px;
+  font-size: 0.74rem;
+}
+body.db-page .db-sub-nest .db-link-sub .ico {
+  width: 14px;
+  height: 14px;
 }
 body.db-page .db-sub {
   padding: 2px 6px 6px;

@@ -481,17 +481,25 @@
     });
   }
 
-  // Admin: its rail (including the closed Site operator tools disclosure) and
-  // its cards, plus the project rows the panel is showing.
+  // Admin: its rail (including collapsed dropdown groups) and its cards, plus
+  // the project rows the panel is showing. T-28 (2026-11-12): the rail's
+  // destinations live inside dropdown groups now, so a hidden group is NOT a
+  // reason to drop a row from the index - the reveal opens the group instead.
+  function openRailGroups(el) {
+    var sub = el.closest ? el.closest('.db-sub') : null;
+    while (sub) {
+      sub.hidden = false;
+      var toggle = sub.id ? $('[data-rail-toggle="' + sub.id + '"]') : null;
+      if (toggle) {
+        toggle.classList.add('open');
+        toggle.setAttribute('aria-expanded', 'true');
+      }
+      var parent = sub.parentElement;
+      sub = parent && parent.closest ? parent.closest('.db-sub') : null;
+    }
+  }
   function collectAdmin(push) {
     $$('#db-nav .db-link').forEach(function (el) {
-      if (isHidden(el)) {
-        return;
-      }
-      var sub = el.closest ? el.closest('.db-sub') : null;
-      if (sub && sub.hidden) {
-        return;
-      }
       var label = txt(el);
       if (!label) {
         return;
@@ -505,6 +513,7 @@
         icon: iconFrom(el, 'i-arrow-right'),
         weight: 70,
         run: function () {
+          openRailGroups(el);
           var href = el.getAttribute ? el.getAttribute('href') : '';
           var target = href && href.charAt(0) === '#' ? document.querySelector(href) : null;
           if (target && target.tagName === 'DETAILS') {

@@ -169,6 +169,16 @@ var MMGR = window.MMGR || {};
     return out;
   }
 
+  // A budget proposal also carries the snapshot diff of the same edit
+  // (path "budgetLines[0]"), which is NOT a task/risk field change: render
+  // diffs only when the proposal has no budget changes of its own.
+  function fieldDiffs() {
+    if (_draft.length) {
+      return [];
+    }
+    return (_p && Array.isArray(_p.diffs) ? _p.diffs : []).filter(Boolean);
+  }
+
   function approvedDiffs() {
     const diffs = (_p && Array.isArray(_p.diffs) ? _p.diffs : []).filter(function (d) {
       const key = d.path + '|' + d.recordId + '|' + d.field;
@@ -236,7 +246,9 @@ var MMGR = window.MMGR || {};
       }
     });
     // Field diffs from a task/risk proposal (H-6 "all proposal types").
-    (_p && Array.isArray(_p.diffs) ? _p.diffs : []).forEach(function (d) {
+    // Budget proposals keep their snapshot diff out of the draft: their
+    // changes array is the authoritative edit.
+    (_draft.length ? [] : _p && Array.isArray(_p.diffs) ? _p.diffs : []).forEach(function (d) {
       const key = d.path + '|' + d.recordId + '|' + d.field;
       if (_tickMap[key] === false) {
         return;
@@ -323,36 +335,6 @@ var MMGR = window.MMGR || {};
 
   // ---- flags -------------------------------------------------------------
 
-  // A live summary for the editable change (the server's stored c.summary
-  // shows the PROPOSED value; when the owner edits the field the card must
-  // follow, or the preview would lie about what Approve will write).
-  function liveSummary(d) {
-    const c = d.c;
-    if (c.kind !== 'changeLine') {
-      return c.summary || '';
-    }
-    const before = +c.before || 0;
-    const v = num(d.value);
-    const delta = v - before;
-    const line = lineOf(ns.State.getState(), c.lineId);
-    const label = (line && (line.category || line.name)) || c.lineName || c.lineId;
-    const isMoney = c.field === 'planned' || c.field === 'qty' || c.field === 'rate';
-    const fmt = function (n) {
-      return isMoney ? num(n).toLocaleString('en-US') : String(n);
-    };
-    return (
-      'Change ' +
-      esc(label) +
-      ' ' +
-      esc(c.field) +
-      ' from ' +
-      fmt(before) +
-      ' to ' +
-      fmt(v) +
-      (delta ? ' (+' + fmt(delta) + ')' : '')
-    );
-  }
-
   function flagsFor(d) {
     const out = [];
     const c = d.c;
@@ -403,78 +385,267 @@ var MMGR = window.MMGR || {};
     return !!c.large;
   }
 
+  // ---- readable labels and values ---------------------------------------
+  // OWNER 2026-11-11: the review screen used to print the raw payload - an
+  // unordered list of internal field names, bare numbers and record ids. It
+  // now groups changes, names the record and says "this to that" in money or
+  // plain words. Presentation only: the approved payload is unchanged.
+
+  const FIELD_LABELS = {
+    planned: 'Planned budget',
+    actual: 'Actual spend',
+    qty: 'Quantity',
+    rate: 'Rate',
+    unit: 'Unit',
+    unitPrice: 'Price per unit',
+    name: 'Name',
+    category: 'Category',
+    boqRef: 'BOQ reference',
+    status: 'Status',
+    owner: 'Owner',
+    startDate: 'Start date',
+    endDate: 'End date',
+    dueDate: 'Due date',
+    progress: 'Progress',
+    description: 'Description',
+    title: 'Title',
+    notes: 'Notes',
+    severity: 'Severity',
+    likelihood: 'Likelihood',
+    mitigation: 'Mitigation',
+    supplierRef: 'Supplier reference',
+    date: 'Date',
+    amount: 'Amount'
+  };
+  const PATH_LABELS = {
+    tasks: 'Task',
+    risks: 'Risk',
+    issues: 'Issue',
+    budgetLines: 'Budget line',
+    spendLog: 'Delivery',
+    stakeholders: 'Stakeholder',
+    resources: 'Resource',
+    changes: 'Change request',
+    logEntries: 'Decision',
+    documents: 'Document',
+    commsEntries: 'Comms entry',
+    raci: 'RACI entry'
+  };
+  const MONEY_FIELDS = { planned: 1, actual: 1, rate: 1, unitPrice: 1, amount: 1 };
+  const PCT_FIELDS = { progress: 1, percent: 1 };
+
+  function fieldLabel(f) {
+    const k = String(f || '');
+    if (FIELD_LABELS[k]) {
+      return FIELD_LABELS[k];
+    }
+    return k.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, function (c) {
+      return c.toUpperCase();
+    });
+  }
+  function isMoneyField(f) {
+    return !!MONEY_FIELDS[String(f)];
+  }
+  function plainVal(field, v) {
+    if (v == null || v === '') {
+      return 'blank';
+    }
+    if (isMoneyField(field)) {
+      return money(v);
+    }
+    if (PCT_FIELDS[String(field)]) {
+      return num(v) + '%';
+    }
+    if (typeof v === 'number') {
+      return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    }
+    return String(v);
+  }
+  function signedDelta(field, before, after) {
+    if (isMoneyField(field)) {
+      const d = num(after) - num(before);
+      if (!d) {
+        return '';
+      }
+      return (d > 0 ? '+' : '-') + money(Math.abs(d));
+    }
+    if (typeof before === 'string' || typeof after === 'string') {
+      return '';
+    }
+    const d = num(after) - num(before);
+    if (!d) {
+      return '';
+    }
+    return (d > 0 ? '+' : '') + d.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+  function recordLabel(path, id) {
+    const s = ns.State.getState() || {};
+    const arr = Array.isArray(s[path]) ? s[path] : [];
+    const item = arr.find(function (x) {
+      return x && String(x.id) === String(id);
+    });
+    const label = item && (item.name || item.title || item.description || item.label || item.ref);
+    return label ? String(label) : String(id);
+  }
+  function lineName(state, id) {
+    const line = lineOf(state, id);
+    return (line && (line.name || line.category)) || String(id);
+  }
+  function lineSpent(state, id) {
+    return (state.spendLog || [])
+      .filter(spendIsSpent)
+      .filter(function (e) {
+        return String(e.budgetLineId) === String(id);
+      })
+      .reduce(function (n, e) {
+        return n + (+e.amount || 0);
+      }, 0);
+  }
+  function arrow() {
+    return '<svg class="ico apv-arrow" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>';
+  }
+  function deltaRow(label, before, after, diffText) {
+    return (
+      '<div class="apv-delta">' +
+      '<span class="apv-k">' +
+      esc(label) +
+      '</span>' +
+      '<span class="apv-was">' +
+      esc(before) +
+      '</span>' +
+      arrow() +
+      '<span class="apv-now">' +
+      esc(after) +
+      '</span>' +
+      (diffText
+        ? '<span class="apv-diff' +
+          (diffText.charAt(0) === '-' ? ' is-down' : '') +
+          '">' +
+          esc(diffText) +
+          '</span>'
+        : '') +
+      '</div>'
+    );
+  }
+  function input(i, key, label, value, type) {
+    const money = type === 'money';
+    return (
+      '<label class="apv-f"><span>' +
+      esc(label) +
+      '</span><input type="' +
+      (money ? 'number' : type || 'text') +
+      '" class="ctl-in apv-in" data-apv="edit" data-i="' +
+      i +
+      '"' +
+      (key ? ' data-k="' + key + '"' : '') +
+      ' value="' +
+      esc(value) +
+      '"' +
+      (money ? ' step="any" inputmode="decimal"' : '') +
+      '></label>'
+    );
+  }
+  function notesInner(d) {
+    let out = '';
+    if (isLarge(d)) {
+      out +=
+        '<div class="apv-warn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Large change: 10 percent of the line or ' +
+        esc(money(LARGE_ABS)) +
+        ', whichever is smaller.</div>';
+    }
+    const flags = flagsFor(d);
+    if (flags.length) {
+      out +=
+        '<div class="apv-flag"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-info"></use></svg> ' +
+        esc(flags.join('; ')) +
+        '</div>';
+    }
+    return out;
+  }
+
+  // One "this to that" line per change, rebuilt whenever a field is edited.
+  function cardDelta(d) {
+    const c = d.c;
+    if (c.kind === 'changeLine') {
+      return deltaRow(
+        fieldLabel(c.field),
+        plainVal(c.field, c.before),
+        plainVal(c.field, d.value),
+        signedDelta(c.field, c.before, d.value)
+      );
+    }
+    if (c.kind === 'addLine') {
+      return deltaRow('Planned budget', 'not in the budget', money(num(d.planned)), '');
+    }
+    if (c.kind === 'addDelivery') {
+      const live = ns.State.getState();
+      const amount = Math.round(num(d.qty) * num(d.unitPrice) * 100) / 100;
+      return deltaRow(
+        'Spent on this line',
+        money(lineSpent(live, c.lineId)),
+        money(lineSpent(live, c.lineId) + amount),
+        '+' + money(amount)
+      );
+    }
+    return '';
+  }
+
   // ---- rendering ---------------------------------------------------------
 
   function changeCard(d, i) {
     const c = d.c;
-    const flags = flagsFor(d);
-    const large = isLarge(d);
+    let tag = '';
     let fields = '';
     if (c.kind === 'changeLine') {
-      const isMoney = c.field === 'planned' || c.field === 'qty' || c.field === 'rate';
+      tag =
+        '<div class="apv-tag"><span class="apv-pill">Budget line</span>' +
+        esc(lineName(ns.State.getState(), c.lineId)) +
+        '</div>' +
+        cardDelta(d);
       fields =
-        '<label class="apv-f"><span>' +
-        esc(c.field) +
-        '</span><input type="' +
-        (isMoney ? 'number' : 'text') +
-        '" class="ctl-in apv-in" data-apv="edit" data-i="' +
-        i +
-        '" value="' +
-        esc(d.value) +
-        '"' +
-        (isMoney ? ' step="any" inputmode="decimal"' : '') +
-        '></label>';
+        '<div class="apv-fields">' +
+        input(
+          i,
+          '',
+          'New ' + fieldLabel(c.field).toLowerCase(),
+          d.value,
+          isMoneyField(c.field) ? 'money' : 'text'
+        ) +
+        '</div>';
     } else if (c.kind === 'addLine') {
+      tag =
+        '<div class="apv-tag"><span class="apv-pill">New budget line</span>' +
+        esc(d.name || 'Untitled line') +
+        '</div>' +
+        cardDelta(d);
       fields =
-        '<label class="apv-f"><span>name</span><input type="text" class="ctl-in apv-in" data-apv="edit" data-i="' +
-        i +
-        '" data-k="name" value="' +
-        esc(d.name) +
-        '"></label>' +
-        '<label class="apv-f"><span>planned</span><input type="number" step="any" inputmode="decimal" class="ctl-in apv-in" data-apv="edit" data-i="' +
-        i +
-        '" data-k="planned" value="' +
-        esc(d.planned) +
-        '"></label>' +
-        '<label class="apv-f"><span>qty</span><input type="number" step="any" inputmode="decimal" class="ctl-in apv-in" data-apv="edit" data-i="' +
-        i +
-        '" data-k="qty" value="' +
-        esc(d.qty) +
-        '"></label>' +
-        '<label class="apv-f"><span>unit</span><input type="text" class="ctl-in apv-in" data-apv="edit" data-i="' +
-        i +
-        '" data-k="unit" value="' +
-        esc(d.unit) +
-        '"></label>' +
-        '<label class="apv-f"><span>rate</span><input type="number" step="any" inputmode="decimal" class="ctl-in apv-in" data-apv="edit" data-i="' +
-        i +
-        '" data-k="rate" value="' +
-        esc(d.rate) +
-        '"></label>';
+        '<div class="apv-fields">' +
+        input(i, 'name', 'Line name', d.name, 'text') +
+        input(i, 'planned', 'Planned budget', d.planned, 'money') +
+        input(i, 'qty', 'Quantity', d.qty, 'money') +
+        input(i, 'unit', 'Unit', d.unit, 'text') +
+        input(i, 'rate', 'Rate', d.rate, 'money') +
+        '</div>';
     } else if (c.kind === 'addDelivery') {
+      tag =
+        '<div class="apv-tag"><span class="apv-pill">Delivery</span>' +
+        esc(lineName(ns.State.getState(), c.lineId)) +
+        '</div>' +
+        cardDelta(d);
       fields =
-        '<label class="apv-f"><span>quantity</span><input type="number" step="any" inputmode="decimal" class="ctl-in apv-in" data-apv="edit" data-i="' +
-        i +
-        '" data-k="qty" value="' +
-        esc(d.qty) +
-        '"></label>' +
-        '<label class="apv-f"><span>price per unit</span><input type="number" step="any" inputmode="decimal" class="ctl-in apv-in" data-apv="edit" data-i="' +
-        i +
-        '" data-k="unitPrice" value="' +
-        esc(d.unitPrice) +
-        '"></label>' +
-        '<label class="apv-f"><span>date</span><input type="date" class="ctl-in apv-in" data-apv="edit" data-i="' +
+        '<div class="apv-fields">' +
+        input(i, 'qty', 'Quantity', d.qty, 'money') +
+        input(i, 'unitPrice', 'Price per unit', d.unitPrice, 'money') +
+        '<label class="apv-f"><span>Date</span><input type="date" class="ctl-in apv-in" data-apv="edit" data-i="' +
         i +
         '" data-k="date" value="' +
         esc(d.date) +
         '"></label>' +
-        '<span class="apv-amt">Amount ' +
-        esc(money(num(d.qty) * num(d.unitPrice))) +
-        '</span>';
+        '</div>';
     }
     return (
       '<div class="apv-chg' +
-      (large ? ' is-large' : '') +
+      (isLarge(d) ? ' is-large' : '') +
       '" data-i="' +
       i +
       '">' +
@@ -486,23 +657,221 @@ var MMGR = window.MMGR || {};
       (i + 1) +
       '</span></label>' +
       '<div class="apv-chg-b">' +
-      '<div class="apv-sum">' +
-      esc(liveSummary(d)) +
-      '</div>' +
-      (large
-        ? '<div class="apv-warn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Large change: 10 percent of the line or ' +
-          esc(money(LARGE_ABS)) +
-          ', whichever is smaller.</div>'
-        : '') +
-      (flags.length
-        ? '<div class="apv-flag"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-info"></use></svg> ' +
-          esc(flags.join('; ')) +
-          '</div>'
-        : '') +
-      '<div class="apv-fields">' +
+      tag +
       fields +
+      '<div class="apv-notes">' +
+      notesInner(d) +
       '</div>' +
       '</div></div>'
+    );
+  }
+
+  function diffCard(d, i) {
+    const key = d.path + '|' + d.recordId + '|' + d.field;
+    return (
+      '<div class="apv-chg" data-diff="' +
+      esc(key) +
+      '">' +
+      '<label class="apv-tick"><input type="checkbox" data-apv="tickdiff" data-key="' +
+      esc(key) +
+      '"' +
+      (_tickMap[key] === false ? '' : ' checked') +
+      '><span class="sr-only">Approve change ' +
+      (i + 1) +
+      '</span></label>' +
+      '<div class="apv-chg-b">' +
+      '<div class="apv-tag"><span class="apv-pill">' +
+      esc(PATH_LABELS[d.path] || d.path) +
+      '</span>' +
+      esc(recordLabel(d.path, d.recordId)) +
+      '</div>' +
+      deltaRow(fieldLabel(d.field), plainVal(d.field, d.before), plainVal(d.field, d.after), '') +
+      '</div></div>'
+    );
+  }
+
+  // Changes are grouped by what they touch, in that order - budget edits,
+  // new lines, deliveries, then record fields - instead of payload order.
+  function changesColumn() {
+    const groups = [
+      { key: 'changeLine', title: 'Budget lines updated' },
+      { key: 'addLine', title: 'New budget lines' },
+      { key: 'addDelivery', title: 'Deliveries recorded' }
+    ];
+    let html = '';
+    groups.forEach(function (g) {
+      const rows = [];
+      _draft.forEach(function (d, i) {
+        if (d.c.kind === g.key) {
+          rows.push(changeCard(d, i));
+        }
+      });
+      if (rows.length) {
+        html +=
+          '<div class="apv-sect"><div class="apv-sect-h">' +
+          g.title +
+          '</div>' +
+          rows.join('') +
+          '</div>';
+      }
+    });
+    const diffs = fieldDiffs();
+    if (diffs.length) {
+      html +=
+        '<div class="apv-sect"><div class="apv-sect-h">Record fields updated</div>' +
+        diffs
+          .map(function (d, i) {
+            return diffCard(d, i);
+          })
+          .join('') +
+        '</div>';
+    }
+    return html || '<div class="sr-hint">This proposal carries no changes.</div>';
+  }
+
+  function budgetTotalsCards() {
+    const before = totals(ns.State.getState());
+    const after = totals(draftState());
+    const rows = [
+      ['Planned budget', before.planned, after.planned],
+      ['Spent', before.spent, after.spent],
+      ['Remaining', before.remaining, after.remaining]
+    ];
+    return rows
+      .map(function (r) {
+        const d = r[2] - r[1];
+        return (
+          '<div class="apv-card"><span>' +
+          r[0] +
+          '</span><b>' +
+          esc(money(r[1])) +
+          '</b>' +
+          arrow() +
+          '<b>' +
+          esc(money(r[2])) +
+          '</b>' +
+          (d ? '<em class="apv-card-d">' + (d > 0 ? '+' : '') + esc(money(d)) + '</em>' : '') +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  // Only the ticked changes, one row each: record, what moves, before, after.
+  function miniRows() {
+    const live = ns.State.getState();
+    const rows = [];
+    // Same order as the cards: budget edits, new lines, deliveries, fields.
+    const ordered = [];
+    ['changeLine', 'addLine', 'addDelivery'].forEach(function (kind) {
+      _draft.forEach(function (d) {
+        if (d.c.kind === kind) {
+          ordered.push(d);
+        }
+      });
+    });
+    ordered.forEach(function (d) {
+      if (!d.tick) {
+        return;
+      }
+      const c = d.c;
+      if (c.kind === 'changeLine') {
+        rows.push([
+          lineName(live, c.lineId),
+          fieldLabel(c.field),
+          plainVal(c.field, c.before),
+          plainVal(c.field, d.value)
+        ]);
+      } else if (c.kind === 'addLine') {
+        rows.push([
+          d.name || 'New line',
+          'Added to the budget',
+          'not in the budget',
+          money(num(d.planned))
+        ]);
+      } else if (c.kind === 'addDelivery') {
+        rows.push([
+          lineName(live, c.lineId),
+          'Delivery' + (d.date ? ' on ' + d.date : ''),
+          money(lineSpent(live, c.lineId)),
+          money(lineSpent(live, c.lineId) + num(d.qty) * num(d.unitPrice))
+        ]);
+      }
+    });
+    fieldDiffs().forEach(function (d) {
+      const key = d.path + '|' + d.recordId + '|' + d.field;
+      if (_tickMap[key] === false) {
+        return;
+      }
+      rows.push([
+        recordLabel(d.path, d.recordId),
+        fieldLabel(d.field),
+        plainVal(d.field, d.before),
+        plainVal(d.field, d.after)
+      ]);
+    });
+    return rows
+      .map(function (r) {
+        return (
+          '<tr><td>' +
+          esc(r[0]) +
+          '</td><td>' +
+          esc(r[1]) +
+          '</td><td class="apv-was">' +
+          esc(r[2]) +
+          '</td><td class="apv-now">' +
+          esc(r[3]) +
+          '</td></tr>'
+        );
+      })
+      .join('');
+  }
+  function miniTable() {
+    return (
+      '<table class="apv-mini"><thead><tr><th>Record</th><th>What changes</th><th>Before</th><th>After</th></tr></thead><tbody id="apv-mini-body">' +
+      miniRows() +
+      '</tbody></table>'
+    );
+  }
+
+  function fullPreview(snap) {
+    return (
+      '<div class="apv-prev" id="apv-prev">' +
+      '<div class="apv-tbl"><table><thead><tr><th>Category</th><th>Planned</th><th>Actual</th><th>Committed</th><th>Contingency</th><th>Remaining</th><th>% of Plan</th><th></th></tr></thead><tbody>' +
+      (snap.rows || '') +
+      '</tbody></table></div>' +
+      '<div class="apv-h apv-h2">Weekly view</div>' +
+      '<div class="wk-cards">' +
+      (snap.wkCards || '') +
+      '</div>' +
+      '<div class="apv-tbl"><table><thead><tr><th>Line</th><th>Planned</th><th>Spent</th><th>This week</th><th>Used</th><th>Status</th><th>Forecast</th></tr></thead><tbody>' +
+      (snap.wkRows || '') +
+      '</tbody></table></div>' +
+      '</div>'
+    );
+  }
+
+  function previewColumn(snap, isBudget) {
+    if (!isBudget) {
+      return (
+        '<div class="apv-col apv-col-prev">' +
+        '<div class="apv-h">What this will change</div>' +
+        miniTable() +
+        '<p class="sr-hint">Only the ticked fields are written. Nothing is saved until you approve.</p>' +
+        '</div>'
+      );
+    }
+    return (
+      '<div class="apv-col apv-col-prev">' +
+      '<div class="apv-h">Before and after</div>' +
+      '<div class="apv-cards" id="apv-cards">' +
+      budgetTotalsCards() +
+      '</div>' +
+      miniTable() +
+      '<details class="apv-more"><summary>Full budget and weekly view</summary>' +
+      fullPreview(snap) +
+      '</details>' +
+      '</div>'
     );
   }
 
@@ -518,7 +887,8 @@ var MMGR = window.MMGR || {};
     ];
     return (
       '<div class="apv-impact" id="apv-impact" role="status" aria-live="polite">' +
-      esc(parts.join(' \u00b7 ')) +
+      '<span class="apv-k">If approved</span>' +
+      esc(parts.join('  \u00b7  ')) +
       (d ? ' <b>(' + (d > 0 ? '+' : '') + money(d) + ' planned)</b>' : '') +
       '</div>'
     );
@@ -535,7 +905,7 @@ var MMGR = window.MMGR || {};
           '<li>' +
           esc((line && (line.category || line.name)) || s.lineId) +
           ' ' +
-          esc(s.field) +
+          esc(fieldLabel(s.field)) +
           ': proposed from <b>' +
           esc(s.expected) +
           '</b>, now <b>' +
@@ -555,7 +925,7 @@ var MMGR = window.MMGR || {};
   function overlayHtml(snap) {
     const p = _p || {};
     const isBudget = !!(p.proposal && Array.isArray(p.proposal.changes));
-    const cards = snap.cards || {};
+    const n = _draft.length + fieldDiffs().length;
     return (
       '<div class="apv-ov" id="apv-ov" role="dialog" aria-modal="true" aria-labelledby="apv-title">' +
       '<div class="apv-win">' +
@@ -565,11 +935,11 @@ var MMGR = window.MMGR || {};
       ' from ' +
       esc(p.sourceLabel || 'an editor') +
       '</div>' +
-      '<div class="sr-hint" style="margin:0">' +
+      '<div class="sr-hint apv-sub">' +
       esc(
-        isBudget
-          ? 'Budget changes - nothing is saved until you approve.'
-          : 'Field changes - nothing is saved until you approve.'
+        (n ? n + (n === 1 ? ' change' : ' changes') + ' - ' : '') +
+          (isBudget ? 'budget proposal.' : 'field proposal.') +
+          ' Nothing is saved until you approve.'
       ) +
       '</div></div>' +
       '<button class="btn btn-n btn-s" data-apv="close" aria-label="Close the preview">Close</button>' +
@@ -578,70 +948,18 @@ var MMGR = window.MMGR || {};
       '<div class="apv-grid">' +
       '<div class="apv-col">' +
       '<div class="apv-h">Changes</div>' +
-      (_draft.length
-        ? _draft.map(changeCard).join('')
-        : (_p && Array.isArray(_p.diffs) ? _p.diffs : [])
-            .map(function (d, i) {
-              const key = d.path + '|' + d.recordId + '|' + d.field;
-              return (
-                '<div class="apv-chg"><label class="apv-tick"><input type="checkbox" data-apv="tickdiff" data-key="' +
-                esc(key) +
-                '"' +
-                (_tickMap[key] === false ? '' : ' checked') +
-                '><span class="sr-only">Approve this change</span></label>' +
-                '<div class="apv-chg-b"><div class="apv-sum">Change ' +
-                esc(d.path) +
-                ' ' +
-                esc(d.recordId) +
-                ' ' +
-                esc(d.field) +
-                ' from ' +
-                esc(d.before == null ? '(blank)' : d.before) +
-                ' to ' +
-                esc(d.after == null ? '(blank)' : d.after) +
-                '</div></div></div>'
-              );
-            })
-            .join('') || '<div class="sr-hint">This proposal carries no changes.</div>') +
+      changesColumn() +
       '</div>' +
-      '<div class="apv-col apv-col-prev">' +
-      '<div class="apv-h">What the project will look like</div>' +
-      '<div class="apv-prev" id="apv-prev">' +
-      '<div class="apv-cards">' +
-      '<div class="apv-card"><span>Spent</span><b>' +
-      esc(cards.spent || money(totals(draftState()).spent)) +
-      '</b></div>' +
-      '<div class="apv-card"><span>Remaining</span><b>' +
-      esc(cards.remaining || money(totals(draftState()).remaining)) +
-      '</b></div>' +
-      '<div class="apv-card"><span>Committed</span><b>' +
-      esc(cards.committed || '-') +
-      '</b></div>' +
-      '<div class="apv-card"><span>Unallocated</span><b>' +
-      esc(cards.unallocated || '-') +
-      '</b></div>' +
+      previewColumn(snap, isBudget) +
       '</div>' +
-      '<div class="apv-tbl"><table><thead><tr><th>Category</th><th>Planned</th><th>Actual</th><th>Committed</th><th>Contingency</th><th>Remaining</th><th>% of Plan</th><th></th></tr></thead><tbody>' +
-      (snap.rows || '') +
-      '</tbody></table></div>' +
-      '<div class="apv-h apv-h2">Weekly view</div>' +
-      '<div class="wk-cards">' +
-      (snap.wkCards || '') +
-      '</div>' +
-      '<div class="apv-tbl"><table><thead><tr><th>Line</th><th>Planned</th><th>Spent</th><th>This week</th><th>Used</th><th>Status</th><th>Forecast</th></tr></thead><tbody>' +
-      (snap.wkRows || '') +
-      '</tbody></table></div>' +
-      '</div>' +
-      '</div>' +
-      '</div>' +
+      (isBudget ? impactLine() : '') +
       '<div class="apv-ft">' +
       '<input type="text" class="ctl-in apv-note" id="apv-note" placeholder="Reason (needed to reject)" maxlength="200" autocomplete="off" aria-label="Reason for rejecting">' +
-      '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">' +
+      '<span class="apv-actions">' +
       '<button class="btn btn-o btn-s" data-apv="reject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Reject</button>' +
       '<button class="btn btn-g btn-s" data-apv="approve"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Approve ticked changes</button>' +
       '</span>' +
       '</div>' +
-      impactLine() +
       '</div></div>'
     );
   }
@@ -713,25 +1031,25 @@ var MMGR = window.MMGR || {};
       });
   }
 
-  // Re-render only the preview + impact after an edit, so the field keeps
-  // its focus and caret.
+  // Re-render only the totals, the change table, the impact line and each
+  // card's own "this to that" line after an edit, so the field keeps its
+  // focus and caret.
   function repaintPreview() {
     const snap = renderPanels(draftState());
+    const cards = document.getElementById('apv-cards');
+    if (cards) {
+      cards.innerHTML = budgetTotalsCards();
+    }
+    const mini = document.getElementById('apv-mini-body');
+    if (mini) {
+      mini.innerHTML = miniRows();
+    }
+    const imp = document.getElementById('apv-impact');
+    if (imp) {
+      imp.outerHTML = impactLine();
+    }
     const prev = document.getElementById('apv-prev');
     if (prev) {
-      const cards = prev.querySelector('.apv-cards');
-      if (cards && snap.cards) {
-        cards.innerHTML =
-          '<div class="apv-card"><span>Spent</span><b>' +
-          esc(snap.cards.spent) +
-          '</b></div><div class="apv-card"><span>Remaining</span><b>' +
-          esc(snap.cards.remaining) +
-          '</b></div><div class="apv-card"><span>Committed</span><b>' +
-          esc(snap.cards.committed) +
-          '</b></div><div class="apv-card"><span>Unallocated</span><b>' +
-          esc(snap.cards.unallocated) +
-          '</b></div>';
-      }
       const bodies = prev.querySelectorAll('tbody');
       if (bodies[0]) {
         bodies[0].innerHTML = snap.rows || ''; // ok: captured from the app's own renderer and stripped of ids/actions
@@ -744,63 +1062,22 @@ var MMGR = window.MMGR || {};
         wk.innerHTML = snap.wkCards || ''; // ok: captured from the app's own renderer and stripped of ids/actions
       }
     }
-    const imp = document.getElementById('apv-impact');
-    if (imp) {
-      imp.outerHTML = impactLine();
-    }
-    // The change cards carry a server summary plus large/flag warnings that
-    // must follow the owner's edits (the focused input is left untouched so
-    // the caret does not jump). The cards live in the Changes column, NOT
-    // inside #apv-prev, so query the whole overlay.
     const ovEl = document.getElementById('apv-ov');
     _draft.forEach(function (d, i) {
       const card = ovEl ? ovEl.querySelector('.apv-chg[data-i="' + i + '"]') : null;
       if (!card) {
         return;
       }
-      const sum = card.querySelector('.apv-sum');
-      if (sum) {
-        sum.textContent = liveSummary(d);
+      const delta = card.querySelector('.apv-delta');
+      const nextDelta = cardDelta(d);
+      if (delta && nextDelta) {
+        delta.outerHTML = nextDelta;
       }
-      const large = isLarge(d);
-      card.classList.toggle('is-large', large);
-      const flags = flagsFor(d);
-      let warn = card.querySelector('.apv-warn');
-      if (large) {
-        const txt =
-          'Large change: 10 percent of the line or ' + money(LARGE_ABS) + ', whichever is smaller.';
-        if (!warn) {
-          warn = document.createElement('div');
-          warn.className = 'apv-warn';
-          card.querySelector('.apv-chg-b').insertBefore(warn, card.querySelector('.apv-fields'));
-        }
-        warn.innerHTML =
-          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> ' +
-          esc(txt);
-      } else if (warn) {
-        warn.remove();
+      const notes = card.querySelector('.apv-notes');
+      if (notes) {
+        notes.innerHTML = notesInner(d);
       }
-      let flag = card.querySelector('.apv-flag');
-      if (flags.length) {
-        if (!flag) {
-          flag = document.createElement('div');
-          flag.className = 'apv-flag';
-          card.querySelector('.apv-chg-b').insertBefore(flag, card.querySelector('.apv-fields'));
-        }
-        flag.innerHTML =
-          '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-info"></use></svg> ' +
-          esc(flags.join('; '));
-      } else if (flag) {
-        flag.remove();
-      }
-    });
-    // The amount line and the large/flag warnings belong to the cards, which
-    // are not re-rendered on every keystroke; refresh them in place.
-    _draft.forEach(function (d, i) {
-      const amt = document.querySelector('.apv-chg[data-i="' + i + '"] .apv-amt');
-      if (amt && d.c.kind === 'addDelivery') {
-        amt.textContent = 'Amount ' + money(num(d.qty) * num(d.unitPrice));
-      }
+      card.classList.toggle('is-large', isLarge(d));
     });
   }
 

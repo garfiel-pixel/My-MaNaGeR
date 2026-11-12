@@ -437,10 +437,21 @@ async function loadClient(env, clientId) {
   )
     .bind(clientId)
     .first();
-  if (!row || row.revoked === 1) {
-    return null;
-  }
-  return row;
+  return row || null;
+}
+
+function unknownClientResponse() {
+  return new Response(
+    'This connector is not registered here. In Claude, remove the connector and add it again, then choose Register automatically under OAuth client.',
+    { status: 400, headers: { 'content-type': 'text/plain; charset=utf-8' } }
+  );
+}
+
+function revokedClientResponse() {
+  return new Response('This connector was revoked. Add it again to reconnect.', {
+    status: 400,
+    headers: { 'content-type': 'text/plain; charset=utf-8' }
+  });
 }
 
 export async function handleOauthAuthorize(request, env, url) {
@@ -480,7 +491,10 @@ export async function handleOauthAuthorize(request, env, url) {
     }
     const client = await loadClient(env, clientId);
     if (!client) {
-      return new Response('Unknown or revoked client. Add the connector again.', { status: 400 });
+      return unknownClientResponse();
+    }
+    if (client.revoked === 1) {
+      return revokedClientResponse();
     }
     // Open registration means anyone can create a client; the registered
     // redirect URI list is what stops a code being sent to another host.
@@ -518,7 +532,10 @@ export async function handleOauthAuthorize(request, env, url) {
     const state = form.state || '';
     const client = await loadClient(env, clientId);
     if (!client) {
-      return new Response('Unknown or revoked client.', { status: 400 });
+      return unknownClientResponse();
+    }
+    if (client.revoked === 1) {
+      return revokedClientResponse();
     }
     const allowed = parseStoredRedirects(client.redirect_uris);
     if (allowed.indexOf(redirectUri) === -1) {

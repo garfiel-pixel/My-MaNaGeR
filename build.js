@@ -132,6 +132,10 @@ const APP_MODULES = [
   // GANTT-1: pure view builder (rows/spans/links/scale) - the export in
   // mmgr-app.js calls it at runtime; needs Utils + Schedule at call time.
   'js/mmgr-gantt-view.js',
+  // T-07 (UI-IA-AND-MCP 2026-11-11): the Controls drawer accordion, extracted
+  // from the project.html inline script. Must load before mmgr-app.js so the
+  // data-action dispatcher can route ctlToggle.
+  'js/app/controls-nav.js',
   'js/mmgr-app.js',
   'js/app/weather.js',
   'js/app/backup.js',

@@ -6162,6 +6162,15 @@ window.MMGR = MMGR;
     addTask: () => window.MMGR.Tasks.addTask(),
     delTask: el => window.MMGR.Tasks.delTask(el.getAttribute('data-id')),
     indentTask: el => window.MMGR.Tasks.indentTask(el.getAttribute('data-id')),
+    // T-07 (UI-IA-AND-MCP 2026-11-11): Controls drawer accordion toggle. The
+    // section carries data-ctl-group; AppControls.toggle flips its open state
+    // (open/close + aria-expanded + the 260ms max-height transition).
+    ctlToggle: el => {
+      const ac = window.MMGR && window.MMGR.AppControls;
+      if (ac && ac.toggle) {
+        ac.toggle(el.getAttribute('data-ctl-group'));
+      }
+    },
     addTaskComment: el => {
       const taskId = el.getAttribute('data-id');
       const input = document.getElementById('comment-input-' + taskId);

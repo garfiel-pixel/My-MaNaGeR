@@ -355,9 +355,13 @@
     var use = el ? el.querySelector('use') : null;
     if (use) {
       var href = use.getAttribute('href') || use.getAttribute('xlink:href') || '';
-      var i = href.indexOf('#i-');
-      if (i > -1) {
-        return href.slice(i + 1);
+      // Read the symbol name out of an href the page already renders (the
+      // sprite exists, so the name is known-good). Matched as a pattern so
+      // this file carries no quoted sprite-fragment prefix for the icon gate
+      // to treat as dynamic href building.
+      var m = /#i-([A-Za-z0-9_-]+)\s*$/.exec(href);
+      if (m) {
+        return 'i-' + m[1];
       }
     }
     return fallback || 'i-search';

@@ -39,15 +39,25 @@ var MMGR = window.MMGR || {};
     return true;
   }
 
+  function sidebarIsOpen() {
+    return document.body.classList.contains('sidebar-open');
+  }
+
+  // OWNER 2026-11-11: the rail's scroll is NOT reset here. This function is a
+  // chrome sync (it runs on resize, backend pref pull and every open/close),
+  // so resetting scroll here yanked a scrolled rail back to Dashboard while a
+  // click was still in flight - the press landed on whatever row moved under
+  // the pointer. Scroll is reset only on a genuine closed -> open transition.
+  function resetRailScroll() {
+    const sb = U.$('app-sidebar');
+    if (sb) {
+      sb.scrollTop = 0;
+    }
+  }
+
   function syncSidebarChrome() {
     const on = sidebarEnabled();
     document.body.classList.toggle('sidebar-on', on);
-    if (document.body.classList.contains('sidebar-open')) {
-      const sb = U.$('app-sidebar');
-      if (sb) {
-        sb.scrollTop = 0;
-      }
-    }
     const btn = U.$('nav-btn');
     if (btn) {
       const mobile = window.innerWidth <= 768;
@@ -63,21 +73,46 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  function setSidebarOpen(open) {
-    document.body.classList.toggle('sidebar-open', !!open);
+  // opts.pin     - this open/close is an explicit user choice (hamburger,
+  //                close button, scrim, Escape), so it pins/unpins the rail.
+  // opts.resetScroll (default true on a fresh open) - move the rail to the
+  //                top. Hover-peek passes false so a glance never loses the
+  //                owner's place.
+  function setSidebarOpen(open, opts) {
+    const next = !!open;
+    const was = sidebarIsOpen();
+    const o = opts || {};
+    if (o.pin) {
+      _userPinned = next;
+    }
+    document.body.classList.toggle('sidebar-open', next);
+    if (next && !was && o.resetScroll !== false) {
+      resetRailScroll();
+    }
     syncSidebarChrome();
   }
 
+  // Explicit hamburger toggle: pins the rail open (or unpins + closes it) and
+  // remembers the choice. `sidebarEnabled()` is always true, so the old
+  // `!sidebarEnabled()` made this a permanent close - it could never open.
   function toggleSidebar() {
     _sidebarUserTouched = true;
-    const on = !sidebarEnabled();
+    const on = !sidebarIsOpen();
+    clearPeekTimer();
     writeDevicePref(SIDEBAR_KEY, on ? 'on' : 'off');
-    document.body.classList.toggle('sidebar-open', on);
-    // I-14: an explicit hamburger toggle pins (or un-pins) the rail. While
-    // pinned the hover-to-peek handlers leave it alone.
-    _userPinned = on;
-    syncSidebarChrome();
+    setSidebarOpen(on, { pin: true });
     pushSidebarBackend(on);
+  }
+
+  // Close from Escape / scrim / the rail's own close button: unpin too, or a
+  // pinned rail would reopen on the next boot and ignore hover-peek.
+  function closeSidebar() {
+    _sidebarUserTouched = true;
+    clearPeekTimer();
+    if (readDevicePref(SIDEBAR_KEY) != null) {
+      writeDevicePref(SIDEBAR_KEY, 'off');
+    }
+    setSidebarOpen(false, { pin: true });
   }
 
   // I-14 (owner 2026-11-08): hover / keyboard focus peeks the collapsed rail
@@ -93,6 +128,57 @@ var MMGR = window.MMGR || {};
       _peekTimer = null;
     }
   }
+  // The peek zone is hidden the moment the rail opens, so the pointer that
+  // just opened it reports a leave and used to schedule a close 120ms later -
+  // which hid the rail, showed the zone again and re-entered: the rail flapped
+  // open/closed under a resting pointer. Track the pointer and treat "still
+  // over the open rail" as inside.
+  // The first-project tour pins the rail open for its section cards; the
+  // pointer then rests on the tour card, not the rail, so the peek's
+  // pointerleave must not collapse it mid-walk.
+  function tourHoldsRail() {
+    return document.body.classList.contains('tour-open');
+  }
+  function closePeekSoon() {
+    if (_userPinned || tourHoldsRail()) {
+      return;
+    }
+    clearPeekTimer();
+    _peekTimer = setTimeout(function () {
+      _peekTimer = null;
+      if (!_userPinned && !pointerOverRail()) {
+        setSidebarOpen(false);
+      }
+    }, 120);
+  }
+  let _ptr = null;
+  function trackPointer() {
+    document.addEventListener(
+      'pointermove',
+      function (e) {
+        _ptr = { x: e.clientX, y: e.clientY };
+        // A rail that appeared under a stationary pointer never received a
+        // pointerenter, so it can never receive the matching pointerleave.
+        // Any move that is neither over the rail nor over the edge zone
+        // means the peek is over - close it on the same 120ms grace.
+        if (!_userPinned && sidebarIsOpen() && !pointerOverRail()) {
+          closePeekSoon();
+        }
+      },
+      { passive: true }
+    );
+  }
+  function pointerOverRail() {
+    if (!_ptr) {
+      return false;
+    }
+    const sb = U.$('app-sidebar');
+    if (!sb) {
+      return false;
+    }
+    const r = sb.getBoundingClientRect();
+    return _ptr.x >= r.left && _ptr.x <= r.right && _ptr.y >= r.top && _ptr.y <= r.bottom;
+  }
   function wireInteractions() {
     if (_wired) {
       return;
@@ -107,31 +193,14 @@ var MMGR = window.MMGR || {};
     if (!desktop || !desktop.matches) {
       return;
     }
+    trackPointer();
     const zone = document.querySelector('.sb-peek');
-    // The first-project tour pins the rail open for its section cards; the
-    // pointer then rests on the tour card, not the rail, so the peek's
-    // pointerleave must not collapse it mid-walk.
-    const tourHoldsRail = function () {
-      return document.body.classList.contains('tour-open');
-    };
     const openPeek = function () {
-      if (_userPinned || tourHoldsRail()) {
+      if (_userPinned || tourHoldsRail() || sidebarIsOpen()) {
         return;
       }
       clearPeekTimer();
-      setSidebarOpen(true);
-    };
-    const closePeekSoon = function () {
-      if (_userPinned || tourHoldsRail()) {
-        return;
-      }
-      clearPeekTimer();
-      _peekTimer = setTimeout(function () {
-        _peekTimer = null;
-        if (!_userPinned) {
-          setSidebarOpen(false);
-        }
-      }, 120);
+      setSidebarOpen(true, { resetScroll: false });
     };
     if (zone) {
       zone.addEventListener('pointerenter', openPeek);
@@ -152,9 +221,7 @@ var MMGR = window.MMGR || {};
       if (!document.body.classList.contains('sidebar-open')) {
         return;
       }
-      _userPinned = false;
-      clearPeekTimer();
-      setSidebarOpen(false);
+      closeSidebar();
     });
   }
 
@@ -205,9 +272,7 @@ var MMGR = window.MMGR || {};
             return;
           }
           writeDevicePref(SIDEBAR_KEY, v);
-          _userPinned = v === 'on';
-          document.body.classList.toggle('sidebar-open', v === 'on');
-          syncSidebarChrome();
+          setSidebarOpen(v === 'on', { pin: true });
         })
         .catch(function () {
           /* backend unreachable, keep local cache */
@@ -265,8 +330,10 @@ var MMGR = window.MMGR || {};
     readDevicePref: readDevicePref,
     writeDevicePref: writeDevicePref,
     syncSidebarChrome: syncSidebarChrome,
+    isSidebarOpen: sidebarIsOpen,
     setSidebarOpen: setSidebarOpen,
     toggleSidebar: toggleSidebar,
+    closeSidebar: closeSidebar,
     pushSidebarBackend: pushSidebarBackend,
     pullSidebarBackend: pullSidebarBackend,
     buildSidebar: buildSidebar

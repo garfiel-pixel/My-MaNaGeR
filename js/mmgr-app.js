@@ -883,9 +883,10 @@ var MMGR = window.MMGR || {};
       closeNav();
       bkClose();
       // Escape also closes the desktop pinned rail , full-screen work, the
-      // hamburger reopens it.
+      // hamburger reopens it. closeSidebar() unpins and remembers 'off', so
+      // the rail does not come back pinned on the next boot.
       if (window.innerWidth > 768 && document.body.classList.contains('sidebar-open')) {
-        setSidebarOpen(false);
+        closeSidebar();
       }
     });
     window.addEventListener('resize', function () {
@@ -916,7 +917,10 @@ var MMGR = window.MMGR || {};
       return;
     }
     // BUG-9: desktop always toggles the overlay sidebar (no pref check).
-    setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+    // OWNER 2026-11-11: this is the explicit open/close path, so it pins the
+    // rail (and unpins + remembers 'off' when closing) instead of leaving it
+    // to collapse on the next pointerleave.
+    toggleSidebar();
   }
 
   // ---- SIDEBAR-HAMBURGER-TOGGLE-PLAN (2026-08-12): opt-in desktop sidebar ----
@@ -956,6 +960,16 @@ var MMGR = window.MMGR || {};
   function toggleSidebar() {
     if (ns.AppSidebar) {
       ns.AppSidebar.toggleSidebar();
+    }
+  }
+  function isSidebarOpen() {
+    return !!(ns.AppSidebar && ns.AppSidebar.isSidebarOpen && ns.AppSidebar.isSidebarOpen());
+  }
+  function closeSidebar() {
+    if (ns.AppSidebar && ns.AppSidebar.closeSidebar) {
+      ns.AppSidebar.closeSidebar();
+    } else {
+      setSidebarOpen(false);
     }
   }
   function pushSidebarBackend(on) {
@@ -5922,7 +5936,9 @@ var MMGR = window.MMGR || {};
     tglNav: tglNav,
     tglSidebar: toggleSidebar,
     tglSidebarOpen: function () {
-      setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+      // The rail's own close control: same pinned toggle as the header
+      // hamburger, so opening/closing from either button keeps the pref.
+      toggleSidebar();
     },
     syncConnect: syncConnect,
     syncSignOut: syncSignOut,

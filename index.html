@@ -248,11 +248,11 @@
       <div class="section-head">
         <h2>Everything a real project needs</h2>
         <!-- Phase 2 copy: features intro. -->
-        <p><span data-count="panels">15</span> panels, wired together. Enter a number once and it shows up everywhere it matters. No re-entry, no drift.</p>
+        <p><span data-count="panels">15</span> panels, wired together, plus an open MCP server any AI client can connect to. Enter a number once and it shows up everywhere it matters. No re-entry, no drift.</p>
       </div>
 
       <!-- BENTO (I-6, 2026-11): one big card, two small, one wide. The four slots
-           rotate through all 15 panels on their own staggered offsets so the page
+           rotate through all 16 panels on their own staggered offsets so the page
            feels alive without ever flipping two at once. aria-hidden because the
            rotating cards are decorative motion; the real, reachable content is the
            full panel list below (and the field guide). -->
@@ -283,6 +283,7 @@
         <li>Registers and Compliance</li>
         <li>Bid Leveling and Go/No-Go</li>
         <li>Lookahead and Field Metrics</li>
+        <li>Open MCP Server</li>
       </ul>
 
       <!-- Pool: the real cards. Moved into the slots by js/marketing.js; hidden
@@ -293,6 +294,12 @@
           <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
           <h3>My MaNaGeR AI, Not a Middleman</h3>
           <p>A real AI engine that runs in your browser with zero keys and zero cloud. Every answer traces to your actual project numbers, and one-click presets write digests, reports, and claim arguments straight back into the project.</p>
+        </article>
+        <article class="fcard" role="listitem" id="f-mcp">
+          <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V4a3 3 0 0 1 6 0v3"/><rect x="4" y="7" width="16" height="10" rx="2"/><path d="M8 17v3M16 17v3"/></svg></span>
+          <div class="fc-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-key"></use></svg></div>
+          <h3>Open MCP Server</h3>
+          <p>Connect Claude, Cursor or your own scripts to the live project. They read only the sections you grant, and every change they propose waits for your approval. Nothing lands on its own.</p>
         </article>
         <article class="fcard" role="listitem" id="f-wbs">
           <span class="fc-art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18M3 12h12M3 19h6" /></svg></span>
@@ -654,7 +661,7 @@
       <div class="guide-band" data-tone="dark">
         <div style="position:relative;max-width:560px">
           <h2>Master every panel, template, and metric, sheet by sheet.</h2>
-          <p>Thirty-two guide sheets, styled like a real set of construction drawings, walk you from your first 15 minutes to the FAQ.</p>
+          <p>Thirty-six guide sheets, styled like a real set of construction drawings, walk you from your first 15 minutes to the FAQ.</p>
         </div>
         <div class="guide-cta">
           <a class="btn btn-gold btn-lg" href="mymanager-field-guide.html">

@@ -52,5 +52,6 @@ surface.
 
 ## Deferred
 
-Per the owner addendum on 2026-11-11, the landing-page `#f-mcp` card and the detailed
-proposal-review UI (record names and before/after values) are out of this pass.
+The landing-page `#f-mcp` card shipped in T-06 (2026-11-12), so it is no longer
+deferred. The detailed proposal-review UI (record names and before/after values)
+is still out of this pass.

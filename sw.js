@@ -749,7 +749,13 @@
 // cache-first shell would keep serving the pre-fix bundle to return visitors.
 // Bumping the cache name re-fetches the bundle and the section buttons stop
 // losing clicks to the pin dot.
-const CACHE = 'mmgr-shell-v622';
+// v639 - T-20 PROJECT NAV (UI-IA-AND-MCP 2026-11-11): project.html is a shell
+// asset. The six nav groups were relabelled (Plan / Money / Govern / Field /
+// Close) with the same buttons, so the cache name moves.
+// v640 - T-22 PHONE TOP BAR (UI-IA-AND-MCP 2026-11-11): css/mmgr.css changed.
+// Below 600px the calculator bar wraps its action cluster onto a second row
+// so the T-15 search button no longer rides over the wordmark.
+const CACHE = 'mmgr-shell-v640';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated
@@ -1659,6 +1665,10 @@ const SHELL = [
   'js/reset.js',
   'js/calculator-page.js',
   'js/calc-ai.js',
+  // T-15 (UI-IA-AND-MCP 2026-11-11): the search palette. It rides the project,
+  // launcher and admin bundles, and calculator.html loads it standalone, so
+  // the offline shell must carry the copy the calculator tag points at.
+  'js/app/search.js',
   // UI-1 (REFINEMENT-DIRECTIVE-2026-10-24): the owned listbox that replaces the
   // native popup on the two long trade lists. Loaded by <script src> on
   // calculator.html, so it is not in any bundle; offline-first means the trade

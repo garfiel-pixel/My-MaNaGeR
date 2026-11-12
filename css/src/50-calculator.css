@@ -172,6 +172,26 @@ body.dark-mode .bcp-ico-moon {
   .bcp-top {
     padding: 10px 12px;
   }
+  /* T-22 (UI-IA-AND-MCP 2026-11-11): with the search button added in T-15 the
+     action cluster needs ~230px, which a 390px phone cannot share with the
+     125px wordmark in one row - the cluster used to ride over the logo. Two
+     rows keep every control (nothing is hidden) and the divider moves from
+     the cluster's left edge to the top edge of its own row. */
+  .bcp-top {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .bcp-top-left {
+    flex: 1 1 auto;
+  }
+  .bcp-top-right {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    padding-left: 0;
+    padding-top: 8px;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
   .bcp-title {
     gap: 8px;
     font-size: 0.92rem;
@@ -793,6 +813,13 @@ body.dark-mode .bcp-run:focus-visible {
   color: var(--slate);
   font-weight: 400;
   font-size: 0.78rem;
+}
+/* T-17: the second-level row inside a Saved estimates tab (the hint + the
+   tab's own action). Same flex row, quieter, separated from the list. */
+.bcp-hist-sub {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
 /* D2 (owner review 2026-09-29): estimate comparison table. Wraps in a
    horizontal scroll on phones; cheapest total highlights in brand gold. */

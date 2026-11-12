@@ -64,6 +64,11 @@
          rate book -> theme, both parked on the right. Wrapped in .bcp-top-right
          so justify-content:space-between keeps the cluster intact. -->
     <div class="bcp-top-right">
+      <!-- T-15 (UI-IA-AND-MCP 2026-11-11): search this page's cards and the
+           How to use steps. Ctrl+K opens the same palette. -->
+      <button type="button" class="bcp-search" data-app-search-open aria-label="Search the calculator" title="Search (Ctrl+K)">
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg>
+      </button>
       <button type="button" class="bcp-ratebook" data-action="openRateBook" title="My MaNaGeR Rate Book 2025-2027" aria-haspopup="dialog">
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
         <span class="bcp-ratebook-text">My MaNaGeR Rate Book</span>
@@ -870,32 +875,50 @@
     <div id="calc-cash-body"></div>
   </section>
 
+  <!-- T-17 (UI-IA-AND-MCP 2026-11-11): one Saved estimates card with three
+       tabs. History, Named estimates and Compare were three stacked cards
+       answering one question ("what have I saved?"), so they now share one
+       card and the same .bcp-tab pattern the How to use card uses. Every id
+       the page and the harnesses rely on is preserved: #calc-hist-card,
+       #calc-estimates-card, #calc-history, #calc-estimates, #calc-compare and
+       #calc-compare-card. calcCompare / calcCompareClose still do exactly
+       what they did; they also move the tab so the panel and the tab agree. -->
   <section class="card" id="calc-hist-card" aria-labelledby="calc-hist-h">
     <div class="bcp-hist-head">
-      <h2 id="calc-hist-h" class="card-title">History <span class="bcp-hist-note">- saved on this device only</span></h2>
-      <button type="button" class="bcp-link" data-action="calcClearHistory">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear history
-      </button>
+      <h2 id="calc-hist-h" class="card-title">Saved estimates <span class="bcp-hist-note">- kept on this device only</span></h2>
+      <div class="bcp-tabs" role="tablist" aria-label="Saved estimates">
+        <button type="button" class="bcp-tab is-on" id="calc-saved-tab-history" role="tab" aria-selected="true" aria-controls="calc-saved-panel-history" data-action="calcSavedTab" data-tab="history">History</button>
+        <button type="button" class="bcp-tab" id="calc-saved-tab-named" role="tab" aria-selected="false" aria-controls="calc-saved-panel-named" data-action="calcSavedTab" data-tab="named" tabindex="-1">Named</button>
+        <button type="button" class="bcp-tab" id="calc-saved-tab-compare" role="tab" aria-selected="false" aria-controls="calc-compare-card" data-action="calcSavedTab" data-tab="compare" tabindex="-1">Compare</button>
+      </div>
     </div>
-    <div id="calc-history" class="calc-hist"><div class="calc-empty">Nothing saved yet.</div></div>
-  </section>
-
-  <section class="card" id="calc-estimates-card" aria-labelledby="calc-est-h">
-    <div class="bcp-hist-head">
-      <h2 id="calc-est-h" class="card-title">Named estimates <span class="bcp-hist-note">- your client-facing saves, kept on this device</span></h2>
-      <button type="button" class="btn btn-n btn-s" data-action="calcCompare">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Compare
-      </button>
+    <div id="calc-saved-panel-history" role="tabpanel" aria-labelledby="calc-saved-tab-history" tabindex="0">
+      <div class="bcp-hist-head bcp-hist-sub">
+        <span class="bcp-hist-note">Every calculation you save lands here.</span>
+        <button type="button" class="bcp-link" data-action="calcClearHistory">
+          <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear history
+        </button>
+      </div>
+      <div id="calc-history" class="calc-hist"><div class="calc-empty">Nothing saved yet.</div></div>
     </div>
-    <div id="calc-estimates" class="calc-hist"><div class="calc-empty">No saved estimates yet. Price something, then Save it with a name.</div></div>
-  </section>
-
-  <section class="card" id="calc-compare-card" aria-labelledby="calc-cmp-h" hidden>
-    <div class="bcp-hist-head">
-      <h2 id="calc-cmp-h" class="card-title">Compare estimates</h2>
-      <button type="button" class="btn btn-n btn-s" data-action="calcCompareClose">Close</button>
+    <div id="calc-saved-panel-named" role="tabpanel" aria-labelledby="calc-saved-tab-named" tabindex="0" hidden>
+      <div id="calc-estimates-card">
+        <div class="bcp-hist-head bcp-hist-sub">
+          <span class="bcp-hist-note">Your client-facing saves.</span>
+          <button type="button" class="btn btn-n btn-s" data-action="calcCompare">
+            <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Compare
+          </button>
+        </div>
+        <div id="calc-estimates" class="calc-hist"><div class="calc-empty">No saved estimates yet. Price something, then Save it with a name.</div></div>
+      </div>
     </div>
-    <div id="calc-compare" class="bcp-cmp"></div>
+    <div id="calc-compare-card" role="tabpanel" aria-labelledby="calc-saved-tab-compare" tabindex="0" hidden>
+      <div class="bcp-hist-head bcp-hist-sub">
+        <span class="bcp-hist-note">Tick two or more saves on the Named tab, then press Compare.</span>
+        <button type="button" class="btn btn-n btn-s" data-action="calcCompareClose">Close</button>
+      </div>
+      <div id="calc-compare" class="bcp-cmp"><div class="calc-empty">Nothing to compare yet.</div></div>
+    </div>
   </section>
 
   <!-- UI-3: the planning-grade, tax, units and device notes that lived here as
@@ -970,11 +993,15 @@
 <script src="js/mmgr-glass.js?v=2"></script>
 <script src="js/xlsx-lite.js?v=1"></script>
 <script src="js/mmgr-combobox.js?v=2"></script>
-<script src="js/calculator-page.js?v=49"></script>
+<script src="js/calculator-page.js?v=51"></script>
 <script src="js/calc-ai.js?v=11"></script>
 <!-- AUDIT 2026-10-18 M-5: keyboard shortcuts + the shortcut sheet.
      Its own script tag (not in the bundle) so the CSP inline-script
      hashes never move. -->
 <script src="js/mmgr-shortcuts.js?v=1"></script>
+<!-- T-15 (UI-IA-AND-MCP 2026-11-11): the search palette. Standalone because
+     this page loads no bundle; the v must move with the file, or returning
+     calculator-only visitors keep the old copy for a year. -->
+<script src="js/app/search.js?v=1"></script>
 </body>
 </html>

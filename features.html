@@ -83,7 +83,7 @@
       <span class="crumbs"><a href="index.html">Home</a> · Features</span>
       <h1>Features</h1>
       <!-- Phase 2: detailed per-feature sections. -->
-      <p>Eighteen panels, each wired to the others. Enter once, see it everywhere. Every capability below lives in the same workspace, feeding the same numbers.</p>
+      <p><span data-count="panels">15</span> panels, each wired to the others. Enter once, see it everywhere. Every capability below lives in the same workspace, feeding the same numbers.</p>
       <p class="market-note">Built for Jamaican contractors. Rates and estimates are quoted in <span class="gold">J$</span> by default (69 m2 x J$120 = J$8,280), with GCT and the Jamaica rate book already in place.</p>
     </div>
   </section>
@@ -107,7 +107,7 @@
     <div class="container">
       <div class="section-head">
         <span class="eyebrow">Capabilities</span>
-        <h2>Eighteen panels, each wired to the next</h2>
+        <h2><span data-count="panels">15</span> panels, each wired to the next</h2>
         <p>Enter a number once and it shows up everywhere it matters. The Gantt, the Kanban board, the RACI matrix, and the Dashboard all stay in sync.</p>
       </div>
 
@@ -326,9 +326,105 @@
         </ul>
       </div>
 
+      <div class="feature" id="f-lookahead">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg></div>
+          <div>
+            <h2>Lookahead &amp; Field Metrics</h2>
+            <span class="f-tag">Schedule</span>
+          </div>
+        </div>
+        <p>Two-week lookaheads turn the master schedule into the work the crew actually does next. Field metrics track planned-versus-actual against the short horizon, so slippage shows up while there is still time to recover it.</p>
+        <ul>
+          <li>Build a lookahead from any WBS branch and drag tasks between weeks without touching the baseline.</li>
+          <li>Percent Plan Complete (PPC) scores each committed task so the weekly trend is a number, not a feeling.</li>
+          <li>Last-planner style notes tag what got done, what slipped, and the reason, feeding the next plan.</li>
+        </ul>
+      </div>
+
+      <div class="feature" id="f-health">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg></div>
+          <div>
+            <h2>Health &amp; Portfolio</h2>
+            <span class="f-tag">Portfolio</span>
+          </div>
+        </div>
+        <p>One health score rolls schedule, budget and risk into a single read for each project, and a portfolio view keeps every project in view when you run more than one. Red means act today; green means leave it alone.</p>
+        <ul>
+          <li>The score blends SPI, CPI, near-deadline load and open high-severity risks into a single band.</li>
+          <li>Drill from the portfolio row into the exact panel that pulled the score down.</li>
+          <li>Set the thresholds once; the band colors follow them on every project.</li>
+        </ul>
+      </div>
+
+      <div class="feature" id="f-gonogo">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-target"></use></svg></div>
+          <div>
+            <h2>Bid Leveling &amp; Go/No-Go</h2>
+            <span class="f-tag">Bid</span>
+          </div>
+        </div>
+        <p>Compare bids side by side on the same criteria, then decide by score instead of gut. Go/No-Go turns the bid math into a single recommendation you can defend to the owner.</p>
+        <ul>
+          <li>Load each bid's line items and let the leveling view show where one bid buries cost the others surface.</li>
+          <li>Weight the criteria once; every bid is scored the same way.</li>
+          <li>The Go/No-Go summary states the margin, the risk and the call in one screen.</li>
+        </ul>
+      </div>
+
+      <div class="feature" id="f-meetings">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg></div>
+          <div>
+            <h2>Meetings &amp; Decisions</h2>
+            <span class="f-tag">Field</span>
+          </div>
+        </div>
+        <p>Run a meeting, log the decisions in one tap, and turn the minutes into follow-up actions that land straight in the schedule. Nothing decided on site gets lost on the drive back to the trailer.</p>
+        <ul>
+          <li>Minutes auto-link each decision to the task it affects.</li>
+          <li>Actions become cards with an owner and a date, not a loose note.</li>
+          <li>The decision log is searchable for the whole project's life.</li>
+        </ul>
+      </div>
+
+      <div class="feature" id="f-claims">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg></div>
+          <div>
+            <h2>Claims &amp; Digests</h2>
+            <span class="f-tag">Records</span>
+          </div>
+        </div>
+        <p>Weekly digests and counsel-ready claim packs are generated from your live project numbers, every claim traceable to its evidence. A recorded delay becomes a defensible position instead of a he-said-she-said.</p>
+        <ul>
+          <li>Each digest pulls the week's weather, delays and decisions into one PDF.</li>
+          <li>Claim Packs bind the narrative to the schedule and cost records behind it.</li>
+          <li>Rebuild any pack later from the same source, so it never drifts from the project.</li>
+        </ul>
+      </div>
+
+      <div class="feature" id="f-registers">
+        <div class="feature-head">
+          <div class="f-icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg></div>
+          <div>
+            <h2>Registers &amp; Compliance</h2>
+            <span class="f-tag">Compliance</span>
+          </div>
+        </div>
+        <p>RFIs, submittals, punch lists, COIs, permits and warranties each get its own lifecycle and expiry tracking, so the closeout binder builds itself as the job runs instead of the week before turn-over.</p>
+        <ul>
+          <li>Every item carries its status, owner and due date in one row.</li>
+          <li>Expiry tracking flags a lapsed COI or permit before it becomes a stop-work.</li>
+          <li>Export the whole register set as the closeout package in one click.</li>
+        </ul>
+      </div>
+
       <div class="prose-card" style="margin-top:28px;text-align:center">
         <h2 style="text-align:center">Want the sheet-by-sheet walkthrough?</h2>
-        <p style="text-align:center">Every panel is covered in the Field Guide, styled like a real set of construction drawings, with thirty-two sheets from your first fifteen minutes to the FAQ.</p>
+        <p style="text-align:center">Every panel is covered in the Field Guide, styled like a real set of construction drawings, with thirty-six sheets from your first fifteen minutes to the FAQ.</p>
         <p style="margin-top:22px;text-align:center">
           <a class="btn btn-gold" href="mymanager-field-guide.html">Open the Field Guide</a>
           <a class="btn btn-ghost" href="app.html" style="margin-left:10px">Open the App</a>

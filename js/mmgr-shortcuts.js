@@ -37,6 +37,9 @@
   var TABLE = {
     app: [
       { keys: '?', what: 'Show this list of shortcuts' },
+      // T-14 (UI-IA-AND-MCP 2026-11-11): the search palette. The drawer grid
+      // and the sheet both repaint from this one table.
+      { keys: 'Ctrl/⌘ + K', what: 'Search every feature and setting' },
       { keys: '/', what: 'Open the assistant and start typing your question' },
       { keys: 'Ctrl/⌘ + .', what: 'Open or close the assistant' },
       { keys: 'F', what: 'Focus Mode , isolate the active panel' },
@@ -426,6 +429,10 @@
     close: close,
     toggle: toggle,
     isOpen: isOpen,
-    rows: rows
+    rows: rows,
+    // T-13 (UI-IA-AND-MCP 2026-11-11): the raw table, so the search index can
+    // list every shortcut from the one source of truth. Consumers must guard
+    // with window.MMGR && MMGR.Shortcuts (this module is not on every page).
+    table: TABLE
   };
 })();

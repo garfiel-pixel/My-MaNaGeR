@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8=' 'sha256-32OrKvBTd4t3c/ByJMRp2EAI4phrVdX+LEPphWfgSz4=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc=' 'sha256-vby4vU8oNmo4MQP8BTS1QaAYSrFF4xGuGJNIh+1yCi8='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8=' 'sha256-qU+2JTlP6XaxKBAqDGdMDCwM3FCzD76rzbOvY38lpdY=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc=' 'sha256-vby4vU8oNmo4MQP8BTS1QaAYSrFF4xGuGJNIh+1yCi8='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -248,6 +248,9 @@
          sees a control that can only 403. The badge counts pending
          invitations addressed to this verified email. -->
     <button type="button" class="settings-btn team-bell" data-team-bell aria-label="Invitations and collaborators" aria-haspopup="dialog" aria-expanded="false" aria-controls="team-pop" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg><span class="team-badge" id="team-bell-count" hidden>0</span></button>
+    <!-- T-15 (UI-IA-AND-MCP 2026-11-11): one search door beside settings.
+         The palette is built by js/app/search.js; Ctrl+K opens it anywhere. -->
+    <button class="settings-btn" id="search-btn" data-app-search-open aria-label="Search every feature and setting" title="Search (Ctrl+K)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
     <button class="settings-btn" data-action="openDrw" aria-label="Open settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> </button>
   </div>
 </header>
@@ -264,38 +267,35 @@
     <button class="sec-btn" data-action="showSec" data-section="def"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 6C10.5 4.5 8 4 4 4V18C8 18 10.5 18.5 12 20C13.5 18.5 16 18 20 18V4C16 4 13.5 4.5 12 6Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M12 6V20" stroke="#D4AF37" stroke-width="2"/></svg>Definitions</button>
     </div>
     <div class="nav-group"><span class="nav-group-label">Plan</span>
-
     <button class="sec-btn" data-action="showSec" data-section="charter"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 3L19 6V11C19 15.5 16 19.5 12 21C8 19.5 5 15.5 5 11V6L12 3Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M9 12L11 14L15 9" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Charter</button>
     <button class="sec-btn" data-action="showSec" data-section="wbs"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="13" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M8 10H16M8 14H12" stroke="#D4AF37" stroke-width="2"/></svg>WBS</button>
     <button class="sec-btn" data-action="showSec" data-section="gantt" data-pack="schedule" id="gnav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 6H14M4 12H18M4 18H10" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Gantt</button>
-    </div>
-    <div class="nav-group"><span class="nav-group-label">Intake</span>
+    <button class="sec-btn" data-action="showSec" data-section="plan" id="plan-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 7H20M4 12H20M4 17H14" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"/><circle cx="18" cy="17" r="2.2" stroke="#8B5CF6" stroke-width="2"/></svg>Planning</button>
+    <button class="sec-btn" data-action="showSec" data-section="kan" id="knav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M9 4V20M15 4V20" stroke="#D4AF37" stroke-width="2"/></svg>Kanban</button>
     <button class="sec-btn" data-action="showSec" data-section="ideas" id="ideas-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 21h4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M12 3a6.5 6.5 0 0 0-3.6 11.9c.6.4 1 1.1 1 1.9v.2h5.2v-.2c0-.8.4-1.5 1-1.9A6.5 6.5 0 0 0 12 3z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/></svg>Intake</button>
     <button class="sec-btn" data-action="showSec" data-section="agenda" id="agenda-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="5.5" width="16" height="15" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M4 10h16M8 3v4M16 3v4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Agenda</button>
     </div>
-    <div class="nav-group"><span class="nav-group-label">Collaborate</span>
-    <button class="sec-btn" data-action="showSec" data-section="kan" id="knav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D4AF37" stroke-width="2"/><path d="M9 4V20M15 4V20" stroke="#D4AF37" stroke-width="2"/></svg>Kanban</button>
-    <button class="sec-btn" data-action="showSec" data-section="plan" id="plan-nav"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 7H20M4 12H20M4 17H14" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"/><circle cx="18" cy="17" r="2.2" stroke="#8B5CF6" stroke-width="2"/></svg>Planning</button>
+    <div class="nav-group"><span class="nav-group-label">Money</span>
     <button class="sec-btn" data-action="showSec" data-section="res" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M5 18H19" stroke="#22C55E" stroke-width="2"/><path d="M12 4C8.5 4 5.5 7 5.5 11V18H18.5V11C18.5 7 15.5 4 12 4Z" stroke="#22C55E" stroke-width="2"/></svg>Resources</button>
     <button class="sec-btn" data-action="showSec" data-section="bud" data-pack="money"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M21 7H3V17H21V7Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M17 10H7" stroke="#D4AF37" stroke-width="2"/><path d="M3 7L12 12L21 7" stroke="#D4AF37" stroke-width="2"/></svg>Budget</button>
     <button class="sec-btn" data-action="showSec" data-section="proc" data-pack="procurement"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M3 5H5.4L7.3 15.5H17.7L19.6 7.5H6.3" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.3 15.5L6.9 18H18.4" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20.4" r="1.5" stroke="#D4AF37" stroke-width="2"/><circle cx="17" cy="20.4" r="1.5" stroke="#D4AF37" stroke-width="2"/></svg>Procurement</button>
+    </div>
+    <div class="nav-group"><span class="nav-group-label">Govern</span>
+    <button class="sec-btn" data-action="showSec" data-section="stk" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><path d="M3 20C3 16.5 5.5 14 9 14C12.5 14 15 16.5 15 20" stroke="#3B82F6" stroke-width="2"/><circle cx="17" cy="7" r="2.3" stroke="#3B82F6" stroke-width="2"/><path d="M14.5 13.2C17.5 13.6 20 15.7 20 19" stroke="#3B82F6" stroke-width="2"/></svg>Stakeholders<span class="sec-badge is-hide" title="Stakeholder compliance expiring within 30 days">0</span></button>
     <button class="sec-btn" data-action="showSec" data-section="raci" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><circle cx="16" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><circle cx="12" cy="16" r="3" stroke="#3B82F6" stroke-width="2"/></svg>RACI</button>
     <button class="sec-btn" data-action="showSec" data-section="comms" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 5C4 3.9 4.9 3 6 3H18C19.1 3 20 3.9 20 5V14C20 15.1 19.1 16 18 16H9L5 20V16H6C4.9 16 4 15.1 4 14V5Z" stroke="#D4AF37" stroke-width="2" stroke-linejoin="round"/><path d="M8 8H16M8 11H13" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/></svg>Comms Log</button>
     <button class="sec-btn" data-action="showSec" data-section="docs" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#64748B" stroke-width="2"/><path d="M14 2V8H20" stroke="#64748B" stroke-width="2"/></svg>Documents</button>
-    <button class="sec-btn" data-action="showSec" data-section="meet" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#22C55E" stroke-width="2"/><path d="M9 12L11 14L15 9" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Meetings</button>
-    <button class="sec-btn" data-action="showSec" data-section="photos" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 8h3l1.6-2.5h6.8L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" stroke="#22C55E" stroke-width="2"/><circle cx="12" cy="14" r="3.6" stroke="#22C55E" stroke-width="2"/></svg>Photos</button>
-    </div>
-    <div class="nav-group"><span class="nav-group-label">Control</span>
-    <button class="sec-btn" data-action="showSec" data-section="stk" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="#3B82F6" stroke-width="2"/><path d="M3 20C3 16.5 5.5 14 9 14C12.5 14 15 16.5 15 20" stroke="#3B82F6" stroke-width="2"/><circle cx="17" cy="7" r="2.3" stroke="#3B82F6" stroke-width="2"/><path d="M14.5 13.2C17.5 13.6 20 15.7 20 19" stroke="#3B82F6" stroke-width="2"/></svg>Stakeholders<span class="sec-badge is-hide" title="Stakeholder compliance expiring within 30 days">0</span></button>
     <button class="sec-btn" data-action="showSec" data-section="chg" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 12C4 7.6 7.6 4 12 4C15 4 17.6 5.7 19 8.2M20 12C20 16.4 16.4 20 12 20C9 20 6.4 18.3 5 15.8" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/><path d="M19 4V8.2H14.8M5 20V15.8H9.2" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Changes</button>
     <button class="sec-btn" data-action="showSec" data-section="log" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 6H20M9 12H20M9 18H20" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M4 6L5 7L7 5" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 12L5 13L7 11" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18L5 19L7 17" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Decision Log</button>
     <button class="sec-btn" data-action="showSec" data-section="risk" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#EF4444" stroke-width="2"/></svg>Risk / Issues</button>
     </div>
-    <div class="nav-group"><span class="nav-group-label">Close</span>
+    <div class="nav-group"><span class="nav-group-label">Field</span>
+    <button class="sec-btn" data-action="showSec" data-section="meet" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#22C55E" stroke-width="2"/><path d="M9 12L11 14L15 9" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Meetings</button>
+    <button class="sec-btn" data-action="showSec" data-section="photos" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M4 8h3l1.6-2.5h6.8L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" stroke="#22C55E" stroke-width="2"/><circle cx="12" cy="14" r="3.6" stroke="#22C55E" stroke-width="2"/></svg>Photos</button>
     <button class="sec-btn" data-action="showSec" data-section="claim" data-pack="field"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M9 6H20M9 12H20M9 18H20" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/><path d="M4 6L5 7L7 5M4 12L5 13L7 11M4 18L5 19L7 17" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Claim Pack</button>
-    <button class="sec-btn" data-action="showSec" data-section="close" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 4L20 12L12 20L4 12L12 4Z" stroke="#D4AF37" stroke-width="2"/><path d="M12 8V16" stroke="#D4AF37" stroke-width="2"/></svg>Closure</button>
     </div>
-    <div class="nav-group"><span class="nav-group-label">Quality</span>
+    <div class="nav-group"><span class="nav-group-label">Close</span>
+    <button class="sec-btn" data-action="showSec" data-section="close" data-pack="governance"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><path d="M12 4L20 12L12 20L4 12L12 4Z" stroke="#D4AF37" stroke-width="2"/><path d="M12 8V16" stroke="#D4AF37" stroke-width="2"/></svg>Closure</button>
     <button class="sec-btn is-hide" data-action="showSec" data-section="dmaic" data-pack="quality" id="dmaic-nav" data-dual-gate="1"><svg class="ic-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#8B5CF6" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="#8B5CF6" stroke-width="2"/><circle cx="12" cy="12" r="0.6" stroke="#8B5CF6" stroke-width="2"/></svg>DMAIC</button>
     </div>
   </nav>
@@ -1893,7 +1893,7 @@
   <div class="drw-sheet">
   <div class="dh"><span class="dt2"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Settings</span><button class="dc" data-action="closeDrw" aria-label="Close settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> </button></div>
   <div class="dtabs">
-    <button class="dtab active" data-action="swDtab" data-tab="feat">Features</button>
+    <button class="dtab active" data-action="swDtab" data-tab="feat">Guide</button>
     <button class="dtab" data-action="swDtab" data-tab="qa">Q &amp; A</button>
     <button class="dtab" data-action="swDtab" data-tab="prompt">Prompts</button>
     <button class="dtab" data-action="swDtab" data-tab="ctrl">Controls</button>
@@ -1952,105 +1952,167 @@
     <button class="btn btn-o full mb7"  data-action="openPrompt" data-type="daily"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sun"></use></svg> Daily Field Report Prompt</button>
   </div>
   <div class="db is-hide" id="db-ctrl">
-    <!-- OWNER 2026-08-15: Controls tab grouped into labelled sections with
-         breathing room. Profile first, then Share & Access (rendered by
-         mmgr-cloud.js into #ctrl-share), then the explain-before-copy cards. -->
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Profile</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" aria-label="Your name (shown in the header greeting)" data-action="setUserName" class="ctl-in w150"></div>
-    <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
-    <!-- AUTH MAINFRAME 2026-08-17: password change for email accounts , 
-         the shared control mounts here from js/mmgr-google-auth.js; the
-         trigger stays hidden unless the signed-in account has a password. -->
-    <div class="pw-host" data-pw-host></div>
-
-    <!-- Share & Access , rendered by js/mmgr-cloud.js: owner code, editor
-         codes with section-scope toggles (view-only / edit-budget / etc). -->
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Share &amp; Access</div>
-    <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
-
-    <!-- Rules (Huly-inspired): declared triggers, conditions and one action
-         from a fixed list. No scripting, no outside calls. Rendered by
-         js/render/process.js into #rules-body. -->
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Rules</div>
-    <div id="rules-body" role="region" aria-label="Declared rules"></div>    <!-- C24 Template Library -->
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Templates</div>
-    <div class="sr-hint ctl-lead">Save your current schedule and budget as a reusable template, or apply a built-in template to get started quickly.</div>
-    <div class="ctl-actions">
-      <button class="btn btn-g btn-s" data-action="saveAsTemplate">+ Save as Template</button>
+    <!-- T-12 (UI-IA-AND-MCP 2026-11-11): You & Access merges Profile and Share
+         & Access into one group with two tabs - Profile, Access - so a new
+         person's identity and their sharing codes answer "who am I / who can
+         see this" from one place (closes F1). -->
+    <div class="ctl-sec" data-ctl-group="you-access" data-ctl-open="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> You &amp; Access</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="profile">Profile</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="access">Access</button>
     </div>
-    <div id="template-list"></div>
-
-    <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) , 
-         rebuilt as explain-before-copy cards: what each format is for, a
-         live preview of what will be copied, then the Copy button. -->
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy As…</div>
-    <div class="sr-hint ctl-lead">The same live project state, in three share formats. Read what each one is for , then copy it.</div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Slack Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="slack" title="Copy the Slack-formatted digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Slack is the team chat app many crews use for quick updates. This format uses Slack's bold <code>*asterisks*</code> markup so headings and warnings stand out when pasted into a channel.</p></details>
-      <pre class="fmt-preview" id="pv-slack" aria-label="Slack digest preview (live)"></pre>
+    <div class="ctl-panel" data-ctl-panel="profile">
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Your Name</span><input type="text" id="user-name-in" placeholder="Your name" aria-label="Your name (shown in the header greeting)" data-action="setUserName" class="ctl-in w150"></div>
+      <div class="sr-hint">Shown in the header greeting. Leave blank for a generic welcome.</div>
+      <!-- AUTH MAINFRAME 2026-08-17: password change for email accounts , 
+           the shared control mounts here from js/mmgr-google-auth.js; the
+           trigger stays hidden unless the signed-in account has a password. -->
+      <div class="pw-host" data-pw-host></div>
     </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="email" title="Copy the email digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A ready-to-paste email for your sponsor or team: subject line included, plain text, no chat markup. Paste it straight into your mail client.</p></details>
-      <pre class="fmt-preview" id="pv-email" aria-label="Email digest preview (live)"></pre>
-    </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Client Summary</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="client" title="Copy the printable client summary"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail , just what a client needs to know.</p></details>
-      <pre class="fmt-preview" id="pv-client" aria-label="Client summary preview (live)"></pre>
+    <div class="ctl-panel is-hide" data-ctl-panel="access">
+      <!-- Share & Access , rendered by js/mmgr-cloud.js: owner code, editor
+           codes with section-scope toggles (view-only / edit-budget / etc). -->
+      <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
     </div>
 
-    <!-- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email templates
-         (static, zero-AI baseline restored from the monolith , the guaranteed
-         fallback). AI-upgrade path tracked separately in BACKLOG.md. Each
-         template is its own full card: what it is, a live preview, copy. -->
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Templates</div>
-    <div class="sr-hint ctl-lead">Ready-to-send drafts built from live project data , each is a full email with subject line. Read the preview, then copy and paste into your mail client.</div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Status Update</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Copy the weekly status update email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">The regular weekly update to your sponsor: overall progress, tasks in progress, blockers, live issues, and next priorities.</p></details>
-      <pre class="fmt-preview" id="pv-tpl-status" aria-label="Status update email preview (live)"></pre>
+    <!-- T-10 (UI-IA-AND-MCP 2026-11-11): Share & Send is one group with three
+         tabs - Digests, Emails, Templates - so the seven format cards and the
+         template library answer "how do I send this out" from one place
+         (closes F5). The "Copy As." heading with its trailing period no longer
+         survives as a heading; its cards live under Digests. -->
+    <div class="ctl-sec" data-ctl-group="share"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Share &amp; Send</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="digests">Digests</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="emails">Emails</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="templates">Templates</button>
     </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Change Request</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="change" title="Copy the change request approval email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Asks for approval on pending change requests, with the schedule and cost impact of each one so the decision is informed.</p></details>
-      <pre class="fmt-preview" id="pv-tpl-change" aria-label="Change request email preview (live)"></pre>
-    </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Risk Escalation</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="risk" title="Copy the risk / issue escalation email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Escalates open issues and high risks that need attention, each with its owner and target date so nothing slips through.</p></details>
-      <pre class="fmt-preview" id="pv-tpl-risk" aria-label="Risk escalation email preview (live)"></pre>
-    </div>
-    <div class="fmt-card">
-      <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Closure Sign-Off</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Copy the closure sign-off email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
-      <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Formally asks the sponsor to sign off the project: overall completion and the deliverables checklist status.</p></details>
-      <pre class="fmt-preview" id="pv-tpl-closure" aria-label="Closure sign-off email preview (live)"></pre>
-    </div>
-
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance</div>
-    <div class="dock dock-inline dock-bare" role="group" aria-label="Appearance controls">
-      <div class="sr">
-        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg><label class="sr-only" for="theme-select">Theme</label><select id="theme-select" class="theme-select" aria-label="Theme mode"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option><option value="cyan">Cyan</option><option value="magenta">Magenta</option></select></span>
+    <div class="ctl-panel" data-ctl-panel="digests">
+      <!-- ACTION-PLAN 5.1: multi-format Copy All (Slack / email / client) ,
+           rebuilt as explain-before-copy cards: what each format is for, a
+           live preview of what will be copied, then the Copy button. -->
+      <div class="sr-hint ctl-lead">The same live project state, in three share formats. Read what each one is for , then copy it.</div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Slack Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="slack" title="Copy the Slack-formatted digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Slack is the team chat app many crews use for quick updates. This format uses Slack's bold <code>*asterisks*</code> markup so headings and warnings stand out when pasted into a channel.</p></details>
+        <pre class="fmt-preview" id="pv-slack" aria-label="Slack digest preview (live)"></pre>
       </div>
-      <div class="sr">
-        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Performance Mode</span>
-        <label class="tgl"><input type="checkbox" id="perf-tgl" aria-label="Performance Mode: lighter UI effects" data-action="tglPerfMode" checked><span class="tsl"></span></label>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mail"></use></svg> Email Digest</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="email" title="Copy the email digest"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A ready-to-paste email for your sponsor or team: subject line included, plain text, no chat markup. Paste it straight into your mail client.</p></details>
+        <pre class="fmt-preview" id="pv-email" aria-label="Email digest preview (live)"></pre>
       </div>
-      <div class="sr" hidden>
-        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> Dynamic View</span>
-        <span class="pal-hint">This project stays flat. Dynamic view is only on the dashboard.</span>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> Client Summary</span><button class="btn btn-g btn-s" data-action="cpFormats" data-kind="client" title="Copy the printable client summary"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">A clean, printable one-page summary for a client or stakeholder: progress, key metrics, open issues. No internal risk detail , just what a client needs to know.</p></details>
+        <pre class="fmt-preview" id="pv-client" aria-label="Client summary preview (live)"></pre>
       </div>
     </div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculator</span><button class="btn btn-n btn-s" data-action="toggleCalc" title="Open calculator (Ctrl+Shift+C)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Open</button></div>
-    <div class="sr-hint">Floating calculator for quick math. Toggle with Ctrl+Shift+C or this button.</div>
+    <div class="ctl-panel is-hide" data-ctl-panel="emails">
+      <!-- MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-3: one-click email templates
+           (static, zero-AI baseline restored from the monolith , the guaranteed
+           fallback). AI-upgrade path tracked separately in BACKLOG.md. Each
+           template is its own full card: what it is, a live preview, copy. -->
+      <div class="sr-hint ctl-lead">Ready-to-send drafts built from live project data , each is a full email with subject line. Read the preview, then copy and paste into your mail client.</div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Status Update</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="status" title="Copy the weekly status update email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">The regular weekly update to your sponsor: overall progress, tasks in progress, blockers, live issues, and next priorities.</p></details>
+        <pre class="fmt-preview" id="pv-tpl-status" aria-label="Status update email preview (live)"></pre>
+      </div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Change Request</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="change" title="Copy the change request approval email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Asks for approval on pending change requests, with the schedule and cost impact of each one so the decision is informed.</p></details>
+        <pre class="fmt-preview" id="pv-tpl-change" aria-label="Change request email preview (live)"></pre>
+      </div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Risk Escalation</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="risk" title="Copy the risk / issue escalation email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Escalates open issues and high risks that need attention, each with its owner and target date so nothing slips through.</p></details>
+        <pre class="fmt-preview" id="pv-tpl-risk" aria-label="Risk escalation email preview (live)"></pre>
+      </div>
+      <div class="fmt-card">
+        <div class="fmt-head"><span class="fmt-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Closure Sign-Off</span><button class="btn btn-n btn-s" data-action="emailTpl" data-kind="closure" title="Copy the closure sign-off email"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button></div>
+        <details class="fmt-more"><summary>What is this for?</summary><p class="fmt-desc">Formally asks the sponsor to sign off the project: overall completion and the deliverables checklist status.</p></details>
+        <pre class="fmt-preview" id="pv-tpl-closure" aria-label="Closure sign-off email preview (live)"></pre>
+      </div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="templates">
+      <div class="sr-hint ctl-lead">Save your current schedule and budget as a reusable template, or apply a built-in template to get started quickly.</div>
+      <div class="ctl-actions">
+        <button class="btn btn-g btn-s" data-action="saveAsTemplate">+ Save as Template</button>
+      </div>
+      <div id="template-list"></div>
+    </div>
 
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Workspace</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>
-    <div class="sr-hint">Used for resource utilization &amp; budget cost calculations. Monthly capacity ≈ days × 4 weeks × 8h.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Region</span><select id="weather-region-sel" data-action="setRegion" class="ctl-in" aria-label="Weather region"></select></div>
+    <!-- T-11 (UI-IA-AND-MCP 2026-11-11): Workspace is one group with five
+         tabs - Look & feel, Behaviour, Modules, Packs, Rules - so every
+         workspace-level switch answers "how the app feels and what it shows"
+         from one place (closes F7). Look & feel <- Appearance; Behaviour <-
+         work week / weather region / lock methodology; Modules <- the five
+         feature flags (renamed from 'Features'); Packs <- Advanced Packs;
+         Rules <- #rules-body. -->
+    <div class="ctl-sec" data-ctl-group="workspace" data-ctl-open="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Workspace</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="look">Look &amp; feel</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="behaviour">Behaviour</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="modules">Modules</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="packs">Packs</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="rules">Rules</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="look">
+      <div class="dock dock-inline dock-bare" role="group" aria-label="Appearance controls">
+        <div class="sr">
+          <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg><label class="sr-only" for="theme-select">Theme</label><select id="theme-select" class="theme-select" aria-label="Theme mode"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option><option value="cyan">Cyan</option><option value="magenta">Magenta</option></select></span>
+        </div>
+        <div class="sr">
+          <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Performance Mode</span>
+          <label class="tgl"><input type="checkbox" id="perf-tgl" aria-label="Performance Mode: lighter UI effects" data-action="tglPerfMode" checked><span class="tsl"></span></label>
+        </div>
+        <div class="sr" hidden>
+          <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> Dynamic View</span>
+          <span class="pal-hint">This project stays flat. Dynamic view is only on the dashboard.</span>
+        </div>
+      </div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculator</span><button class="btn btn-n btn-s" data-action="toggleCalc" title="Open calculator (Ctrl+Shift+C)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Open</button></div>
+      <div class="sr-hint">Floating calculator for quick math. Toggle with Ctrl+Shift+C or this button.</div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="behaviour">
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>
+      <div class="sr-hint">Used for resource utilization &amp; budget cost calculations. Monthly capacity ≈ days × 4 weeks × 8h.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Region</span><select id="weather-region-sel" data-action="setRegion" class="ctl-in" aria-label="Weather region"></select></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="modules">
+      <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
+           control , it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
+           restore last non-off tier, default 'local'). flags.aiWindow is gone. -->
+      <div class="sr-hint">Feature flags , switch a module off to hide it from the workspace. All default on.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" id="ai-tgl" aria-label="AI Assistant" data-action="tglAiTier" checked><span class="tsl"></span></label></div>
+      <div class="sr-hint">AI Assistant is on by default (local engine, no key). Turn it off here if you don't want it.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" id="fl-monte-carlo" aria-label="Monte Carlo Simulation" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" id="fl-gantt-export" aria-label="Gantt PNG Export" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Kanban Lead-Time Lane</span><label class="tgl"><input type="checkbox" id="fl-leadtime-lane" aria-label="Kanban Lead-Time Lane" data-action="tglFlag" data-flag="leadtimeLane"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Forecast Panel</span><label class="tgl"><input type="checkbox" id="fl-weather" aria-label="Weather Forecast Panel" data-action="tglFlag" data-flag="weatherForecast"><span class="tsl"></span></label></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="packs" id="adv-packs-section">
+      <!-- Rank 3.1 (MASTER-ACTION-PLAN Rank 3.1): Core Mode vs Advanced Packs ,
+           progressive disclosure. New projects start Core-only; each advanced
+           pack is a single-action toggle here. Toggling a pack on reveals its
+           nav sections instantly; off hides them (never destroys data). -->
+      <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections , one action, nothing hidden is ever lost.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" id="pk-schedule" aria-label="Schedule Science pack" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" id="pk-money" aria-label="Money pack" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" id="pk-governance" aria-label="Governance pack" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Field</span><label class="tgl"><input type="checkbox" id="pk-field" aria-label="Field pack" data-action="tglPack" data-pack="field"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" id="pk-quality" aria-label="Quality pack" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cart"></use></svg> Procurement</span><label class="tgl"><input type="checkbox" id="pk-procurement" aria-label="Procurement pack" data-action="tglPack" data-pack="procurement"><span class="tsl"></span></label></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="rules">
+      <!-- Rules (Huly-inspired): declared triggers, conditions and one action
+           from a fixed list. No scripting, no outside calls. Rendered by
+           js/render/process.js into #rules-body. -->
+      <div id="rules-body" role="region" aria-label="Declared rules"></div>
+    </div>
+
 
     <!-- S-2 PRIVACY (audit 2026-10-18, 8.2 item 7): the signed-in app never
          shows the cookie banner - the choice lives HERE, in Settings. The
@@ -2059,73 +2121,113 @@
          Worker's Content-Security-Policy reads to decide whether the
          analytics script may load at all. A device-level choice, like the
          theme: it is not part of the project and is never uploaded. -->
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Privacy</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Usage statistics</span><label class="tgl"><input type="checkbox" id="consent-stat-tgl" aria-label="Usage statistics: count visits to the public pages" data-action="tglConsentStat"><span class="tsl"></span></label></div>
-    <div class="sr-hint">Counts visits to the public pages so we can see which parts get used. Never used for advertising. Your project data stays on this device.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="privacy.html">Open</a></div>
+    <!-- T-09 (UI-IA-AND-MCP 2026-11-11): Your Data is one group with three
+         tabs - Privacy, Export, Backup & Transfer - answering "what happens to
+         my data" from a single place (closes F6). The consent toggle, the
+         export download, and the backup/save/load tools all live here now.
+         The S-2 / M-2 privacy comment above still describes the consent row. -->
+    <div class="ctl-sec" data-ctl-group="yourdata"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Your Data</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="privacy">Privacy</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="export">Export</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="backup">Backup &amp; Transfer</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="privacy">
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Usage statistics</span><label class="tgl"><input type="checkbox" id="consent-stat-tgl" aria-label="Usage statistics: count visits to the public pages" data-action="tglConsentStat"><span class="tsl"></span></label></div>
+      <div class="sr-hint">Counts visits to the public pages so we can see which parts get used. Never used for advertising. Your project data stays on this device.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="privacy.html">Open</a></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="export">
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download all my data</span><button class="btn btn-n btn-s" data-action="exportMyData">Download</button></div>
+      <div class="sr-hint">One JSON file of every project and setting this browser holds. Keep it as a backup, or move it to another device.</div>
+      <div id="data-account" aria-live="polite"></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="backup">
+      <!-- OWNER 2026-10-18 (audit M-5): the shortcut list. The rows are
+           rendered from js/mmgr-shortcuts.js (the same table that fills the
+           shortcut sheet), so the list in the drawer and the list in the
+           sheet can never disagree. The button opens the sheet, which is
+           the same list in a modal you can open from anywhere. -->
+      <div class="sr-kbd">
+        <div class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg> Keyboard Shortcuts<button type="button" class="btn btn-n btn-s sl-open" data-mmks="open" aria-haspopup="dialog" title="Open the keyboard shortcut list">Show list</button></div>
+        <div class="kbd-grid" id="kb-drawer-grid">
+          <span class="kbd">?</span> Show this list of shortcuts
+          <span class="kbd">/</span> Open the assistant and start typing your question
+          <span class="kbd">F</span> Focus Mode , isolate the active panel
+          <span class="kbd">Ctrl/⌘ + Z</span> Undo (outside text fields)
+          <span class="kbd">Ctrl/⌘ + Shift + Z</span> Redo
+          <span class="kbd">Esc</span> Close drawer / modals
+          <span class="kbd">Enter / Space</span> Change the RACI letter in the cell you are on
+          <span class="kbd">← / →</span> Go back or forward through the RACI letters
+        </div>
+      </div>
+      <hr class="div">
+      <button class="btn btn-g full mb7"  data-action="saveProjectFile"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Save Project (.json)</button>
+      <button class="btn btn-n full mb7"  data-action="loadProjectFileClick"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder-open"></use></svg> Load Project</button>
+      <input type="file" id="load-file" accept=".json,application/json" class="hide" data-action="loadProjectFile">
+      <button class="btn btn-o full mb7" data-action="mergeProjectFileClick" title="Merge a project file into the current plan field-by-field (newest edit wins per field). Your local fields are never lost on a tie."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merge Project (.json)</button>
+      <input type="file" id="merge-file" accept=".json,application/json" class="hide" data-action="mergeProjectFile">
+      <button class="btn btn-o full mb7"  data-action="saveBaseline" title="Saves today's schedule as the reference point for tracking delays and cost."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pin"></use></svg> Save Baseline (Snapshot)<span class="nudge-dot" data-baseline-dot hidden></span></button>
+      <button class="btn btn-n full mb7"  data-action="restoreBaseline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Restore Baseline</button>
+      <div class="sr " ><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo / Redo</span><span class="g6"><button class="btn btn-n btn-s" data-action="undo" id="undo-btn">Undo</button><button class="btn btn-n btn-s" data-action="redo" id="redo-btn">Redo</button></span></div>
+      <hr class="div">
+      <button class="btn btn-o full mb7"  data-action="openOM"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Generate Full Output (JSON)</button>
+      <button class="btn btn-n full"  data-action="loadClip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Clipboard</button>
+      <button class="btn btn-n full mt7"  data-action="print"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
+    </div>
 
-    <!-- M-2 PRIVACY (audit 2026-10-18, 8.5): your data, in plain reach.
-         Export is a client-side JSON of every mmgr_* key this browser holds
-         (offline-first: the device IS the source). Account delete renders only
-         when signed in, and mirrors the Worker contract: an email account
-         confirms with its password, a Google account types DELETE. -->
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Your data</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download all my data</span><button class="btn btn-n btn-s" data-action="exportMyData">Download</button></div>
-    <div class="sr-hint">One JSON file of every project and setting this browser holds. Keep it as a backup, or move it to another device.</div>
-    <div id="data-account" aria-live="polite"></div>
+    <!-- T-08 (UI-IA-AND-MCP 2026-11-11): Connect & Sync is one group with
+         four tabs. Drive and Cloud backup used to render under the Terminal
+         heading; they are now first-class tabs, so both backup surfaces are
+         no longer misfiled under an AI connector. -->
+    <div class="ctl-sec" data-ctl-group="connect"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Connect &amp; Sync</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="sync">Cloud &amp; Sync</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="ai">Connect an AI</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="drive">Drive backup</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="cloud">Cloud backup</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="sync">
+      <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
+           sync , never gating. Rendered by js/mmgr-sync.js into this slot. -->
+      <div id="sync-section"></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="ai">
+      <!-- MCP SERVER (owner 2026-09-07): settings for the per-project MCP server.
+           Only shown for cloud-linked projects. The MCP server lets an AI client
+           read/edit this project via structured tools. -->
+      <div id="ctrl-mcp"></div>
+      <div class="sr-hint">Sync identity is 100% optional , the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
+      <!-- REGULAR TERMINAL (non-cloud MCP): the stdio connector for an AI tool
+           running in a plain terminal on this machine, with no cloud link and no
+           HTTP server. Rendered by renderTerminal() in js/mmgr-cloud.js. -->
+      <div id="ctrl-terminal"></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="drive">
+      <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls , never
+           gating. Rendered by js/mmgr-google-auth.js into this slot. -->
+      <div id="drive-section"></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="cloud">
+      <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup
+           (D1 + R2 owner-code storage) , never gating. Rendered by
+           js/mmgr-cloud.js into this slot. -->
+      <div id="cloud-section"></div>
+    </div>
 
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud &amp; Sync</div>
-    <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
-         sync , never gating. Rendered by js/mmgr-sync.js into this slot. -->
-    <div id="sync-section"></div>
-
-    <!-- MCP SERVER (owner 2026-09-07): settings for the per-project MCP server.
-         Only shown for cloud-linked projects (projects with an Internet connection).
-         The MCP server lets an AI client read/edit this project via structured tools.
-         Toggle connects/disconnects the AI from this project's live data. -->
-    <div class="ctl-sec" id="ctrl-mcp-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</div>
-    <div id="ctrl-mcp"></div>
-    <div class="sr-hint">Sync identity is 100% optional , the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
-
-    <!-- REGULAR TERMINAL (non-cloud MCP): the stdio connector for an AI tool
-         running in a plain terminal on this machine, with no cloud link and no
-         HTTP server. Rendered by renderTerminal() in js/mmgr-cloud.js. Unlike
-         the MCP Server card above it does NOT depend on a cloud code or a
-         signed-in session, so it renders for every project. -->
-    <div class="ctl-sec" id="ctrl-terminal-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-terminal"></use></svg> Regular Terminal</div>
-    <div id="ctrl-terminal"></div>
-    <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls , never
-         gating. Rendered by js/mmgr-google-auth.js into this slot. -->
-    <div id="drive-section"></div>
-    <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup
-         (D1 + R2 owner-code storage) , never gating. Rendered by
-         js/mmgr-cloud.js into this slot. -->
-    <div id="cloud-section"></div>
-
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Features</div>
-    <div class="sr-hint">Feature flags , switch a module off to hide it from the workspace. All default on.</div>
-    <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
-         control , it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
-         restore last non-off tier, default 'local'). flags.aiWindow is gone. -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" id="ai-tgl" aria-label="AI Assistant" data-action="tglAiTier" checked><span class="tsl"></span></label></div>
-    <div class="sr-hint">AI Assistant is on by default (local engine, no key). Turn it off here if you don't want it.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" id="fl-monte-carlo" aria-label="Monte Carlo Simulation" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" id="fl-gantt-export" aria-label="Gantt PNG Export" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Kanban Lead-Time Lane</span><label class="tgl"><input type="checkbox" id="fl-leadtime-lane" aria-label="Kanban Lead-Time Lane" data-action="tglFlag" data-flag="leadtimeLane"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Forecast Panel</span><label class="tgl"><input type="checkbox" id="fl-weather" aria-label="Weather Forecast Panel" data-action="tglFlag" data-flag="weatherForecast"><span class="tsl"></span></label></div>
-    <!-- Rank 3.1 (MASTER-ACTION-PLAN Rank 3.1): Core Mode vs Advanced Packs , 
-         progressive disclosure. New projects start Core-only; each advanced
-         pack is a single-action toggle here. Toggling a pack on reveals its
-         nav sections instantly; off hides them (never destroys data). -->
-    <div class="ctl-sec" id="adv-packs-section"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Advanced Packs</div>
-    <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections , one action, nothing hidden is ever lost.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" id="pk-schedule" aria-label="Schedule Science pack" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" id="pk-money" aria-label="Money pack" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" id="pk-governance" aria-label="Governance pack" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Field</span><label class="tgl"><input type="checkbox" id="pk-field" aria-label="Field pack" data-action="tglPack" data-pack="field"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" id="pk-quality" aria-label="Quality pack" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cart"></use></svg> Procurement</span><label class="tgl"><input type="checkbox" id="pk-procurement" aria-label="Procurement pack" data-action="tglPack" data-pack="procurement"><span class="tsl"></span></label></div>
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> Support &amp; Diagnostics</div>
+    <!-- T-12 (UI-IA-AND-MCP 2026-11-11): Help merges Support & Diagnostics and
+         the conditional Danger Zone into one group with two tabs - Diagnostics,
+         Danger Zone - so "where do I get help / where do I delete" answers from
+         one place (closes F2). The Danger Zone tab stays owner-conditional:
+         #del-zone keeps [hidden] and renderDangerZone() (mmgr-cloud.js) toggles
+         it, so editors/viewers never see the tab, and the server enforces
+         owner-only on the delete route regardless. -->
+    <div class="ctl-sec" data-ctl-group="help"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> Help</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="diagnostics">Diagnostics</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="danger" id="del-zone">Danger Zone</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="diagnostics">
     <!-- Phase 2: client-side error surface (last 20 errors, timestamp + action) -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>
     <div class="sr-hint">Last 20 client-side errors with timestamp and source action , for debugging on static hosting where no server log exists. Copy or download the log to share it.</div>
@@ -2148,53 +2250,23 @@
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Remote Error Reporting</span><label class="tgl"><input type="checkbox" id="err-report-tgl" aria-label="Remote Error Reporting" data-action="tglErrReport"><span class="tsl"></span></label></div>
     <div class="sr-hint">Optional and off by default. When enabled with a webhook URL, new client errors are posted to your own endpoint , never to a third-party service. A failed send stays logged locally only.</div>
     <input type="url" id="err-webhook" class="ctl-in" data-action="setErrWebhook" placeholder="https://your-webhook.example.com/hook (optional)" aria-label="Error reporting webhook URL (optional)" autocomplete="off">
-    <div class="ctl-sec"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Backup &amp; Transfer</div>
-    <!-- OWNER 2026-10-18 (audit M-5): the shortcut list. The rows are
-         rendered from js/mmgr-shortcuts.js (the same table that fills the
-         shortcut sheet), so the list in the drawer and the list in the
-         sheet can never disagree. The button opens the sheet, which is
-         the same list in a modal you can open from anywhere. -->
-    <div class="sr-kbd">
-      <div class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lightbulb"></use></svg> Keyboard Shortcuts<button type="button" class="btn btn-n btn-s sl-open" data-mmks="open" aria-haspopup="dialog" title="Open the keyboard shortcut list">Show list</button></div>
-      <div class="kbd-grid" id="kb-drawer-grid">
-        <span class="kbd">?</span> Show this list of shortcuts
-        <span class="kbd">/</span> Open the assistant and start typing your question
-        <span class="kbd">F</span> Focus Mode , isolate the active panel
-        <span class="kbd">Ctrl/⌘ + Z</span> Undo (outside text fields)
-        <span class="kbd">Ctrl/⌘ + Shift + Z</span> Redo
-        <span class="kbd">Esc</span> Close drawer / modals
-        <span class="kbd">Enter / Space</span> Change the RACI letter in the cell you are on
-        <span class="kbd">← / →</span> Go back or forward through the RACI letters
-      </div>
-    </div>
-    <hr class="div">
-    <button class="btn btn-g full mb7"  data-action="saveProjectFile"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> Save Project (.json)</button>
-    <button class="btn btn-n full mb7"  data-action="loadProjectFileClick"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder-open"></use></svg> Load Project</button>
-    <input type="file" id="load-file" accept=".json,application/json" class="hide" data-action="loadProjectFile">
-    <button class="btn btn-o full mb7" data-action="mergeProjectFileClick" title="Merge a project file into the current plan field-by-field (newest edit wins per field). Your local fields are never lost on a tie."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Merge Project (.json)</button>
-    <input type="file" id="merge-file" accept=".json,application/json" class="hide" data-action="mergeProjectFile">
-    <button class="btn btn-o full mb7"  data-action="saveBaseline" title="Saves today's schedule as the reference point for tracking delays and cost."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pin"></use></svg> Save Baseline (Snapshot)<span class="nudge-dot" data-baseline-dot hidden></span></button>
-    <button class="btn btn-n full mb7"  data-action="restoreBaseline"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Restore Baseline</button>
-    <div class="sr " ><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-corner-down-left"></use></svg> Undo / Redo</span><span class="g6"><button class="btn btn-n btn-s" data-action="undo" id="undo-btn">Undo</button><button class="btn btn-n btn-s" data-action="redo" id="redo-btn">Redo</button></span></div>
-    <hr class="div">
-    <button class="btn btn-o full mb7"  data-action="openOM"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Generate Full Output (JSON)</button>
-    <button class="btn btn-n full"  data-action="loadClip"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Load from Clipboard</button>
-    <button class="btn btn-n full mt7"  data-action="print"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Print / PDF</button>
 
-    <!-- OWNER 2026-08-17: Danger Zone , in-project Delete Project at the
-         BOTTOM of the Controls tab (owner: "go inside of the project...
-         click the settings. Scroll onto the bottom. And you click delete
-         project"). Shown only while an OWNER code is held (renderDangerZone
-         in mmgr-cloud.js toggles hidden , editors/viewers never see it, and
-         the server enforces owner-only on the delete route regardless). -->
-    <div class="ctl-sec" id="del-zone" hidden><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Danger Zone</div>
-    <div class="danger-zone" id="del-zone-body" hidden>
-      <div class="danger-zone-copy">
-        <b>Delete this project</b>
-        <p>Removes it from the cloud backend for everyone. Every editor/viewer code stops working, every shared copy becomes <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. Only you, the admin, can do this.</p>
+    </div><!-- /.ctl-panel diagnostics -->
+    <div class="ctl-panel is-hide" data-ctl-panel="danger">
+      <!-- OWNER 2026-08-17: Danger Zone , in-project Delete Project at the
+           BOTTOM of the Controls tab (owner: "go inside of the project...
+           click the settings. Scroll onto the bottom. And you click delete
+           project"). Shown only while an OWNER code is held (renderDangerZone
+           in mmgr-cloud.js toggles hidden , editors/viewers never see it, and
+           the server enforces owner-only on the delete route regardless). -->
+      <div class="danger-zone" id="del-zone-body" hidden>
+        <div class="danger-zone-copy">
+          <b>Delete this project</b>
+          <p>Removes it from the cloud backend for everyone. Every editor/viewer code stops working, every shared copy becomes <strong>discontinued</strong>, and offline copies keep their last snapshot but receive no more updates. Only you, the admin, can do this.</p>
+        </div>
+        <button class="btn btn-d btn-s" data-action="cloudDeleteOpen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project</button>
       </div>
-      <button class="btn btn-d btn-s" data-action="cloudDeleteOpen"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete project</button>
-    </div>
+    </div><!-- /.ctl-panel danger -->
   </div>
   </div>
 </div>
@@ -2584,66 +2656,11 @@ if (window.location.protocol === 'http:' || window.location.protocol === 'https:
   fetch('css/mmgr-icons.svg').then(r=>{ if(!r.ok) console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg returned ' + r.status + ' , upload the css/ folder (mmgr.css + mmgr-icons.svg) to the site root.'); })
     .catch(()=>console.warn('ICON SPRITE MISSING: css/mmgr-icons.svg could not be fetched , upload the css/ folder to the site root.'));
 }
-// CONTROLS ACCORDION (owner: "use a drop down system instead of it being
-// fluttered with a lot of information"). Each .ctl-sec in #db-ctrl becomes
-// a clickable toggle; content between sections is wrapped in a collapsible
-// group. Sections listed in ALWAYS_OPEN stay expanded (keyboard shortcuts,
-// workspace, etc.). Advanced Packs opens by default (directed to from
-// the website).
-(function(){
-  var ctrl = document.getElementById('db-ctrl');
-  if (!ctrl) return;
-  var ALWAYS_OPEN = {'Profile':1,'Share & Access':1,'Workspace':1};
-  var SECS = Array.prototype.slice.call(ctrl.querySelectorAll('.ctl-sec'));
-  SECS.forEach(function(sec, i){
-    // Add caret icon
-    var caret = document.createElement('svg');
-    caret.setAttribute('class','ico ico-caret');
-    caret.setAttribute('aria-hidden','true');
-    caret.innerHTML = '<use href="css/mmgr-icons.svg#i-arrow-right"></use>';
-    sec.appendChild(caret);
-    // Determine if always open
-    var label = (sec.textContent || '').trim();
-    var isOpen = !!ALWAYS_OPEN[label] || (label === 'Advanced Packs');
-    if (isOpen) sec.classList.add('open');
-    // Only toggle sections that have content after them
-    // (skip sections like Danger Zone that are conditional)
-    if (label === 'Danger Zone') return;
-    sec.setAttribute('data-ctl-toggle','');
-    sec.setAttribute('role','button');
-    sec.setAttribute('tabindex','0');
-    sec.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    // Collect siblings until next .ctl-sec or end of #db-ctrl
-    var group = document.createElement('div');
-    group.className = 'ctl-sec-group' + (isOpen ? '' : ' collapsed');
-    var next = sec.nextElementSibling;
-    var toMove = [];
-    while (next && !next.classList.contains('ctl-sec')) {
-      toMove.push(next);
-      next = next.nextElementSibling;
-    }
-    toMove.forEach(function(el){ group.appendChild(el); });
-    sec.parentNode.insertBefore(group, sec.nextSibling);
-    // Click/keyboard handler
-    function toggle(){
-      var open = sec.classList.toggle('open');
-      group.classList.toggle('collapsed', !open);
-      sec.setAttribute('aria-expanded', open ? 'true' : 'false');
-      // Set max-height for transition
-      if (open) {
-        group.style.maxHeight = group.scrollHeight + 'px';
-        setTimeout(function(){ group.style.maxHeight = 'none'; }, 260);
-      } else {
-        group.style.maxHeight = group.scrollHeight + 'px';
-        requestAnimationFrame(function(){ group.style.maxHeight = '0px'; });
-      }
-    }
-    sec.addEventListener('click', toggle);
-    sec.addEventListener('keydown', function(e){
-      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
-    });
-  });
-})();
+// CONTROLS ACCORDION moved to js/app/controls-nav.js (T-07, UI-IA-AND-MCP
+// directive 2026-11-11). It is now a deferred bundle module that reads each
+// .ctl-sec's data-ctl-group / data-ctl-open / data-ctl-static attributes and
+// routes clicks through ACTION_MAP.ctlToggle, so the CSP hash never moves when
+// the accordion logic changes.
 
 // Rank 4.1 (MASTER-ACTION-PLAN Rank 4): PWA registration , cache-first
 // service worker for the app shell. localhost/HTTPS only (SW requires a

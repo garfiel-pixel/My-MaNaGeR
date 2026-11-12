@@ -360,6 +360,15 @@ async function walkFocus(page, openDrawers) {
       const page = await ctx.newPage();
       await page.goto(BASE + '/calculator.html', { waitUntil: 'networkidle' });
 
+      // T-22 CI repair 2026-11-12: a fresh context has no tour flag, so the
+      // first-visit nudge renders bottom-right. On the 390 pass it covered the
+      // Recall button once Playwright scrolled it into view. Dismiss it the way
+      // a reader would; the tour's own T5 check manages its flag separately.
+      if (await page.locator('[data-action=calcTourDismiss]').isVisible()) {
+        await page.click('[data-action=calcTourDismiss]');
+        await page.waitForTimeout(100);
+      }
+
       // T: both themes stay usable.
       await page.click('[data-action=tglTheme]');
       await page.waitForTimeout(150);
@@ -403,6 +412,15 @@ async function walkFocus(page, openDrawers) {
         disturbed === 'Length (ft)',
         disturbed
       );
+      // T-22 CI repair 2026-11-12: at 390 the fixed mobile total bar
+      // (.bcp-totalbar) sits over the bottom ~56px. Playwright's minimal
+      // scroll-into-view can park the Recall button under it, so the click
+      // waits for a target that can never receive the pointer. Centre the
+      // row first; the bar only covers the viewport edge.
+      await page
+        .locator('[data-action=calcRestore]')
+        .evaluate(el => el.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(120);
       await page.click('[data-action=calcRestore]');
       await page.waitForTimeout(150);
       const recalled = await page.evaluate(() => ({

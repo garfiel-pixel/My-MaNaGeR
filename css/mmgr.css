@@ -6504,9 +6504,9 @@ body.dark-mode .team-role-client {
   font-size: 0.84rem;
   line-height: 1.3;
   color: var(--text-heading);
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .team-role-select {
   max-width: 108px;
@@ -12112,6 +12112,179 @@ body.dark-mode .ltr-roll td {
   color: var(--slate);
   margin: 0 0 16px;
 }
+/* ============================================================
+   36-search.css - T-14 search palette (UI-IA-AND-MCP-DIRECTIVE
+   2026-11-11).
+
+   The palette reuses the shared modal sheet classes (.mb / .mh /
+   .mbody) so it matches the rest of the app without a new visual
+   language. This layer only adds the overlay, the result rows, the
+   group headings and the 1.6 s search-hit flash.
+   ============================================================ */
+
+#app-search {
+  position: fixed;
+  inset: 0;
+  z-index: 2600;
+  background: var(--lit-black-75);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 16px 16px;
+}
+#app-search[hidden] {
+  display: none !important;
+}
+#app-search .mb {
+  width: 640px;
+  max-width: 100%;
+  max-height: 78vh;
+}
+#app-search .mbody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 120px;
+}
+#app-search-q {
+  width: 100%;
+  background: var(--lit-fog);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.95rem;
+  padding: 10px 12px;
+}
+#app-search-q:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+#app-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: auto;
+  max-height: 52vh;
+}
+.search-group-head {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--slate);
+  padding: 8px 10px 3px;
+}
+.search-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text);
+}
+.search-opt[aria-selected='true'],
+.search-opt:hover {
+  background: var(--lit-fog);
+}
+.search-opt[aria-selected='true'] {
+  box-shadow: inset 2px 0 0 var(--gold);
+}
+.search-opt .ico {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--gold-text);
+}
+.search-opt-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.search-opt-label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-opt-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-empty {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 14px 10px;
+}
+
+/* The 1.6 s reveal flash (T-14 reveal table). Reduced motion keeps a
+   static outline instead of animating the background. */
+.search-hit {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 6px;
+  animation: searchHit 1.6s ease-out;
+}
+@keyframes searchHit {
+  from {
+    background: rgba(212, 175, 55, 0.28);
+  }
+  to {
+    background: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-hit {
+    animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  #app-search {
+    padding: 6vh 10px 10px;
+  }
+  #app-search .mb {
+    max-height: 84vh;
+  }
+}
+/* T-15: the calculator's top bar search button. Same footprint and hover as
+   .bcp-theme beside it, one icon, no sun/moon swap. */
+.bcp-search {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  color: var(--slate);
+  cursor: pointer;
+  transition: color var(--tr);
+}
+.bcp-search:hover {
+  color: var(--gold-text);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.bcp-search:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.bcp-search .ico {
+  width: 18px;
+  height: 18px;
+}
+@media (max-width: 560px) {
+  .bcp-search {
+    width: 44px;
+    height: 44px;
+  }
+}
 /* ---- AI Assistant window (chat-style) ---- */
 /* TRACK B3: distinct visual presence - the AI is the strongest
    differentiator and its entry point should feel like one.  A persistent
@@ -13746,6 +13919,26 @@ body.dark-mode .bcp-ico-moon {
   .bcp-top {
     padding: 10px 12px;
   }
+  /* T-22 (UI-IA-AND-MCP 2026-11-11): with the search button added in T-15 the
+     action cluster needs ~230px, which a 390px phone cannot share with the
+     125px wordmark in one row - the cluster used to ride over the logo. Two
+     rows keep every control (nothing is hidden) and the divider moves from
+     the cluster's left edge to the top edge of its own row. */
+  .bcp-top {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .bcp-top-left {
+    flex: 1 1 auto;
+  }
+  .bcp-top-right {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    padding-left: 0;
+    padding-top: 8px;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
   .bcp-title {
     gap: 8px;
     font-size: 0.92rem;
@@ -14367,6 +14560,13 @@ body.dark-mode .bcp-run:focus-visible {
   color: var(--slate);
   font-weight: 400;
   font-size: 0.78rem;
+}
+/* T-17: the second-level row inside a Saved estimates tab (the hint + the
+   tab's own action). Same flex row, quieter, separated from the list. */
+.bcp-hist-sub {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
 /* D2 (owner review 2026-09-29): estimate comparison table. Wraps in a
    horizontal scroll on phones; cheapest total highlights in brand gold. */

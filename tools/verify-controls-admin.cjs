@@ -103,6 +103,8 @@ function check(name, val, detail) {
       siomPresent: !!siom,
       siomGoogle: !!(siom && siom.querySelector('#google-signin-button')),
       railCtl: (rail && rail.querySelectorAll('.rail-ctl-row').length) || 0,
+      railPremium: !!(rail && /Premium/i.test(rail.textContent || '')),
+      hdrPlan: !!(hdr && hdr.querySelector('#plan-badge')),
       toolbarTxt: toolbar ? (toolbar.textContent || '') : '',
       fileInput: !!document.getElementById('import-project-file')
     };
@@ -127,8 +129,17 @@ function check(name, val, detail) {
     a1
   );
   // OWNER 2026-09-07: the Customize block nests the Theme row inside a
-  // .dock.dock-inline wrapper, so the count is 5 top-level .rail-ctl-row.
-  check('S1 admin rail: Customize rows (premium/theme/perf/cross-project)', a1.railCtl === 5, a1);
+  // .dock.dock-inline wrapper, so the count is one higher than the number of
+  // visible controls. T-19 (UI-IA-AND-MCP 2026-11-11) removed the dead
+  // Premium label, so the contract is now theme/perf/cross-project = 4 nodes
+  // (outer dock wrapper + nested theme span + perf + cross-project), and the
+  // plan control lives in the header as #plan-badge. Re-baselined to the new
+  // contract; asserting the label is GONE is the point of the change.
+  check(
+    'S1 admin rail: Customize rows (theme/perf/cross-project, no Premium)',
+    a1.railCtl === 4 && !a1.railPremium && a1.hdrPlan,
+    a1
+  );
   check(
     'S2 admin toolbar: Import Project present',
     a1.toolbarTxt.indexOf('Import Project') > -1,

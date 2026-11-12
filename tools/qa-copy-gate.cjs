@@ -15,6 +15,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { stripComments } = require('./lib/html-strip.cjs');
 const ROOT = path.resolve(__dirname, '..');
 
 const results = [];
@@ -120,6 +121,61 @@ check(
   'T-COPY claims table links each claim to a backing module',
   /Claims table/.test(auditMap) && /[Bb]acking module/.test(auditMap),
   null
+);
+
+// 8. T-04: every served page agrees with the one registry. A number in prose
+//    ("18 panels", "Sheets 32") is how three pages drifted apart; only a
+//    data-count span may state a count, and its value must equal FEATURES.
+const SERVED_PAGES = [
+  'index.html',
+  'features.html',
+  'about.html',
+  'pricing.html',
+  'mymanager-field-guide.html',
+  'privacy.html',
+  'terms.html',
+  'refund.html',
+  'reviews.html',
+  'contact.html',
+  'app.html',
+  'project.html',
+  'admin.html',
+  'calculator.html'
+];
+const featuresMatch = marketingJs.match(/var FEATURES = \[([\s\S]*?)\];/);
+const registryPanels = featuresMatch ? (featuresMatch[1].match(/panel:\s*true/g) || []).length : 0;
+const registrySheets = Number((marketingJs.match(/var SHEET_COUNT\s*=\s*(\d+)/) || [])[1] || 0);
+const hardcodedCounts = [];
+const countMismatches = [];
+for (const page of SERVED_PAGES) {
+  const html = stripComments(fs.readFileSync(path.join(ROOT, page), 'utf8'));
+  const re = /(\b\d{1,3}\b)\s*(panels?|sheets?)/gi;
+  let mm;
+  while ((mm = re.exec(html))) {
+    const before = html.slice(Math.max(0, mm.index - 80), mm.index);
+    if (!/data-count\s*=\s*["']/.test(before)) {
+      hardcodedCounts.push(page + ': ' + mm[0]);
+    }
+  }
+  const spans = html.matchAll(/data-count\s*=\s*["'](panels|sheets)["'][^>]*>\s*([^<]*)</gi);
+  for (const s of spans) {
+    const kind = s[1].toLowerCase();
+    const val = parseInt(String(s[2]).trim(), 10);
+    const want = kind === 'panels' ? registryPanels : registrySheets;
+    if (val !== want) {
+      countMismatches.push(page + ': ' + kind + '=' + val + ' want ' + want);
+    }
+  }
+}
+check(
+  'T-COPY no hardcoded panel/sheet count on any served page',
+  hardcodedCounts.length === 0,
+  hardcodedCounts.slice(0, 5)
+);
+check(
+  'T-COPY every data-count agrees with the registry',
+  registryPanels > 0 && registrySheets > 0 && countMismatches.length === 0,
+  { registryPanels, registrySheets, countMismatches: countMismatches.slice(0, 5) }
 );
 
 const passed = results.filter(r => r.val).length;

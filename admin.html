@@ -426,6 +426,10 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
     </div>
     <div class="hdr-actions">
+      <!-- T-15 (UI-IA-AND-MCP 2026-11-11): search this panel's rail, cards and
+           project rows. The palette is built by js/app/search.js; Ctrl+K opens
+           it too. -->
+      <button type="button" class="btn btn-n btn-s" data-app-search-open aria-label="Search the admin panel" title="Search (Ctrl+K)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search</button>
       <!-- YOUR PLAN (owner 2026-11-06): visible in the header, not buried in
            the off-canvas rail. Free -> "Upgrade to Premium" opens the pricing
            page; paid -> "Premium" opens a popover with Manage subscription and
@@ -588,7 +592,10 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <div class="db-g">Customize</div>
       <button type="button" class="db-link" data-rail-toggle="rail-admin-customize" aria-expanded="false" aria-controls="rail-admin-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       <div class="db-sub" id="rail-admin-customize" hidden>
-        <span class="rail-ctl-row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Premium</span>
+        <!-- T-19 (UI-IA-AND-MCP 2026-11-11): the plan status used to sit here
+             as a dead "Premium" label. A plan is not a customisation - the
+             header's #plan-badge is its one home, where it is also actionable
+             (Upgrade / Manage subscription). -->
         <div class="dock dock-inline" role="group" aria-label="Appearance controls">
           <div class="rail-ctl-row">
             <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg>

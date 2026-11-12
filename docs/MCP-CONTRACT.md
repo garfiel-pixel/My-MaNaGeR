@@ -48,10 +48,14 @@ surface.
 | `tools/qa-mcp-write-path.cjs` | project write path: empty / 1 / 30 / 200 diffs, the 500 cap, scope refusal, strict dates, envelope and weekly semantics |
 | `tools/qa-appwide-mcp.cjs` | OAuth AS + PKCE S256, token rotation, metadata, CSP-safe consent, every account/project gate, and the write path |
 | `tools/qa-mcp-admin.cjs` | account config, client revoke and project opt-out admin API |
+| `tools/qa-mcp-admin-panel.cjs` | the admin.html MCP panel: signed-out 403 hint, signed-in render, policy-driven tool picker, and the exact save / project toggle / revoke requests |
 | `tools/qa-mcp-budget.cjs` | project budget read/propose switches, proposal-only writes and the decision feed |
 
 ## Deferred
 
-The landing-page `#f-mcp` card shipped in T-06 (2026-11-12), so it is no longer
-deferred. The detailed proposal-review UI (record names and before/after values)
-is still out of this pass.
+The landing-page `#f-mcp` card shipped in T-06 (2026-11-12), and the
+account-scoped admin-panel MCP UI shipped in T-25 (2026-11-12): the admin page
+now carries the enable switch, the four connect policies, the tool picker,
+connected clients with Revoke, and a per-project allow switch. The detailed
+proposal-review UI (record names and before/after values) is still out of this
+pass.

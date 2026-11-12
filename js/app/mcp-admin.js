@@ -1,0 +1,363 @@
+/* MCP server panel for the admin page (T-25, 2026-11-12).
+   Account-scoped: the Worker answers 403 until a session exists, so the panel
+   renders a sign-in hint instead of controls in that state. Every dynamic
+   value is written with textContent; no user or client name is ever parsed as
+   HTML. Actions are namespaced (data-mcp-act) so the admin page's inline
+   action map and its CSP hashes stay untouched. */
+(function (MMGR) {
+  'use strict';
+
+  var card = null;
+  var state = null;
+
+  function $(sel) {
+    return card ? card.querySelector(sel) : null;
+  }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) {
+      n.className = cls;
+    }
+    if (text != null) {
+      n.textContent = String(text);
+    }
+    return n;
+  }
+  function setStatus(msg, kind) {
+    var s = document.getElementById('mcp-admin-status');
+    if (!s) {
+      return;
+    }
+    s.textContent = msg || '';
+    s.setAttribute('data-kind', kind || '');
+  }
+  function api(path, opts) {
+    var init = {
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store'
+    };
+    if (opts) {
+      init.method = opts.method || 'GET';
+      if (opts.body) {
+        init.body = opts.body;
+      }
+    }
+    return fetch(path, init).then(function (res) {
+      return res.json().then(function (data) {
+        return { ok: res.ok, status: res.status, data: data || {} };
+      });
+    });
+  }
+  function fmtDate(iso) {
+    if (!iso) {
+      return '';
+    }
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) {
+      return String(iso);
+    }
+    try {
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (e) {
+      return String(iso).slice(0, 10);
+    }
+  }
+
+  function renderTools(tools, selected) {
+    var host = $('#mcp-tools');
+    if (!host) {
+      return;
+    }
+    host.textContent = '';
+    var picked = {};
+    (selected || []).forEach(function (n) {
+      picked[n] = 1;
+    });
+    (tools || []).forEach(function (name) {
+      var label = el('label', 'mcp-admin-tool');
+      var box = document.createElement('input');
+      box.type = 'checkbox';
+      box.value = name;
+      box.checked = !!picked[name];
+      label.appendChild(box);
+      label.appendChild(document.createTextNode(' ' + name));
+      host.appendChild(label);
+    });
+  }
+
+  function renderClients(clients) {
+    var host = $('#mcp-clients');
+    if (!host) {
+      return;
+    }
+    host.textContent = '';
+    if (!clients || !clients.length) {
+      host.appendChild(el('div', 'mcp-admin-empty', 'No client has connected yet.'));
+      return;
+    }
+    var wrap = el('div', 'mcp-admin-rows');
+    clients.forEach(function (c) {
+      var row = el('div', 'mcp-admin-row');
+      var left = el('div');
+      left.appendChild(el('div', 'mcp-admin-name', c.name || c.clientId));
+      var meta = 'Added ' + fmtDate(c.createdAt);
+      if (c.lastUsedAt) {
+        meta += ' | Last used ' + fmtDate(c.lastUsedAt);
+      }
+      if (c.revoked) {
+        meta += ' | Revoked';
+      }
+      left.appendChild(el('div', 'mcp-admin-meta', meta));
+      row.appendChild(left);
+      if (!c.revoked) {
+        var btn = el('button', 'btn btn-n btn-s', 'Revoke');
+        btn.type = 'button';
+        btn.setAttribute('data-mcp-act', 'revoke');
+        btn.setAttribute('data-client-id', c.clientId);
+        row.appendChild(btn);
+      }
+      wrap.appendChild(row);
+    });
+    host.appendChild(wrap);
+  }
+
+  function renderProjects(projects) {
+    var host = $('#mcp-projects');
+    if (!host) {
+      return;
+    }
+    host.textContent = '';
+    if (!projects || !projects.length) {
+      host.appendChild(el('div', 'mcp-admin-empty', 'No linked project yet.'));
+      return;
+    }
+    var wrap = el('div', 'mcp-admin-rows');
+    projects.forEach(function (p) {
+      var row = el('div', 'mcp-admin-row');
+      var left = el('div');
+      left.appendChild(el('div', 'mcp-admin-name', p.label || p.projectId));
+      left.appendChild(el('div', 'mcp-admin-meta', p.projectId));
+      row.appendChild(left);
+      if (p.accessRole === 'owner') {
+        var label = el('label', 'tgl');
+        var box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = p.mcpEnabled !== false;
+        box.setAttribute('data-mcp-act', 'project-toggle');
+        box.setAttribute('data-project-id', p.projectId);
+        box.setAttribute('aria-label', 'Allow MCP on ' + (p.label || p.projectId));
+        label.appendChild(box);
+        label.appendChild(el('span', 'tsl'));
+        row.appendChild(label);
+      } else {
+        row.appendChild(el('span', 'mcp-admin-meta', 'Shared with you (' + p.accessRole + ')'));
+      }
+      wrap.appendChild(row);
+    });
+    host.appendChild(wrap);
+  }
+
+  function applyConfig(data) {
+    state = data;
+    var cfg = data.config || {};
+    var body = $('#mcp-admin-body');
+    if (body) {
+      body.hidden = false;
+    }
+    var enabled = $('#mcp-enabled');
+    if (enabled) {
+      enabled.checked = cfg.enabled !== 0 && cfg.enabled !== false;
+    }
+    var policy = $('#mcp-policy');
+    if (policy) {
+      policy.value = cfg.policy || 'allow_all';
+    }
+    var subset = cfg.toolSubset != null ? cfg.toolSubset : cfg.tool_subset;
+    if (typeof subset === 'string') {
+      try {
+        subset = JSON.parse(subset);
+      } catch (e) {
+        subset = [];
+      }
+    }
+    renderTools(data.tools, subset);
+    syncSubsetVisibility();
+    renderProjects(data.projects);
+  }
+
+  function syncSubsetVisibility() {
+    var policy = $('#mcp-policy');
+    var host = $('#mcp-tools');
+    if (host) {
+      host.hidden = !policy || policy.value !== 'allow_subset';
+    }
+  }
+
+  function load() {
+    card = document.getElementById('mcp-admin-card');
+    if (!card) {
+      return;
+    }
+    setStatus('Loading MCP settings...');
+    api('/api/mcp/config')
+      .then(function (r) {
+        if (r.status === 403 || r.status === 401) {
+          setStatus('Sign in to your account to manage the MCP server.', 'muted');
+          var body = $('#mcp-admin-body');
+          if (body) {
+            body.hidden = true;
+          }
+          return null;
+        }
+        if (!r.ok || !r.data.ok) {
+          setStatus((r.data && r.data.error) || 'Could not load MCP settings.', 'err');
+          return null;
+        }
+        applyConfig(r.data);
+        setStatus('');
+        return api('/api/mcp/clients');
+      })
+      .then(function (r) {
+        if (!r) {
+          return;
+        }
+        if (!r.ok || !r.data.ok) {
+          renderClients([]);
+          return;
+        }
+        renderClients(r.data.clients);
+      })
+      .catch(function () {
+        setStatus('Could not reach the MCP settings service.', 'err');
+      });
+  }
+
+  function save() {
+    var enabled = $('#mcp-enabled');
+    var policy = $('#mcp-policy');
+    var subset = [];
+    if (policy && policy.value === 'allow_subset') {
+      var boxes = card.querySelectorAll('#mcp-tools input[type="checkbox"]');
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].checked) {
+          subset.push(boxes[i].value);
+        }
+      }
+    }
+    setStatus('Saving...');
+    api('/api/mcp/config', {
+      method: 'PUT',
+      body: JSON.stringify({
+        enabled: !!(enabled && enabled.checked),
+        policy: policy ? policy.value : 'allow_all',
+        tool_subset: policy && policy.value === 'allow_subset' ? subset : null
+      })
+    })
+      .then(function (r) {
+        if (!r.ok || !r.data.ok) {
+          setStatus((r.data && r.data.error) || 'Could not save MCP settings.', 'err');
+          return;
+        }
+        applyConfig({
+          config: r.data.config,
+          tools: state ? state.tools : [],
+          projects: state ? state.projects : []
+        });
+        setStatus('MCP settings saved.', 'ok');
+      })
+      .catch(function () {
+        setStatus('Could not reach the MCP settings service.', 'err');
+      });
+  }
+
+  function revoke(clientId, btn) {
+    if (!clientId) {
+      return;
+    }
+    if (btn) {
+      btn.disabled = true;
+    }
+    setStatus('Revoking client...');
+    api('/api/mcp/clients/revoke', {
+      method: 'POST',
+      body: JSON.stringify({ clientId: clientId })
+    })
+      .then(function (r) {
+        if (!r.ok || !r.data.ok) {
+          setStatus((r.data && r.data.error) || 'Could not revoke the client.', 'err');
+          if (btn) {
+            btn.disabled = false;
+          }
+          return;
+        }
+        setStatus('Client revoked. Its live tokens are dead now.', 'ok');
+        return api('/api/mcp/clients').then(function (c) {
+          if (c.ok && c.data.ok) {
+            renderClients(c.data.clients);
+          }
+        });
+      })
+      .catch(function () {
+        setStatus('Could not reach the MCP settings service.', 'err');
+        if (btn) {
+          btn.disabled = false;
+        }
+      });
+  }
+
+  function toggleProject(projectId, box) {
+    if (!projectId || !box) {
+      return;
+    }
+    var want = box.checked;
+    setStatus('Updating project access...');
+    api('/api/mcp/projects/' + encodeURIComponent(projectId) + '/enabled', {
+      method: 'PUT',
+      body: JSON.stringify({ enabled: want })
+    })
+      .then(function (r) {
+        if (!r.ok || !r.data.ok) {
+          box.checked = !want;
+          setStatus((r.data && r.data.error) || 'Could not change project access.', 'err');
+          return;
+        }
+        setStatus((want ? 'MCP allowed on ' : 'MCP blocked on ') + projectId + '.', 'ok');
+      })
+      .catch(function () {
+        box.checked = !want;
+        setStatus('Could not reach the MCP settings service.', 'err');
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', load);
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-mcp-act]') : null;
+    if (!t || !card || !card.contains(t)) {
+      return;
+    }
+    var act = t.getAttribute('data-mcp-act');
+    if (act === 'save') {
+      e.preventDefault();
+      save();
+    } else if (act === 'revoke') {
+      e.preventDefault();
+      revoke(t.getAttribute('data-client-id'), t);
+    }
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t || !t.getAttribute || !card || !card.contains(t)) {
+      return;
+    }
+    if (t.id === 'mcp-policy') {
+      syncSubsetVisibility();
+      return;
+    }
+    if (t.getAttribute('data-mcp-act') === 'project-toggle') {
+      toggleProject(t.getAttribute('data-project-id'), t);
+    }
+  });
+
+  MMGR.McpAdmin = { load: load };
+})(window.MMGR || (window.MMGR = {}));

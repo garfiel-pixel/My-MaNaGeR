@@ -1,0 +1,54 @@
+/* T-25 (2026-11-12): admin MCP server panel. Rows reuse the app's border and
+   slate tokens; the tool subset wraps instead of forcing a horizontal scroll. */
+.mcp-admin-rows {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+.mcp-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+}
+.mcp-admin-row > div:first-child {
+  min-width: 0;
+}
+.mcp-admin-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mcp-admin-meta {
+  color: var(--slate);
+  font-size: 0.76rem;
+}
+.mcp-admin-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 6px 0 12px;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.mcp-admin-tools[hidden] {
+  display: none !important;
+}
+.mcp-admin-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.mcp-admin-empty {
+  color: var(--slate);
+  font-size: 0.84rem;
+  padding: 6px 0;
+}

@@ -740,6 +740,20 @@ const server = http.createServer((req, res) => {
       });
       return;
     }
+    // T-25 (2026-11-12): the account-scoped MCP admin routes are NOT the
+    // per-project transport below. The dev server has no Google session, so it
+    // answers them the way the Worker answers a signed-out caller (403) -
+    // without this guard the project matcher below would treat "config" as a
+    // project id and answer "requires POST", which looks like a broken panel.
+    if (
+      p === '/api/mcp/config' ||
+      p === '/api/mcp/clients' ||
+      p === '/api/mcp/clients/revoke' ||
+      /^\/api\/mcp\/projects\/[A-Za-z0-9_-]{1,64}\/enabled$/.test(p)
+    ) {
+      mcpJson(res, 403, { ok: false, error: 'sign in required' });
+      return;
+    }
     var mmm = p.match(/^\/api\/mcp\/([A-Za-z0-9_-]{1,64})$/);
     if (mmm) {
       if (req.method !== 'POST') {

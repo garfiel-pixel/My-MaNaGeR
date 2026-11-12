@@ -1968,11 +1968,6 @@
     <div class="ctl-sec" data-ctl-group="share-access" data-ctl-open="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Share &amp; Access</div>
     <div id="ctrl-share" role="region" aria-label="Sharing and access codes"></div>
 
-    <!-- Rules (Huly-inspired): declared triggers, conditions and one action
-         from a fixed list. No scripting, no outside calls. Rendered by
-         js/render/process.js into #rules-body. -->
-    <div class="ctl-sec" data-ctl-group="rules"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Rules</div>
-    <div id="rules-body" role="region" aria-label="Declared rules"></div>    <!-- C24 Template Library -->
     <!-- T-10 (UI-IA-AND-MCP 2026-11-11): Share & Send is one group with three
          tabs - Digests, Emails, Templates - so the seven format cards and the
          template library answer "how do I send this out" from one place
@@ -2040,29 +2035,77 @@
       <div id="template-list"></div>
     </div>
 
-    <div class="ctl-sec" data-ctl-group="appearance"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Appearance</div>
-    <div class="dock dock-inline dock-bare" role="group" aria-label="Appearance controls">
-      <div class="sr">
-        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg><label class="sr-only" for="theme-select">Theme</label><select id="theme-select" class="theme-select" aria-label="Theme mode"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option><option value="cyan">Cyan</option><option value="magenta">Magenta</option></select></span>
-      </div>
-      <div class="sr">
-        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Performance Mode</span>
-        <label class="tgl"><input type="checkbox" id="perf-tgl" aria-label="Performance Mode: lighter UI effects" data-action="tglPerfMode" checked><span class="tsl"></span></label>
-      </div>
-      <div class="sr" hidden>
-        <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> Dynamic View</span>
-        <span class="pal-hint">This project stays flat. Dynamic view is only on the dashboard.</span>
-      </div>
-    </div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculator</span><button class="btn btn-n btn-s" data-action="toggleCalc" title="Open calculator (Ctrl+Shift+C)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Open</button></div>
-    <div class="sr-hint">Floating calculator for quick math. Toggle with Ctrl+Shift+C or this button.</div>
-
+    <!-- T-11 (UI-IA-AND-MCP 2026-11-11): Workspace is one group with five
+         tabs - Look & feel, Behaviour, Modules, Packs, Rules - so every
+         workspace-level switch answers "how the app feels and what it shows"
+         from one place (closes F7). Look & feel <- Appearance; Behaviour <-
+         work week / weather region / lock methodology; Modules <- the five
+         feature flags (renamed from 'Features'); Packs <- Advanced Packs;
+         Rules <- #rules-body. -->
     <div class="ctl-sec" data-ctl-group="workspace" data-ctl-open="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> Workspace</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>
-    <div class="sr-hint">Used for resource utilization &amp; budget cost calculations. Monthly capacity ≈ days × 4 weeks × 8h.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Region</span><select id="weather-region-sel" data-action="setRegion" class="ctl-in" aria-label="Weather region"></select></div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="look">Look &amp; feel</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="behaviour">Behaviour</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="modules">Modules</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="packs">Packs</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="rules">Rules</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="look">
+      <div class="dock dock-inline dock-bare" role="group" aria-label="Appearance controls">
+        <div class="sr">
+          <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-moon"></use></svg><label class="sr-only" for="theme-select">Theme</label><select id="theme-select" class="theme-select" aria-label="Theme mode"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option><option value="cyan">Cyan</option><option value="magenta">Magenta</option></select></span>
+        </div>
+        <div class="sr">
+          <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Performance Mode</span>
+          <label class="tgl"><input type="checkbox" id="perf-tgl" aria-label="Performance Mode: lighter UI effects" data-action="tglPerfMode" checked><span class="tsl"></span></label>
+        </div>
+        <div class="sr" hidden>
+          <span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cube"></use></svg> Dynamic View</span>
+          <span class="pal-hint">This project stays flat. Dynamic view is only on the dashboard.</span>
+        </div>
+      </div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-crosshair"></use></svg> Crosshair Cursor</span><label class="tgl"><input type="checkbox" id="ch-tgl" aria-label="Crosshair Cursor" data-action="tglCh"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Calculator</span><button class="btn btn-n btn-s" data-action="toggleCalc" title="Open calculator (Ctrl+Shift+C)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Open</button></div>
+      <div class="sr-hint">Floating calculator for quick math. Toggle with Ctrl+Shift+C or this button.</div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="behaviour">
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock Active Methodology</span><button class="btn btn-n btn-s toggle-chip is-off" data-action="tglLock">Lock / Unlock</button></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calendar"></use></svg> Work Week (days)</span><select id="ww-sel" data-action="setWorkWeek" class="ctl-in" aria-label="Work week (days)"><option value="3">3-day</option><option value="4">4-day</option><option value="5" selected>5-day (default)</option><option value="6">6-day</option><option value="7">7-day</option></select></div>
+      <div class="sr-hint">Used for resource utilization &amp; budget cost calculations. Monthly capacity ≈ days × 4 weeks × 8h.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Region</span><select id="weather-region-sel" data-action="setRegion" class="ctl-in" aria-label="Weather region"></select></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="modules">
+      <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
+           control , it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
+           restore last non-off tier, default 'local'). flags.aiWindow is gone. -->
+      <div class="sr-hint">Feature flags , switch a module off to hide it from the workspace. All default on.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" id="ai-tgl" aria-label="AI Assistant" data-action="tglAiTier" checked><span class="tsl"></span></label></div>
+      <div class="sr-hint">AI Assistant is on by default (local engine, no key). Turn it off here if you don't want it.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" id="fl-monte-carlo" aria-label="Monte Carlo Simulation" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" id="fl-gantt-export" aria-label="Gantt PNG Export" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Kanban Lead-Time Lane</span><label class="tgl"><input type="checkbox" id="fl-leadtime-lane" aria-label="Kanban Lead-Time Lane" data-action="tglFlag" data-flag="leadtimeLane"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Forecast Panel</span><label class="tgl"><input type="checkbox" id="fl-weather" aria-label="Weather Forecast Panel" data-action="tglFlag" data-flag="weatherForecast"><span class="tsl"></span></label></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="packs" id="adv-packs-section">
+      <!-- Rank 3.1 (MASTER-ACTION-PLAN Rank 3.1): Core Mode vs Advanced Packs ,
+           progressive disclosure. New projects start Core-only; each advanced
+           pack is a single-action toggle here. Toggling a pack on reveals its
+           nav sections instantly; off hides them (never destroys data). -->
+      <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections , one action, nothing hidden is ever lost.</div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" id="pk-schedule" aria-label="Schedule Science pack" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" id="pk-money" aria-label="Money pack" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" id="pk-governance" aria-label="Governance pack" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Field</span><label class="tgl"><input type="checkbox" id="pk-field" aria-label="Field pack" data-action="tglPack" data-pack="field"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" id="pk-quality" aria-label="Quality pack" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cart"></use></svg> Procurement</span><label class="tgl"><input type="checkbox" id="pk-procurement" aria-label="Procurement pack" data-action="tglPack" data-pack="procurement"><span class="tsl"></span></label></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="rules">
+      <!-- Rules (Huly-inspired): declared triggers, conditions and one action
+           from a fixed list. No scripting, no outside calls. Rendered by
+           js/render/process.js into #rules-body. -->
+      <div id="rules-body" role="region" aria-label="Declared rules"></div>
+    </div>
+
 
     <!-- S-2 PRIVACY (audit 2026-10-18, 8.2 item 7): the signed-in app never
          shows the cookie banner - the choice lives HERE, in Settings. The
@@ -2165,29 +2208,6 @@
       <div id="cloud-section"></div>
     </div>
 
-    <div class="ctl-sec" data-ctl-group="features"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Features</div>
-    <div class="sr-hint">Feature flags , switch a module off to hide it from the workspace. All default on.</div>
-    <!-- MERGED-AI-CONTROL (audit 1.2): this switch is now the SINGLE AI on/off
-         control , it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
-         restore last non-off tier, default 'local'). flags.aiWindow is gone. -->
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" id="ai-tgl" aria-label="AI Assistant" data-action="tglAiTier" checked><span class="tsl"></span></label></div>
-    <div class="sr-hint">AI Assistant is on by default (local engine, no key). Turn it off here if you don't want it.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" id="fl-monte-carlo" aria-label="Monte Carlo Simulation" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" id="fl-gantt-export" aria-label="Gantt PNG Export" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clock"></use></svg> Kanban Lead-Time Lane</span><label class="tgl"><input type="checkbox" id="fl-leadtime-lane" aria-label="Kanban Lead-Time Lane" data-action="tglFlag" data-flag="leadtimeLane"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Weather Forecast Panel</span><label class="tgl"><input type="checkbox" id="fl-weather" aria-label="Weather Forecast Panel" data-action="tglFlag" data-flag="weatherForecast"><span class="tsl"></span></label></div>
-    <!-- Rank 3.1 (MASTER-ACTION-PLAN Rank 3.1): Core Mode vs Advanced Packs , 
-         progressive disclosure. New projects start Core-only; each advanced
-         pack is a single-action toggle here. Toggling a pack on reveals its
-         nav sections instantly; off hides them (never destroys data). -->
-    <div class="ctl-sec" id="adv-packs-section" data-ctl-group="adv-packs" data-ctl-open="1"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Advanced Packs</div>
-    <div class="sr-hint">New projects open Core-only (Dashboard, Definitions, Charter, WBS, Kanban). Turn a pack on to reveal its sections , one action, nothing hidden is ever lost.</div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Schedule Science</span><label class="tgl"><input type="checkbox" id="pk-schedule" aria-label="Schedule Science pack" data-action="tglPack" data-pack="schedule"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dollar"></use></svg> Money</span><label class="tgl"><input type="checkbox" id="pk-money" aria-label="Money pack" data-action="tglPack" data-pack="money"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Governance</span><label class="tgl"><input type="checkbox" id="pk-governance" aria-label="Governance pack" data-action="tglPack" data-pack="governance"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg> Field</span><label class="tgl"><input type="checkbox" id="pk-field" aria-label="Field pack" data-action="tglPack" data-pack="field"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Quality</span><label class="tgl"><input type="checkbox" id="pk-quality" aria-label="Quality pack" data-action="tglPack" data-pack="quality"><span class="tsl"></span></label></div>
-    <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cart"></use></svg> Procurement</span><label class="tgl"><input type="checkbox" id="pk-procurement" aria-label="Procurement pack" data-action="tglPack" data-pack="procurement"><span class="tsl"></span></label></div>
     <div class="ctl-sec" data-ctl-group="support"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-tool"></use></svg> Support &amp; Diagnostics</div>
     <!-- Phase 2: client-side error surface (last 20 errors, timestamp + action) -->
     <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Client Error Log</span><span class="g6"><button class="btn btn-n btn-s" data-action="copyErrorLog" title="Copy the error log to the clipboard as plain text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button><button class="btn btn-n btn-s" data-action="downloadErrorLog" title="Download the error log as a .txt file"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download</button><button class="btn btn-n btn-s" data-action="clearErrorLog">Clear</button></span></div>

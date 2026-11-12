@@ -1371,6 +1371,16 @@ var MMGR = window.MMGR || {};
     }
     openDrw();
     swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
+    // T-11: the packs now live in the Workspace group's Packs tab. Open the
+    // group and switch to that tab so the (hidden by default) panel is shown
+    // before we scroll it into view.
+    if (window.MMGR && window.MMGR.AppControls) {
+      window.MMGR.AppControls.setOpen('workspace', true);
+      const packsTab = document.querySelector('.dtab[data-ctl-tab="packs"]');
+      if (packsTab && window.MMGR.AppControls.switchTab) {
+        window.MMGR.AppControls.switchTab(packsTab);
+      }
+    }
     const el = U.$('adv-packs-section');
     if (el) {
       requestAnimationFrame(function () {

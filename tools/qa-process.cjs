@@ -444,14 +444,18 @@ async function reachable(url) {
     window.MMGR.Render.renderRules();
   });
   await page.waitForTimeout(500);
-  // The Controls accordion starts every section collapsed; the Rules group has
-  // to be opened the way a person opens it before its form can be used.
+  // The Controls accordion: the Workspace group must be opened and its Rules
+  // tab selected the way a person does it before the rule form can be used.
   await page.evaluate(() => {
     const sec = Array.from(document.querySelectorAll('#db-ctrl .ctl-sec')).find(s =>
-      /^Rules/.test((s.textContent || '').trim())
+      /^Workspace/.test((s.textContent || '').trim())
     );
     if (sec && !sec.classList.contains('open')) {
       sec.click();
+    }
+    const tab = document.querySelector('#db-ctrl .dtab[data-ctl-tab="rules"]');
+    if (tab && !tab.classList.contains('active')) {
+      tab.click();
     }
   });
   await page.waitForTimeout(500);

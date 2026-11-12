@@ -23,7 +23,8 @@
          change the projected output (projectId is inert in the
          shared engine, so both endpoints project identically)
      P6  the auth/premium refusal constants are shared, not
-         duplicated
+         duplicated (the app-wide surface answers a 401 challenge,
+         not the project refusal text)
 
    Run: node tools/qa-mcp-parity.cjs
    ============================================================ */
@@ -260,11 +261,20 @@ const ARGS = {
 
   section('P6 — refusal constants are shared, not duplicated');
   check(
-    'MCP_AUTH_REFUSAL is exported by server.js and used verbatim by app-wide',
+    'MCP_AUTH_REFUSAL stays the project refusal; app-wide answers the 401 challenge',
     typeof server.MCP_AUTH_REFUSAL === 'string' &&
       server.MCP_AUTH_REFUSAL.length > 0 &&
-      src.indexOf('MCP_AUTH_REFUSAL') > -1,
-    server.MCP_AUTH_REFUSAL
+      // T-26 (2026-11-12): the app-wide surface no longer carries the tool
+      // refusal text. A remote connector needs a transport-level 401 with the
+      // protected-resource metadata URL to start OAuth, so appwide.js must
+      // advertise that challenge instead of a second copy of the constant.
+      src.indexOf('MCP_AUTH_REFUSAL') === -1 &&
+      src.indexOf('WWW-Authenticate') > -1 &&
+      src.indexOf('resource_metadata') > -1,
+    {
+      constant: !!server.MCP_AUTH_REFUSAL,
+      challenge: src.indexOf('resource_metadata') > -1
+    }
   );
   check(
     'MCP_PREMIUM_REFUSAL is exported by server.js and used verbatim by app-wide',

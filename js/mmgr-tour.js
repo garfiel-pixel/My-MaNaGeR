@@ -534,10 +534,60 @@
     }
   }
 
+  // I-11: a step whose target is not on screen for this person (a section
+  // hidden by a pack, the phone drawer parked off-canvas) is SKIPPED, so the
+  // walk only ever rings something real. The plan is built after the shell
+  // has settled, so a section that is merely late to render is not mistaken
+  // for a permanently hidden one.
   function buildPlan() {
     plan = STEPS.filter(function (s) {
       return !s.sel || !!pick(s.sel);
     });
+  }
+
+  // Settle the plan BEFORE the first card is shown. The rail and its section
+  // buttons can still be laying out when the tour opens (the rail is opened by
+  // openRailForTour only a moment before), so a target that has no box yet
+  // must not be dropped from the walk. Re-plan until the plan stops CHANGING
+  // (three unchanged polls), then render - the walker never meets a partial
+  // plan. A transient layout that momentarily hides a target must never SHRINK
+  // the walk: keep the steps already found and try again next tick.
+  function settlePlan() {
+    let stable = 0;
+    let lastKeys = '';
+    let tries = 0;
+    (function poll() {
+      if (idx < 0) {
+        // The person closed (or the app took the screen) while we settled.
+        return;
+      }
+      const before = plan.slice();
+      buildPlan();
+      if (before.length && plan.length < before.length) {
+        // A transient layout (the rail mid-transition) must never SHRINK the
+        // walk: keep the steps already found and try again next tick.
+        plan = before;
+      }
+      const keys = plan
+        .map(function (s) {
+          return s.title;
+        })
+        .join('|');
+      if (keys === lastKeys && plan.length > 0) {
+        stable++;
+      } else {
+        stable = 0;
+        lastKeys = keys;
+      }
+      if (stable >= 3 || tries++ >= 50) {
+        if (!plan.length) {
+          return end();
+        }
+        render();
+        return;
+      }
+      setTimeout(poll, 120);
+    })();
   }
 
   function start(fromUser) {
@@ -547,40 +597,12 @@
     prevFocus = document.activeElement;
     openRailForTour();
     build();
-    buildPlan();
+    plan = [];
     idx = 0;
-    if (!plan.length) {
-      return end();
-    }
-    render();
-    // The shell can still be laying out when the tour auto-opens, so a step
-    // whose section button has not been rendered YET must not be dropped from
-    // the walk. While the person is still on the first card, re-plan a few
-    // times as the shell settles; only re-render when the plan actually grew.
-    if (plan.length < STEPS.length) {
-      let settleTries = 0;
-      (function settle() {
-        if (!isOpen() || idx !== 0 || settleTries++ > 30) {
-          return;
-        }
-        const before = plan.slice();
-        buildPlan();
-        if (plan.length < before.length) {
-          // A transient layout (the rail mid-transition) must never SHRINK the
-          // walk: keep the steps already found and try again next tick.
-          plan = before;
-        } else if (plan.length > before.length) {
-          render();
-          return;
-        }
-        setTimeout(settle, 150);
-      })();
-    }
-    if (fromUser) {
-      // Started from the help surface: the flag is already set, and a manual
-      // replay must not clear it, so nothing to write here.
-      return;
-    }
+    // Settle the plan (re-plan until the shell stops laying out its rail and
+    // section targets) before the first card appears, so a late-rendered
+    // section is never dropped from the walk.
+    settlePlan();
   }
 
   function next() {

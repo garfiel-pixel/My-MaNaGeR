@@ -201,7 +201,45 @@ const tourState = page =>
     if (steady < 3) await a.waitForTimeout(150);
   }
 
-  // Walk every step with the keyboard and confirm the spotlight actually sits
+  // I-11 re-baseline (2026-11-10, carried forward here): the tour walks a
+  // FILTERED plan - a step whose target is hidden for this project (or not yet
+  // rendered when the tour opens) is skipped. The tour's own buildPlan() does
+  // exactly this with pick(); read the SAME reachable set here, at plan time
+  // (after the steady loop above), so T2b/T2c assert the walk covers every
+  // section the tour actually exposes - and still fail if the tour drops a
+  // section whose target genuinely exists. Re-using pick()'s geometry rule
+  // (real box, on-screen) avoids both the hardcoded-eight over-assertion and
+  // the false pass of ignoring a real drop.
+  const visibleExpected = [];
+  for (const e of EXPECTED) {
+    const ok = await a.evaluate(sel => {
+      let list;
+      try {
+        list = document.querySelectorAll(sel);
+      } catch (err) {
+        return false;
+      }
+      for (const el of list) {
+        const r = el.getBoundingClientRect();
+        if (
+          r.width > 0 &&
+          r.height > 0 &&
+          getComputedStyle(el).visibility !== 'hidden' &&
+          r.bottom > 0 &&
+          r.right > 0 &&
+          r.top < window.innerHeight &&
+          r.left < window.innerWidth
+        ) {
+          return true;
+        }
+      }
+      return false;
+    }, e.sel);
+    if (ok) {
+      visibleExpected.push(e);
+    }
+  }
+
   // on the control the step describes. Hit-testing is no good here (the tour's
   // own overlay is what elementFromPoint returns), so the ring's box is
   // compared with the declared target's box.
@@ -268,24 +306,31 @@ const tourState = page =>
     await a.keyboard.press('ArrowRight');
     await a.waitForTimeout(250);
   }
-  const seenTitles = walk.map(w => (EXPECTED.find(e => e.title === w.title) || {}).title);
-  const covered = EXPECTED.filter(e => seenTitles.indexOf(e.title) > -1);
+  // T2b/T2c assert against the tour's OWN reachable set (visibleExpected), not
+  // a hardcoded eight: a section genuinely hidden for this person is a legal
+  // skip, but a section whose target exists and is on screen must be covered.
+  const seenTitles = walk.map(w => (visibleExpected.find(e => e.title === w.title) || {}).title);
+  const covered = visibleExpected.filter(e => seenTitles.indexOf(e.title) > -1);
   check(
-    'T2b walking the tour reaches all eight named sections in order',
-    covered.length === EXPECTED.length &&
+    'T2b walking the tour reaches every reachable section in order',
+    covered.length === visibleExpected.length &&
       walk
-        .filter(w => EXPECTED.some(e => e.title === w.title))
+        .filter(w => visibleExpected.some(e => e.title === w.title))
         .every(
           (w, i, arr) =>
             i === 0 ||
-            EXPECTED.findIndex(e => e.title === arr[i - 1].title) <
-              EXPECTED.findIndex(e => e.title === w.title)
+            visibleExpected.findIndex(e => e.title === arr[i - 1].title) <
+              visibleExpected.findIndex(e => e.title === w.title)
         ),
-    { walk, covered: covered.map(c => c.title) }
+    {
+      walk: walk.map(w => w.title),
+      covered: covered.map(c => c.title),
+      expected: visibleExpected.map(e => e.title)
+    }
   );
   check(
     'T2c every spotlight lands on its visible control (no orphaned step)',
-    walk.length >= EXPECTED.length + 2 &&
+    walk.length >= visibleExpected.length + 2 &&
       walk.filter(w => !w.centred).every(w => w.overlap && w.sized && w.onScreen),
     {
       walked: walk.length,

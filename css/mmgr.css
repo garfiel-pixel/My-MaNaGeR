@@ -1272,6 +1272,11 @@ body.db-page[data-skin] #app-header {
   opacity: 0.7;
 }
 .status-pop {
+  /* OWNER 2026-11-12: a [popover] with margin:0 kept the UA's inset:0, so
+     the menu pinned to the viewport's top-left instead of the chip. JS places
+     it on the toggle event; inset:auto lets those left/top values win. */
+  position: fixed;
+  inset: auto;
   margin: 0;
   padding: 4px;
   border: 1px solid var(--border);
@@ -1280,6 +1285,7 @@ body.db-page[data-skin] #app-header {
   color: var(--text);
   box-shadow: var(--glass-shadow);
   min-width: 172px;
+  max-width: calc(100vw - 16px);
 }
 .status-pop button {
   display: flex;
@@ -4883,8 +4889,8 @@ body.dark-mode .dmaic-chip {
      light card only reached 3.3:1. The ink step passes AA. */
   color: var(--gold-ink);
   border-radius: 4px;
-  padding: 0 6px;
-  font-size: 0.66rem;
+  padding: 1px 6px;
+  font-size: 0.72rem;
   font-weight: 700;
   font-family: ui-monospace, Consolas, monospace;
   white-space: nowrap;
@@ -5020,7 +5026,10 @@ body.dark-mode .dmaic-chip {
 
 /* ---- DMAIC / KPI / resources-leveling / misc class pass ---- */
 .sr-hint {
-  font-size: 0.68rem;
+  /* OWNER 2026-11-12: 0.68rem (10.9px) read as fine print in the drawer.
+     Hints carry the meaning of a control, so they sit at body size. */
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--slate);
   margin: -2px 0 8px;
 }
@@ -5237,6 +5246,16 @@ body.dark-mode .dmaic-chip {
 }
 .exp-row .btn {
   flex: 1;
+}
+/* OWNER 2026-11-12: inside the settings drawer an action sizes to its label
+   and wraps, instead of a lone button stretching the full width below the
+   text it belongs to. */
+#db-ctrl .exp-row {
+  flex-wrap: wrap;
+  align-items: center;
+}
+#db-ctrl .exp-row .btn {
+  flex: 0 1 auto;
 }
 /* ACTION-PLAN 4.2 RACI workload heatmap */
 .rw-grid {
@@ -6477,6 +6496,20 @@ body.dark-mode #team-access-banner {
 }
 .team-pop[hidden] {
   display: none;
+}
+/* OWNER 2026-11-12: the launcher page carries a global .btn{width:100%} for
+   its create-project form, which also reached this body-level popover. The
+   full-width button ate the whole row and squeezed .team-person-id to 0px,
+   so the project name rendered one letter per line. Popover buttons are
+   inline actions, never full-width. */
+.team-pop .btn {
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.team-pop .btn-s {
+  padding: 6px 12px;
+  font-size: 0.78rem;
 }
 .team-pop-head {
   display: flex;
@@ -9108,10 +9141,15 @@ body.dark-mode .kqa-in {
 }
 .dtabs {
   display: flex;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
 }
+/* OWNER 2026-11-12: five sub-tabs in a 380px drawer used to break labels
+   mid-word ("Look &" / "feel", "Cloud &" / "Sync"). A tab is a whole label:
+   it never wraps internally, and the bar wraps between tabs instead. */
 .dtab {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: max-content;
   padding: 11px;
   text-align: center;
   font-size: 0.78rem;
@@ -9122,6 +9160,7 @@ body.dark-mode .kqa-in {
   background: none;
   border-bottom: 2px solid transparent;
   transition: var(--tr-ui);
+  white-space: nowrap;
 }
 .dtab.active {
   color: var(--gold-text);
@@ -9145,7 +9184,8 @@ body.dark-mode .kqa-in {
   margin-bottom: 3px;
 }
 .fd {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--slate);
 }
 
@@ -9177,7 +9217,8 @@ body.dark-mode .kqa-in {
   transition:
     max-height 0.3s ease,
     padding 0.3s ease;
-  font-size: 0.74rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
   color: var(--slate);
 }
 .qa.open {
@@ -9315,7 +9356,7 @@ body.dark-mode .kqa-in {
   margin-top: 2px;
 }
 .sl {
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   color: var(--text);
 }
 
@@ -9324,7 +9365,7 @@ body.dark-mode .kqa-in {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -9387,7 +9428,8 @@ body.dark-mode .kqa-in {
   }
 }
 .ctl-lead {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
   color: var(--slate);
   margin: 0 0 10px;
 }
@@ -9466,7 +9508,7 @@ body.dark-mode .kqa-in {
   border: 1px solid var(--border);
   border-radius: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;

@@ -354,6 +354,42 @@ function check(name, val, detail) {
   const overBad = c7.filter(x => x.over > 2);
   check('C7 controls: no horizontal overflow at 390 / 768 / 1440', overBad.length === 0, c7);
 
+  // ---- C8: the project status menu opens under its chip ----------------
+  // OWNER 2026-11-12: the native [popover] kept the UA's inset:0 because the
+  // authored rule only set margin:0, so it pinned to the viewport's top-left.
+  await send('Emulation.setDeviceMetricsOverride', {
+    width: 1280,
+    height: 900,
+    deviceScaleFactor: 1,
+    mobile: false
+  });
+  await ev(`(function(){ if (MMGR.App && MMGR.App.closeDrw) { MMGR.App.closeDrw(); } })()`);
+  await delay(250);
+  await ev(`(function(){
+      var chip = document.getElementById('status-chip');
+      if (chip) { chip.click(); }
+    })()`);
+  await delay(350);
+  const c8 = await ev(`(function(){
+      var chip = document.getElementById('status-chip');
+      var pop = document.getElementById('status-pop');
+      if (!chip || !pop) { return { missing: true }; }
+      var c = chip.getBoundingClientRect();
+      var p = pop.getBoundingClientRect();
+      return {
+        open: pop.matches(':popover-open'),
+        dx: Math.round(p.left - c.left),
+        dy: Math.round(p.top - c.bottom),
+        width: Math.round(p.width)
+      };
+    })()`);
+  check(
+    'C8 status menu opens under the chip, not at the viewport corner',
+    !!c8 && c8.open === true && Math.abs(c8.dx) <= 2 && c8.dy >= 0 && c8.dy <= 10,
+    c8
+  );
+  await send('Emulation.clearDeviceMetricsOverride', {});
+
   // ---- Tear down -------------------------------------------------------
   try {
     await send('Page.close');

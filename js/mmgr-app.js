@@ -1338,7 +1338,9 @@ var MMGR = window.MMGR || {};
   });
 
   function swDtab(tab, btn) {
-    document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
+    // Scope to the top-level drawer tabs only: controls-internal tabs carry
+    // data-ctl-tab (not data-tab) and manage their own active state.
+    document.querySelectorAll('.dtab[data-tab]').forEach(b => b.classList.remove('active'));
     if (btn) {
       btn.classList.add('active');
     }
@@ -6169,6 +6171,14 @@ window.MMGR = MMGR;
       const ac = window.MMGR && window.MMGR.AppControls;
       if (ac && ac.toggle) {
         ac.toggle(el.getAttribute('data-ctl-group'));
+      }
+    },
+    // T-08 (UI-IA-AND-MCP 2026-11-11): Controls drawer internal tab switch.
+    // The tab carries data-ctl-tab; AppControls.switchTab shows its panel.
+    ctlTab: el => {
+      const ac = window.MMGR && window.MMGR.AppControls;
+      if (ac && ac.switchTab) {
+        ac.switchTab(el);
       }
     },
     addTaskComment: el => {

@@ -749,7 +749,7 @@
 // cache-first shell would keep serving the pre-fix bundle to return visitors.
 // Bumping the cache name re-fetches the bundle and the section buttons stop
 // losing clicks to the pin dot.
-const CACHE = 'mmgr-shell-v627';
+const CACHE = 'mmgr-shell-v628';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

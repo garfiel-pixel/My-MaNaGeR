@@ -2991,11 +2991,14 @@ var MMGR = window.MMGR || {};
     const code = getCode();
     const ecode = getECode();
     const linked = !!(code || ecode || sessOwner);
+    // T-08 (UI-IA-AND-MCP 2026-11-11): expose the linked state on the host so
+    // the Controls module can default the AI tab without reaching into this
+    // module's private state.
+    host.setAttribute('data-mcp-linked', linked ? '1' : '');
     host.innerHTML = linked
       ? (function () {
           var mcpUrl = window.location.origin + '/api/mcp/' + encodeURIComponent(pid());
           return (
-            '<div class="sr" style="margin-top:8px"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</span></div>' +
             '<div class="sr-hint">Connect an outside AI to this project. It can read your data and suggest changes - every change waits for you in Review.</div>' +
             '<div class="exp-row" style="flex-wrap:wrap;align-items:center;gap:8px">' +
             '<input type="text" id="mcp-url" class="ctl-in" readonly style="flex:1;min-width:200px;font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.02em;background:var(--tile-bg)" value="' +

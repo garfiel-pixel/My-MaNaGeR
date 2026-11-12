@@ -2074,33 +2074,44 @@
     <div class="sr-hint">One JSON file of every project and setting this browser holds. Keep it as a backup, or move it to another device.</div>
     <div id="data-account" aria-live="polite"></div>
 
-    <div class="ctl-sec" data-ctl-group="sync"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud &amp; Sync</div>
-    <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
-         sync , never gating. Rendered by js/mmgr-sync.js into this slot. -->
-    <div id="sync-section"></div>
-
-    <!-- MCP SERVER (owner 2026-09-07): settings for the per-project MCP server.
-         Only shown for cloud-linked projects (projects with an Internet connection).
-         The MCP server lets an AI client read/edit this project via structured tools.
-         Toggle connects/disconnects the AI from this project's live data. -->
-    <div class="ctl-sec" id="ctrl-mcp-sec" data-ctl-group="mcp"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP Server</div>
-    <div id="ctrl-mcp"></div>
-    <div class="sr-hint">Sync identity is 100% optional , the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
-
-    <!-- REGULAR TERMINAL (non-cloud MCP): the stdio connector for an AI tool
-         running in a plain terminal on this machine, with no cloud link and no
-         HTTP server. Rendered by renderTerminal() in js/mmgr-cloud.js. Unlike
-         the MCP Server card above it does NOT depend on a cloud code or a
-         signed-in session, so it renders for every project. -->
-    <div class="ctl-sec" id="ctrl-terminal-sec" data-ctl-group="terminal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-terminal"></use></svg> Regular Terminal</div>
-    <div id="ctrl-terminal"></div>
-    <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls , never
-         gating. Rendered by js/mmgr-google-auth.js into this slot. -->
-    <div id="drive-section"></div>
-    <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup
-         (D1 + R2 owner-code storage) , never gating. Rendered by
-         js/mmgr-cloud.js into this slot. -->
-    <div id="cloud-section"></div>
+    <!-- T-08 (UI-IA-AND-MCP 2026-11-11): Connect & Sync is one group with
+         four tabs. Drive and Cloud backup used to render under the Terminal
+         heading; they are now first-class tabs, so both backup surfaces are
+         no longer misfiled under an AI connector. -->
+    <div class="ctl-sec" data-ctl-group="connect"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Connect &amp; Sync</div>
+    <div class="dtabs">
+      <button class="dtab active" data-action="ctlTab" data-ctl-tab="sync">Cloud &amp; Sync</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="ai">Connect an AI</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="drive">Drive backup</button>
+      <button class="dtab" data-action="ctlTab" data-ctl-tab="cloud">Cloud backup</button>
+    </div>
+    <div class="ctl-panel" data-ctl-panel="sync">
+      <!-- PLAN-OF-ACTION-AI-VOICE-SYNC-v1 4.5: optional Google identity for
+           sync , never gating. Rendered by js/mmgr-sync.js into this slot. -->
+      <div id="sync-section"></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="ai">
+      <!-- MCP SERVER (owner 2026-09-07): settings for the per-project MCP server.
+           Only shown for cloud-linked projects. The MCP server lets an AI client
+           read/edit this project via structured tools. -->
+      <div id="ctrl-mcp"></div>
+      <div class="sr-hint">Sync identity is 100% optional , the app works forever without an account. JSON export/import is the guaranteed sync path on every device, signed in or not.</div>
+      <!-- REGULAR TERMINAL (non-cloud MCP): the stdio connector for an AI tool
+           running in a plain terminal on this machine, with no cloud link and no
+           HTTP server. Rendered by renderTerminal() in js/mmgr-cloud.js. -->
+      <div id="ctrl-terminal"></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="drive">
+      <!-- GOOGLE-DRIVE-BACKUP: optional Drive backup/restore controls , never
+           gating. Rendered by js/mmgr-google-auth.js into this slot. -->
+      <div id="drive-section"></div>
+    </div>
+    <div class="ctl-panel is-hide" data-ctl-panel="cloud">
+      <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 1: optional Cloud Backup
+           (D1 + R2 owner-code storage) , never gating. Rendered by
+           js/mmgr-cloud.js into this slot. -->
+      <div id="cloud-section"></div>
+    </div>
 
     <div class="ctl-sec" data-ctl-group="features"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Features</div>
     <div class="sr-hint">Feature flags , switch a module off to hide it from the workspace. All default on.</div>

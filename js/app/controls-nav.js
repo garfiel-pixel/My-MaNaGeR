@@ -86,6 +86,21 @@
       sec.parentNode.insertBefore(group, sec.nextSibling);
     });
 
+    // Tabbed groups: each group body that carries internal tabs defaults to
+    // its first tab — show that panel, hide the rest, mark the tab active.
+    // Groups without tabs are left untouched.
+    SECS.forEach(function (sec) {
+      var body = groupOf(keyOf(sec));
+      if (!body) {
+        return;
+      }
+      var tabs = body.querySelectorAll('.dtab[data-ctl-tab]');
+      if (!tabs.length) {
+        return;
+      }
+      switchTab(tabs[0]);
+    });
+
     // Keyboard handling for role=button sections (Enter/Space). Delegated so
     // it survives the content re-parenting above.
     ctrl.addEventListener('keydown', function (e) {
@@ -142,6 +157,23 @@
     }
   }
 
+  // Switch the active tab within a group body. The tab element carries
+  // data-ctl-tab; the matching panel carries data-ctl-panel. Exactly one
+  // panel is visible per group (T-12 gate). Used by data-action="ctlTab".
+  function switchTab(tabEl) {
+    var body = tabEl.closest ? tabEl.closest('[data-ctl-group-body]') : null;
+    if (!body) {
+      return;
+    }
+    var key = tabEl.getAttribute('data-ctl-tab');
+    body.querySelectorAll('[data-ctl-panel]').forEach(function (p) {
+      p.classList.toggle('is-hide', p.getAttribute('data-ctl-panel') !== key);
+    });
+    body.querySelectorAll('.dtab[data-ctl-tab]').forEach(function (t) {
+      t.classList.toggle('active', t.getAttribute('data-ctl-tab') === key);
+    });
+  }
+
   function open() {
     SECS.forEach(function (s) {
       if (!s.hasAttribute('data-ctl-static')) {
@@ -173,6 +205,7 @@
     init: init,
     toggle: toggle,
     setOpen: setOpen,
+    switchTab: switchTab,
     open: open,
     close: close,
     focus: focus,

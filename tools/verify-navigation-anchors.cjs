@@ -50,10 +50,7 @@ const PAGES = [
 ];
 
 function readVisible(page) {
-  return fs
-    .readFileSync(path.join(ROOT, page), 'utf8')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  return stripScripts(stripComments(fs.readFileSync(path.join(ROOT, page), 'utf8')));
 }
 
 function idsOf(html) {

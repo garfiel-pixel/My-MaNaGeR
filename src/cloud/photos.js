@@ -30,7 +30,7 @@ import {
   cloudTimingSink,
   readSession
 } from '../lib/http.js';
-import { billingConfigured, billingStatusActive } from '../billing.js';
+import { billingConfigured, subscriptionActive } from '../billing.js';
 import { trackEvent } from '../lib/observe.js';
 
 // Shared access gate used by upload / list / single / delete. Kept in one
@@ -362,11 +362,11 @@ async function photoSubscription(env, proj, request) {
   for (let i = 0; i < subjects.length; i++) {
     try {
       const row = await env.DB.prepare(
-        'SELECT status, plan, tier FROM cloud_subscriptions WHERE owner_sub = ?'
+        'SELECT status, plan, tier, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
       )
         .bind(subjects[i])
         .first();
-      if (row && billingStatusActive(row.status)) {
+      if (subscriptionActive(row)) {
         return row;
       }
     } catch (e) {

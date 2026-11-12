@@ -45,7 +45,7 @@ import {
   cloudAuthApiKey,
   cloudScopeState
 } from '../lib/http.js';
-import { billingConfigured, billingFreeCap, billingStatusActive } from '../billing.js';
+import { billingConfigured, billingFreeCap, subscriptionActive } from '../billing.js';
 import { enrichDiffs } from './proposal-diffs.js';
 import { trackEvent } from '../lib/observe.js';
 
@@ -240,10 +240,12 @@ export async function handleCloudCreate(request, env) {
       .first();
     const owned = (cnt && cnt.c) || 0;
     if (owned >= billingFreeCap(env)) {
-      const sub = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
+      const sub = await env.DB.prepare(
+        'SELECT status, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
+      )
         .bind(session.sub)
         .first();
-      if (!(sub && billingStatusActive(sub.status))) {
+      if (!subscriptionActive(sub)) {
         return json(
           {
             ok: false,

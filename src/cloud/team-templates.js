@@ -24,7 +24,7 @@ import {
   parseTeamMatrix,
   CLOUD_SECTIONS
 } from '../lib/http.js';
-import { billingStatusActive } from '../billing.js';
+import { subscriptionActive } from '../billing.js';
 
 const BODY_CAP = 16384;
 export const TEMPLATE_LIMIT = 25;
@@ -39,12 +39,11 @@ async function enterpriseOwner(request, env) {
     return null;
   }
   const sub = await env.DB.prepare(
-    'SELECT status, tier, plan FROM cloud_subscriptions WHERE owner_sub = ?'
+    'SELECT status, tier, plan, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
   )
     .bind(sess.sub)
     .first();
-  const tier =
-    sub && billingStatusActive(sub.status) ? sub.tier || sub.plan || 'contractor' : 'free';
+  const tier = sub && subscriptionActive(sub) ? sub.tier || sub.plan || 'contractor' : 'free';
   if (tier !== 'company' && tier !== 'enterprise') {
     return null;
   }

@@ -15,7 +15,7 @@ import {
   authEmailConfigured,
   cloudRateAccountCheck
 } from './lib/http.js';
-import { billingStatusActive } from './billing.js';
+import { billingStatusActive, subscriptionActive } from './billing.js';
 
 const AI_PROVIDERS = {
   openai: { url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini' },
@@ -100,10 +100,12 @@ async function poolIsPaid(env, sub) {
     return false;
   }
   try {
-    const row = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
+    const row = await env.DB.prepare(
+      'SELECT status, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
+    )
       .bind(sub)
       .first();
-    return !!(row && billingStatusActive(row.status));
+    return subscriptionActive(row);
   } catch (e) {
     return false;
   }
@@ -369,11 +371,11 @@ async function resolveTierModel(request, env, provider, requested) {
       return null;
     }
     const sub = await env.DB.prepare(
-      'SELECT status, tier FROM cloud_subscriptions WHERE owner_sub = ?'
+      'SELECT status, tier, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
     )
       .bind(session.sub)
       .first();
-    if (!sub || !billingStatusActive(sub.status)) {
+    if (!subscriptionActive(sub)) {
       return null;
     }
     const tier = String(sub.tier || '').toLowerCase();

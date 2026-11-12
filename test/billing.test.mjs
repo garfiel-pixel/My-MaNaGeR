@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   billingStatusActive,
+  subscriptionActive,
   billingFreeCap,
   deriveTier,
   periodEndIso,
@@ -545,19 +546,129 @@ test('cancel: the word is case-insensitive and tolerates surrounding space (a ph
   );
 });
 
-test('checkout: refuses (409) while an active sub_ subscription exists, and never calls Paddle', async () => {
-  const env = baseEnv({ sub: { status: 'active', ls_subscription_id: SUB } });
+test('checkout: an active subscriber changes plan on the same subscription (two PATCHes)', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const env = baseEnv(
+    {
+      sub: {
+        status: 'active',
+        ls_subscription_id: SUB,
+        tier: 'contractor',
+        plan: 'contractor',
+        current_period_end: now + 86400,
+        cancel_at: now + 86400
+      }
+    },
+    { PADDLE_COMPANY_PRICE_ID: 'pri_com' }
+  );
+  await withFetch(
+    (url, init) => {
+      if (init.method === 'PATCH') {
+        return paddleJson(200, { data: { id: SUB, status: 'active' } });
+      }
+      return paddleJson(200, {});
+    },
+    async calls => {
+      const res = await handleBillingCheckout(
+        await authedRequest(env, 'POST', 'https://x.test/api/billing/checkout?tier=company'),
+        env
+      );
+      const d = await res.json();
+      assert.equal(res.status, 200);
+      assert.equal(d.ok, true);
+      assert.equal(d.upgraded, true);
+      assert.equal(d.plan, 'company');
+      const patches = calls.filter(c => c.init.method === 'PATCH');
+      assert.equal(patches.length, 2, 'clear the scheduled cancel, then change the plan');
+      assert.deepEqual(JSON.parse(patches[0].init.body), { scheduled_change: null });
+      const second = JSON.parse(patches[1].init.body);
+      assert.equal(second.items[0].price_id, 'pri_com');
+      assert.equal(second.proration_billing_mode, 'prorated_immediately');
+    }
+  );
+});
+
+test('checkout: an active subscriber with no scheduled cancel needs one PATCH', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const env = baseEnv(
+    {
+      sub: {
+        status: 'active',
+        ls_subscription_id: SUB,
+        tier: 'contractor',
+        plan: 'contractor',
+        current_period_end: now + 86400
+      }
+    },
+    { PADDLE_COMPANY_PRICE_ID: 'pri_com' }
+  );
+  await withFetch(
+    () => paddleJson(200, { data: { id: SUB, status: 'active' } }),
+    async calls => {
+      const res = await handleBillingCheckout(
+        await authedRequest(env, 'POST', 'https://x.test/api/billing/checkout?tier=company'),
+        env
+      );
+      assert.equal((await res.json()).upgraded, true);
+      assert.equal(calls.filter(c => c.init.method === 'PATCH').length, 1);
+    }
+  );
+});
+
+test('checkout: the plan the owner already holds answers samePlan and never calls Paddle', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const env = baseEnv({
+    sub: {
+      status: 'active',
+      ls_subscription_id: SUB,
+      tier: 'company',
+      plan: 'company',
+      current_period_end: now + 86400
+    }
+  });
   await withFetch(
     () => paddleJson(200, {}),
     async calls => {
       const res = await handleBillingCheckout(
-        await authedRequest(env, 'POST', 'https://x.test/api/billing/checkout?tier=enterprise'),
+        await authedRequest(env, 'POST', 'https://x.test/api/billing/checkout?tier=company'),
         env
       );
       const d = await res.json();
-      assert.equal(res.status, 409);
-      assert.equal(d.code, 'already_subscribed');
+      assert.equal(res.status, 200);
+      assert.equal(d.samePlan, true);
+      assert.equal(d.plan, 'company');
       assert.equal(calls.length, 0);
+    }
+  );
+});
+
+test('checkout: canceled but unexpired opens a NEW checkout (the old one will not renew)', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const env = baseEnv(
+    {
+      sub: {
+        status: 'canceled',
+        ls_subscription_id: SUB,
+        tier: 'contractor',
+        plan: 'contractor',
+        current_period_end: now + 86400
+      }
+    },
+    { PADDLE_COMPANY_PRICE_ID: 'pri_com' }
+  );
+  await withFetch(
+    url =>
+      url.includes('/customers')
+        ? paddleJson(200, { data: [{ id: 'ctm_1' }] })
+        : paddleJson(200, { data: { checkout: { url: 'https://pay.test/c' } } }),
+    async calls => {
+      const res = await handleBillingCheckout(
+        await authedRequest(env, 'POST', 'https://x.test/api/billing/checkout?tier=company'),
+        env
+      );
+      const d = await res.json();
+      assert.equal(d.checkoutUrl, 'https://pay.test/c');
+      assert.equal(calls.filter(c => c.init.method === 'PATCH').length, 0);
     }
   );
 });
@@ -626,4 +737,156 @@ test('webhook: a bad signature is 401 and writes nothing', async () => {
   const res = await handleBillingWebhook(req, env);
   assert.equal(res.status, 401);
   assert.equal(env.DB.log.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// UI-IA Phase 5 (2026-11-12): a cancel that has not taken effect keeps Premium
+// ---------------------------------------------------------------------------
+test('subscriptionActive: active statuses are active; canceled keeps the paid period', () => {
+  const now = 1_800_000_000;
+  assert.equal(subscriptionActive({ status: 'active' }, now), true);
+  assert.equal(subscriptionActive({ status: 'past_due' }, now), true);
+  assert.equal(subscriptionActive({ status: 'canceled', current_period_end: now + 60 }, now), true);
+  assert.equal(subscriptionActive({ status: 'canceled', cancel_at: now + 60 }, now), true);
+  assert.equal(subscriptionActive({ status: 'canceled', current_period_end: now - 1 }, now), false);
+  assert.equal(subscriptionActive({ status: 'canceled' }, now), false);
+  assert.equal(subscriptionActive({ status: 'paused', current_period_end: now + 60 }, now), false);
+  assert.equal(subscriptionActive({ status: 'expired' }, now), false);
+  assert.equal(subscriptionActive(null, now), false);
+});
+
+test('status: canceled but unexpired is still Premium and says when it ends', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const env = baseEnv({
+    sub: {
+      status: 'canceled',
+      tier: 'company',
+      plan: 'company',
+      current_period_end: now + 86400
+    }
+  });
+  const res = await handleBillingStatus(
+    await authedRequest(env, 'GET', 'https://x.test/api/billing/status'),
+    env
+  );
+  const d = await res.json();
+  assert.equal(d.active, true, 'the paid period has not ended');
+  assert.equal(d.plan, 'company');
+  assert.equal(d.projectCap, null);
+  assert.equal(d.canceling, true);
+  assert.equal(d.cancelAt, new Date((now + 86400) * 1000).toISOString());
+});
+
+test('status: canceled and past the paid period is free again', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const env = baseEnv({
+    sub: { status: 'canceled', tier: 'company', plan: 'company', current_period_end: now - 60 }
+  });
+  const res = await handleBillingStatus(
+    await authedRequest(env, 'GET', 'https://x.test/api/billing/status'),
+    env
+  );
+  const d = await res.json();
+  assert.equal(d.active, false);
+  assert.equal(d.plan, 'free');
+  assert.equal(d.canceling, false);
+  assert.equal(d.projectCap, 1);
+});
+
+test('cancel: a stored cancel_at answers alreadyScheduled and never calls Paddle', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const env = baseEnv({
+    sub: {
+      status: 'active',
+      ls_subscription_id: SUB,
+      current_period_end: now + 86400,
+      cancel_at: now + 86400
+    }
+  });
+  await withFetch(
+    () => paddleJson(200, {}),
+    async calls => {
+      const res = await handleBillingCancel(
+        await authedRequest(env, 'DELETE', 'https://x.test/api/billing/subscription', {
+          confirm: 'CANCEL'
+        }),
+        env
+      );
+      const d = await res.json();
+      assert.equal(res.status, 200);
+      assert.equal(d.alreadyScheduled, true);
+      assert.equal(d.cancelAt, new Date((now + 86400) * 1000).toISOString());
+      assert.equal(calls.length, 0, 'a second cancel must not reach Paddle');
+    }
+  );
+});
+
+test('cancel: a Paddle-scheduled cancel is remembered as cancel_at', async () => {
+  const env = baseEnv({
+    sub: { status: 'active', ls_subscription_id: SUB, current_period_end: PERIOD_END_SEC }
+  });
+  await withFetch(
+    () =>
+      paddleJson(200, {
+        data: { scheduled_change: { action: 'cancel', effective_at: '2026-11-08T16:16:48Z' } }
+      }),
+    async () => {
+      await handleBillingCancel(
+        await authedRequest(env, 'DELETE', 'https://x.test/api/billing/subscription', {
+          confirm: 'CANCEL'
+        }),
+        env
+      );
+      const upd = env.DB.log.filter(
+        l => l.kind === 'run' && /UPDATE cloud_subscriptions SET cancel_at/.test(l.sql)
+      );
+      assert.equal(upd.length, 1);
+      assert.equal(upd[0].args[0], PERIOD_END_SEC);
+    }
+  );
+});
+
+test('webhook: a scheduled cancel stores cancel_at in seconds', async () => {
+  const env = baseEnv({ sub: null });
+  const ev = subEvent('subscription.updated', SUB, 'active');
+  ev.data.scheduled_change = { action: 'cancel', effective_at: '2026-11-20T00:00:00Z' };
+  await handleBillingWebhook(await signedWebhook(env, ev), env);
+  const w = env.DB.log.filter(l => l.kind === 'run')[0];
+  assert.equal(w.args[6], Math.floor(Date.parse('2026-11-20T00:00:00Z') / 1000));
+});
+
+test('webhook: a resume with no scheduled change clears cancel_at', async () => {
+  const env = baseEnv({ sub: { status: 'active', ls_subscription_id: SUB, cancel_at: 123 } });
+  await handleBillingWebhook(
+    await signedWebhook(env, subEvent('subscription.resumed', SUB, 'active')),
+    env
+  );
+  const w = env.DB.log.filter(l => l.kind === 'run')[0];
+  assert.equal(w.args[6], null);
+});
+
+test('checkout: a lower plan is refused, never a silent mid-period downgrade', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const env = baseEnv({
+    sub: {
+      status: 'active',
+      ls_subscription_id: SUB,
+      tier: 'enterprise',
+      plan: 'enterprise',
+      current_period_end: now + 86400
+    }
+  });
+  await withFetch(
+    () => paddleJson(200, {}),
+    async calls => {
+      const res = await handleBillingCheckout(
+        await authedRequest(env, 'POST', 'https://x.test/api/billing/checkout?tier=company'),
+        env
+      );
+      const d = await res.json();
+      assert.equal(res.status, 409);
+      assert.equal(d.code, 'downgrade_not_supported');
+      assert.equal(calls.length, 0);
+    }
+  );
 });

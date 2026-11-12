@@ -1060,6 +1060,33 @@ var MMGR = window.MMGR || {};
       const data = await res.json().catch(function () {
         return {};
       });
+      // UI-IA Phase 5 (owner 2026-11-12): an existing subscriber changes plan
+      // on the same subscription, so there is no checkout page to open. The
+      // tab opened for the gesture is closed and the panel states the result.
+      if (res.ok && data.ok && (data.upgraded || data.samePlan)) {
+        if (tab) {
+          try {
+            tab.close();
+          } catch (e) {
+            /* already gone */
+          }
+        }
+        _upgradePending = false;
+        const planName = String(data.plan || '').replace(/^./, function (c) {
+          return c.toUpperCase();
+        });
+        await render();
+        setStatus(
+          data.upgraded
+            ? 'Your plan is now ' + (planName || 'updated') + '. Every project follows it.'
+            : 'You are already on the ' + (planName || 'selected') + ' plan.',
+          'ok'
+        );
+        document.dispatchEvent(
+          new CustomEvent('mmgr:plan-changed', { detail: { plan: data.plan || '' } })
+        );
+        return;
+      }
       if (!res.ok || !data.ok || !data.checkoutUrl) {
         if (tab) {
           try {

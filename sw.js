@@ -761,10 +761,13 @@
 // layout, the wrapping workspace tabs, the anchored project-status popover
 // (js/mmgr-app.js placement helper) and the compact sync sign-in row all ship
 // in css/mmgr.css + the bundles.
+// v649 - UI-IA PHASE 5 (2026-11-12): a canceled-but-unexpired subscription keeps
+// Premium (cancel_at), the plan popover states the end date, and the plan pill
+// is two deliberate lines. The bundles and css/mmgr.css move.
 // v648 - UI-IA PHASE 4 (2026-11-12): the admin rail is dropdown groups with an
 // MCP Server submenu, and the MCP card is a branded disclosure with a state
 // chip. admin.html and the admin bundle are shell assets.
-const CACHE = 'mmgr-shell-v648';
+const CACHE = 'mmgr-shell-v649';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

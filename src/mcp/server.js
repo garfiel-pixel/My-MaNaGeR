@@ -68,6 +68,7 @@ import {
   validateChangesProposal,
   structuredRefusals
 } from './plan.js';
+import { MCP_ERROR_CODES } from './errors.js';
 import {
   describeSchema,
   LIST_PATHS,
@@ -692,6 +693,7 @@ function executeGetSchema(scope, args) {
               appliesOn: 'owner accept',
               note: 'A proposal is one change set: the owner accepts or rejects all of it, and nothing applies automatically.'
             },
+            errorCodes: MCP_ERROR_CODES,
             tables: tables
           },
           null,

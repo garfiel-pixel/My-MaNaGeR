@@ -38,6 +38,7 @@ import {
   isDeletable
 } from './model.js';
 import { budgetWriteAllowed, BUDGET_WRITE_REFUSAL } from './budget-access.js';
+import { refusalCode } from './errors.js';
 
 // MCP-AGENT-FIRST addendum A1 (2026-11-13): per API key per project abuse
 // limits. A key may hold at most MCP_MAX_PENDING_PER_KEY proposals in status
@@ -1224,6 +1225,7 @@ export function structuredRefusals(list) {
       path: path,
       recordId: m && m[2] ? m[2] : null,
       field: m && m[3] ? m[3] : null,
+      code: refusalCode(text),
       reason: m ? m[4] : text
     };
   });

@@ -41,32 +41,29 @@ const ESLINT_BIN = path.join(ROOT, 'node_modules', 'eslint', 'bin', 'eslint.js')
 // adding 200 `no-undef` ones would have passed, even though `no-undef` is the
 // one that hides real bugs. The ceiling is therefore ratcheted per rule.
 //
-// RE-BASELINE 2026-11-13 (PR/branch feat/mcp-agent-first): the 2026-11-05
-// baseline (global 1286 / curly 598 / no-unused-vars 411 / no-undef 202 /
-// no-redeclare 65 = 1276 total) predates this branch's accumulated MCP-agent-
-// first work. That work landed as reviewed, intentional local commits and was
-// never gated against the 11-05 ceiling (CI runs on main, not this branch), so
-// ~724 warnings of mostly `curly` style debt accrued on the branch without a
-// signal. The committed tree at the branch tip measures 2000 total
-// (curly 1196 / no-unused-vars 469 / no-undef 244 / no-redeclare 93). The
-// ceilings below are re-baselined to those real, reviewed counts so the gate
-// can still catch GENUINELY NEW debt going forward. This is a deliberate,
-// reviewed raise - NOT a license to add more. These numbers MUST ratchet DOWN
-// as the `curly`/`no-unused-vars` debt is paid, never up. Set ESLINT_CEILING
-// / ESLINT_RULE_CEILINGS only to absorb a single reviewed change, then bake
-// the new measured count back in here.
-const WARN_CEILING = Number(process.env.ESLINT_CEILING || 2002);
+// ESLINT WORKTREE FIX 2026-11-13 (feat/mcp-agent-first): the gate was
+// measuring ~3x the real source. `eslint .` recurses from the project root, and
+// this repo now carries git WORKTREES under `.codebuddy/worktrees/` that are
+// full copies of the tree - so every source file was linted once per worktree.
+// That inflated the count to 2002-2998 and made the 2026-11-05 baseline look
+// stale. `.codebuddy/` is now in eslint.config.js's ignores (an agent/build
+// artifact, like node_modules), and the measured TRUE source count is 1006
+// (curly 598 / no-unused-vars 239 / no-undef 122 / no-redeclare 47) - BELOW the
+// original 2026-11-05 baseline (global 1286 / 598 / 411 / 202 / 65), so the
+// original ceilings hold unchanged. Never re-baseline on a count that includes
+// worktree copies; ignore them instead.
+const WARN_CEILING = Number(process.env.ESLINT_CEILING || 1286);
 
-// Frozen per-rule ceilings, re-baselined 2026-11-13 to the committed
-// feat/mcp-agent-first tree (2000 total). A rule that is not listed here has a
-// ceiling of 0: a warning from a rule this project has never tripped is new
-// debt by definition. Lower these as the debt is paid; never raise one without
+// Frozen per-rule ceilings, measured 2026-11-05 with the tree at 1276 total.
+// A rule that is not listed here has a ceiling of 0: a warning from a rule
+// this project has never tripped is new debt by definition, whatever the
+// global total says. Lower these as the debt is paid; never raise one without
 // the same deliberate-review note the global ceiling needs.
 const PER_RULE_CEILING = {
-  curly: 1196,
-  'no-unused-vars': 469,
-  'no-undef': 244,
-  'no-redeclare': 93
+  curly: 598,
+  'no-unused-vars': 411,
+  'no-undef': 202,
+  'no-redeclare': 65
 };
 
 function ruleCeiling(ruleId) {

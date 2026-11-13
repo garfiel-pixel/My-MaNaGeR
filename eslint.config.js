@@ -68,7 +68,15 @@ const scriptRules = {
   'no-restricted-syntax': 'off'
 };
 
-const baseIgorables = ['node_modules/', 'dist/', '.wrangler/', 'vendor/', 'tmp/', '_archive/'];
+const baseIgorables = [
+  'node_modules/',
+  'dist/',
+  '.wrangler/',
+  'vendor/',
+  'tmp/',
+  '_archive/',
+  '.codebuddy/'
+];
 
 module.exports = [
   {

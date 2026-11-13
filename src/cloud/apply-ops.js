@@ -42,6 +42,7 @@
    ============================================================ */
 import { isDeletable, fieldSpec, getList, getSection, canonicalField } from '../mcp/model.js';
 import { PROTO_KEYS, isProtoKey, getPathValue, setPathValue } from './proposal-diffs.js';
+import { applyResultCode } from '../mcp/errors.js';
 
 // A predecessor cycle check ported verbatim from js/mmgr-schedule.js.
 function findCycles(tasks) {
@@ -280,6 +281,9 @@ export function applyOps(liveState, proposals, deps) {
 
   function recordResult(entry, result, reason) {
     entry.result = result;
+    if (result !== 'applied') {
+      entry.code = applyResultCode(result, reason);
+    }
     if (reason !== undefined) {
       entry.reason = reason;
     }

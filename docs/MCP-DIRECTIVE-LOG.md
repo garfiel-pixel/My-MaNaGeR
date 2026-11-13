@@ -84,7 +84,7 @@ decryption through `cloudDecryptState`.
 | 1.6 Atomic accept + conditional state writes | `src/lib/http.js`, `src/reviews.js`, `src/cloud/projects.js`, `src/cloud/changelog.js`, `src/mcp/server.js`, `js/mmgr-cloud.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R07 + R07b; `qa-approval` 24/24; `qa-mcp-budget` 46/46; `qa-cloud-phase1` 29/29; `qa-cloud-phase2` 85/85; `qa-sync` 13/13 |
 | 1.7 Idempotent `apply_changes` | `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R08 + R08b; `qa-mcp-write-path` 20/20; `qa-appwide-mcp` 56/56 |
 | 1.8 Structured response | `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R08c 3/3; `qa-mcp-write-path` 20/20; `mcp/qa-mcp` 52/52; `qa-mcp-budget` 46/46 |
-| 1.9 Abuse limits (ADDENDUM A1) | `src/mcp/plan.js`, `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs`, `test/mcp-schema.test.mjs` | PASS — per API key per project: max 50 pending/accepting proposals, max 2000 ops/day (sum of `ops_count` over pending+accepting+accepted that day); refuse the whole `apply_changes`/`planProposal` call over either limit with `RATE_PENDING_CAP` / `RATE_DAILY_OPS`; withdrawn/rejected rows free both slots; both limits published in `get_schema` `limits`; `qa-mcp-agent-first` 65/65 (AT22a/b/c green); `npm test` 437/437; ESLint re-baselined (see verify-eslint.cjs 2026-11-13 note) |
+| 1.9 Abuse limits (ADDENDUM A1) | `src/mcp/plan.js`, `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs`, `test/mcp-schema.test.mjs` | PASS — per API key per project: max 50 pending/accepting proposals, max 2000 ops/day (sum of `ops_count` over pending+accepting+accepted that day); refuse the whole `apply_changes`/`planProposal` call over either limit with `RATE_PENDING_CAP` / `RATE_DAILY_OPS`; withdrawn/rejected rows free both slots; both limits published in `get_schema` `limits`; `qa-mcp-agent-first` 65/65 (AT22a/b/c green); `npm test` 437/437; ESLint gate fixed (.codebuddy/ worktrees were being linted, inflating counts ~3x; now ignored, true count 1006/1286) |
 
 1.1 detail: `executeGetTable` takes `auth` and refuses `budgetLines`, `spendLog`
 and `budgetEnvelope` with `BUDGET_READ_REFUSAL` when the key's Read budget
@@ -173,14 +173,33 @@ was tightened to `/\bid\s*=\s*\?/` so it does not collide with `project_id =
 ?`); AT22a/b/c seed a deterministic `store.reviews` and call
 `queueMcpProposal` directly.
 
-ESLint note: this step also re-baselined `tools/verify-eslint.cjs`. The
-2026-11-05 ceiling (global 1286) predated the feat/mcp-agent-first branch's
-accumulated, reviewed MCP work, which accrued ~724 mostly-`curly` warnings
-without a signal (CI runs on main, not this branch). The committed branch
-tip measures 2000 total (curly 1196 / no-unused-vars 469 / no-undef 244 /
-no-redeclare 93); ceilings were raised to those real counts with a
-deliberate-review note. A1 itself adds only 2 warnings. These numbers must
-ratchet DOWN as debt is paid, never up.
+ESLint note: this step also exposed a GATE BUG, now fixed at the root. The
+gate ran `eslint .`, which recurses from the repo root - and this checkout
+carries agent git WORKTREES under `.codebuddy/worktrees/` that are full copies
+of the tree, so every source file was linted once per worktree. That tripled
+the count (2002-2998) and made the 2026-11-05 baseline look stale. `.codebuddy/`
+is now in `eslint.config.js`'s ignores (matching `.prettierignore`, which
+already ignored it), and the measured TRUE source count is 1006 (curly 598 /
+no-unused-vars 239 / no-undef 122 / no-redeclare 47) - BELOW the original
+baseline (global 1286 / 598 / 411 / 202 / 65), so those ceilings are unchanged.
+A1 itself adds zero net warnings. Never re-baseline on a worktree-contaminated
+count; ignore the worktrees instead.
+
+A2 detail (ADDENDUM A2 - fixed error codes): `src/mcp/errors.js` owns the
+frozen 23-value `MCP_ERROR_CODES` and two classifiers. `refusalCode(text)`
+maps a refusal string to a code via ordered regex rules (most specific first:
+stale-before, derived, unknown-field, enum, date, length, type, section,
+scope, budget-array, use-set, server-managed, not-writable, not-editable,
+not-found, missing, delete-not-allowed, skipped, reference, invalid-input,
+budget) and falls back to `REFUSED`, so every `refused` entry has a member.
+`applyResultCode(result, reason)` returns null for `applied`,
+`SKIPPED_ALREADY` for a skip, and the classified reason (or `CONFLICT`) for a
+conflict. `structuredRefusals` (shared by apply_changes and validate_changes)
+now carries `code`; `applyOps` recordResult stamps `entry.code` on every
+non-applied row, so the persisted `apply_report_json` is machine-branchable.
+`get_schema` publishes `errorCodes` (a sibling of `limits`). AT23 proves the
+published set is 23 long, every structured refusal carries a member, and every
+non-applied apply-report result carries a member.
 
 ---
 
@@ -190,6 +209,7 @@ ratchet DOWN as debt is paid, never up.
 |---|---|---|
 | 2.1 `src/mcp/model.js` | `src/mcp/model.js` (new), `src/mcp/server.js`, `test/mcp-model.test.mjs` (new) | PASS — 22/22 model tests (10 creator field-set comparisons, COLUMNS/process enums, aliases, derived set, dates, deletability); `npm test` 411/411; `qa-mcp-write-path` 20/20; `qa-appwide-mcp` 56/56; `qa-mcp-budget` 46/46; `qa-mcp-parity` 13/13; `mcp/qa-mcp` 52/52; `qa-engine-parity` 19/19; `qa-mcp-agent-first` 37/37 |
 | 2.2 one validator | `src/mcp/plan.js` (new), `src/mcp/server.js`, `src/mcp/budget-access.js` (new) | PASS — `planProposal` is the only validator; `queueMcpProposal` + `validate_changes` both call it; fuzz F1 (50 inputs) proves identical refusals; `qa-mcp-agent-first` 46/46 |
+| 2.2b Fixed error-code set (ADDENDUM A2) | `src/mcp/errors.js` (new), `src/mcp/plan.js`, `src/cloud/apply-ops.js`, `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — one frozen 23-code set (`MCP_ERROR_CODES`); `refusalCode()` classifies every `refused` string and `applyResultCode()` every non-applied apply-report entry, both guaranteed to return a member (fallback `REFUSED`/`CONFLICT`); `structuredRefusals` attaches `code`; `applyOps` attaches `code` to every `conflict`/`skipped_already` report row; `get_schema` publishes `errorCodes`; `qa-mcp-agent-first` 68/68 (AT23a/b/c) |
 | 2.3 `tempId` chains | `src/mcp/plan.js`, `src/mcp/server.js` | PASS — T1 (30 create chain, forward refs, unknown ref refused) 5/5; `qa-mcp-agent-first` 46/46 |
 | 2.4 read tools fixed | `src/mcp/server.js`, `test/mcp-evm.test.mjs` (new) | PASS — R09a–R09d acceptance; `qa-engine-parity` 19/19; `qa-mcp-parity` 16/16; `qa-mcp-budget` 46/46; EVM parity test 5/5 (get_budget.evm equals client `computeEVM` field-for-field, actualBasis + future-spend split, scope note) |
 | 2.5 `get_schema` | `src/mcp/server.js`, `test/mcp-schema.test.mjs` (new) | PASS — describes every list/section exactly as `describeSchema`; limits are the real constants; scope hides out-of-grant tables; registered in both catalogs; `qa-mcp-parity` 16/16; `qa-engine-parity` 19/19 |

@@ -2026,6 +2026,104 @@ function addReview(env, row) {
     );
   }
 
+  // =====================================================================
+  // AT23 (A2) — a FIXED error-code set. Every `refused` entry and every
+  // non-applied apply-report result carries a `code` from the set, and
+  // get_schema publishes the set so an agent can branch on a stable token.
+  // =====================================================================
+  section('AT23 — fixed error codes on refusals and apply results');
+  {
+    // 23a: get_schema publishes the frozen 23-code set.
+    const env = await makeEnv({ mod });
+    const sch = await tool(env, 920, 'get_schema', {});
+    const sData = jsonOf(sch);
+    const codes = sData && Array.isArray(sData.errorCodes) ? sData.errorCodes : [];
+    const codeSet = new Set(codes);
+    check(
+      'AT23a get_schema publishes the fixed error-code set (23 codes)',
+      codes.length === 23 &&
+        codeSet.has('STALE_BEFORE') &&
+        codeSet.has('REFUSED') &&
+        codeSet.has('SKIPPED_ALREADY'),
+      { errorCodes: codes }
+    );
+
+    // 23b: one valid diff keeps the call queueable, three bad ones are refused;
+    // every structured refusal carries a code in the published set.
+    const q = await tool(env, 921, 'apply_changes', {
+      diffs: [
+        { path: 'tasks', recordId: 't1', field: 'notes', after: 'ok' },
+        { path: 'tasks', recordId: 't1', field: 'nope', after: 'x' },
+        { path: 'tasks', recordId: 't1', field: 'status', after: 'bogus' },
+        { path: 'tasks', recordId: 'zzz', field: 'notes', after: 'x' },
+        { path: 'notASection', recordId: 'x', field: 'y', after: 1 }
+      ]
+    });
+    const sBlock = blockJson(q, 1);
+    const refused = (sBlock && sBlock.refused) || [];
+    check(
+      'AT23b every structured refusal carries a code in the set',
+      refused.length >= 3 &&
+        refused.every(function (r) {
+          return r && typeof r.code === 'string' && codeSet.has(r.code);
+        }),
+      { refused: refused }
+    );
+
+    // 23c: a mixed proposal (one applied, one stale conflict) accepted; every
+    // NON-applied apply-report entry carries a code in the set.
+    const env2 = await makeEnv({ mod });
+    addReview(env2, {
+      change_set_id: 'cs-AT23',
+      key_id: 'k-AT23',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't6',
+            field: 'status',
+            before: 'todo',
+            beforeAbsent: false,
+            after: 'inprogress',
+            afterAbsent: false
+          },
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't7',
+            field: 'status',
+            before: 'completed',
+            beforeAbsent: false,
+            after: 'blocked',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 2,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const mixedId = env2.__store.reviews[0].id;
+    const acc = await accept(env2, mixedId);
+    const repRes = await tool(env2, 922, 'get_apply_report', { proposalId: mixedId });
+    const rData = jsonOf(repRes);
+    const rep = rData && rData.reports && rData.reports[0] ? rData.reports[0].report : null;
+    const entries = (rep && rep.report) || [];
+    const nonApplied = entries.filter(function (e) {
+      return e && e.result !== 'applied';
+    });
+    check(
+      'AT23c every non-applied apply-report result carries a code in the set',
+      acc.status === 200 &&
+        nonApplied.length >= 1 &&
+        nonApplied.every(function (e) {
+          return typeof e.code === 'string' && codeSet.has(e.code);
+        }),
+      { accStatus: acc.status, entries: entries }
+    );
+  }
+
   console.log('\n========================================');
   console.log(pass + ' passed, ' + fail + ' failed');
   if (failures.length) {

@@ -138,6 +138,22 @@ candidates) with refactor ground rules.
    NEVER give `main` a width, max-width or margin to make room for the dot
    rail. The rail floats.
 
+10. **GATED MERGE TO `main` - HARD GATE (owner, 2026-11-13).** `main` is never
+   the working branch and is never pushed to unless the change has already
+   passed CI on a feature branch. The flow, every time, with no exceptions
+   (docs and AGENTS.md edits included):
+   1. Do ALL work on a feature branch — `feat/<name>` or the session's
+      `worktree-bg-*` branch. `main` is left untouched until the very end.
+   2. Push the branch to origin so the GitHub Actions CI run fires on it.
+   3. Wait for that run to finish **GREEN** — the `ci.yml` deploy gate
+      (`npm run verify` + the T1/T2 harnesses + `wrangler deploy --dry-run`).
+   4. ONLY then fast-forward the branch into `main` and push `main` to trigger
+      the real deploy.
+   A red branch run is fixed on the branch; it is never merged. Rationale: a
+   red `main` blocks shipping (see rule 8), so gating on the branch keeps
+   `main` always releasable. Do not push to `main` "because the local checks
+   passed" — the branch CI run is the gate, not your local terminal.
+
 ## Hard-won knowledge (do not repeat these mistakes)
 
 These lessons come from real production incidents and wasted sessions.

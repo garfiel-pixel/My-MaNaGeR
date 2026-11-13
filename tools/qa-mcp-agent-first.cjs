@@ -3317,6 +3317,104 @@ function addReview(env, row) {
   }
 
   // =====================================================================
+  // AT06 — the derived summary agrees with the records after an accept:
+  // completedTasks counts real work items only, and openRisks counts the same
+  // set for UI-shaped, promoted and MCP-created risks.
+  // =====================================================================
+  section('AT06 — summary counts match the records after an accept');
+  {
+    const env = await makeEnv({ mod });
+    // UI-shaped rows go straight into the snapshot, which is what the app
+    // writes: one closed risk, one promoted to an issue, one plain open.
+    const seeded = await stateOf(env);
+    seeded.risks.push({ id: 'r3', description: 'Closed risk', status: 'closed' });
+    seeded.risks.push({
+      id: 'r4',
+      description: 'Promoted risk',
+      status: 'open',
+      issueId: 'i1'
+    });
+    await env.R2.put(R2_KEY, JSON.stringify(seeded));
+    const q = await tool(env, 960, 'apply_changes', {
+      creates: [
+        { path: 'risks', record: { description: 'Created with no status' } },
+        { path: 'risks', record: { description: 'Created closed', status: 'closed' } },
+        { path: 'tasks', record: { name: 'Done A', status: 'completed' } },
+        { path: 'tasks', record: { name: 'Done B', status: 'completed' } },
+        { path: 'tasks', record: { name: 'Todo C', status: 'todo' } }
+      ]
+    });
+    check('AT06a the five creates queue as one proposal', env.__store.reviews.length === 1, {
+      text: textOf(q).slice(0, 160)
+    });
+    const a = await accept(env, env.__store.reviews[0].id);
+    check('AT06b the accept succeeds', a.status === 200, { status: a.status });
+
+    const st = await stateOf(env);
+    const summary = jsonOf(await tool(env, 961, 'get_project_summary', {}));
+    const risks = jsonOf(await tool(env, 962, 'get_risks', {}));
+
+    // Independent count: work items are cards, so phases and rollup parents
+    // are excluded - the same definition the board uses.
+    const rollups = {};
+    st.tasks.forEach(function (t) {
+      if (t.parentName) {
+        rollups[t.parentName] = 1;
+      }
+    });
+    const work = st.tasks.filter(function (t) {
+      return !t.isPhase && !((t.level || 0) === 0 && rollups[t.name]);
+    });
+    const expectedDone = work.filter(t => t.status === 'completed').length;
+    check(
+      'AT06c completedTasks equals the work items with status completed',
+      summary && summary.completedTasks === expectedDone && expectedDone === 7,
+      { got: summary && summary.completedTasks, want: expectedDone }
+    );
+    check(
+      'AT06d statusCounts.completed agrees and the counts sum to every task',
+      summary &&
+        summary.statusCounts.completed === expectedDone &&
+        summary.totalTasks === st.tasks.length &&
+        Object.keys(summary.statusCounts).reduce(function (n, k) {
+          return n + summary.statusCounts[k];
+        }, 0) === st.tasks.length,
+      { counts: summary && summary.statusCounts, total: summary && summary.totalTasks }
+    );
+
+    const expectedOpen = st.risks.filter(function (r) {
+      if (r.issueId) {
+        return false;
+      }
+      const s = String(r.status == null ? '' : r.status)
+        .trim()
+        .toLowerCase();
+      return s === '' || s === 'open';
+    }).length;
+    check(
+      'AT06e openRisks counts open, promoted and MCP-created risks the same way',
+      summary && summary.openRisks === expectedOpen && expectedOpen === 3,
+      {
+        got: summary && summary.openRisks,
+        want: expectedOpen,
+        statuses: st.risks.map(
+          r => r.id + ':' + (r.status || '(none)') + (r.issueId ? '+promoted' : '')
+        )
+      }
+    );
+    check(
+      'AT06f get_risks reports the same open count as the summary',
+      risks && risks.openRiskCount === summary.openRisks && risks.riskCount === st.risks.length,
+      { open: risks && risks.openRiskCount, summary: summary && summary.openRisks }
+    );
+    check(
+      'AT06g completion percent matches the counted work items',
+      summary && summary.completion === Math.round((expectedDone / work.length) * 100),
+      { got: summary && summary.completion, want: Math.round((expectedDone / work.length) * 100) }
+    );
+  }
+
+  // =====================================================================
   // AT09 — the large-change message counts N (this call) and U (today, this
   // key) against L, and U only counts pending/accepting/accepted rows: a
   // rejected row frees its quota.

@@ -485,6 +485,7 @@ read-only annotation and an outputSchema.
 |---|---|---|
 | 5.1 AT01-AT21 acceptance tests (group 1: AT02, AT03, AT04, AT09) | `tools/qa-mcp-agent-first.cjs` | PASS — AT02 a UI edit landing after the queue conflicts exactly one op and the rest apply (report names the op + record, summary counts one applied + one conflict); AT03 both `validate_changes` and `apply_changes` refuse an invalid enum with the allowed list and queue no row; AT04 `critical` / `totalFloat` / `statusSince` / `completedDate` are refused as derived and a create cannot smuggle a computed field; AT09 the large-change counter counts only live decisions (8 incoming, 3 used, a rejected row excluded, limit 10); `qa-mcp-agent-first` 112/112 |
 | 5.1 AT05 hard-failure rollback | `src/cloud/apply-ops.js`, `src/reviews.js`, `test/apply-ops.test.mjs`, `tools/qa-mcp-agent-first.cjs` | PASS — a predecessor cycle queued as two ops (the queue cannot see the closed set) is refused at accept with 422 `accept-failed` + `hardFailure`; the R2 blob etag is unchanged, neither task keeps the cyclic predecessors and the row stays `pending`; every report row is `rolled_back` and the rows that wrote `predecessors` carry `code: 'CYCLE'` with a reason naming the cycle; 16/16 unit tests, `qa-mcp-agent-first` 119/119 |
+| 5.1 AT06 derived summary parity | `src/mcp/plan.js`, `tools/qa-mcp-agent-first.cjs` | PASS — after a five-create accept, `completedTasks` equals the independently counted work items with status `completed` (7 of 63), `statusCounts` sums to every task, `openRisks` equals the register count for UI-shaped / promoted / MCP-created risks (3), `get_risks.openRiskCount` agrees with the summary, and `completion` matches the ratio; `qa-mcp-agent-first` 126/126 |
 
 5.1 detail (group 1): the four gaps were closed on the existing fixtures
 rather than new scenarios. AT02 extends the AT11b setup - two proposals are
@@ -516,6 +517,22 @@ carried it), leaving the agent to parse prose; it is now present on both. The
 rollback itself needed no change: `applyOps` never mutates the caller's state
 (it clones into `work`), and the accept path returns before the conditional
 R2 write, which AT05c proves by comparing the blob etag.
+
+AT06 detail: the summary is computed on read, so the risk this test guards
+against is a misclassified record rather than a stale counter. It seeded the
+three shapes the register can hold - a UI risk with `status: 'closed'`, one
+promoted to an issue (`issueId`, which the shared predicate excludes), and one
+plain open risk - then created two risks and three tasks through
+`apply_changes` and accepted. The counts are asserted against an independent
+walk of the stored state (work items exclude phases and rollup parents), not
+against the tool's own predicate, so a change to either side shows up.
+The test found a real defect: the create gate demanded `name` or `title`,
+while `risks` and `issues` are keyed by `description` (`name` is only an input
+alias). Both risk creates were refused and the proposal silently shrank from
+five ops to three - the exact "proposal quietly loses ops" failure the
+directive set out to kill. The gate now also accepts the list's own
+`titleField`, which fixes every title-keyed list the same way (decisions use
+`decision`, some lists use `summary`).
 
 ---
 

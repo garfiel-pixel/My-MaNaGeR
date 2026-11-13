@@ -814,13 +814,25 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
     // are title-keyed by the app's own creators, so the gate must accept name
     // OR title. A title-only create used to be refused with 'record needs at
     // least a name', silently shrinking the queued proposal.
+    //
+    // 5.1 AT06: the model's own titleField counts too. risks and issues are
+    // keyed by `description` (name is only an input alias), so requiring
+    // name/title refused a record that carried the very field the model calls
+    // the title - and two risk creates silently vanished from the proposal.
     const titleVal =
       recInput.title !== undefined && recInput.title !== null ? String(recInput.title).trim() : '';
+    const listSpec = getList(cpath);
+    const modelTitle = listSpec && listSpec.titleField ? listSpec.titleField : null;
+    const modelTitleVal =
+      modelTitle && recInput[modelTitle] !== undefined && recInput[modelTitle] !== null
+        ? String(recInput[modelTitle]).trim()
+        : '';
     const hasName =
       (recInput.name !== undefined &&
         recInput.name !== null &&
         String(recInput.name).trim() !== '') ||
-      titleVal !== '';
+      titleVal !== '' ||
+      modelTitleVal !== '';
     if (!hasName) {
       refusedCreates.push(
         'create ' + i + ' (' + cpath + '): record needs at least a name or title'

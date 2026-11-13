@@ -11,10 +11,13 @@ import {
   cloudTimingSink,
   cloudDummyHash,
   cloudReadState,
+  cloudReadStateEtag,
+  cloudPutState,
   cloudDeepEqual,
   cloudScopeMerge,
   cloudClampToWriteScope,
   cloudDiffState,
+  cloudPathSet,
   cloudLogSave,
   cloudPathDelete,
   cloudTouchOwner,
@@ -446,6 +449,46 @@ export async function queueTeamProposal(env, projectId, member, submitted, prev,
   };
 }
 
+// MCP-AGENT-FIRST 2026-11-12 1.6(b): a save built on an older snapshot must
+// not erase what the server accepted since. The changelog records every
+// accepted leaf; replaying the ones newer than the client's baseUpdatedAt
+// rebases the client's state onto the server's, so both survive.
+async function replayServerChanges(env, projectId, sinceIso, target) {
+  if (!sinceIso || !target) {
+    return 0;
+  }
+  try {
+    const rows = await env.DB.prepare(
+      'SELECT diffs_json FROM cloud_changelog WHERE project_id = ? AND created_at > ? ORDER BY id ASC LIMIT 200'
+    )
+      .bind(projectId, sinceIso)
+      .all();
+    let applied = 0;
+    (rows.results || []).forEach(function (r) {
+      if (!r.diffs_json) {
+        return;
+      }
+      let list = null;
+      try {
+        list = JSON.parse(r.diffs_json);
+      } catch (e) {
+        return;
+      }
+      (Array.isArray(list) ? list : []).forEach(function (d) {
+        if (!d || !d.path || d.afterAbsent) {
+          return;
+        }
+        if (cloudPathSet(target, d.path, d.after)) {
+          applied++;
+        }
+      });
+    });
+    return applied;
+  } catch (e) {
+    return 0;
+  }
+}
+
 export async function handleCloudSave(request, env, projectId, cloudPushRevChangedIfCopies) {
   const read = await readCloudBody(request);
   if (read.tooLarge) {
@@ -608,7 +651,6 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       }
     }
   }
-  let next;
   let actor;
   let authRow = null;
   if (ownerCode || sessOwner || teamAuth) {
@@ -634,32 +676,84 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     }
     authRow = a.row;
     actor = teamAuth ? { type: 'manager', label: a.label } : { type: 'owner', label: a.label };
-    // Read previous state with decryption credentials (owner auth has the key)
-    const prev = await cloudReadState(env, key, authRow.owner_code_hash, authRow.owner_code_salt);
-    next = JSON.parse(JSON.stringify(read.body.state));
-    stripStateSecrets(next);
-    // Sprint 3: a manager's matrix can mark sections view-only. The save stays
-    // direct (no review queue) but may not write those sections, so their
-    // previous values are restored before the blob is stored.
-    if (teamAuth && teamAuth.role === 'manager' && Array.isArray(teamAuth.writeScope)) {
-      next = cloudClampToWriteScope(next, prev, teamAuth.writeScope);
-    }
     await cloudTouchOwner(env, projectId);
     if (authRow && authRow.deleted_at) {
       return cloudProjectDeleted();
     }
-    next.updatedAt = now;
-    // Encrypt state blob before R2 storage (server-side envelope encryption,
-    // AES-256-GCM, key from owner_code_hash + owner_code_salt).
-    let r2Payload = JSON.stringify(next);
-    if (authRow.owner_code_hash && authRow.owner_code_salt) {
-      try {
-        r2Payload = await cloudEncryptState(next, authRow.owner_code_hash, authRow.owner_code_salt);
-      } catch (e) {
-        /* fall back to plaintext */
+    // MCP-AGENT-FIRST 2026-11-12 1.6(b): read with the etag and write only if
+    // the blob still matches. A concurrent accept or save is a detected
+    // conflict; re-run the merge once on the fresh state, then answer busy.
+    let prev = null;
+    let next = null;
+    let basePrev = null;
+    let saved = false;
+    for (let attempt = 0; attempt < 2 && !saved; attempt++) {
+      const readPrev = await cloudReadStateEtag(
+        env,
+        key,
+        authRow.owner_code_hash,
+        authRow.owner_code_salt
+      );
+      if (!basePrev && readPrev.state) {
+        basePrev = readPrev.state;
+      }
+      prev = readPrev.state;
+      next = JSON.parse(JSON.stringify(read.body.state));
+      stripStateSecrets(next);
+      // Rebase onto anything the server accepted after the client's base.
+      const baseUpdatedAt =
+        typeof read.body.baseUpdatedAt === 'string' ? read.body.baseUpdatedAt : null;
+      if (baseUpdatedAt && prev && prev.updatedAt && prev.updatedAt !== baseUpdatedAt) {
+        await replayServerChanges(env, projectId, baseUpdatedAt, next);
+      }
+      // Rebase a retry: replay every leaf that changed on the server since the
+      // first read (an accept, another device) onto the client's state, so a
+      // save that never saw that change cannot erase it.
+      if (attempt > 0 && basePrev && readPrev.state) {
+        const serverLeaves = cloudDiffState(basePrev, readPrev.state) || [];
+        serverLeaves.forEach(function (d) {
+          if (!d.afterAbsent) {
+            cloudPathSet(next, d.path, d.after);
+          }
+        });
+      }
+      // Sprint 3: a manager's matrix can mark sections view-only. The save stays
+      // direct (no review queue) but may not write those sections, so their
+      // previous values are restored before the blob is stored.
+      if (teamAuth && teamAuth.role === 'manager' && Array.isArray(teamAuth.writeScope)) {
+        next = cloudClampToWriteScope(next, prev, teamAuth.writeScope);
+      }
+      next.updatedAt = now;
+      // Encrypt state blob before R2 storage (server-side envelope encryption,
+      // AES-256-GCM, key from owner_code_hash + owner_code_salt).
+      let r2Payload = JSON.stringify(next);
+      if (authRow.owner_code_hash && authRow.owner_code_salt) {
+        try {
+          r2Payload = await cloudEncryptState(
+            next,
+            authRow.owner_code_hash,
+            authRow.owner_code_salt
+          );
+        } catch (e) {
+          /* fall back to plaintext */
+        }
+      }
+      const put = await cloudPutState(env, key, r2Payload, readPrev.etag);
+      if (put.ok) {
+        saved = true;
       }
     }
-    await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
+    if (!saved) {
+      return json(
+        {
+          ok: false,
+          error: 'busy',
+          code: 'busy',
+          message: 'The project changed while saving. Try again in a moment.'
+        },
+        409
+      );
+    }
     // Wave 2 (owner 2026-11-10): the lifecycle status travels INSIDE the
     // snapshot (state.status, normalised above); the sync choice rides on the
     // save body. COALESCE keeps the stored value when a field is absent, so an

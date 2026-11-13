@@ -79,6 +79,9 @@ decryption through `cloudDecryptState`.
 | 1.1 Budget read gate on `get_table` | `src/mcp/server.js` | PASS — R03 4/4; `qa-appwide-mcp` 56/56; `qa-mcp-parity` 13/13 |
 | 1.2 Budget write gate on the generic path | `src/mcp/server.js`, `src/lib/budget.js`, `tools/qa-mcp-agent-first.cjs`, `tools/qa-appwide-mcp.cjs` | PASS — R04 5/5 + R04m 32-case matrix; `qa-mcp-budget` 46/46; `qa-mcp-write-path` 20/20 |
 | 1.3 No silent truncation | `migrations/0040_mcp_agent_first.sql` (new), `src/mcp/server.js`, `src/reviews.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R01 3/3, R02 3/3; `qa-approval` 24/24; `qa-changelog-diffs` all gates |
+| 1.4 Real agent `before` | `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R05 3/3; `qa-mcp-write-path` 20/20; `qa-appwide-mcp` 56/56; `qa-engine-parity` 19/19 |
+| 1.5 Budget-limit message | `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R06 names N, U and L; `qa-mcp-budget` 46/46 |
+| 1.6 Atomic accept + conditional state writes | `src/lib/http.js`, `src/reviews.js`, `src/cloud/projects.js`, `src/cloud/changelog.js`, `src/mcp/server.js`, `js/mmgr-cloud.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R07 + R07b; `qa-approval` 24/24; `qa-mcp-budget` 46/46; `qa-cloud-phase1` 29/29; `qa-cloud-phase2` 85/85; `qa-sync` 13/13 |
 
 1.1 detail: `executeGetTable` takes `auth` and refuses `budgetLines`, `spendLog`
 and `budgetEnvelope` with `BUDGET_READ_REFUSAL` when the key's Read budget
@@ -111,6 +114,28 @@ truncated when it was queued. Reject it and ask the agent to resubmit." An MCP
 row with no stored leaves at all is refused 409 rather than falling through to
 the whole-array `submitted_json` merge.
 
+1.4 detail: a diff whose `before` does not equal the live value is refused with
+`stale before: expected <x>, live <y>`; an omitted `before` queues and is
+recorded as `before not checked` in the warnings list. Sets accept the same
+optional `before`, including the budget envelope.
+
+1.5 detail: the refusal now reads "This call has N large budget change(s). This
+key has U large change(s) pending or accepted today (UTC). The limit is L per
+day and L per call. Split into calls of at most L large changes, or ask the
+owner to decide pending ones." Only rows in `pending`, `accepting` or
+`accepted` count, so a rejection frees quota.
+
+1.6 detail: accept and reject claim the row with
+`UPDATE … SET status='accepting' WHERE id=? AND status='pending'`; zero rows
+changed answers 409 "already being decided". Every refusal after the claim
+releases it, and a claim older than 60 seconds heals back to pending on the
+next read (`cloudHealStaleClaims`). `cloudReadStateEtag` / `cloudPutState` are
+the one shared conditional read/write pair; accept retries 3 times, the owner
+save twice, a revert answers 409 busy. A save whose `baseUpdatedAt` is older
+than the stored `updatedAt` replays the changelog leaves it missed, so an
+accepted change is never erased by a save that never saw it. The client sends
+`baseUpdatedAt` and retries once on `{code:'busy'}`.
+
 ---
 
 ## Deviations
@@ -131,3 +156,13 @@ the whole-array `submitted_json` merge.
    switch before the section, so W5 got the switch message. W5 now uses `risks`
    (still out of the key's `wbs` scope) and a new W5b asserts the budget path is
    refused for the switch. 55 -> 56 checks.
+5. **1.6's save retry needed a rebase, not just a re-run.** The owner save has
+   no server-side merge: the client sends the whole state. Re-running that on
+   fresh state erased an accept that landed in between (R07b proved it). The
+   save now carries `baseUpdatedAt` and the server replays the changelog leaves
+   newer than that base onto the client's state before writing. The directive's
+   "re-run its existing merge" is satisfied for scoped writers (clamp) and
+   strengthened for the owner path. No directive change.
+6. **Steps 1.4, 1.5 and 1.6 share one commit.** Their edits interleave inside
+   `queueMcpProposal` and the accept loop, and `git add -p` is unavailable in
+   this session. The log records them separately; the commit names all three.

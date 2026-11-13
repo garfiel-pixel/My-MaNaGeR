@@ -41,6 +41,7 @@ import {
   cloudAuthOwnerEither,
   cloudAuthApiKey,
   cloudReadState,
+  cloudHealStaleClaims,
   readCloudBody,
   cloudScopeState,
   cloudScopeMerge,
@@ -49,7 +50,7 @@ import {
   CLOUD_KEY_TO_SECTION
 } from '../lib/http.js';
 import { API_SHAPES } from '../api/shapes.js';
-import { enrichDiffs, setPathValue } from '../cloud/proposal-diffs.js';
+import { enrichDiffs, setPathValue, getPathValue, valuesEqual } from '../cloud/proposal-diffs.js';
 import { ownerTier } from '../cloud/team.js';
 import { structuredLog } from '../lib/observe.js';
 import {
@@ -1474,6 +1475,8 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
 // agent's queue. The owner's reason comes back verbatim - that is the whole
 // point of the tool: a refused proposal must be able to explain itself.
 async function proposalStatusResult(env, projectId, auth, args, rpcId) {
+  // MCP-AGENT-FIRST 2026-11-12 1.6(a): an abandoned claim reads as pending.
+  await cloudHealStaleClaims(env, projectId);
   const isApi = auth.role === 'api';
   const one = args && args.proposalId != null ? parseInt(args.proposalId, 10) : 0;
   let limit = args && args.limit != null ? parseInt(args.limit, 10) : 10;
@@ -1517,9 +1520,9 @@ async function proposalStatusResult(env, projectId, auth, args, rpcId) {
     const edited = r.decision_edited === 1;
     return {
       proposalId: r.id,
-      status: r.status,
+      status: r.status === 'accepting' ? 'pending' : r.status,
       outcome:
-        r.status === 'pending'
+        r.status === 'pending' || r.status === 'accepting'
           ? 'pending'
           : r.status === 'rejected'
             ? 'rejected'
@@ -1838,6 +1841,23 @@ function writeBudgetExceeded(id) {
   };
 }
 
+function mcpShortValue(v) {
+  if (v === undefined) {
+    return '(absent)';
+  }
+  if (v === null) {
+    return 'null';
+  }
+  if (typeof v === 'object') {
+    try {
+      return JSON.stringify(v);
+    } catch (e) {
+      return String(v);
+    }
+  }
+  return String(v);
+}
+
 export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state) {
   const precheck = validateProposalEnvelope(toolArgs, auth);
   if (precheck) {
@@ -1903,6 +1923,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   const base = JSON.parse(JSON.stringify(prev));
   const submitted = {};
   const refused = [];
+  const warnings = [];
   for (let i = 0; i < diffs.length; i++) {
     if (Date.now() - writeStartedAt > MCP_WRITE_BUDGET_MS) {
       return writeBudgetExceeded(id);
@@ -1982,6 +2003,28 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     if (!field) {
       refused.push('diff ' + i + ': missing field');
       continue;
+    }
+    // MCP-AGENT-FIRST 2026-11-12 1.4: a supplied `before` is a promise about
+    // the live value. When it does not match, the op is refused with both
+    // values instead of being silently rewritten to the live one. An omitted
+    // `before` is allowed, but the owner is told it was not checked.
+    if (d.before !== undefined) {
+      if (!valuesEqual(d.before, item[field])) {
+        refused.push(
+          path +
+            '[' +
+            rec +
+            '].' +
+            field +
+            ': stale before: expected ' +
+            mcpShortValue(d.before) +
+            ', live ' +
+            mcpShortValue(item[field])
+        );
+        continue;
+      }
+    } else {
+      warnings.push(path + '[' + rec + '].' + field + ': before not checked');
     }
     item[field] = d.after !== undefined ? d.after : null;
     submitted[path] = arr;
@@ -2095,6 +2138,19 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
         refusedSets.push(spath + '.' + envField + ': the envelope is a single number - omit field');
         continue;
       }
+      if (
+        s.before !== undefined &&
+        !valuesEqual(s.before, base.budgetEnvelope == null ? null : +base.budgetEnvelope)
+      ) {
+        refusedSets.push(
+          spath +
+            ': stale before: expected ' +
+            mcpShortValue(s.before) +
+            ', live ' +
+            mcpShortValue(base.budgetEnvelope)
+        );
+        continue;
+      }
       budgetFromSets.push({ kind: 'changeEnvelope', value: s.value, before: s.before });
       continue;
     }
@@ -2115,6 +2171,24 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       if (!SET_FIELD_RE.test(field)) {
         refusedSets.push(spath + '.' + field + ': not a valid field path');
         continue;
+      }
+      // MCP-AGENT-FIRST 2026-11-12 1.4: same `before` promise as a diff.
+      if (s.before !== undefined) {
+        const cur = getPathValue(base, spath + '.' + field);
+        if (!valuesEqual(s.before, cur)) {
+          refusedSets.push(
+            spath +
+              '.' +
+              field +
+              ': stale before: expected ' +
+              mcpShortValue(s.before) +
+              ', live ' +
+              mcpShortValue(cur)
+          );
+          continue;
+        }
+      } else {
+        warnings.push(spath + '.' + field + ': before not checked');
       }
       if (!setPathValue(base, spath + '.' + field, s.value)) {
         refusedSets.push(spath + '.' + field + ': could not be set');
@@ -2171,8 +2245,11 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
         dayStart.setUTCHours(0, 0, 0, 0);
         let usedLarge = 0;
         try {
+          // MCP-AGENT-FIRST 2026-11-12 1.5: only undecided or accepted rows
+          // count. A rejected row frees its quota, and `accepting` is a
+          // pending decision (1.6).
           const todayRows = await env.DB.prepare(
-            "SELECT proposal_json FROM cloud_reviews WHERE project_id = ? AND source_type = 'api' AND source_label = ? AND proposed_at >= ?"
+            "SELECT proposal_json FROM cloud_reviews WHERE project_id = ? AND source_type = 'api' AND source_label = ? AND proposed_at >= ? AND status IN ('pending','accepting','accepted')"
           )
             .bind(projectId, auth.label || 'MCP AI', dayStart.toISOString())
             .all();
@@ -2200,11 +2277,17 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
                 {
                   type: 'text',
                   text:
-                    'This key has already queued ' +
+                    'This call has ' +
+                    newLarge +
+                    ' large budget change(s). This key has ' +
                     usedLarge +
-                    ' large budget change(s) today and a day allows ' +
+                    ' large change(s) pending or accepted today (UTC). The limit is ' +
                     BUDGET_LARGE_PER_DAY +
-                    '. Ask the owner to decide those first, then send this one.'
+                    ' per day and ' +
+                    BUDGET_LARGE_PER_DAY +
+                    ' per call. Split into calls of at most ' +
+                    BUDGET_LARGE_PER_DAY +
+                    ' large changes, or ask the owner to decide pending ones.'
                 }
               ],
               isError: true

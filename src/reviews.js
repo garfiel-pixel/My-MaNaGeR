@@ -10,7 +10,9 @@ import {
   cloudForbidden,
   cloudProjectDeleted,
   cloudTimingSink,
-  cloudReadState,
+  cloudReadStateEtag,
+  cloudHealStaleClaims,
+  cloudPutState,
   cloudScopeMerge,
   cloudLogSave,
   cloudEncryptState,
@@ -174,10 +176,13 @@ export async function handleReviewList(request, env, projectId, mine) {
     return cloudProjectDeleted();
   }
   if (owner && !mine) {
+    // MCP-AGENT-FIRST 2026-11-12 1.6(a): a row claimed by an in-flight accept
+    // is still undecided, so it sorts with pending and reports as pending.
+    await cloudHealStaleClaims(env, projectId);
     const rows = await env.DB.prepare(
-      'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposal_json, proposed_at, decided_at, decided_by, accepted_entry_id, decision_note, decision_edited FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END, id DESC LIMIT 100'
+      "SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposal_json, proposed_at, decided_at, decided_by, accepted_entry_id, decision_note, decision_edited FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status IN ('pending','accepting') THEN 0 ELSE 1 END, id DESC LIMIT 100"
     )
-      .bind(projectId, 'pending')
+      .bind(projectId)
       .all();
     const proposals = (rows.results || []).map(function (r) {
       let diffs = null;
@@ -202,7 +207,7 @@ export async function handleReviewList(request, env, projectId, mine) {
         proposalType: r.proposal_type,
         sourceType: r.source_type,
         sourceLabel: r.source_label,
-        status: r.status,
+        status: r.status === 'accepting' ? 'pending' : r.status,
         diffs: normalized.diffs,
         diffTotal: normalized.total,
         diffTruncated: normalized.truncated,
@@ -295,6 +300,20 @@ function storedDiffs(row) {
   }
 }
 
+// MCP-AGENT-FIRST 2026-11-12 1.6(a): the claim and its 60-second heal live in
+// lib/http.js so the MCP status tool heals the same way.
+async function releaseClaim(env, reviewId) {
+  try {
+    await env.DB.prepare(
+      "UPDATE cloud_reviews SET status = 'pending' WHERE id = ? AND status = 'accepting'"
+    )
+      .bind(reviewId)
+      .run();
+  } catch (e) {
+    /* the 60-second heal is the backstop */
+  }
+}
+
 function refusalFor(applied) {
   const problems = applied.stale.concat(applied.unaddressable);
   return json(
@@ -313,6 +332,9 @@ function refusalFor(applied) {
 
 export async function handleReviewAccept(request, env, projectId, reviewId, pushRevChanged) {
   const decision = await readDecisionBody(request);
+  // MCP-AGENT-FIRST 2026-11-12 1.6(a): an abandoned claim reverts to pending
+  // the next time the queue is touched.
+  await cloudHealStaleClaims(env, projectId);
   const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
     .bind(reviewId, projectId)
     .first();
@@ -357,6 +379,24 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
   }
   const now = new Date().toISOString();
   const resp = { ok: true, reviewId: reviewId, status: 'accepted', decidedAt: now };
+  // MCP-AGENT-FIRST 2026-11-12 1.6(a): claim the decision before touching any
+  // state. Two concurrent accepts now race on one conditional UPDATE, and only
+  // one of them wins.
+  const claim = await env.DB.prepare(
+    "UPDATE cloud_reviews SET status = 'accepting', decided_at = ? WHERE id = ? AND project_id = ? AND status = 'pending'"
+  )
+    .bind(now, reviewId, projectId)
+    .run();
+  if (!claim.meta || !claim.meta.changes) {
+    return json(
+      {
+        ok: false,
+        error: 'already being decided',
+        message: 'This proposal is already being decided. Refresh the list and try again.'
+      },
+      409
+    );
+  }
   if (row.proposal_type === 'save') {
     const key = 'projects/' + projectId + '/latest.json';
     const projRow = await env.DB.prepare(
@@ -364,12 +404,6 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     )
       .bind(projectId)
       .first();
-    const prev = await cloudReadState(
-      env,
-      key,
-      projRow && projRow.owner_code_hash,
-      projRow && projRow.owner_code_salt
-    );
     let scope = [];
     try {
       const p = JSON.parse(row.scope);
@@ -379,37 +413,52 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     } catch (e) {
       scope = [];
     }
-    let submitted = {};
-    try {
-      submitted = JSON.parse(row.submitted_json);
-    } catch (e) {
-      submitted = {};
-    }
-    // Partial approval: the owner ticked a subset of the listed fields. Apply
-    // those leaves to the CURRENT state instead of replacing whole sections,
-    // so an unrelated field that moved since the save is not rolled back.
-    if (Array.isArray(decision.diffs) && decision.diffs.length) {
-      const applied = applyLeafDiffs(prev, decision.diffs, submitted);
-      if (applied.stale.length || applied.unaddressable.length) {
-        return refusalFor(applied);
+    const baseSubmitted = (function () {
+      try {
+        return JSON.parse(row.submitted_json);
+      } catch (e) {
+        return {};
       }
-      submitted = applied.submitted;
-      decision.edited = 1;
-      if (!applied.changed) {
-        resp.noop = true;
+    })();
+    // MCP-AGENT-FIRST 2026-11-12 1.6(b): read the state WITH its etag, apply
+    // the decision to that exact version, and write only if it still matches.
+    // A conflict re-reads and re-applies, up to 3 attempts.
+    let prevUsed = null;
+    let nextUsed = null;
+    let wrote = false;
+    for (let attempt = 0; attempt < 3 && !wrote; attempt++) {
+      const read = await cloudReadStateEtag(
+        env,
+        key,
+        projRow && projRow.owner_code_hash,
+        projRow && projRow.owner_code_salt
+      );
+      const prev = read.state;
+      let submitted = baseSubmitted;
+      // Partial approval: the owner ticked a subset of the listed fields. Apply
+      // those leaves to the CURRENT state instead of replacing whole sections,
+      // so an unrelated field that moved since the save is not rolled back.
+      if (Array.isArray(decision.diffs) && decision.diffs.length) {
+        const applied = applyLeafDiffs(prev, decision.diffs, submitted);
+        if (applied.stale.length || applied.unaddressable.length) {
+          await releaseClaim(env, reviewId);
+          return refusalFor(applied);
+        }
+        submitted = applied.submitted;
+        decision.edited = 1;
+        if (!applied.changed) {
+          resp.noop = true;
+        }
       }
-    }
-    const merged = cloudScopeMerge(prev, submitted, scope);
-    resp.applied = merged.applied;
-    resp.blocked = merged.blocked;
-    if (merged.applied.length > 0) {
+      const merged = cloudScopeMerge(prev, submitted, scope);
+      resp.applied = merged.applied;
+      resp.blocked = merged.blocked;
+      if (!merged.applied.length) {
+        wrote = true;
+        break;
+      }
       merged.next.updatedAt = now;
       // Encrypt state blob on accept (same envelope as handleCloudSave)
-      const projRow = await env.DB.prepare(
-        'SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
-      )
-        .bind(projectId)
-        .first();
       let r2Payload = JSON.stringify(merged.next);
       if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
         try {
@@ -422,7 +471,25 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
           /* fall back to plaintext */
         }
       }
-      await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
+      const put = await cloudPutState(env, key, r2Payload, read.etag);
+      if (put.ok) {
+        wrote = true;
+        prevUsed = prev;
+        nextUsed = merged.next;
+      }
+    }
+    if (!wrote) {
+      await releaseClaim(env, reviewId);
+      return json(
+        {
+          ok: false,
+          error: 'busy',
+          message: 'The project is being saved by someone else right now. Try again in a moment.'
+        },
+        409
+      );
+    }
+    if (nextUsed) {
       await env.DB.prepare(
         'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?'
       )
@@ -431,8 +498,8 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       const entry = await cloudLogSave(
         env,
         projectId,
-        prev,
-        merged.next,
+        prevUsed,
+        nextUsed,
         { type: actorType, label: actorLabel },
         'accepted'
       );
@@ -455,12 +522,6 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     )
       .bind(projectId)
       .first();
-    const prev = await cloudReadState(
-      env,
-      key,
-      projRowM && projRowM.owner_code_hash,
-      projRowM && projRowM.owner_code_salt
-    );
     let scope = [];
     try {
       const p = JSON.parse(row.scope);
@@ -470,123 +531,147 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     } catch (e) {
       scope = [];
     }
-    let submitted = {};
-    try {
-      submitted = JSON.parse(row.submitted_json);
-    } catch (e) {
-      submitted = {};
-    }
-    // H-6 (BUDGET-BOQ directive 2026-11-05): the approval preview sends back
-    // ONLY the changes the owner ticked, with the values the owner left in
-    // the fields. Rebuild the submission from those against the CURRENT state
-    // through the same validator the MCP server uses - so a partial approval
-    // applies a subset, an edited value wins, and a value the browser made up
-    // is refused here. A change whose "before" no longer matches the live
-    // line is STALE: refuse the whole accept and name both values, because
-    // applying half a stale proposal is worse than asking for a refresh.
-    if (Array.isArray(decision.changes)) {
-      const built = buildBudgetProposal(prev, decision.changes, prev && prev.currency);
-      if (!built.changes.length) {
-        return json(
-          {
-            ok: false,
-            error:
-              'Nothing to apply. ' +
-              (built.refused.length ? built.refused.join('; ') : 'No changes were approved.')
-          },
-          400
-        );
+    const baseSubmitted = (function () {
+      try {
+        return JSON.parse(row.submitted_json);
+      } catch (e) {
+        return {};
       }
-      const stale = [];
-      built.changes.forEach(function (c) {
-        if (c.kind !== 'changeLine' || c.before === undefined || c.before === null) {
-          return;
+    })();
+    // MCP-AGENT-FIRST 2026-11-12 1.6(b): same conditional read/apply/write as
+    // the save branch, so an accept and a UI save cannot silently overwrite
+    // each other.
+    let prevUsed = null;
+    let nextUsed = null;
+    let wrote = false;
+    for (let attempt = 0; attempt < 3 && !wrote; attempt++) {
+      const read = await cloudReadStateEtag(
+        env,
+        key,
+        projRowM && projRowM.owner_code_hash,
+        projRowM && projRowM.owner_code_salt
+      );
+      const prev = read.state;
+      let submitted = baseSubmitted;
+      // H-6 (BUDGET-BOQ directive 2026-11-05): the approval preview sends back
+      // ONLY the changes the owner ticked, with the values the owner left in
+      // the fields. Rebuild the submission from those against the CURRENT state
+      // through the same validator the MCP server uses - so a partial approval
+      // applies a subset, an edited value wins, and a value the browser made up
+      // is refused here. A change whose "before" no longer matches the live
+      // line is STALE: refuse the whole accept and name both values, because
+      // applying half a stale proposal is worse than asking for a refresh.
+      if (Array.isArray(decision.changes)) {
+        const built = buildBudgetProposal(prev, decision.changes, prev && prev.currency);
+        if (!built.changes.length) {
+          await releaseClaim(env, reviewId);
+          return json(
+            {
+              ok: false,
+              error:
+                'Nothing to apply. ' +
+                (built.refused.length ? built.refused.join('; ') : 'No changes were approved.')
+            },
+            400
+          );
         }
-        const live = (prev && prev.budgetLines ? prev.budgetLines : []).find(function (l) {
-          return String(l.id) === String(c.lineId);
-        });
-        const liveVal = live ? live[c.field] : undefined;
-        if (String(liveVal == null ? '' : liveVal) !== String(c.before)) {
-          stale.push({
-            lineId: c.lineId,
-            field: c.field,
-            expected: c.before,
-            actual: liveVal == null ? null : liveVal
+        const stale = [];
+        built.changes.forEach(function (c) {
+          if (c.kind !== 'changeLine' || c.before === undefined || c.before === null) {
+            return;
+          }
+          const live = (prev && prev.budgetLines ? prev.budgetLines : []).find(function (l) {
+            return String(l.id) === String(c.lineId);
           });
+          const liveVal = live ? live[c.field] : undefined;
+          if (String(liveVal == null ? '' : liveVal) !== String(c.before)) {
+            stale.push({
+              lineId: c.lineId,
+              field: c.field,
+              expected: c.before,
+              actual: liveVal == null ? null : liveVal
+            });
+          }
+        });
+        if (stale.length) {
+          await releaseClaim(env, reviewId);
+          return json(
+            {
+              ok: false,
+              error: 'stale',
+              message: 'This proposal changed since it was made. Refresh it before approving.',
+              stale: stale
+            },
+            409
+          );
         }
-      });
-      if (stale.length) {
-        return json(
-          {
-            ok: false,
-            error: 'stale',
-            message: 'This proposal changed since it was made. Refresh it before approving.',
-            stale: stale
-          },
-          409
-        );
+        submitted = built.submitted;
+        scope = ['bud'];
+        decision.edited = 1;
+        resp.proposalSummary = built.summary;
+      } else {
+        // One-press accept: apply the proposal's OWN stored leaves to the
+        // current state. The old path merged submitted_json, which replaces a
+        // whole tasks array and silently dropped flat leaves; this path touches
+        // only the fields the owner was shown.
+        const leafDiffs = Array.isArray(decision.diffs) ? decision.diffs : storedDiffs(row);
+        // MCP-AGENT-FIRST 2026-11-12 1.3: a legacy row has no ops_json, so a
+        // 500-leaf list is the cap talking, not the proposal. Accepting it would
+        // apply part of what the owner saw and none of what was dropped.
+        if (
+          !Array.isArray(decision.diffs) &&
+          !row.ops_json &&
+          Array.isArray(leafDiffs) &&
+          leafDiffs.length === 500
+        ) {
+          await releaseClaim(env, reviewId);
+          return json(
+            {
+              ok: false,
+              error: 'truncated',
+              message:
+                'This older proposal was truncated when it was queued. Reject it and ask the agent to resubmit.'
+            },
+            409
+          );
+        }
+        if (Array.isArray(leafDiffs) && leafDiffs.length) {
+          const applied = applyLeafDiffs(prev, leafDiffs, submitted);
+          if (applied.stale.length || applied.unaddressable.length) {
+            await releaseClaim(env, reviewId);
+            return refusalFor(applied);
+          }
+          submitted = applied.submitted;
+          if (Array.isArray(decision.diffs)) {
+            decision.edited = 1;
+          }
+          if (!applied.changed) {
+            resp.noop = true;
+          }
+        } else {
+          // MCP-AGENT-FIRST 2026-11-12 1.3: an MCP row with no stored leaves
+          // would fall through to cloudScopeMerge, which replaces whole arrays
+          // from submitted_json and can roll back a field changed since. An MCP
+          // proposal always has leaves; if they are gone, refuse instead.
+          await releaseClaim(env, reviewId);
+          return json(
+            {
+              ok: false,
+              error: 'no-diffs',
+              message:
+                'This proposal carries no stored field changes, so it cannot be applied safely. Reject it and ask the agent to resubmit.'
+            },
+            409
+          );
+        }
       }
-      submitted = built.submitted;
-      scope = ['bud'];
-      decision.edited = 1;
-      resp.proposalSummary = built.summary;
-    } else {
-      // One-press accept: apply the proposal's OWN stored leaves to the
-      // current state. The old path merged submitted_json, which replaces a
-      // whole tasks array and silently dropped flat leaves; this path touches
-      // only the fields the owner was shown.
-      const leafDiffs = Array.isArray(decision.diffs) ? decision.diffs : storedDiffs(row);
-      // MCP-AGENT-FIRST 2026-11-12 1.3: a legacy row has no ops_json, so a
-      // 500-leaf list is the cap talking, not the proposal. Accepting it would
-      // apply part of what the owner saw and none of what was dropped.
-      if (
-        !Array.isArray(decision.diffs) &&
-        !row.ops_json &&
-        Array.isArray(leafDiffs) &&
-        leafDiffs.length === 500
-      ) {
-        return json(
-          {
-            ok: false,
-            error: 'truncated',
-            message:
-              'This older proposal was truncated when it was queued. Reject it and ask the agent to resubmit.'
-          },
-          409
-        );
+      const merged = cloudScopeMerge(prev, submitted, scope);
+      resp.applied = merged.applied;
+      resp.blocked = merged.blocked;
+      if (!merged.applied.length) {
+        wrote = true;
+        break;
       }
-      if (Array.isArray(leafDiffs) && leafDiffs.length) {
-        const applied = applyLeafDiffs(prev, leafDiffs, submitted);
-        if (applied.stale.length || applied.unaddressable.length) {
-          return refusalFor(applied);
-        }
-        submitted = applied.submitted;
-        if (Array.isArray(decision.diffs)) {
-          decision.edited = 1;
-        }
-        if (!applied.changed) {
-          resp.noop = true;
-        }
-      } else if (row.proposal_type === 'mcp') {
-        // MCP-AGENT-FIRST 2026-11-12 1.3: an MCP row with no stored leaves
-        // would fall through to cloudScopeMerge, which replaces whole arrays
-        // from submitted_json and can roll back a field changed since. An MCP
-        // proposal always has leaves; if they are gone, refuse instead.
-        return json(
-          {
-            ok: false,
-            error: 'no-diffs',
-            message:
-              'This proposal carries no stored field changes, so it cannot be applied safely. Reject it and ask the agent to resubmit.'
-          },
-          409
-        );
-      }
-    }
-    const merged = cloudScopeMerge(prev, submitted, scope);
-    resp.applied = merged.applied;
-    resp.blocked = merged.blocked;
-    if (merged.applied.length > 0) {
       merged.next.updatedAt = now;
       let r2Payload = JSON.stringify(merged.next);
       if (projRowM && projRowM.owner_code_hash && projRowM.owner_code_salt) {
@@ -600,7 +685,25 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
           /* fall back to plaintext */
         }
       }
-      await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
+      const put = await cloudPutState(env, key, r2Payload, read.etag);
+      if (put.ok) {
+        wrote = true;
+        prevUsed = prev;
+        nextUsed = merged.next;
+      }
+    }
+    if (!wrote) {
+      await releaseClaim(env, reviewId);
+      return json(
+        {
+          ok: false,
+          error: 'busy',
+          message: 'The project is being saved by someone else right now. Try again in a moment.'
+        },
+        409
+      );
+    }
+    if (nextUsed) {
       await env.DB.prepare(
         'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?'
       )
@@ -609,8 +712,8 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       const entry = await cloudLogSave(
         env,
         projectId,
-        prev,
-        merged.next,
+        prevUsed,
+        nextUsed,
         { type: actorType, label: actorLabel },
         'accepted'
       );
@@ -651,6 +754,7 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
 
 export async function handleReviewReject(request, env, projectId, reviewId) {
   const decision = await readDecisionBody(request);
+  await cloudHealStaleClaims(env, projectId);
   const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
     .bind(reviewId, projectId)
     .first();
@@ -691,6 +795,23 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
     return cloudForbidden();
   }
   const now = new Date().toISOString();
+  // MCP-AGENT-FIRST 2026-11-12 1.6(a): the reject is conditional too, so it
+  // cannot race an accept. The audit row is written only after the claim wins.
+  const rejected = await env.DB.prepare(
+    "UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND status = 'pending'"
+  )
+    .bind('rejected', now, actorLabel, decision.note || null, reviewId)
+    .run();
+  if (!rejected.meta || !rejected.meta.changes) {
+    return json(
+      {
+        ok: false,
+        error: 'already being decided',
+        message: 'This proposal is already being decided. Refresh the list and try again.'
+      },
+      409
+    );
+  }
   await env.DB.prepare(
     'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
   )
@@ -704,11 +825,6 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
       null,
       now
     )
-    .run();
-  await env.DB.prepare(
-    'UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ?'
-  )
-    .bind('rejected', now, actorLabel, decision.note || null, reviewId)
     .run();
   return json({
     ok: true,

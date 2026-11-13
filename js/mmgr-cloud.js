@@ -1296,15 +1296,34 @@ var MMGR = window.MMGR || {};
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: headers,
-        body: JSON.stringify({ state: state, syncMode: getSyncMode() })
-      });
-      const data = await res.json().catch(function () {
+      const sendSave = function () {
+        return fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers,
+          body: JSON.stringify({
+            state: state,
+            syncMode: getSyncMode(),
+            baseUpdatedAt: state.updatedAt || null
+          })
+        });
+      };
+      let res = await sendSave();
+      let data = await res.json().catch(function () {
         return {};
       });
+      // MCP-AGENT-FIRST 2026-11-12 1.6(b): 409 busy means an accept (or another
+      // device) wrote between our read and our write. The server re-merged once;
+      // retry the save once with the same local state before reporting failure.
+      if (res.status === 409 && data && data.code === 'busy') {
+        await new Promise(function (r) {
+          setTimeout(r, 600);
+        });
+        res = await sendSave();
+        data = await res.json().catch(function () {
+          return {};
+        });
+      }
       if (!res.ok || !data.ok) {
         let msg = (data && data.error) || 'Cloud save failed (HTTP ' + res.status + ').';
         // gap-audit H29: the 8 MB cap deserves a friendly message, not a bare 413.
@@ -1468,7 +1487,11 @@ var MMGR = window.MMGR || {};
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
-      const body = JSON.stringify({ state: state, syncMode: getSyncMode() });
+      const body = JSON.stringify({
+        state: state,
+        syncMode: getSyncMode(),
+        baseUpdatedAt: state.updatedAt || null
+      });
       // keepalive:true lets a pagehide flush survive tab close, but keepalive
       // requests are size-capped (~64 KiB), so only use it for small states;
       // large states rely on the idle debounce (which normally already fired).

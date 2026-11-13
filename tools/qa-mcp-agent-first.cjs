@@ -73,12 +73,14 @@ function baseState() {
       endDate: '2026-10-05',
       critical: false,
       totalFloat: 0,
-      predecessors: []
+      predecessors: [],
+      notes: ''
     });
   }
   return {
     schemaVersion: 19,
     projectId: PROJECT,
+    updatedAt: '2026-11-01T00:00:00.000Z',
     currency: 'USD',
     projectName: 'Agent First',
     projectDeadline: '2027-06-30',
@@ -132,21 +134,41 @@ async function makeEnv(opts) {
   const ownerHash = await o.mod.hashOwnerCode(OWNER_CODE, OWNER_SALT);
 
   const r2map = Object.create(null);
+  const etags = Object.create(null);
+  const etagOf = function (v) {
+    return crypto.createHash('md5').update(String(v)).digest('hex');
+  };
   r2map[R2_KEY] = JSON.stringify(state);
+  etags[R2_KEY] = etagOf(r2map[R2_KEY]);
   const r2 = {
     async get(k) {
-      const v = r2map[String(k)];
+      const key = String(k);
+      const v = r2map[key];
       if (v === undefined) {
         return null;
       }
       return {
+        etag: etags[key],
         async text() {
           return v;
         }
       };
     },
-    async put(k, v) {
-      r2map[String(k)] = String(v);
+    async put(k, v, opts) {
+      const key = String(k);
+      const cond = opts && opts.onlyIf;
+      if (cond && cond.etagMatches && etags[key] !== cond.etagMatches) {
+        const e = new Error("The request's precondition failed");
+        e.code = 10031;
+        throw e;
+      }
+      if (cond && cond.etagDoesNotMatch === '*' && etags[key]) {
+        const e = new Error("The request's precondition failed");
+        e.code = 10031;
+        throw e;
+      }
+      r2map[key] = String(v);
+      etags[key] = etagOf(r2map[key]);
       return { ok: true };
     }
   };
@@ -200,7 +222,11 @@ async function makeEnv(opts) {
                 return { status: 'active', tier: 'premium', plan: 'premium' };
               }
               if (low.includes('from cloud_reviews') && low.includes('where id =')) {
-                return reviewRowById(args[0]) || null;
+                // A SELECT returns a snapshot, not a live reference: two
+                // concurrent accepts must both read the row as it was, which
+                // is exactly what the missing claim fails to guard.
+                const r = reviewRowById(args[0]);
+                return r ? Object.assign({}, r) : null;
               }
               if (low.includes('from cloud_reviews')) {
                 return null;
@@ -208,6 +234,9 @@ async function makeEnv(opts) {
               return null;
             },
             async all() {
+              if (low.includes('from cloud_changelog')) {
+                return { results: store.changelog.slice() };
+              }
               if (low.includes('from cloud_reviews')) {
                 return {
                   results: store.reviews.filter(function (r) {
@@ -250,18 +279,37 @@ async function makeEnv(opts) {
                 // The claim (Phase 1.6) is conditional on pending; the final
                 // decision write is not. Honour the guard so a second accept
                 // loses the claim exactly as it would in D1.
-                const guarded =
-                  low.includes("and status = 'pending'") || low.includes('and status=?');
-                const idArg = args[args.length - 1];
-                const row = reviewRowById(idArg);
+                const needPending = low.includes("and status = 'pending'");
+                const needAccepting = low.includes("and status = 'accepting'");
+                const guarded = needPending || needAccepting || low.includes('and status=?');
+                let row = null;
+                for (let ai = 0; ai < args.length; ai++) {
+                  const cand = reviewRowById(args[ai]);
+                  if (cand) {
+                    row = cand;
+                    break;
+                  }
+                }
                 if (!row) {
                   return { meta: { changes: 0 } };
                 }
-                if (guarded && row.status !== 'pending') {
+                if (needPending && row.status !== 'pending') {
                   return { meta: { changes: 0 } };
                 }
-                if (low.includes('set status')) {
+                if (needAccepting && row.status !== 'accepting') {
+                  return { meta: { changes: 0 } };
+                }
+                if (guarded && !needPending && !needAccepting && row.status !== 'pending') {
+                  return { meta: { changes: 0 } };
+                }
+                const lit = /set status = '([^']+)'/i.exec(String(sql));
+                if (lit) {
+                  row.status = lit[1];
+                } else if (low.includes('set status')) {
                   row.status = String(args[0]);
+                }
+                if (lit && low.includes('decided_at = ?') && args[0]) {
+                  row.decided_at = args[0];
                 }
                 return { meta: { changes: 1 } };
               }
@@ -386,9 +434,11 @@ function addReview(env, row) {
   const server = await import('../src/mcp/server.js');
   const http = await import('../src/lib/http.js');
   const reviews = await import('../src/reviews.js');
+  const projects = await import('../src/cloud/projects.js');
   const mod = {
     handleMcpServer: server.handleMcpServer,
     handleReviewAccept: reviews.handleReviewAccept,
+    handleCloudSave: projects.handleCloudSave,
     hashOwnerCode: http.hashOwnerCode,
     cloudDecryptState: http.cloudDecryptState,
     cloudLogSave: http.cloudLogSave
@@ -632,7 +682,7 @@ function addReview(env, row) {
   // =====================================================================
   // R05 — the agent's before is not checked at queue time
   // =====================================================================
-  section('R05 — an agent before that does not match the live value is queued');
+  section('R05 — a stale agent before is refused with both values');
   {
     const env = await makeEnv({ mod });
     const q = await tool(env, 20, 'apply_changes', {
@@ -640,26 +690,44 @@ function addReview(env, row) {
         { path: 'tasks', recordId: 't6', field: 'status', before: 'completed', after: 'inprogress' }
       ]
     });
-    const row = env.__store.reviews[0];
-    const stored = JSON.parse(row.diffs_json);
-    const a = await accept(env, row.id);
-    const st = await stateOf(env);
     check(
-      'R05 the wrong before is replaced by the live value and queued',
-      /Queued 1 field change/.test(textOf(q)) && stored[0].before === 'todo',
-      { text: textOf(q), storedBefore: stored[0].before }
+      'R05 a wrong before is refused with expected and live',
+      /stale before: expected completed, live todo/.test(textOf(q)) &&
+        env.__store.reviews.length === 0,
+      { text: textOf(q).slice(0, 160), rows: env.__store.reviews.length }
     );
+    const ok = await makeEnv({ mod });
+    const q2 = await tool(ok, 21, 'apply_changes', {
+      diffs: [
+        { path: 'tasks', recordId: 't6', field: 'status', before: 'todo', after: 'inprogress' }
+      ]
+    });
+    const a = await accept(ok, ok.__store.reviews[0].id);
+    const st = await stateOf(ok);
     check(
-      'R05b accept succeeds with no stale flag',
-      a.status === 200 && st.tasks[5].status === 'inprogress',
+      'R05b a correct before queues and accepts',
+      /Queued 1 field change/.test(textOf(q2)) &&
+        a.status === 200 &&
+        st.tasks[5].status === 'inprogress',
       { status: a.status, live: st.tasks[5].status }
+    );
+    const noBefore = await makeEnv({ mod });
+    const q3 = await tool(noBefore, 22, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't6', field: 'notes', after: 'no before' }]
+    });
+    const row3 = noBefore.__store.reviews[0];
+    const ops3 = JSON.parse(row3.ops_json || '[]');
+    check(
+      'R05c an omitted before still queues and records the live value',
+      /Queued 1 field change/.test(textOf(q3)) && ops3[0] && ops3[0].before === '',
+      { text: textOf(q3).slice(0, 160), before: ops3[0] && ops3[0].before }
     );
   }
 
   // =====================================================================
   // R06 — the large-budget message omits the incoming count
   // =====================================================================
-  section('R06 — 24 large budget changes get the misleading limit message');
+  section('R06 — 24 large budget changes name N, U and L');
   {
     const env = await makeEnv({ mod });
     const budget = [];
@@ -669,17 +737,19 @@ function addReview(env, row) {
     const q = await tool(env, 30, 'apply_changes', { budget });
     const t = textOf(q);
     check(
-      'R06 the message says "already queued 0" and never names the 24',
-      /already queued 0 large budget change\(s\) today and a day allows 10/.test(t) &&
-        t.indexOf('24') === -1,
-      { text: t.slice(0, 240) }
+      'R06 the message names the 24 incoming, 0 used and the 10 limit',
+      /This call has 24 large budget change\(s\)/.test(t) &&
+        /This key has 0 large change\(s\) pending or accepted today \(UTC\)/.test(t) &&
+        /The limit is 10 per day and 10 per call/.test(t) &&
+        env.__store.reviews.length === 0,
+      { text: t.slice(0, 300), rows: env.__store.reviews.length }
     );
   }
 
   // =====================================================================
   // R07 — two concurrent accepts of the same proposal both pass
   // =====================================================================
-  section('R07 — concurrent accepts both pass the pending check');
+  section('R07 — one concurrent accept wins the claim');
   {
     const env = await makeEnv({ mod });
     const q = await tool(env, 40, 'apply_changes', {
@@ -687,11 +757,62 @@ function addReview(env, row) {
     });
     const id = env.__store.reviews[0].id;
     const [a1, a2] = await Promise.all([accept(env, id), accept(env, id)]);
-    const codes = [a1.status, a2.status];
+    const codes = [a1.status, a2.status].sort();
+    const st = await stateOf(env);
     check(
-      'R07 both accepts answer 200 (the second should have been refused)',
-      codes[0] === 200 && codes[1] === 200,
-      { codes, q: textOf(q).slice(0, 80) }
+      'R07 exactly one accept answers 200 and the other 409',
+      codes[0] === 200 &&
+        codes[1] === 409 &&
+        /already being decided/i.test((a1.status === 409 ? a1.text : a2.text) || '') &&
+        st.tasks[5].notes === 'race',
+      { codes, q: textOf(q).slice(0, 80), notes: st.tasks[5].notes }
+    );
+  }
+
+  // =====================================================================
+  // R07b — a UI save and an accept must not lose each other
+  // =====================================================================
+  section('R07b — a UI save and an accept keep both changes');
+  {
+    const env = await makeEnv({ mod });
+    await tool(env, 41, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't6', field: 'notes', after: 'from agent' }]
+    });
+    const id = env.__store.reviews[0].id;
+    const uiState = await stateOf(env);
+    uiState.tasks[7].name = 'From UI';
+    const saveReq = new Request('http://localhost/api/cloud/projects/' + PROJECT + '/save', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+      body: JSON.stringify({
+        state: uiState,
+        syncMode: 'auto',
+        baseUpdatedAt: uiState.updatedAt || null
+      })
+    });
+    const saveP = env.__mod.handleCloudSave(saveReq, env, PROJECT, null);
+    const accP = accept(env, id);
+    const [saveRes, accRes] = await Promise.all([saveP, accP]);
+    const saveData = await saveRes
+      .clone()
+      .json()
+      .catch(function () {
+        return null;
+      });
+    const st = await stateOf(env);
+    check('R07b the UI save lands', saveRes.status === 200 && !!(saveData && saveData.ok), {
+      status: saveRes.status,
+      data: saveData
+    });
+    check(
+      'R07b both the saved field and the accepted field survive',
+      st.tasks[5].notes === 'from agent' && st.tasks[7].name === 'From UI',
+      {
+        notes: st.tasks[5].notes,
+        name: st.tasks[7].name,
+        acceptStatus: accRes.status,
+        saveOk: !!(saveData && saveData.ok)
+      }
     );
   }
 

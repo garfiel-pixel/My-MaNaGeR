@@ -1273,6 +1273,77 @@ export async function cloudReadState(env, key, ownerCodeHash, ownerCodeSalt) {
   return parsed;
 }
 
+// MCP-AGENT-FIRST 2026-11-12 1.6(b): one shared read-with-etag / conditional
+// write pair for projects/<id>/latest.json. Every writer (owner save, accept,
+// revert) uses it, so a concurrent write is a detected conflict instead of a
+// silent last-writer-wins overwrite.
+export async function cloudReadStateEtag(env, key, ownerCodeHash, ownerCodeSalt) {
+  if (!key) {
+    return { state: null, etag: null };
+  }
+  const obj = await env.R2.get(key);
+  if (!obj) {
+    return { state: null, etag: null };
+  }
+  const etag = obj.etag || null;
+  const text = await obj.text();
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    return { state: null, etag: etag };
+  }
+  if (ownerCodeHash && ownerCodeSalt && parsed && parsed.v === R2_ENC_VERSION) {
+    try {
+      return { state: await cloudDecryptState(parsed, ownerCodeHash, ownerCodeSalt), etag: etag };
+    } catch (e) {
+      return { state: null, etag: etag };
+    }
+  }
+  return { state: parsed, etag: etag };
+}
+
+// MCP-AGENT-FIRST 2026-11-12 1.6(a): a decision is claimed with one
+// conditional UPDATE, so two concurrent accepts cannot both pass the pending
+// check. A claim older than 60 seconds is treated as abandoned and reverts to
+// pending the next time the queue is read. Shared so the accept route, the
+// review list and get_proposal_status all heal the same way.
+export const CLOUD_CLAIM_STALE_MS = 60000;
+
+export async function cloudHealStaleClaims(env, projectId) {
+  try {
+    await env.DB.prepare(
+      "UPDATE cloud_reviews SET status = 'pending', decided_at = NULL WHERE project_id = ? AND status = 'accepting' AND decided_at IS NOT NULL AND decided_at < ?"
+    )
+      .bind(projectId, new Date(Date.now() - CLOUD_CLAIM_STALE_MS).toISOString())
+      .run();
+  } catch (e) {
+    /* healing is best-effort and must never block a decision */
+  }
+}
+
+// Returns { ok: true } on write, { ok: false, busy: true } when the object
+// changed since `etag` was read. A null etag means the object was absent, so
+// the write is conditional on it still being absent.
+export async function cloudPutState(env, key, payload, etag) {
+  const options = { httpMetadata: { contentType: 'application/json' } };
+  if (etag) {
+    options.onlyIf = { etagMatches: etag };
+  } else {
+    options.onlyIf = { etagDoesNotMatch: '*' };
+  }
+  try {
+    await env.R2.put(key, payload, options);
+    return { ok: true };
+  } catch (e) {
+    const msg = String((e && e.message) || e || '');
+    if ((e && e.code === 10031) || /precondition|etag|412/i.test(msg)) {
+      return { ok: false, busy: true };
+    }
+    throw e;
+  }
+}
+
 // Scoped projection of the stored state for LIMITED readers (client codes,
 // project API keys): only the top-level keys granted by the section scope
 // survive; device/meta keys (fieldTs, updatedAt, config) are never exposed.

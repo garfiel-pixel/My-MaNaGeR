@@ -8,6 +8,8 @@ import {
   json,
   cloudForbidden,
   cloudReadState,
+  cloudReadStateEtag,
+  cloudPutState,
   cloudDeepEqual,
   cloudPathGet,
   cloudRevertDiff,
@@ -82,12 +84,15 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
   )
     .bind(projectId)
     .first();
-  const cur = await cloudReadState(
+  // MCP-AGENT-FIRST 2026-11-12 1.6(b): read with the etag so a revert cannot
+  // overwrite a save or an accept that landed after this read.
+  const curRead = await cloudReadStateEtag(
     env,
     key,
     projRow && projRow.owner_code_hash,
     projRow && projRow.owner_code_salt
   );
+  const cur = curRead.state;
   if (!cur) {
     return json({ ok: false, error: 'no snapshot to revert against' }, 400);
   }
@@ -169,7 +174,18 @@ export async function handleCloudChangelogRevert(request, env, projectId, entryI
       /* fall back to plaintext */
     }
   }
-  await env.R2.put(key, r2Payload, { httpMetadata: { contentType: 'application/json' } });
+  const put = await cloudPutState(env, key, r2Payload, curRead.etag);
+  if (!put.ok) {
+    return json(
+      {
+        ok: false,
+        error: 'busy',
+        code: 'busy',
+        message: 'The project changed while reverting. Try again in a moment.'
+      },
+      409
+    );
+  }
   await env.DB.prepare(
     'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?'
   )

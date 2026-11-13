@@ -1356,6 +1356,39 @@ async function sessionCookie(env, sub) {
     wScopeBudget
   );
 
+  // MCP-AGENT-FIRST 5.1 AT11: the app-wide surface must apply the SAME section
+  // gate to reads as the per-project surface. The member holds wbs only, so the
+  // task reader answers and every other section reader refuses.
+  const READ_PROBES = [
+    { name: 'get_tasks', wantRefused: false },
+    { name: 'get_risks', wantRefused: true },
+    { name: 'get_budget', wantRefused: true },
+    { name: 'get_meetings', wantRefused: true }
+  ];
+  for (let rp = 0; rp < READ_PROBES.length; rp++) {
+    const probe = READ_PROBES[rp];
+    const res = await mcpCall(
+      envScopeW,
+      {
+        jsonrpc: '2.0',
+        id: 270 + rp,
+        method: 'tools/call',
+        params: { name: probe.name, arguments: { projectId: 'p3' } }
+      },
+      bearerScopeW
+    );
+    const refused = !!(res && res.result && res.result.isError === true);
+    check(
+      'W5b ' +
+        probe.name +
+        ' ' +
+        (probe.wantRefused ? 'refuses' : 'answers') +
+        ' on the wbs-only member',
+      refused === probe.wantRefused,
+      res
+    );
+  }
+
   section('APP-WIDE MCP W6 — mcp_enabled=0 blocks writes before the pipeline');
   const envOffW = makeEnv({
     config: { account_sub: 'sub-abc', enabled: 1, policy: 'allow_all', tool_subset: null },

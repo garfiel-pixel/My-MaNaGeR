@@ -113,7 +113,9 @@ function baseState() {
     logEntries: [],
     changes: [],
     documents: [],
-    stakeholders: []
+    stakeholders: [],
+    resources: [],
+    commsEntries: []
   };
 }
 
@@ -560,6 +562,7 @@ function addReview(env, row) {
   const http = await import('../src/lib/http.js');
   const reviews = await import('../src/reviews.js');
   const reportStore = await import('../src/mcp/report-store.js');
+  const modelMod = await import('../src/mcp/model.js');
   const projects = await import('../src/cloud/projects.js');
   const mod = {
     handleMcpServer: server.handleMcpServer,
@@ -574,7 +577,8 @@ function addReview(env, row) {
     cloudLogSave: http.cloudLogSave,
     storeApplyReport: reportStore.storeApplyReport,
     summarizeApplyReport: reportStore.summarizeApplyReport,
-    pruneDecidedReports: reportStore.pruneDecidedReports
+    pruneDecidedReports: reportStore.pruneDecidedReports,
+    model: modelMod
   };
 
   // =====================================================================
@@ -1821,9 +1825,10 @@ function addReview(env, row) {
   }
 
   // =====================================================================
-  // AT11 — get_proposal_status: change-set listing + accepted-with-conflicts
+  // AT10/AT12 — get_proposal_status: change-set listing + accepted-with-conflicts
+  // (the directive's AT11 is the permission matrix, further down)
   // =====================================================================
-  section('AT11 — get_proposal_status lists by change set and reports conflicts');
+  section('AT10/AT12 — get_proposal_status lists by change set and reports conflicts');
   {
     const cs = 'cs-AT11';
     const env = await makeEnv({ mod });
@@ -1832,7 +1837,7 @@ function addReview(env, row) {
     const list = await tool(env, 910, 'get_proposal_status', { changeSetId: cs });
     const lData = jsonOf(list);
     check(
-      'AT11a changeSetId returns the two proposals in the set',
+      'AT10a changeSetId returns the two proposals in the set',
       lData && lData.count === 2 && lData.proposals.length === 2,
       { lData }
     );
@@ -1875,7 +1880,7 @@ function addReview(env, row) {
     const sData = jsonOf(status);
     const prop = sData && sData.proposals && sData.proposals[0] ? sData.proposals[0] : null;
     check(
-      'AT11b a proposal with a conflict is surfaced as accepted-with-conflicts',
+      'AT12a a proposal with a conflict is surfaced as accepted-with-conflicts',
       acc.status === 200 &&
         prop &&
         prop.outcome === 'accepted-with-conflicts' &&
@@ -3411,6 +3416,219 @@ function addReview(env, row) {
       'AT06g completion percent matches the counted work items',
       summary && summary.completion === Math.round((expectedDone / work.length) * 100),
       { got: summary && summary.completion, want: Math.round((expectedDone / work.length) * 100) }
+    );
+  }
+
+  // =====================================================================
+  // AT11 — the permission matrix. Every read tool and every write path is
+  // probed under five key shapes: full, one section with the switches off,
+  // budget with the read switch off, budget with the write switch off, and no
+  // sections at all. A cell is a pass only when the tool refuses exactly when
+  // the key is not permitted to see the section (or the switch is off).
+  // =====================================================================
+  section('AT11 — permission matrix: section x read switch x write switch');
+  {
+    const CONFIGS = [
+      { label: 'all sections, both switches on', scope: ALL_SECTIONS, read: 1, write: 1 },
+      { label: 'wbs only, both switches off', scope: ['wbs'], read: 0, write: 0 },
+      { label: 'budget only, read switch off', scope: ['bud'], read: 0, write: 1 },
+      { label: 'budget only, write switch off', scope: ['bud'], read: 1, write: 0 },
+      { label: 'no sections at all', scope: [], read: 1, write: 1 }
+    ];
+    // section null = no section gate; money = also needs "Read budget".
+    const READS = [
+      { tool: 'get_project_summary', args: {}, section: null },
+      { tool: 'get_tasks', args: {}, section: 'wbs' },
+      { tool: 'get_risks', args: {}, section: 'risk' },
+      { tool: 'get_meetings', args: {}, section: 'meet' },
+      { tool: 'get_budget', args: {}, section: 'bud', money: true },
+      { tool: 'get_deliveries', args: {}, section: 'bud', money: true },
+      { tool: 'get_weekly_summary', args: {}, section: 'bud', money: true },
+      { tool: 'run_monte_carlo', args: {}, section: 'wbs' },
+      { tool: 'get_table', args: { table: 'tasks' }, section: 'wbs' },
+      { tool: 'get_table', args: { table: 'risks' }, section: 'risk' },
+      { tool: 'get_table', args: { table: 'meetings' }, section: 'meet' },
+      { tool: 'get_table', args: { table: 'budgetLines' }, section: 'bud', money: true },
+      { tool: 'get_table', args: { table: 'wxCache' }, ownerOnly: true },
+      { tool: 'get_schema', args: {}, section: null },
+      { tool: 'get_pending', args: {}, section: null },
+      { tool: 'get_changes_since', args: {}, section: null }
+    ];
+    const allowed = function (cfg, row) {
+      if (row.ownerOnly) {
+        return false;
+      }
+      if (row.section && cfg.scope.indexOf(row.section) === -1) {
+        return false;
+      }
+      if (row.money && !cfg.read) {
+        return false;
+      }
+      return true;
+    };
+    const seeded = baseState();
+    seeded.meetings = [{ id: 'm1', date: '2026-10-10', title: 'Kickoff', notes: '' }];
+    seeded.logEntries = [{ id: 'l1', date: '2026-10-11', decision: 'Proceed', notes: '' }];
+    for (let ci = 0; ci < CONFIGS.length; ci++) {
+      const cfg = CONFIGS[ci];
+      const env = await makeEnv({
+        mod,
+        scope: cfg.scope,
+        budgetRead: cfg.read,
+        budgetWrite: cfg.write,
+        state: seeded
+      });
+      const bad = [];
+      for (let ri = 0; ri < READS.length; ri++) {
+        const row = READS[ri];
+        const res = await tool(env, 2000 + ci * 100 + ri, row.tool, row.args);
+        const want = allowed(cfg, row);
+        const got = !!(res && res.result && res.result.isError);
+        if (want === got) {
+          bad.push(row.tool + ':' + (want ? 'refused' : 'allowed'));
+        }
+      }
+      check(
+        'AT11a ' + cfg.label + ' — ' + READS.length + ' read tools answer exactly as granted',
+        bad.length === 0,
+        { mismatches: bad }
+      );
+    }
+
+    const WRITES = [
+      { path: 'tasks', recordId: 't1', field: 'notes', after: 'w-tasks', section: 'wbs' },
+      { path: 'risks', recordId: 'r2', field: 'notes', after: 'w-risks', section: 'risk' },
+      { path: 'meetings', recordId: 'm1', field: 'notes', after: 'w-meet', section: 'meet' },
+      {
+        path: 'budgetLines',
+        recordId: 'b1',
+        field: 'planned',
+        after: 123456,
+        section: 'bud',
+        money: true
+      }
+    ];
+    for (let ci = 0; ci < CONFIGS.length; ci++) {
+      const cfg = CONFIGS[ci];
+      const bad = [];
+      for (let wi = 0; wi < WRITES.length; wi++) {
+        const row = WRITES[wi];
+        const env = await makeEnv({
+          mod,
+          scope: cfg.scope,
+          budgetRead: cfg.read,
+          budgetWrite: cfg.write,
+          state: seeded
+        });
+        const res = await tool(env, 3000 + ci * 100 + wi, 'apply_changes', {
+          diffs: [{ path: row.path, recordId: row.recordId, field: row.field, after: row.after }]
+        });
+        // A money write needs BOTH switches: a key may not propose a figure it
+        // is not allowed to read.
+        const want =
+          (!row.section || cfg.scope.indexOf(row.section) > -1) &&
+          (!row.money || (!!cfg.read && !!cfg.write));
+        const queued = env.__store.reviews.length === 1;
+        if (queued !== want) {
+          bad.push(row.path + '.' + row.field + ':' + (want ? 'not queued' : 'queued'));
+        }
+        if (!want && !(res && res.result && res.result.isError === true)) {
+          // A refusal must be an error result, never a silent success.
+          bad.push(row.path + '.' + row.field + ': refused without an error result');
+        }
+      }
+      check(
+        'AT11b ' + cfg.label + ' — ' + WRITES.length + ' write paths queue exactly as granted',
+        bad.length === 0,
+        {
+          mismatches: bad
+        }
+      );
+    }
+  }
+
+  // =====================================================================
+  // AT19 — create-then-read for every creatable list: the text written is the
+  // text read, through the dedicated reader and through get_table.
+  // =====================================================================
+  section('AT19 — create-then-read round trip for every creatable list');
+  {
+    const model = mod.model;
+    const CREATABLE = [
+      'tasks',
+      'resources',
+      'risks',
+      'issues',
+      'logEntries',
+      'meetings',
+      'stakeholders',
+      'documents',
+      'changes',
+      'commsEntries'
+    ];
+    const TEXT = 'Round trip "\u00e9\u2014" 100% <b>x</b> & done';
+    const env = await makeEnv({ mod });
+    const creates = CREATABLE.map(function (path) {
+      const spec = model.getList(path);
+      const titleField = spec && spec.titleField ? spec.titleField : 'name';
+      const rec = {};
+      rec[titleField] = TEXT;
+      if (spec && spec.fields && spec.fields.notes) {
+        rec.notes = TEXT + ' (notes)';
+      }
+      return { path: path, record: rec };
+    });
+    const q = await tool(env, 3100, 'apply_changes', { creates: creates });
+    check(
+      'AT19a every creatable list accepts a text create in one proposal',
+      env.__store.reviews.length === 1 &&
+        new RegExp('Queued ' + CREATABLE.length + ' field change').test(textOf(q)),
+      { text: textOf(q).slice(0, 200) }
+    );
+    const a = await accept(env, env.__store.reviews[0].id);
+    check('AT19b the accept succeeds', a.status === 200, { status: a.status });
+
+    const missing = [];
+    for (let i = 0; i < CREATABLE.length; i++) {
+      const path = CREATABLE[i];
+      const spec = model.getList(path);
+      const titleField = spec && spec.titleField ? spec.titleField : 'name';
+      const page = jsonOf(await tool(env, 3101 + i, 'get_table', { table: path, limit: 500 }));
+      const rows = (page && page.records) || [];
+      const hit = rows.filter(function (r) {
+        return String(r[titleField] == null ? '' : r[titleField]) === TEXT;
+      });
+      if (hit.length !== 1) {
+        missing.push(path + ' (' + titleField + '): ' + hit.length);
+        continue;
+      }
+      if (spec && spec.fields && spec.fields.notes) {
+        const wantNotes = TEXT + ' (notes)';
+        if (String(hit[0].notes == null ? '' : hit[0].notes) !== wantNotes) {
+          missing.push(path + ' notes: ' + JSON.stringify(hit[0].notes));
+        }
+      }
+    }
+    check('AT19c every list reads the created text back byte for byte', missing.length === 0, {
+      mismatches: missing
+    });
+
+    const tasks = jsonOf(await tool(env, 3120, 'get_tasks', {}));
+    const risks = jsonOf(await tool(env, 3121, 'get_risks', {}));
+    const meetings = jsonOf(await tool(env, 3122, 'get_meetings', {}));
+    check(
+      'AT19d the dedicated readers return the same text',
+      !!tasks &&
+        (tasks.tasks || []).some(t => t.name === TEXT) &&
+        !!risks &&
+        (risks.risks || []).some(r => r.description === TEXT) &&
+        !!meetings &&
+        (meetings.meetings || []).some(m => m.title === TEXT),
+      {
+        tasks: (tasks && (tasks.tasks || []).filter(t => t.name === TEXT).length) || 0,
+        risks: (risks && (risks.risks || []).filter(r => r.description === TEXT).length) || 0,
+        meetings: (meetings && (meetings.meetings || []).filter(m => m.title === TEXT).length) || 0
+      }
     );
   }
 

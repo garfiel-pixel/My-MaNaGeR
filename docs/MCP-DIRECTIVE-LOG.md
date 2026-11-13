@@ -486,6 +486,8 @@ read-only annotation and an outputSchema.
 | 5.1 AT01-AT21 acceptance tests (group 1: AT02, AT03, AT04, AT09) | `tools/qa-mcp-agent-first.cjs` | PASS — AT02 a UI edit landing after the queue conflicts exactly one op and the rest apply (report names the op + record, summary counts one applied + one conflict); AT03 both `validate_changes` and `apply_changes` refuse an invalid enum with the allowed list and queue no row; AT04 `critical` / `totalFloat` / `statusSince` / `completedDate` are refused as derived and a create cannot smuggle a computed field; AT09 the large-change counter counts only live decisions (8 incoming, 3 used, a rejected row excluded, limit 10); `qa-mcp-agent-first` 112/112 |
 | 5.1 AT05 hard-failure rollback | `src/cloud/apply-ops.js`, `src/reviews.js`, `test/apply-ops.test.mjs`, `tools/qa-mcp-agent-first.cjs` | PASS — a predecessor cycle queued as two ops (the queue cannot see the closed set) is refused at accept with 422 `accept-failed` + `hardFailure`; the R2 blob etag is unchanged, neither task keeps the cyclic predecessors and the row stays `pending`; every report row is `rolled_back` and the rows that wrote `predecessors` carry `code: 'CYCLE'` with a reason naming the cycle; 16/16 unit tests, `qa-mcp-agent-first` 119/119 |
 | 5.1 AT06 derived summary parity | `src/mcp/plan.js`, `tools/qa-mcp-agent-first.cjs` | PASS — after a five-create accept, `completedTasks` equals the independently counted work items with status `completed` (7 of 63), `statusCounts` sums to every task, `openRisks` equals the register count for UI-shaped / promoted / MCP-created risks (3), `get_risks.openRiskCount` agrees with the summary, and `completion` matches the ratio; `qa-mcp-agent-first` 126/126 |
+| 5.1 AT11 permission matrix | `tools/qa-mcp-agent-first.cjs`, `tools/qa-appwide-mcp.cjs` | PASS — 5 key shapes (all sections; wbs with both switches off; budget with read off; budget with write off; no sections) × 16 read tools (every reader + `get_table` on a wbs / risk / meet / money / owner-only table + `get_schema` / `get_pending` / `get_changes_since` / `run_monte_carlo`) × 4 write paths (tasks, risks, meetings, budgetLines) answer exactly as granted — 100 matrix cells per surface direction; the app-wide OAuth surface is probed with a wbs-only member (W5b: `get_tasks` answers, `get_risks` / `get_budget` / `get_meetings` refuse); `qa-mcp-agent-first` 140/140, `qa-appwide-mcp` 60/60 |
+| 5.1 AT19 create-then-read | `tools/qa-mcp-agent-first.cjs` | PASS — one proposal creates a record in each of the ten creatable lists with a text carrying an accent, an em dash, `%`, `<b>` and `&`, plus a `notes` value where the list has one; after accept every list reads the title text back byte for byte through `get_table`, and `get_tasks` / `get_risks` / `get_meetings` return the same text through their dedicated readers; `qa-mcp-agent-first` 140/140 |
 
 5.1 detail (group 1): the four gaps were closed on the existing fixtures
 rather than new scenarios. AT02 extends the AT11b setup - two proposals are
@@ -533,6 +535,34 @@ five ops to three - the exact "proposal quietly loses ops" failure the
 directive set out to kill. The gate now also accepts the list's own
 `titleField`, which fixes every title-keyed list the same way (decisions use
 `decision`, some lists use `summary`).
+
+AT11 detail: the matrix is data-driven from two tables in the harness, so
+"every read tool" means the table, not a hand-picked sample. Each cell asserts
+the tool refuses exactly when the key lacks the section or the switch, which
+catches both directions of a mistake - a tool that leaks to a scoped key and a
+tool that refuses a permitted one. Two behaviours the matrix pinned down are
+worth stating because they are policy, not accident: `get_table` obeys the
+section gate and the read switch for the three money tables (so it cannot be
+used to bypass `get_budget`), and the weather tables are owner-only for every
+API key. On the write side the same table runs one fresh env per cell so a
+queued proposal from an earlier cell cannot mask a later refusal. Two rules
+emerged and are now encoded in the expectation function: a money write needs
+BOTH switches (`budgetWriteAllowed` requires `budgetRead` too - a key may not
+propose a figure it cannot read), and a refusal must arrive as `isError`, never
+as a quiet success. The app-wide OAuth surface is covered by W5b in
+`qa-appwide-mcp.cjs`: a wbs-only member reads tasks and is refused risks,
+budget and meetings, which is the same `sectionAllowed` path the per-project
+surface uses.
+
+AT19 detail: the text value deliberately carries an accent, an em dash, a
+percent sign, angle brackets and an ampersand, because the round trip has to
+survive JSON, the create defaults, and the reader's own shaping. Ten lists are
+creatable through `apply_changes` (budgetLines and spendLog are refused with
+"use the budget array", so they are excluded). The test found the fixture was
+missing `resources` and `commsEntries`, which made those two creates queue and
+then conflict at accept - a reminder that the queue validates against the model
+while the accept validates against the stored state. Both arrays are now part
+of `baseState()`, as they are in any real project.
 
 ---
 

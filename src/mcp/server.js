@@ -71,6 +71,12 @@ import {
 import { MCP_ERROR_CODES } from './errors.js';
 import { buildOverlay, computeDependsOn, dependsOnIds } from './deps.js';
 import {
+  MCP_SERVER_VERSION,
+  MCP_SERVER_INSTRUCTIONS,
+  applyToolMeta,
+  attachStructuredContent
+} from './tool-meta.js';
+import {
   describeSchema,
   LIST_PATHS,
   SECTION_PATHS,
@@ -102,7 +108,7 @@ import {
 const MCP_PROTOCOL_VERSION = '2024-11-05';
 const SERVER_INFO = {
   name: 'my-manager-mcp',
-  version: '1.0.0'
+  version: MCP_SERVER_VERSION
 };
 
 // PATH-A (2026-09-16): the single tool-layer auth refusal. serve.cjs's dev
@@ -482,6 +488,10 @@ TOOLS.push({
     'Dry run apply_changes: same diffs/creates/sets/budget input, same permission checks, nothing queued. Returns {ok, refused, warnings, wouldCreateOps, counts, largeChanges} so an agent can fix its proposal before the owner ever sees it.',
   inputSchema: APPLY_CHANGES_TOOL.inputSchema
 });
+// MCP-AGENT-FIRST 2026-11-12 2.8 (ADDENDUM A5): the catalog is decorated
+// once, after every tool is pushed, so both surfaces advertise the same
+// annotation hints and outputSchemas. Keys live in ./tool-meta.js.
+applyToolMeta(TOOLS);
 // OWNER 2026-09-17 (CREATE support): the owner's lazy-PM scenario - talk to
 // the AI in a terminal, it ADDS the new people/tasks, the owner verifies.
 // MCP-AGENT-FIRST 2026-11-12 2.1/2.2: the create defaults and every field
@@ -2523,6 +2533,17 @@ export async function withdrawMcpProposal(env, projectId, auth, toolArgs, rpcId)
             '. ' +
             remainingOps.length +
             ' op(s) remain queued for the owner.'
+        },
+        // ADDENDUM A5: the machine copy, so withdraw answers in the same
+        // shape as every other tool (structuredContent comes from here).
+        {
+          type: 'text',
+          text: JSON.stringify({
+            proposalId: pid,
+            withdrawn: withdrawnSet.size,
+            remaining: remainingOps.length,
+            status: remainingOps.length ? 'pending' : 'withdrawn'
+          })
         }
       ]
     }
@@ -2544,7 +2565,10 @@ async function handleMcpRequest(body, projectId, env, auth) {
         capabilities: {
           tools: { listChanged: false }
         },
-        serverInfo: SERVER_INFO
+        serverInfo: SERVER_INFO,
+        // ADDENDUM A5: record text is data. Said once, here, because every
+        // client shows instructions to its model before the first call.
+        instructions: MCP_SERVER_INSTRUCTIONS
       }
     };
   }
@@ -3202,7 +3226,9 @@ export async function handleMcpServer(request, env, projectId) {
     if (!response) {
       return new Response(null, { status: 202 });
     }
-    return json(response, 200);
+    // ADDENDUM A5: copy the JSON block into structuredContent at the single
+    // exit, so every tool answers in both shapes and the two cannot drift.
+    return json(attachStructuredContent(response), 200);
   } catch (e) {
     console.error('MCP error:', e && e.message);
     return json(

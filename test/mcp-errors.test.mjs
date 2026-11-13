@@ -9,9 +9,15 @@ test('the error-code set is frozen, unique and 23 long', () => {
   assert.equal(MCP_ERROR_CODES.length, 23);
   assert.ok(Object.isFrozen(MCP_ERROR_CODES));
   assert.equal(new Set(MCP_ERROR_CODES).size, 23);
-  ['STALE_BEFORE', 'UNKNOWN_FIELD', 'INVALID_ENUM', 'RECORD_NOT_FOUND', 'CONFLICT', 'SKIPPED_ALREADY', 'REFUSED'].forEach(c =>
-    assert.ok(MCP_ERROR_CODES.includes(c), c)
-  );
+  [
+    'STALE_BEFORE',
+    'UNKNOWN_FIELD',
+    'INVALID_ENUM',
+    'RECORD_NOT_FOUND',
+    'CONFLICT',
+    'SKIPPED_ALREADY',
+    'REFUSED'
+  ].forEach(c => assert.ok(MCP_ERROR_CODES.includes(c), c));
 });
 
 test('refusalCode always returns a member of the set', () => {

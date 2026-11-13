@@ -54,13 +54,22 @@ import {
 } from './server.js';
 import { validateChangesProposal } from './plan.js';
 import {
+  MCP_SERVER_VERSION,
+  MCP_SERVER_INSTRUCTIONS,
+  applyToolMeta,
+  attachStructuredContent
+} from './tool-meta.js';
+import {
   verifyAccessToken,
   authorizationServerMetadata,
   protectedResourceMetadata
 } from './oauth.js';
 
 const MCP_PROTOCOL_VERSION = '2024-11-05';
-const SERVER_INFO = { name: 'my-manager-mcp-appwide', version: '1.0.0' };
+const SERVER_INFO = { name: 'my-manager-mcp-appwide', version: MCP_SERVER_VERSION };
+// ADDENDUM A5: exported so the acceptance harness can prove both surfaces
+// announce the same version without booting an account session.
+export const APPWIDE_SERVER_INFO = SERVER_INFO;
 
 // Tools that write. Everything else is a read. Used for policy + role gating.
 const WRITE_TOOLS = ['create_project', 'apply_changes', 'withdraw_changes'];
@@ -198,7 +207,10 @@ function buildAppwideTools() {
   return out;
 }
 
-export const APPWIDE_TOOLS = buildAppwideTools();
+// ADDENDUM A5: the app-wide catalog is built by copying name/description/
+// inputSchema from TOOLS, so the annotations and outputSchemas are attached
+// here from the same map the per-project catalog uses.
+export const APPWIDE_TOOLS = applyToolMeta(buildAppwideTools());
 
 /* ---- Account config + project access ------------------------------------- */
 
@@ -329,7 +341,9 @@ async function listProjectsForAccount(env, accountSub) {
 /* ---- JSON-RPC helpers ---------------------------------------------------- */
 
 function rpcResult(id, result) {
-  return json({ jsonrpc: '2.0', id: id, result: result }, 200);
+  // ADDENDUM A5: one exit for every result, so structuredContent is
+  // attached on this surface exactly as it is on the per-project one.
+  return json(attachStructuredContent({ jsonrpc: '2.0', id: id, result: result }), 200);
 }
 function rpcErrorResult(id, text) {
   return json(
@@ -400,7 +414,8 @@ export async function handleAppwideMcp(request, env) {
     return rpcResult(id, {
       protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: SERVER_INFO
+      serverInfo: SERVER_INFO,
+      instructions: MCP_SERVER_INSTRUCTIONS
     });
   }
   if (method === 'notifications/initialized') {

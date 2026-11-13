@@ -2373,6 +2373,175 @@ function addReview(env, row) {
     );
   }
 
+  // =====================================================================
+  // AT26 (A5) — MCP polish. Every tool advertises machine-readable
+  // annotations + an outputSchema, every successful call returns
+  // structuredContent that equals the JSON block, the server announces
+  // version 2.0.0, and both surfaces warn that record text is data.
+  // =====================================================================
+  section('AT26 — MCP polish (annotations, outputSchema, version, injection warning)');
+  {
+    const env = await makeEnv({ mod });
+    const init = await call(env, { jsonrpc: '2.0', id: 960, method: 'initialize', params: {} });
+    const info = init && init.result && init.result.serverInfo;
+    const instr = (init && init.result && init.result.instructions) || '';
+    check(
+      'AT26a initialize reports serverInfo.version 2.0.0 and the record-text warning',
+      !!(
+        info &&
+        info.version === '2.0.0' &&
+        /record/i.test(instr) &&
+        /not instructions/i.test(instr)
+      ),
+      { version: info && info.version, instructions: instr.slice(0, 120) }
+    );
+
+    const list = await call(env, { jsonrpc: '2.0', id: 961, method: 'tools/list', params: {} });
+    const tools = (list && list.result && list.result.tools) || [];
+    const badAnn = tools.filter(function (t) {
+      const a = t.annotations || {};
+      return (
+        typeof a.title !== 'string' ||
+        !a.title ||
+        typeof a.readOnlyHint !== 'boolean' ||
+        typeof a.destructiveHint !== 'boolean' ||
+        typeof a.openWorldHint !== 'boolean' ||
+        typeof a.idempotentHint !== 'boolean'
+      );
+    });
+    check(
+      'AT26b every advertised tool carries a full annotation block',
+      tools.length >= 16 && badAnn.length === 0,
+      {
+        tools: tools.length,
+        bad: badAnn.map(function (t) {
+          return t.name;
+        })
+      }
+    );
+
+    const noSchema = tools.filter(function (t) {
+      return !t.outputSchema || t.outputSchema.type !== 'object';
+    });
+    check(
+      'AT26c every advertised tool declares an object outputSchema',
+      tools.length > 0 && noSchema.length === 0,
+      {
+        bad: noSchema.map(function (t) {
+          return t.name;
+        })
+      }
+    );
+
+    // A schema whose required list names a property it does not describe is a
+    // contract the server can never honour - fail it statically.
+    const brokenSchema = tools.filter(function (t) {
+      const sch = t.outputSchema || {};
+      const props = sch.properties || {};
+      return (sch.required || []).some(function (k) {
+        return !props[k];
+      });
+    });
+    check('AT26d no outputSchema requires an undeclared property', brokenSchema.length === 0, {
+      bad: brokenSchema.map(function (t) {
+        return t.name;
+      })
+    });
+
+    // The hints must be honest, not decorative.
+    const byName = {};
+    tools.forEach(function (t) {
+      byName[t.name] = t.annotations || {};
+    });
+    const reads = tools.filter(function (t) {
+      return t.name.indexOf('get_') === 0 || t.name === 'validate_changes';
+    });
+    const dishonestReads = reads.filter(function (t) {
+      const a = byName[t.name];
+      return a.readOnlyHint !== true || a.destructiveHint !== false;
+    });
+    check(
+      'AT26e every read tool is readOnlyHint true and destructiveHint false',
+      reads.length >= 12 && dishonestReads.length === 0,
+      {
+        reads: reads.length,
+        bad: dishonestReads.map(function (t) {
+          return t.name;
+        })
+      }
+    );
+    check(
+      'AT26f write tools are not readOnly and Monte Carlo is not idempotent',
+      byName.apply_changes.readOnlyHint === false &&
+        byName.withdraw_changes.readOnlyHint === false &&
+        byName.apply_changes.destructiveHint === true &&
+        byName.run_monte_carlo.idempotentHint === false &&
+        byName.get_project_summary.idempotentHint === true,
+      {
+        apply: byName.apply_changes,
+        withdraw: byName.withdraw_changes,
+        mc: byName.run_monte_carlo
+      }
+    );
+
+    // structuredContent must be the machine copy of the text block, never a
+    // second rendering that can drift.
+    const sum = await tool(env, 962, 'get_project_summary', {});
+    const sumBody = jsonOf(sum);
+    const sumSc = sum && sum.result && sum.result.structuredContent;
+    check(
+      'AT26g a read call returns structuredContent equal to its JSON text block',
+      !!sumSc &&
+        typeof sumSc === 'object' &&
+        JSON.stringify(sumSc) === JSON.stringify(sumBody) &&
+        typeof sumSc.projectId === 'string' &&
+        typeof sumSc.completion === 'number',
+      { keys: sumSc ? Object.keys(sumSc) : null }
+    );
+
+    const q = await tool(env, 963, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't7', field: 'status', after: 'inprogress' }]
+    });
+    const qSc = q && q.result && q.result.structuredContent;
+    check(
+      'AT26h apply_changes returns structuredContent from its second (JSON) block',
+      !!(qSc && qSc.proposalId > 0 && qSc.counts && qSc.counts.diffs === 1),
+      { sc: qSc && { proposalId: qSc.proposalId, counts: qSc.counts } }
+    );
+
+    const bad = await tool(env, 964, 'get_apply_report', {});
+    check(
+      'AT26i an isError result carries no structuredContent',
+      !!(
+        bad &&
+        bad.result &&
+        bad.result.isError === true &&
+        bad.result.structuredContent === undefined
+      ),
+      { isError: bad && bad.result && bad.result.isError }
+    );
+
+    // The app-wide surface shares the catalog and the constants.
+    const appwide = await import('../src/mcp/appwide.js');
+    const awTools = appwide.APPWIDE_TOOLS || [];
+    const awBad = awTools.filter(function (t) {
+      return !t.annotations || !t.outputSchema || t.outputSchema.type !== 'object';
+    });
+    check(
+      'AT26j the app-wide catalog carries the same annotations and outputSchemas',
+      awTools.length >= 17 &&
+        awBad.length === 0 &&
+        !!(appwide.APPWIDE_SERVER_INFO && appwide.APPWIDE_SERVER_INFO.version === '2.0.0'),
+      {
+        tools: awTools.length,
+        bad: awBad.map(function (t) {
+          return t.name;
+        }),
+        version: appwide.APPWIDE_SERVER_INFO && appwide.APPWIDE_SERVER_INFO.version
+      }
+    );
+  }
+
   console.log('\n========================================');
   console.log(pass + ' passed, ' + fail + ' failed');
   if (failures.length) {

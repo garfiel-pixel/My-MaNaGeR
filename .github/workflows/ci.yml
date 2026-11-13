@@ -104,6 +104,13 @@ jobs:
         id: sw
         run: npm run verify:sw
 
+      # Demo fixture gate (2026-11-12): the launcher re-seeds demo-filled on
+      # every visit, so a stale fixture is the first thing a visitor sees. The
+      # old dates made every task overdue and the dashboard read 11 overdue.
+      - name: Verify demo fixture dates
+        id: demodates
+        run: npm run verify:demo-dates
+
       - name: Verify hidden-attribute wiring
         id: hidden
         run: npm run verify:hidden

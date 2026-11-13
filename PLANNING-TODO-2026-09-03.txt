@@ -2700,3 +2700,26 @@ narrower reading of §14.3).
   finding, outside T-02 scope: mcp_muga445f_18/19/20 already carry
   descriptions that belong to different risks - propose replacements
   separately. Still open after this: owner acceptance of #43.
+
+- DEMO FIXTURE RE-BASELINE 2026-11-12 (owner: "the project is not a real
+  project... change the entirety of the dates and ensure that all tasks are
+  not overdue anymore"): demo-data.js was anchored at 2025-01-06 and ended
+  2026-06-30, so every one of its 30 tasks read overdue on the dashboard and
+  the Gantt was red end to end. Re-baselined by +315 days (45 whole weeks,
+  weekdays preserved): project start Mon 2025-11-17, fixture clock
+  2026-11-11, forecast completion 2027-08-10 (21 months). A blind shift was
+  not enough - T009/T012/T015/T017/T025 kept an overdue band and T013/T018/
+  T019/T021 sat at 0% inside an elapsed window - so the remaining work was
+  re-sequenced from Mon 2026-11-16 with an explicit per-task table; the
+  baseline block keeps the original dates so the slip shows as variance.
+  Also fixed by the same pass: `duration` added to all 30 tasks (working-day
+  span), charter target/objective aligned, spend log + meetings + log +
+  comms + documents + issues + changes shifted, weather log moved to the
+  winter just passed with a 2026-11-01..2027-03-31 window, and the process
+  model's load-time repair silenced (approved changes now carry a title and
+  approver, the resolved issue a resolution). Guard: tools/verify-demo-dates.cjs
+  (15 checks, judged against the fixture's own updatedAt so it cannot rot),
+  wired into `npm run verify`, the CI static job and the test registry; the
+  skeptical-code-audit skill gained rule 12. Browser-verified: dashboard
+  Overdue 0 / In Progress 4 / Health 73, WBS 30 rows none red, Kanban To Do
+  15 / In Progress 4 / Completed 11, agenda 5 entries 0 overdue.

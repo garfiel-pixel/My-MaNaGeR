@@ -2743,3 +2743,14 @@ narrower reading of §14.3).
   error code "stale". Result: 33/33. Companion harnesses green the same pass:
   qa-mcp-admin-panel 20/20, qa-mcp-parity 13/13, qa-mcp-write-path 20/20,
   qa-mcp-budget 46/46. Live #43 acceptance is still the owner's click.
+
+- ACCEPT-CREATE INTO A MISSING SECTION 2026-11-12 (CI red on PR #8,
+  cloud-auth step "T2: Project API keys E2E", P18c/P18d): accepting a
+  title-keyed create (meetings/logEntries) answered 409 stale with
+  "not_a_list" when the live snapshot did not carry that section yet, so the
+  owner's accept applied nothing. The per-field applier (Phase 3) only knew
+  how to push a created record into an EXISTING array; the old whole-section
+  merge did not care. Fix: applyLeafDiffs seeds an empty array for a create
+  (recordId + beforeAbsent) when the section is absent, then appends from the
+  submission as before; anything else still refuses as not_a_list. Unit test
+  added; qa-api-keys re-run locally: ALL API-KEY GATES PASSED (P18a-e).

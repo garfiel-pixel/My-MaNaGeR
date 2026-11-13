@@ -173,6 +173,35 @@ test('applyLeafDiffs appends a created record from the submission', () => {
   assert.equal(out.submitted.risks[0].name, 'Asbestos survey overdue');
 });
 
+test('applyLeafDiffs starts a missing section for a created record', () => {
+  // A project whose first meeting/log entry arrives through a proposal has no
+  // live array yet. The create must seed it, not refuse the whole accept as
+  // "not_a_list" (qa-api-keys P18c caught this).
+  const prev = {};
+  const submitted = {
+    logEntries: [{ id: 'mcp_1', title: 'P18 decision', date: '2026-10-27' }]
+  };
+  const out = applyLeafDiffs(
+    prev,
+    [
+      { path: 'logEntries', recordId: 'mcp_1', field: 'id', beforeAbsent: true, after: 'mcp_1' },
+      {
+        path: 'logEntries',
+        recordId: 'mcp_1',
+        field: 'title',
+        beforeAbsent: true,
+        after: 'P18 decision'
+      }
+    ],
+    submitted
+  );
+  assert.equal(out.unaddressable.length, 0);
+  assert.equal(out.stale.length, 0);
+  assert.equal(out.changed, 2);
+  assert.equal(out.submitted.logEntries.length, 1);
+  assert.equal(out.submitted.logEntries[0].title, 'P18 decision');
+});
+
 test('applyLeafDiffs sets a scalar top-level key', () => {
   const out = applyLeafDiffs({ budgetEnvelope: 1000 }, [
     { path: 'budgetEnvelope', before: 1000, after: 2500 }

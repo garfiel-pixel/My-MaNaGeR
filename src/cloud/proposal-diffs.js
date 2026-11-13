@@ -378,7 +378,15 @@ export function applyLeafDiffs(prev, approved, submitted) {
       changed++;
       return;
     }
-    const arr = base[d.path];
+    let arr = base[d.path];
+    if (!Array.isArray(arr) && !arr && d.recordId && d.beforeAbsent) {
+      // A create into a section the live snapshot does not carry yet (a
+      // project whose first meeting or log entry arrives through a proposal)
+      // starts an empty list. Refusing here made a title-keyed create
+      // un-acceptable even though the producer's submission held the record.
+      arr = [];
+      base[d.path] = arr;
+    }
     if (!Array.isArray(arr)) {
       // Object section: a leaf with no record identity and no index is a
       // nested key such as dmaic.define.problem or closure.lessons[0].text.

@@ -31,6 +31,12 @@
       "skillPath": "skills/gws-drive/SKILL.md",
       "computedHash": "d637ff849b82a9fc195bcfedea260cffe94eaa31b843b28cd04313b1720bb153"
     },
+    "high-grade-mcp": {
+      "source": "./local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/high-grade-mcp/SKILL.md",
+      "computedHash": "15b315553dc6b68072a23a3007028819d5a70af2aac6b0823fdee9d4be8ca407"
+    },
     "human-audit": {
       "source": "./local",
       "sourceType": "local",

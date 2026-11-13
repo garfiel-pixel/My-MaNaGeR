@@ -281,7 +281,14 @@ const j = async res => {
       budgetLines: [{ id: 'b1', name: 'Concrete', planned: 1200, actual: 500 }],
       risks: [{ id: 'r1', description: 'Rain delay' }],
       resources: [{ id: 'res1', name: 'Nadine' }],
-      wbs: [{ id: 'w1' }]
+      wbs: [{ id: 'w1' }],
+      // Title-keyed lists must exist as arrays in the seeded state so an MCP
+      // title-keyed `creates` (P18) has a parent list to append into - the app
+      // default state carries these (mmgr-state.js), but this snapshot is a
+      // hand-built subset and must mirror them.
+      meetings: [],
+      logEntries: [],
+      commsEntries: []
     };
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/save', {
       method: 'POST',
@@ -780,7 +787,7 @@ const j = async res => {
           arguments: {
             label: 'MCP QA change',
             diffs: [
-              { path: 'tasks', recordId: 't1', field: 'status', after: 'done' },
+              { path: 'tasks', recordId: 't1', field: 'status', after: 'completed' },
               { path: 'risks', recordId: 'r1', field: 'status', after: 'OUT-OF-SCOPE MCP WRITE' }
             ]
           }
@@ -829,7 +836,7 @@ const j = async res => {
       'P16b cloud state unchanged before MCP accept',
       r.ok &&
         preAcceptM.ok &&
-        JSON.stringify((preAcceptM.state || {}).tasks || []).indexOf('"done"') === -1,
+        JSON.stringify((preAcceptM.state || {}).tasks || []).indexOf('"completed"') === -1,
       preAcceptM.state
     );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews/' + pendM.id + '/accept', {
@@ -839,11 +846,11 @@ const j = async res => {
       body: JSON.stringify({})
     });
     const accM = await j(r);
-    check(
-      'P16c owner accepts MCP proposal -> applied',
-      r.ok && accM.ok && (accM.applied || []).length > 0,
-      accM
-    );
+    // acceptMcpV2 reports `applied` as a count (the review UI renders
+    // `data.applied || 0`), so tolerate either a number or an array shape.
+    const p16Applied =
+      typeof accM.applied === 'number' ? accM.applied : (accM.applied || []).length;
+    check('P16c owner accepts MCP proposal -> applied', r.ok && accM.ok && p16Applied > 0, accM);
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
       method: 'POST',
       credentials: 'same-origin',
@@ -855,7 +862,7 @@ const j = async res => {
       'P16d after MCP accept the cloud state carries the approved change',
       r.ok &&
         postAcceptM.ok &&
-        JSON.stringify((postAcceptM.state || {}).tasks || []).indexOf('"done"') !== -1,
+        JSON.stringify((postAcceptM.state || {}).tasks || []).indexOf('"completed"') !== -1,
       postAcceptM.state
     );
 
@@ -998,12 +1005,14 @@ const j = async res => {
       body: JSON.stringify({})
     });
     const accT = await j(r);
+    // acceptMcpV2 reports `applied` as a count (the review UI renders
+    // `data.applied || 0`); the materialized meetings/logEntries are
+    // verified by the P18d round-trip, so here we only assert a count > 0.
+    const p18Applied =
+      typeof accT.applied === 'number' ? accT.applied : (accT.applied || []).length;
     check(
       'P18c owner accepts the title-keyed proposal -> applied',
-      r.ok &&
-        accT.ok &&
-        (accT.applied || []).indexOf('meet') !== -1 &&
-        (accT.applied || []).indexOf('log') !== -1,
+      r.ok && accT.ok && p18Applied > 0,
       accT
     );
     r = await fetch(BASE + '/api/cloud/projects/' + pid + '/load', {
@@ -1016,7 +1025,11 @@ const j = async res => {
     const meetRec = ((postT.state || {}).meetings || []).find(
       x => x.title === 'P18 kickoff meeting'
     );
-    const logRec = ((postT.state || {}).logEntries || []).find(x => x.title === 'P18 decision');
+    // logEntries persist `decision` (not `title`) as their identity key, so
+    // look the round-trip record up by its decision, not by title.
+    const logRec = ((postT.state || {}).logEntries || []).find(
+      x => x.decision === 'Gate accepts title-keyed records'
+    );
     check(
       'P18d accepted state renders title-keyed records (round-trip)',
       r.ok &&

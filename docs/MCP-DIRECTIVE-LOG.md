@@ -82,6 +82,8 @@ decryption through `cloudDecryptState`.
 | 1.4 Real agent `before` | `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R05 3/3; `qa-mcp-write-path` 20/20; `qa-appwide-mcp` 56/56; `qa-engine-parity` 19/19 |
 | 1.5 Budget-limit message | `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R06 names N, U and L; `qa-mcp-budget` 46/46 |
 | 1.6 Atomic accept + conditional state writes | `src/lib/http.js`, `src/reviews.js`, `src/cloud/projects.js`, `src/cloud/changelog.js`, `src/mcp/server.js`, `js/mmgr-cloud.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R07 + R07b; `qa-approval` 24/24; `qa-mcp-budget` 46/46; `qa-cloud-phase1` 29/29; `qa-cloud-phase2` 85/85; `qa-sync` 13/13 |
+| 1.7 Idempotent `apply_changes` | `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R08 + R08b; `qa-mcp-write-path` 20/20; `qa-appwide-mcp` 56/56 |
+| 1.8 Structured response | `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R08c 3/3; `qa-mcp-write-path` 20/20; `mcp/qa-mcp` 52/52; `qa-mcp-budget` 46/46 |
 
 1.1 detail: `executeGetTable` takes `auth` and refuses `budgetLines`, `spendLog`
 and `budgetEnvelope` with `BUDGET_READ_REFUSAL` when the key's Read budget
@@ -135,6 +137,17 @@ save twice, a revert answers 409 busy. A save whose `baseUpdatedAt` is older
 than the stored `updatedAt` replays the changelog leaves it missed, so an
 accepted change is never erased by a save that never saw it. The client sends
 `baseUpdatedAt` and retries once on `{code:'busy'}`.
+
+1.7 detail: every proposal now carries `cloud_reviews.import_key`. An explicit
+`idempotencyKey` (max 80) is used verbatim; otherwise the canonical JSON of the
+arguments is hashed into a 10-minute UTC bucket and the previous bucket is
+checked too. A hit returns the original proposal id with `duplicate: true`; a
+UNIQUE violation on insert re-reads and returns the winner.
+
+1.8 detail: the first text block is byte-compatible (first sentence unchanged).
+A second text block carries `{proposalId, changeSetId, duplicate, counts,
+opsQueued, refused[], warnings[], truncated}`; every refused op appears in
+`refused` with a reason, and every omitted `before` appears in `warnings`.
 
 ---
 

@@ -1858,6 +1858,59 @@ function mcpShortValue(v) {
   return String(v);
 }
 
+// MCP-AGENT-FIRST 2026-11-12 1.7: canonical JSON (sorted keys) so the same
+// arguments always hash the same, whatever order the client serialised them.
+function mcpCanonicalJson(v) {
+  if (v === null || typeof v !== 'object') {
+    return JSON.stringify(v);
+  }
+  if (Array.isArray(v)) {
+    return '[' + v.map(mcpCanonicalJson).join(',') + ']';
+  }
+  const keys = Object.keys(v).sort();
+  return (
+    '{' +
+    keys
+      .map(function (k) {
+        return JSON.stringify(k) + ':' + mcpCanonicalJson(v[k]);
+      })
+      .join(',') +
+    '}'
+  );
+}
+
+async function mcpSha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf))
+    .map(function (b) {
+      return b.toString(16).padStart(2, '0');
+    })
+    .join('');
+}
+
+async function findDuplicateProposal(env, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    if (!keys[i]) {
+      continue;
+    }
+    try {
+      const row = await env.DB.prepare(
+        'SELECT id, ops_count, diffs_json FROM cloud_reviews WHERE import_key = ?'
+      )
+        .bind(keys[i])
+        .first();
+      // A harness (or an older mock) that ignores the WHERE clause can return
+      // a shapeless object; only a real row with an id is a duplicate.
+      if (row && row.id != null) {
+        return row;
+      }
+    } catch (e) {
+      /* a lookup failure must never block a fresh proposal */
+    }
+  }
+  return null;
+}
+
 export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state) {
   const precheck = validateProposalEnvelope(toolArgs, auth);
   if (precheck) {
@@ -2368,6 +2421,85 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   // its true total in ops_count. Accept reads ops_json, so nothing an agent
   // proposed is ever silently dropped.
   const fullOps = enrichDiffs(rawLeaves, prev, merged.next, 1000000000).diffs;
+  // MCP-AGENT-FIRST 2026-11-12 1.7: one idempotency key per call. An explicit
+  // idempotencyKey is stable forever; otherwise the whole argument object is
+  // hashed into a 10-minute bucket, and the previous bucket is checked too so
+  // a retry that straddles the boundary still hits.
+  const idemKeyId = auth.apiKeyId != null ? String(auth.apiKeyId) : 'owner';
+  const explicitIdem =
+    typeof toolArgs.idempotencyKey === 'string' ? toolArgs.idempotencyKey.trim().slice(0, 80) : '';
+  const BUCKET_MS = 600000;
+  let importKey = null;
+  let prevImportKey = null;
+  if (explicitIdem) {
+    importKey = 'mcp:' + projectId + ':' + idemKeyId + ':' + explicitIdem;
+  } else {
+    const hashArgs = Object.assign({}, toolArgs);
+    delete hashArgs.idempotencyKey;
+    const argHash = await mcpSha256Hex(mcpCanonicalJson(hashArgs));
+    const bucket = Math.floor(Date.now() / BUCKET_MS) * BUCKET_MS;
+    importKey =
+      'mcp:' + projectId + ':' + idemKeyId + ':' + argHash + ':' + new Date(bucket).toISOString();
+    prevImportKey =
+      'mcp:' +
+      projectId +
+      ':' +
+      idemKeyId +
+      ':' +
+      argHash +
+      ':' +
+      new Date(bucket - BUCKET_MS).toISOString();
+  }
+  const duplicate = await findDuplicateProposal(env, [importKey, prevImportKey]);
+  if (duplicate) {
+    const dupCount =
+      duplicate.ops_count != null
+        ? Number(duplicate.ops_count) || 0
+        : (function () {
+            try {
+              const d = duplicate.diffs_json ? JSON.parse(duplicate.diffs_json) : [];
+              return Array.isArray(d) ? d.length : 0;
+            } catch (e) {
+              return 0;
+            }
+          })();
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'Queued ' +
+              dupCount +
+              ' field change(s) for owner review (proposal #' +
+              duplicate.id +
+              '). duplicate: true Nothing changes until the owner accepts it inside the project.'
+          },
+          {
+            type: 'text',
+            text: JSON.stringify({
+              proposalId: duplicate.id,
+              changeSetId: null,
+              duplicate: true,
+              counts: {
+                diffs: diffs.length,
+                creates: creates.length,
+                sets: setsRaw.length,
+                deletes: 0,
+                budget: budgetAll.length
+              },
+              opsQueued: dupCount,
+              refused: [],
+              warnings: warnings,
+              truncated: false
+            })
+          }
+        ]
+      }
+    };
+  }
   let res;
   const proposalJson = budgetBuilt.changes.length
     ? JSON.stringify({
@@ -2378,7 +2510,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     : null;
   try {
     res = await env.DB.prepare(
-      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json, ops_json, ops_count) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json, ops_json, ops_count, import_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     )
       .bind(
         projectId,
@@ -2393,10 +2525,51 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
         now,
         proposalJson,
         JSON.stringify(fullOps),
-        fullOps.length
+        fullOps.length,
+        importKey
       )
       .run();
   } catch (e) {
+    // A UNIQUE violation means a concurrent identical call won the insert.
+    const raced = await findDuplicateProposal(env, [importKey]);
+    if (raced) {
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text:
+                'Queued ' +
+                (raced.ops_count != null ? Number(raced.ops_count) || 0 : 0) +
+                ' field change(s) for owner review (proposal #' +
+                raced.id +
+                '). duplicate: true Nothing changes until the owner accepts it inside the project.'
+            },
+            {
+              type: 'text',
+              text: JSON.stringify({
+                proposalId: raced.id,
+                changeSetId: null,
+                duplicate: true,
+                counts: {
+                  diffs: diffs.length,
+                  creates: creates.length,
+                  sets: setsRaw.length,
+                  deletes: 0,
+                  budget: budgetAll.length
+                },
+                opsQueued: raced.ops_count != null ? Number(raced.ops_count) || 0 : 0,
+                refused: [],
+                warnings: warnings,
+                truncated: false
+              })
+            }
+          ]
+        }
+      };
+    }
     return {
       jsonrpc: '2.0',
       id,
@@ -2411,6 +2584,22 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       }
     };
   }
+  // MCP-AGENT-FIRST 2026-11-12 1.8: the first block stays byte-compatible with
+  // every existing assertion; the second block is machine-readable so an agent
+  // can see exactly what was refused and why without parsing prose.
+  const refusedStructured = allRefused.map(function (s) {
+    const text = String(s);
+    const m = /^([A-Za-z0-9_]+)(?:\[([^\]]+)\])?(?:\.([A-Za-z0-9_.\[\]]+))?:\s*(.*)$/.exec(text);
+    const path = m ? m[1] : null;
+    return {
+      section: path && CLOUD_KEY_TO_SECTION[path] ? CLOUD_KEY_TO_SECTION[path] : null,
+      index: null,
+      path: path,
+      recordId: m && m[2] ? m[2] : null,
+      field: m && m[3] ? m[3] : null,
+      reason: m ? m[4] : text
+    };
+  });
   return {
     jsonrpc: '2.0',
     id,
@@ -2428,6 +2617,25 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
             (allRefused.length ? ' Refused: ' + allRefused.join('; ') + '.' : '') +
             tasksWarning +
             ' Nothing changes until the owner accepts it inside the project.'
+        },
+        {
+          type: 'text',
+          text: JSON.stringify({
+            proposalId: res.meta.last_row_id,
+            changeSetId: null,
+            duplicate: false,
+            counts: {
+              diffs: diffs.length,
+              creates: creates.length,
+              sets: setsRaw.length,
+              deletes: 0,
+              budget: budgetAll.length
+            },
+            opsQueued: fullOps.length,
+            refused: refusedStructured,
+            warnings: warnings,
+            truncated: false
+          })
         }
       ]
     }

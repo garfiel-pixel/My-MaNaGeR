@@ -221,6 +221,12 @@ async function makeEnv(opts) {
               if (low.includes('from cloud_subscriptions')) {
                 return { status: 'active', tier: 'premium', plan: 'premium' };
               }
+              if (low.includes('from cloud_reviews') && low.includes('import_key')) {
+                const r = store.reviews.find(function (x) {
+                  return x.import_key === args[0];
+                });
+                return r ? Object.assign({}, r) : null;
+              }
               if (low.includes('from cloud_reviews') && low.includes('where id =')) {
                 // A SELECT returns a snapshot, not a live reference: two
                 // concurrent accepts must both read the row as it was, which
@@ -258,6 +264,16 @@ async function makeEnv(opts) {
                 cols.forEach(function (c, i) {
                   row[c] = args[i];
                 });
+                if (
+                  row.import_key &&
+                  store.reviews.some(function (r) {
+                    return r.import_key === row.import_key;
+                  })
+                ) {
+                  const err = new Error('UNIQUE constraint failed: cloud_reviews.import_key');
+                  err.code = 'SQLITE_CONSTRAINT';
+                  throw err;
+                }
                 store.reviews.push(row);
                 return { meta: { changes: 1, last_row_id: row.id } };
               }
@@ -362,6 +378,14 @@ function textOf(res) {
 function jsonOf(res) {
   try {
     return JSON.parse(textOf(res));
+  } catch (e) {
+    return null;
+  }
+}
+
+function blockJson(res, index) {
+  try {
+    return JSON.parse(res.result.content[index].text);
   } catch (e) {
     return null;
   }
@@ -817,18 +841,88 @@ function addReview(env, row) {
   }
 
   // =====================================================================
-  // R08 — a retry with identical arguments queues a second row
+  // R08 — an identical retry must return the original proposal
   // =====================================================================
-  section('R08 — identical apply_changes retried queues two rows');
+  section('R08 — identical apply_changes retried returns the first proposal');
   {
     const env = await makeEnv({ mod });
     const args = { diffs: [{ path: 'tasks', recordId: 't7', field: 'notes', after: 'retry' }] };
     const a = await tool(env, 50, 'apply_changes', args);
     const b = await tool(env, 51, 'apply_changes', args);
+    const idA = Number((textOf(a).match(/proposal #(\d+)/) || [])[1] || 0);
+    const idB = Number((textOf(b).match(/proposal #(\d+)/) || [])[1] || 0);
     check(
-      'R08 two identical calls create two pending rows',
-      env.__store.reviews.length === 2 && !/duplicate/i.test(textOf(b)),
-      { rows: env.__store.reviews.length, text: textOf(b).slice(0, 120) }
+      'R08 a retry returns the same proposal with duplicate: true',
+      env.__store.reviews.length === 1 &&
+        idA === idB &&
+        idA > 0 &&
+        /duplicate: true/.test(textOf(b)),
+      { rows: env.__store.reviews.length, idA, idB, text: textOf(b).slice(0, 160) }
+    );
+    const realNow = Date.now;
+    Date.now = function () {
+      return realNow() + 25 * 60 * 1000;
+    };
+    const c = await tool(env, 52, 'apply_changes', args);
+    Date.now = realNow;
+    const idC = Number((textOf(c).match(/proposal #(\d+)/) || [])[1] || 0);
+    check(
+      'R08b a resend after 25 minutes queues a new row',
+      env.__store.reviews.length === 2 && idC !== idA && !/duplicate/.test(textOf(c)),
+      { rows: env.__store.reviews.length, idC, text: textOf(c).slice(0, 160) }
+    );
+  }
+
+  // =====================================================================
+  // R08c — the structured second block names every refused op
+  // =====================================================================
+  section('R08c — the structured block reports refused ops and warnings');
+  {
+    const env = await makeEnv({ mod });
+    const q = await tool(env, 60, 'apply_changes', {
+      diffs: [
+        { path: 'tasks', recordId: 't6', field: 'notes', after: 'ok' },
+        { path: 'tasks', recordId: 't6', field: 'status', before: 'wrong', after: 'todo' },
+        { path: 'tasks', recordId: 'nope', field: 'notes', after: 'x' },
+        { path: 'bogus', recordId: 'x', field: 'y', after: 1 }
+      ],
+      sets: [{ path: 'charter', field: 'bad field!', value: 'x' }]
+    });
+    const meta = blockJson(q, 1);
+    check(
+      'R08c every refused op appears with a reason',
+      meta &&
+        Array.isArray(meta.refused) &&
+        meta.refused.length === 4 &&
+        meta.refused.every(function (r) {
+          return r && typeof r.reason === 'string' && r.reason.length > 0;
+        }),
+      { meta: meta }
+    );
+    check(
+      'R08c counts and proposalId are machine-readable',
+      meta &&
+        typeof meta.proposalId === 'number' &&
+        meta.counts &&
+        meta.counts.diffs === 4 &&
+        meta.counts.sets === 1 &&
+        meta.duplicate === false &&
+        meta.truncated === false,
+      { meta: meta }
+    );
+    const env2 = await makeEnv({ mod });
+    const q2 = await tool(env2, 61, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't6', field: 'notes', after: 'no before' }]
+    });
+    const meta2 = blockJson(q2, 1);
+    check(
+      'R08c an omitted before is listed in warnings',
+      meta2 &&
+        Array.isArray(meta2.warnings) &&
+        meta2.warnings.some(function (w) {
+          return /before not checked/.test(w);
+        }),
+      { warnings: meta2 && meta2.warnings }
     );
   }
 

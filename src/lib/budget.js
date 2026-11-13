@@ -393,6 +393,44 @@ function buildBudgetProposal(prev, rawList, currency) {
       return;
     }
 
+    // MCP-AGENT-FIRST 2026-11-12 1.2: a set on budgetEnvelope arrives here so
+    // the money checks and the large-change flag stay in one validator.
+    if (kind === 'changeEnvelope') {
+      const after = raw.value;
+      if (!isMoney(after)) {
+        refused.push(at + ': the envelope must be a number (no text, no blanks)');
+        return;
+      }
+      if (after < 0) {
+        refused.push(at + ': the envelope cannot be negative');
+        return;
+      }
+      const before =
+        base.budgetEnvelope == null || base.budgetEnvelope === '' ? null : +base.budgetEnvelope;
+      const next = round2(after);
+      if (before != null && next === round2(before)) {
+        refused.push(at + ': the envelope already has that value');
+        return;
+      }
+      base.budgetEnvelope = next;
+      const delta = before == null ? next : round2(next - before);
+      const large = Math.abs(delta) >= largeThreshold(before || 0);
+      changes.push({
+        kind: 'changeEnvelope',
+        before: before,
+        after: next,
+        delta: delta,
+        large: large,
+        summary:
+          'Change the budget envelope from ' +
+          (before == null ? '(unset)' : fmtNum(before)) +
+          ' to ' +
+          fmtNum(next) +
+          (delta ? ' (' + (delta > 0 ? '+' : '') + fmtNum(delta) + ')' : '')
+      });
+      return;
+    }
+
     if (kind === 'deleteLine' || kind === 'removeLine') {
       refused.push(at + ': deleting a budget line is not available through MCP');
       return;
@@ -409,6 +447,9 @@ function buildBudgetProposal(prev, rawList, currency) {
   if (changes.some(c => c.kind === 'addDelivery')) {
     submitted.spendLog = spend;
     submitted.nspid = nspid;
+  }
+  if (changes.some(c => c.kind === 'changeEnvelope')) {
+    submitted.budgetEnvelope = base.budgetEnvelope;
   }
   const summary = changes.length
     ? changes.length +

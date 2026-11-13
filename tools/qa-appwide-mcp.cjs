@@ -1314,7 +1314,10 @@ async function sessionCookie(env, sub) {
         name: 'apply_changes',
         arguments: {
           projectId: 'p3',
-          diffs: [{ path: 'budgetLines', recordId: 'b1', field: 'planned', after: 200 }]
+          // MCP-AGENT-FIRST 2026-11-12 1.2: a money path is now refused by the
+          // write switch BEFORE the section check, so the scope probe uses a
+          // non-money section (risk) to keep testing scope alone.
+          diffs: [{ path: 'risks', recordId: 'r1', field: 'status', after: 'open' }]
         }
       }
     },
@@ -1327,6 +1330,30 @@ async function sessionCookie(env, sub) {
       wScope.result.isError === true &&
       /outside the granted sections/.test(wScope.result.content[0].text),
     wScope
+  );
+  const wScopeBudget = await mcpCall(
+    envScopeW,
+    {
+      jsonrpc: '2.0',
+      id: 26,
+      method: 'tools/call',
+      params: {
+        name: 'apply_changes',
+        arguments: {
+          projectId: 'p3',
+          diffs: [{ path: 'budgetLines', recordId: 'b1', field: 'planned', after: 200 }]
+        }
+      }
+    },
+    bearerScopeW
+  );
+  check(
+    'a budget diff from an unswitched key is refused before the section check',
+    wScopeBudget &&
+      wScopeBudget.result &&
+      wScopeBudget.result.isError === true &&
+      /may not propose budget changes/.test(wScopeBudget.result.content[0].text),
+    wScopeBudget
   );
 
   section('APP-WIDE MCP W6 — mcp_enabled=0 blocks writes before the pipeline');

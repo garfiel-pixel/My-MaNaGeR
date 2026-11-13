@@ -55,6 +55,7 @@ import { structuredLog } from '../lib/observe.js';
 import {
   BUDGET_PROPOSAL_LIMIT,
   BUDGET_LARGE_PER_DAY,
+  BUDGET_LINE_FIELDS,
   parseISO,
   buildBudgetProposal
 } from '../lib/budget.js';
@@ -361,8 +362,6 @@ const CREATE_DEFAULTS = {
   logEntries: { id: null, title: '', decision: '', date: '' },
   meetings: { id: null, title: '', date: '', notes: '' },
   stakeholders: { id: null, name: '', role: '', notes: '' },
-  budgetLines: { id: null, name: '', amount: 0 },
-  spendLog: { id: null, name: '', amount: 0, date: '' },
   commsEntries: { id: null, title: '', notes: '', date: '' },
   documents: { id: null, name: '', notes: '' },
   changes: { id: null, name: '', notes: '' }
@@ -418,8 +417,13 @@ const GET_TABLE_NAMES = [
   'projectDeadline'
 ];
 const GET_TABLE_OWNER_ONLY = ['wxCache', 'weatherLog'];
+// MCP-AGENT-FIRST 2026-11-12 1.1: the three money tables obey the key's
+// "Read budget" switch exactly like get_budget / get_weekly_summary /
+// get_deliveries already do. get_table used to skip that gate, so a key with
+// the Budget section but read off could pull every figure through it.
+const GET_TABLE_BUDGET = ['budgetLines', 'spendLog', 'budgetEnvelope'];
 
-function executeGetTable(state, scope, args) {
+function executeGetTable(state, scope, args, auth) {
   const name = String((args && args.table) || '').trim();
   if (!name) {
     return {
@@ -473,6 +477,11 @@ function executeGetTable(state, scope, args) {
   const sec = CLOUD_KEY_TO_SECTION[name];
   if (sec && !sectionAllowed(scope, sec)) {
     return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+  }
+  // MCP-AGENT-FIRST 2026-11-12 1.1: money tables need "Read budget" as well as
+  // the Budget section. Refuse before any value is serialised.
+  if (GET_TABLE_BUDGET.indexOf(name) !== -1 && !budgetReadAllowed(auth)) {
+    return { content: [{ type: 'text', text: BUDGET_READ_REFUSAL }], isError: true };
   }
   const value = state[name];
   if (value === undefined || value === null) {
@@ -1431,7 +1440,7 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
       };
     }
     case 'get_table':
-      return executeGetTable(state, scope, args);
+      return executeGetTable(state, scope, args, auth);
     case 'run_monte_carlo':
       return executeMonteCarlo(state, scope, args);
     case 'apply_changes': {
@@ -1837,6 +1846,33 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   const setsRaw = Array.isArray(toolArgs.sets) ? toolArgs.sets : [];
   const budgetRaw = Array.isArray(toolArgs.budget) ? toolArgs.budget : [];
   const writeStartedAt = Date.now();
+  // MCP-AGENT-FIRST 2026-11-12 1.2: the generic paths (diffs, creates, sets)
+  // can name the money tables too. Before this, a key with "Propose budget
+  // changes" OFF could queue a budget-line diff, a spendLog create or an
+  // envelope set and bypass the switch the budget array has always honoured.
+  // The whole call is refused, exactly like the budget array.
+  const BUDGET_WRITE_PATHS = ['budgetLines', 'spendLog', 'budgetEnvelope', 'nspid'];
+  const touchesBudget =
+    diffs.some(function (d) {
+      return d && BUDGET_WRITE_PATHS.indexOf(String(d.path || '')) !== -1;
+    }) ||
+    creates.some(function (c) {
+      return c && BUDGET_WRITE_PATHS.indexOf(String(c.path || '')) !== -1;
+    }) ||
+    setsRaw.some(function (s) {
+      return s && BUDGET_WRITE_PATHS.indexOf(String(s.path || '')) !== -1;
+    });
+  if (touchesBudget && !budgetWriteAllowed(auth)) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: { content: [{ type: 'text', text: BUDGET_WRITE_REFUSAL }], isError: true }
+    };
+  }
+  // Budget-line diffs and envelope sets are re-expressed as budget-array ops so
+  // ONE validator (buildBudgetProposal) owns every money check.
+  const budgetFromDiffs = [];
+  const budgetFromSets = [];
 
   const granted = Array.isArray(auth.scope) ? auth.scope : Object.keys(CLOUD_SECTIONS);
   let prev = state; // the full stored state fetched above (pre-scope)
@@ -1886,6 +1922,45 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       refused.push(path + ': outside the granted sections');
       continue;
     }
+    // MCP-AGENT-FIRST 2026-11-12 1.2: money tables do not take generic diffs.
+    // A budget-line diff on a writable field becomes a changeLine op so the
+    // money validation and the large-change flag still run; everything else
+    // is refused with the path the agent should use instead.
+    if (path === 'budgetLines') {
+      if (BUDGET_LINE_FIELDS.indexOf(field) === -1) {
+        refused.push(
+          path +
+            '.' +
+            (field || '(no field)') +
+            ': not writable through MCP. Allowed: ' +
+            BUDGET_LINE_FIELDS.join(', ') +
+            '.'
+        );
+        continue;
+      }
+      budgetFromDiffs.push({
+        kind: 'changeLine',
+        lineId: rec,
+        field: field,
+        value: d.after,
+        before: d.before
+      });
+      continue;
+    }
+    if (path === 'spendLog') {
+      refused.push(path + ': use the budget array (addDelivery)');
+      continue;
+    }
+    if (path === 'budgetEnvelope') {
+      refused.push(
+        path + ': use a set ({"path":"budgetEnvelope","value":<number>}) rather than a diff'
+      );
+      continue;
+    }
+    if (path === 'nspid') {
+      refused.push(path + ': server-managed and cannot be written');
+      continue;
+    }
     const arr = base[path];
     if (!Array.isArray(arr)) {
       refused.push(path + ': not an editable list');
@@ -1933,6 +2008,23 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     }
     if (granted.indexOf(csec) === -1) {
       refusedCreates.push(cpath + ': outside the granted sections');
+      continue;
+    }
+    // MCP-AGENT-FIRST 2026-11-12 1.2: a budget line is created through
+    // addLine (money validation, server-assigned id) and a delivery through
+    // addDelivery (the server computes the amount). The generic create path
+    // must not bypass either.
+    if (cpath === 'budgetLines' || cpath === 'spendLog') {
+      refusedCreates.push(
+        cpath +
+          ': use the budget array (' +
+          (cpath === 'budgetLines' ? 'addLine' : 'addDelivery') +
+          ')'
+      );
+      continue;
+    }
+    if (cpath === 'nspid') {
+      refusedCreates.push(cpath + ': server-managed and cannot be written');
       continue;
     }
     if (!recInput || typeof recInput !== 'object') {
@@ -1992,6 +2084,22 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       refusedSets.push(spath + ': outside the granted sections');
       continue;
     }
+    // MCP-AGENT-FIRST 2026-11-12 1.2: the envelope is money, so it goes
+    // through buildBudgetProposal (finite, non-negative, large-change flag)
+    // instead of the generic scalar set.
+    if (spath === 'budgetEnvelope') {
+      const envField = s.field === undefined || s.field === null ? '' : String(s.field);
+      if (envField) {
+        refusedSets.push(spath + '.' + envField + ': the envelope is a single number - omit field');
+        continue;
+      }
+      budgetFromSets.push({ kind: 'changeEnvelope', value: s.value, before: s.before });
+      continue;
+    }
+    if (spath === 'nspid') {
+      refusedSets.push(spath + ': server-managed and cannot be written');
+      continue;
+    }
     if (Array.isArray(base[spath])) {
       refusedSets.push(spath + ': is a record list - use diffs or creates');
       continue;
@@ -2021,11 +2129,29 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   // H-5: budget proposals. Built and validated on the server, then folded
   // into the same review row as any other change set.
   let budgetBuilt = { submitted: {}, changes: [], refused: [], summary: '' };
-  if (budgetRaw.length) {
+  const budgetAll = budgetRaw.concat(budgetFromDiffs, budgetFromSets);
+  if (budgetAll.length) {
     if (granted.indexOf('bud') === -1) {
       refusedCreates.push('budget: outside the granted sections');
+    } else if (budgetAll.length > BUDGET_PROPOSAL_LIMIT) {
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text:
+                'A proposal can carry at most ' +
+                BUDGET_PROPOSAL_LIMIT +
+                ' budget changes. Split this into smaller proposals.'
+            }
+          ],
+          isError: true
+        }
+      };
     } else {
-      budgetBuilt = buildBudgetProposal(base, budgetRaw, base.currency);
+      budgetBuilt = buildBudgetProposal(base, budgetAll, base.currency);
       Object.keys(budgetBuilt.submitted).forEach(function (k) {
         submitted[k] = budgetBuilt.submitted[k];
       });

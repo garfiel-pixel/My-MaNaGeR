@@ -72,6 +72,34 @@ decryption through `cloudDecryptState`.
 
 ---
 
+## Phase 1 — safety fixes
+
+| Step | Files | Gate |
+|---|---|---|
+| 1.1 Budget read gate on `get_table` | `src/mcp/server.js` | PASS — R03 4/4; `qa-appwide-mcp` 56/56; `qa-mcp-parity` 13/13 |
+| 1.2 Budget write gate on the generic path | `src/mcp/server.js`, `src/lib/budget.js`, `tools/qa-mcp-agent-first.cjs`, `tools/qa-appwide-mcp.cjs` | PASS — R04 5/5 + R04m 32-case matrix; `qa-mcp-budget` 46/46; `qa-mcp-write-path` 20/20 |
+
+1.1 detail: `executeGetTable` takes `auth` and refuses `budgetLines`, `spendLog`
+and `budgetEnvelope` with `BUDGET_READ_REFUSAL` when the key's Read budget
+switch is off. The section check runs first, so a key without the Budget
+section still gets the scope message.
+
+1.2 detail: any diff, create or set naming `budgetLines`, `spendLog`,
+`budgetEnvelope` or `nspid` refuses the WHOLE call with `BUDGET_WRITE_REFUSAL`
+when the switch is off — the same contract the `budget` array always had.
+With the switch on:
+- a budget-line diff on one of `BUDGET_LINE_FIELDS` becomes a `changeLine` op
+  and runs through `buildBudgetProposal` (money validation + large flag); any
+  other field is refused as not writable;
+- a `spendLog` diff is refused with "use the budget array (addDelivery)";
+- a `budgetLines` / `spendLog` create is refused the same way, and both entries
+  are gone from `CREATE_DEFAULTS`;
+- a `budgetEnvelope` set becomes a `changeEnvelope` op: finite, non-negative,
+  large when the change is at least min(10% of the envelope, 50000);
+- `nspid` is refused everywhere as server-managed.
+
+---
+
 ## Deviations
 
 1. **R04's fake state needed a `spendLog` row.** The first run refused the
@@ -85,3 +113,8 @@ decryption through `cloudDecryptState`.
    into CI yet" (0.2), but `verify-test-registry` refuses an unregistered
    harness. TRIAGE is the honest token for a suite that is red by design until
    Phase 1; Phase 5 flips the row to CI/EXTENDED with the final counts.
+4. **`qa-appwide-mcp` W5 now probes scope with a non-money path.** Its
+   out-of-scope diff used `budgetLines`; 1.2 deliberately checks the write
+   switch before the section, so W5 got the switch message. W5 now uses `risks`
+   (still out of the key's `wbs` scope) and a new W5b asserts the budget path is
+   refused for the switch. 55 -> 56 checks.

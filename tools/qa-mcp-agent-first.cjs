@@ -445,26 +445,34 @@ function addReview(env, row) {
   }
 
   // =====================================================================
-  // R03 — get_table ignores the key's Read budget switch
+  // R03 — get_table honours the key's Read budget switch
   // =====================================================================
-  section('R03 — get_table leaks budget tables with Read budget off');
+  section('R03 — get_table refuses money tables with Read budget off');
   {
     const env = await makeEnv({ mod, budgetRead: 0, budgetWrite: 0 });
     for (const table of ['budgetLines', 'spendLog', 'budgetEnvelope']) {
       const r = await tool(env, 10, 'get_table', { table });
       const t = textOf(r);
       check(
-        'R03 ' + table + ' is returned to a key with Read budget off',
-        !/BUDGET_READ_REFUSAL|Read budget/i.test(t) && t.indexOf('"table"') > -1,
+        'R03 ' + table + ' is refused to a key with Read budget off',
+        /may not read the budget/i.test(t) && t.indexOf('"table"') === -1,
         { table, text: t.slice(0, 120) }
       );
     }
+    const on = await makeEnv({ mod, budgetRead: 1 });
+    const rOn = await tool(on, 14, 'get_table', { table: 'budgetLines' });
+    const dOn = jsonOf(rOn);
+    check(
+      'R03b a key with Read budget on still gets the table',
+      dOn.table === 'budgetLines' && Array.isArray(dOn.records) && dOn.records.length === 1,
+      { text: textOf(rOn).slice(0, 120) }
+    );
   }
 
   // =====================================================================
   // R04 — the generic path queues budget diffs with Propose budget off
   // =====================================================================
-  section('R04 — budget diffs queue with Propose budget changes off');
+  section('R04 — budget diffs are refused with Propose budget changes off');
   {
     const env = await makeEnv({ mod, budgetWrite: 0 });
     const before = env.__store.reviews.length;
@@ -479,10 +487,117 @@ function addReview(env, row) {
     });
     const queued = env.__store.reviews.length - before;
     check(
-      'R04 budgetLines/spendLog/budgetEnvelope queue without the budget write switch',
-      queued === 3 && !/BUDGET_WRITE_REFUSAL/i.test(textOf(d1) + textOf(d2) + textOf(d3)),
+      'R04 budgetLines/spendLog/budgetEnvelope are refused without the write switch',
+      queued === 0 &&
+        [d1, d2, d3].every(function (r) {
+          return /may not propose budget changes/i.test(textOf(r));
+        }),
       { queued, texts: [textOf(d1), textOf(d2), textOf(d3)] }
     );
+    const on = await makeEnv({ mod });
+    const q1 = await tool(on, 14, 'apply_changes', {
+      diffs: [{ path: 'budgetLines', recordId: 'b1', field: 'planned', after: 120000 }]
+    });
+    const n1 = on.__store.reviews.length;
+    const q2 = await tool(on, 15, 'apply_changes', {
+      diffs: [{ path: 'spendLog', recordId: 's1', field: 'amount', after: 50 }]
+    });
+    const n2 = on.__store.reviews.length;
+    const q3 = await tool(on, 16, 'apply_changes', {
+      sets: [{ path: 'budgetEnvelope', value: 600000 }]
+    });
+    const n3 = on.__store.reviews.length;
+    check(
+      'R04b a budget-line diff queues as a changeLine op',
+      /Queued 1 field change/.test(textOf(q1)) && n1 === 1,
+      { text: textOf(q1).slice(0, 140), n1 }
+    );
+    check(
+      'R04c a spendLog diff is refused and points at addDelivery',
+      /use the budget array \(addDelivery\)/.test(textOf(q2)) && n2 === n1,
+      { text: textOf(q2).slice(0, 140), n1, n2 }
+    );
+    check(
+      'R04d an envelope set queues and carries the large flag',
+      /Queued 1 field change/.test(textOf(q3)) &&
+        n3 === 2 &&
+        /"large":true/.test(on.__store.reviews[1].proposal_json || ''),
+      { text: textOf(q3).slice(0, 140), n3, proposal: (on.__store.reviews[1] || {}).proposal_json }
+    );
+    const bad = await tool(on, 17, 'apply_changes', {
+      sets: [{ path: 'budgetEnvelope', value: 'lots' }]
+    });
+    check(
+      'R04e a non-numeric envelope is refused',
+      /envelope must be a number/i.test(textOf(bad)),
+      { text: textOf(bad).slice(0, 140) }
+    );
+  }
+
+  // =====================================================================
+  // R04m — the budget permission matrix (1.2 gate)
+  // section Budget {on,off} x Read {on,off} x Write {on,off} x op
+  // =====================================================================
+  section('R04m — budget permission matrix');
+  {
+    const ops = {
+      diff: { diffs: [{ path: 'budgetLines', recordId: 'b1', field: 'planned', after: 120000 }] },
+      create: { creates: [{ path: 'budgetLines', record: { name: 'New line', planned: 10 } }] },
+      set: { sets: [{ path: 'budgetEnvelope', value: 600000 }] },
+      budget: { budget: [{ kind: 'changeLine', lineId: 'b1', field: 'planned', value: 120000 }] }
+    };
+    const cases = [];
+    for (const sectionOn of [0, 1]) {
+      for (const read of [0, 1]) {
+        for (const write of [0, 1]) {
+          for (const op of Object.keys(ops)) {
+            cases.push({ sectionOn, read, write, op });
+          }
+        }
+      }
+    }
+    let bad = 0;
+    const detail = [];
+    for (const c of cases) {
+      const scope = ALL_SECTIONS.filter(function (s) {
+        return c.sectionOn === 1 || s !== 'bud';
+      });
+      const env = await makeEnv({
+        mod,
+        scope,
+        budgetRead: c.read,
+        budgetWrite: c.write
+      });
+      const r = await tool(env, 200, 'apply_changes', ops[c.op]);
+      const t = textOf(r);
+      const queued = env.__store.reviews.length > 0;
+      let ok;
+      if (c.sectionOn === 0) {
+        // The write switch is checked first, so an unswitched key is refused
+        // for the switch even when the section is also absent; both refusals
+        // are correct and neither queues.
+        ok =
+          !queued &&
+          (/outside the granted sections/i.test(t) || /may not propose budget changes/i.test(t));
+      } else if (c.op === 'create') {
+        // Always refused on the generic path; only the switch decides which
+        // refusal wins (write refusal comes first).
+        ok = !queued && /use the budget array \(addLine\)|may not propose budget changes/i.test(t);
+      } else if (!c.read || !c.write) {
+        ok = !queued && /may not propose budget changes/i.test(t);
+      } else {
+        ok = queued && /Queued 1 field change/.test(t);
+      }
+      if (!ok) {
+        bad++;
+        detail.push({ ...c, text: t.slice(0, 100), queued });
+      }
+    }
+    check('R04m every budget permission combination behaves', bad === 0, {
+      cases: cases.length,
+      bad,
+      detail: detail.slice(0, 6)
+    });
   }
 
   // =====================================================================

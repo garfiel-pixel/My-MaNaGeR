@@ -438,3 +438,18 @@ checks were replaced by one that asserts the NEW contract.
 2. Follow the loaded skills' rules exactly.
 3. Make minimal, convention-respecting changes.
 4. Verify: `npm run verify` + targeted `qa-*.cjs` / `tools/qa-*.cjs` harnesses.
+
+## Review export (owner request)
+
+When the owner asks for "the file to review", a review copy, or an export for
+another model, produce `review-export/` at the repository root exactly as
+`docs/REVIEW-EXPORT.md` defines: every reviewable source file (root pages,
+`worker.js`, `src/`, `js/`, `css/`, `sw.js`, `build.js`, `serve.cjs`, `qa-*.cjs`,
+`tools/`, `test/`, `migrations/`, `mcp/`, `types/`, CI config,
+`docs/DEVELOPER-GUIDE.md`), paths preserved.
+
+Copy only: no source edits, no README inside the folder, no secrets
+(`.dev.vars`), no generated `dist/`, no planning or directive docs. The folder is
+disposable and deleting it must leave the codebase untouched. 2026-11-12
+snapshot: 14 MB, 591 files (the 500 MB cap is the external upload limit, not a
+target).

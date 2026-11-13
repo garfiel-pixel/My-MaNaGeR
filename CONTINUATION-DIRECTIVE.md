@@ -97,7 +97,7 @@
 8. Every new feature ships its `mymanager-field-guide.html` entry in the SAME change.
 9. `reflection.txt` is rewritten at the end of every session (specific: files, line numbers, verification results).
 10. This file gets a STATUS LOG entry after every completed project; full entries go to `docs/history/log-YYYY-MM.md`.
-11. Never create a review zip unless the owner asks.
+11. Never create a review zip or review export unless the owner asks. When asked, build `review-export/` at the repo root exactly as `docs/REVIEW-EXPORT.md` defines: copy only, no source edits, no README inside it, no secrets, no `dist/`, no planning docs; the folder must be safe to delete.
 12. Paddle keys and secrets are assumed set; never touch secrets.
 13. Deploy only from a clean staging copy under `$HOME/mmgr-deploy` (never `/tmp`, never the repo root). Live probes use `https://mymanagerworkspace.com` only.
 14. The owner removed pinned Calculate / Add to bill buttons (2026-10-13). Never re-pin them.

@@ -144,11 +144,14 @@ candidates) with refactor ground rules.
    (docs and AGENTS.md edits included):
    1. Do ALL work on a feature branch — `feat/<name>` or the session's
       `worktree-bg-*` branch. `main` is left untouched until the very end.
-   2. Push the branch to origin so the GitHub Actions CI run fires on it.
-   3. Wait for that run to finish **GREEN** — the `ci.yml` deploy gate
+   2. Open a pull request from the branch into `main` — the `pull_request`
+      CI run then validates the branch (the repo's `ci.yml` triggers on PRs
+      to `main` and on pushes to `main`; it does NOT trigger on an arbitrary
+      branch push, so the PR is the gate, not the push).
+   3. Wait for that PR run to finish **GREEN** — the `ci.yml` deploy gate
       (`npm run verify` + the T1/T2 harnesses + `wrangler deploy --dry-run`).
-   4. ONLY then fast-forward the branch into `main` and push `main` to trigger
-      the real deploy.
+   4. ONLY then merge the PR into `main` (the repo uses merge commits) and let
+      the resulting `main` push trigger the real deploy.
    A red branch run is fixed on the branch; it is never merged. Rationale: a
    red `main` blocks shipping (see rule 8), so gating on the branch keeps
    `main` always releasable. Do not push to `main` "because the local checks

@@ -12676,6 +12676,212 @@ body.dark-mode .ltr-roll td {
 .mcp-admin-steps li {
   margin: 0 0 4px;
 }
+
+/* MCP-AGENT-FIRST (2026-11-12): the panel is the MCP management area. The
+   header names the surface, the tabs split the three jobs (decide, connect,
+   see clients), and the queue table is the place an owner accepts an agent's
+   work without opening a project first. */
+.mcp-admin-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 4px 0 12px;
+}
+.mcp-admin-head-l {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 320px;
+}
+.mcp-admin-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--glass-fill-dark);
+  flex: 0 0 auto;
+}
+.mcp-admin-mark .ico {
+  width: 20px;
+  height: 20px;
+}
+.mcp-admin-title {
+  margin: 0;
+  font-size: 1.02rem;
+}
+.mcp-admin-lede {
+  margin: 3px 0 0;
+  max-width: 62ch;
+}
+.mcp-admin-head-r {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mcp-admin-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 12px;
+  overflow-x: auto;
+}
+.mcp-admin-tab {
+  appearance: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--slate);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.mcp-admin-tab:hover {
+  color: var(--text);
+}
+.mcp-admin-tab.is-on {
+  color: var(--text);
+  border-bottom-color: var(--gold-text);
+}
+.mcp-admin-tab:focus-visible {
+  outline: 2px solid var(--gold-text);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+.mcp-admin-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--gold-text) 18%, transparent);
+  color: var(--gold-text);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.mcp-admin-count[hidden] {
+  display: none;
+}
+.mcp-admin-statusline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  margin: 0 0 8px;
+}
+.mcp-admin-statusline #mcp-admin-status {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.mcp-admin-panel[hidden] {
+  display: none !important;
+}
+.mcp-q {
+  display: grid;
+  gap: 10px;
+}
+.mcp-q-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--glass-fill-dark);
+  flex-wrap: wrap;
+}
+.mcp-q-main {
+  min-width: 0;
+  flex: 1 1 380px;
+}
+.mcp-q-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mcp-q-proj {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.mcp-q-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold-text) 10%, transparent);
+}
+.mcp-q-src {
+  font-size: 0.72rem;
+  color: var(--slate);
+}
+.mcp-q-meta {
+  color: var(--slate);
+  font-size: 0.74rem;
+  margin: 3px 0 7px;
+}
+.mcp-q-diffs {
+  display: grid;
+  gap: 3px;
+}
+.mcp-q-diff {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mcp-q-diff-rec {
+  font-weight: 600;
+}
+.mcp-q-diff-field {
+  color: var(--slate);
+}
+.mcp-q-diff-vals {
+  color: var(--slate);
+}
+.mcp-q-more {
+  margin-top: 6px;
+}
+.mcp-q-more summary {
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--gold-text);
+}
+.mcp-q-acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+@media (max-width: 560px) {
+  .mcp-admin-head-r {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .mcp-q-acts {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
 /* ---- AI Assistant window (chat-style) ---- */
 /* TRACK B3: distinct visual presence - the AI is the strongest
    differentiator and its entry point should feel like one.  A persistent

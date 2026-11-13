@@ -389,7 +389,34 @@ function check(name, val, detail) {
     // S16: index size band (pack-off state, client scope cleared).
     await nav(SERVE_BASE + '/project.html?id=qa-search');
     const s16 = await ev('MMGR.AppSearch.buildIndex().length');
-    check('S16 search: the index stays in its expected size band', s16 >= 150 && s16 <= 240, s16);
+    check('S16 search: the index stays in its expected size band', s16 >= 150 && s16 <= 300, s16);
+
+    // S28 (MCP-AGENT-FIRST 2026-11-12): a project RECORD is searchable and the
+    // result lands on the row. The palette used to index only chrome, so a
+    // task search returned settings and left the page at the top.
+    await nav(SERVE_BASE + '/project.html?id=demo-filled');
+    await waitFor(`!!(window.MMGR && MMGR.AppSearch && MMGR.State && MMGR.State.getState)`);
+    await delay(1200);
+    const s28 = await ev(`(function(){
+      var hits = MMGR.AppSearch.search('structural assessment');
+      var rec = hits.filter(function(e){ return e.kind === 'record'; })[0];
+      if (!rec) { return { found:false, kinds: hits.map(function(e){ return e.kind; }) }; }
+      rec.run();
+      return new Promise(function(res){ setTimeout(function(){
+        var row = document.querySelector('#wbs-body tr.wbs-row.search-hit');
+        res({
+          found: true,
+          label: rec.label,
+          section: (document.querySelector('.sec-btn.active') || {}).textContent.trim(),
+          hit: !!row
+        });
+      }, 700); });
+    })()`);
+    check(
+      'S28 a task search result lands on its WBS row',
+      s28 && s28.found && s28.hit && /WBS/.test(s28.section),
+      s28
+    );
 
     // =====================================================================
     // Launcher surface

@@ -423,6 +423,227 @@
   }
 
   // ---- Surface collectors (T-15) ---------------------------------------
+  // Project content (T-29, 2026-11-12): the palette used to index only the
+  // chrome, so searching a task or a risk returned settings and left the page
+  // at the top. A record result now switches to its section and lands on the
+  // row, with the same flash the setting results use.
+  function findInPanel(section, label) {
+    var want = String(label || '')
+      .trim()
+      .toLowerCase();
+    if (!want) {
+      return null;
+    }
+    var panel = document.getElementById('panel-' + section);
+    if (!panel) {
+      return null;
+    }
+    var nodes = panel.querySelectorAll('tr, .kb-card, li, .meet-card, .doc-row, .mcp-q-row');
+    for (var i = 0; i < nodes.length; i++) {
+      var t = txt(nodes[i]).toLowerCase();
+      if (t.indexOf(want) === 0 || t.indexOf(want) > -1) {
+        return nodes[i];
+      }
+    }
+    return null;
+  }
+  function jumpToRecord(section, finder) {
+    revealSection(section);
+    var tries = 0;
+    function attempt() {
+      var target = null;
+      try {
+        target = finder();
+      } catch (e) {
+        target = null;
+      }
+      if (target) {
+        if (target.scrollIntoView) {
+          target.scrollIntoView({ block: 'center' });
+        }
+        flash(target);
+        return;
+      }
+      if (tries++ < 10) {
+        requestAnimationFrame(attempt);
+      }
+    }
+    requestAnimationFrame(attempt);
+  }
+  function collectProjectRecords(push) {
+    var st = null;
+    try {
+      st = window.MMGR && MMGR.State && MMGR.State.getState ? MMGR.State.getState() : null;
+    } catch (e) {
+      st = null;
+    }
+    if (!st) {
+      return;
+    }
+    function add(label, hint, section, finder, weight) {
+      if (!label) {
+        return;
+      }
+      push({
+        id: 'rec-' + slug(section + '-' + label),
+        kind: 'record',
+        label: String(label),
+        hint: hint,
+        group: 'Project records',
+        icon: 'i-list',
+        weight: weight || 110,
+        aliases: [compact(label)],
+        run: function () {
+          jumpToRecord(section, finder);
+        }
+      });
+    }
+    (Array.isArray(st.tasks) ? st.tasks : []).forEach(function (t) {
+      if (!t || !t.name) {
+        return;
+      }
+      add(
+        t.name,
+        'Task | ' +
+          (t.status || 'todo') +
+          ' | ' +
+          (t.startDate || '?') +
+          ' to ' +
+          (t.endDate || '?'),
+        'wbs',
+        function () {
+          return document.querySelector(
+            '#wbs-body tr.wbs-row[data-id="' + String(t.id).replace(/"/g, '') + '"]'
+          );
+        },
+        125
+      );
+    });
+    (Array.isArray(st.risks) ? st.risks : []).forEach(function (r) {
+      if (!r) {
+        return;
+      }
+      var label = r.name || r.description;
+      add(
+        label,
+        'Risk | ' +
+          (r.probability || 'Low') +
+          ' x ' +
+          (r.impact || 'Low') +
+          ' | ' +
+          (r.status || 'open'),
+        'risk',
+        function () {
+          return findInPanel('risk', label);
+        },
+        115
+      );
+    });
+    (Array.isArray(st.issues) ? st.issues : []).forEach(function (i) {
+      if (!i) {
+        return;
+      }
+      var label = i.name || i.description;
+      add(
+        label,
+        'Issue | ' + (i.status || 'open'),
+        'dash',
+        function () {
+          return findInPanel('dash', label);
+        },
+        115
+      );
+    });
+    (Array.isArray(st.budgetLines) ? st.budgetLines : []).forEach(function (l) {
+      if (!l) {
+        return;
+      }
+      var label = l.name || l.category;
+      add(
+        label,
+        'Budget line | ' + (l.id || '') + (l.planned ? ' | planned ' + l.planned : ''),
+        'bud',
+        function () {
+          return findInPanel('bud', label);
+        },
+        110
+      );
+    });
+    (Array.isArray(st.stakeholders) ? st.stakeholders : []).forEach(function (s) {
+      if (!s || !s.name) {
+        return;
+      }
+      add(
+        s.name,
+        'Stakeholder | ' + (s.role || ''),
+        'stk',
+        function () {
+          return findInPanel('stk', s.name);
+        },
+        105
+      );
+    });
+    (Array.isArray(st.changes) ? st.changes : []).forEach(function (c) {
+      if (!c) {
+        return;
+      }
+      var label = c.title || c.name;
+      add(
+        label,
+        'Change | ' + (c.status || ''),
+        'chg',
+        function () {
+          return findInPanel('chg', label);
+        },
+        105
+      );
+    });
+    (Array.isArray(st.logEntries) ? st.logEntries : []).forEach(function (e) {
+      if (!e) {
+        return;
+      }
+      var label = e.title || e.decision;
+      add(
+        label,
+        'Decision log | ' + (e.date || ''),
+        'log',
+        function () {
+          return findInPanel('log', label);
+        },
+        100
+      );
+    });
+    (Array.isArray(st.documents) ? st.documents : []).forEach(function (d) {
+      if (!d || !d.name) {
+        return;
+      }
+      add(
+        d.name,
+        'Document | ' + (d.category || ''),
+        'docs',
+        function () {
+          return findInPanel('docs', d.name);
+        },
+        100
+      );
+    });
+    (Array.isArray(st.meetings) ? st.meetings : []).forEach(function (m) {
+      if (!m) {
+        return;
+      }
+      var label = m.title || m.name;
+      add(
+        label,
+        'Meeting | ' + (m.date || ''),
+        'meet',
+        function () {
+          return findInPanel('meet', label);
+        },
+        100
+      );
+    });
+  }
+
   // Launcher: the rail plus every project the page can open. Projects come
   // from the SAME source the #ps-modal reads (searchCandidates), so the two
   // searches can never disagree about what exists.
@@ -522,6 +743,17 @@
           el.click();
           if (target && target.scrollIntoView) {
             target.scrollIntoView({ block: 'start' });
+          }
+          // A group toggle is not a destination on its own. The MCP Server
+          // group owns the management area, so its result lands there instead
+          // of only unfolding a submenu at the top of the page.
+          if (
+            el.getAttribute('data-rail-toggle') === 'rail-mcp' &&
+            window.MMGR &&
+            MMGR.McpAdmin &&
+            MMGR.McpAdmin.open
+          ) {
+            MMGR.McpAdmin.open('pending');
           }
         }
       });
@@ -998,6 +1230,8 @@
       collectAdmin(push);
     } else if (SURFACE === 'calculator') {
       collectCalculator(push);
+    } else if (SURFACE === 'project') {
+      collectProjectRecords(push);
     }
 
     // 10) Explicit Connect an AI entry (the directive's MCP example). It is
@@ -1187,6 +1421,7 @@
 
   var KIND_HEAD = {
     project: 'Projects',
+    record: 'Project records',
     section: 'Sections',
     'setting-group': 'Settings',
     setting: 'Settings',

@@ -10,6 +10,8 @@
   var card = null;
   var state = null;
   var clientList = [];
+  var pendingList = [];
+  var activeTab = 'pending';
 
   function $(sel) {
     return card ? card.querySelector(sel) : null;
@@ -145,6 +147,14 @@
   function renderClients(clients) {
     clientList = Array.isArray(clients) ? clients : [];
     syncChip();
+    var count = document.getElementById('mcp-client-count');
+    if (count) {
+      var live = clientList.filter(function (c) {
+        return c && !c.revoked;
+      }).length;
+      count.textContent = String(live);
+      count.hidden = live === 0;
+    }
     var host = $('#mcp-clients');
     if (!host) {
       return;
@@ -245,6 +255,256 @@
     syncChip();
   }
 
+  function fmtWhen(iso) {
+    if (!iso) {
+      return '';
+    }
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) {
+      return String(iso);
+    }
+    try {
+      return d.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return fmtDate(iso);
+    }
+  }
+
+  function setTab(name) {
+    activeTab = name === 'connection' || name === 'clients' ? name : 'pending';
+    if (!card) {
+      return;
+    }
+    var tabs = card.querySelectorAll('[data-mcp-tab]');
+    for (var i = 0; i < tabs.length; i++) {
+      var on = tabs[i].getAttribute('data-mcp-tab') === activeTab;
+      tabs[i].classList.toggle('is-on', on);
+      tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    var panels = card.querySelectorAll('[data-mcp-panel]');
+    for (var j = 0; j < panels.length; j++) {
+      panels[j].hidden = panels[j].getAttribute('data-mcp-panel') !== activeTab;
+    }
+  }
+
+  function fieldLabel(field) {
+    return String(field || '')
+      .replace(/\./g, ' / ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\b\w/g, function (c) {
+        return c.toUpperCase();
+      });
+  }
+
+  function shortValue(v) {
+    if (v === undefined || v === null || v === '') {
+      return '(empty)';
+    }
+    var s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    if (s.length > 64) {
+      s = s.slice(0, 61) + '...';
+    }
+    return s;
+  }
+
+  function proposalCount(p) {
+    if (p && p.proposal && Array.isArray(p.proposal.changes)) {
+      return p.proposal.changes.length;
+    }
+    return p && Number.isFinite(p.diffTotal) ? p.diffTotal : p && p.diffs ? p.diffs.length : 0;
+  }
+
+  function diffLine(d) {
+    var row = el('div', 'mcp-q-diff');
+    row.appendChild(
+      el('span', 'mcp-q-diff-rec', d.recordName || d.recordId || d.path || 'Project')
+    );
+    row.appendChild(el('span', 'mcp-q-diff-field', ' ' + fieldLabel(d.field || d.path)));
+    row.appendChild(
+      el('span', 'mcp-q-diff-vals', ' ' + shortValue(d.before) + ' \u2192 ' + shortValue(d.after))
+    );
+    return row;
+  }
+
+  function renderPending() {
+    var host = document.getElementById('mcp-pending');
+    var count = document.getElementById('mcp-pending-count');
+    if (count) {
+      count.textContent = String(pendingList.length);
+      count.hidden = pendingList.length === 0;
+    }
+    if (!host) {
+      return;
+    }
+    host.textContent = '';
+    if (!pendingList.length) {
+      host.appendChild(
+        el(
+          'div',
+          'mcp-admin-empty',
+          'Nothing is waiting for you. Every change an AI proposes appears here first.'
+        )
+      );
+      return;
+    }
+    var wrap = el('div', 'mcp-q');
+    pendingList.forEach(function (item) {
+      var p = item.proposal;
+      var total = proposalCount(p);
+      var row = el('div', 'mcp-q-row');
+      var main = el('div', 'mcp-q-main');
+      var top = el('div', 'mcp-q-top');
+      top.appendChild(el('span', 'mcp-q-proj', item.projectLabel || item.projectId));
+      top.appendChild(el('span', 'mcp-q-badge', total + (total === 1 ? ' change' : ' changes')));
+      if (p.sourceLabel) {
+        top.appendChild(el('span', 'mcp-q-src', p.sourceLabel));
+      }
+      main.appendChild(top);
+      main.appendChild(
+        el('div', 'mcp-q-meta', 'Proposed ' + fmtWhen(p.proposedAt) + ' | proposal #' + p.id)
+      );
+      var diffs = Array.isArray(p.diffs) ? p.diffs : [];
+      var preview = el('div', 'mcp-q-diffs');
+      diffs.slice(0, 3).forEach(function (d) {
+        preview.appendChild(diffLine(d));
+      });
+      if (!diffs.length && p.proposal && Array.isArray(p.proposal.changes)) {
+        p.proposal.changes.slice(0, 3).forEach(function (c) {
+          preview.appendChild(
+            diffLine({
+              recordName: c.lineId || c.kind,
+              field: c.field || c.kind,
+              before: c.before,
+              after: c.value
+            })
+          );
+        });
+      }
+      main.appendChild(preview);
+      if (diffs.length > 3) {
+        var more = document.createElement('details');
+        more.className = 'mcp-q-more';
+        var sum = document.createElement('summary');
+        sum.textContent = 'Show all ' + diffs.length + ' changes';
+        more.appendChild(sum);
+        var full = el('div', 'mcp-q-diffs');
+        diffs.slice(3).forEach(function (d) {
+          full.appendChild(diffLine(d));
+        });
+        more.appendChild(full);
+        main.appendChild(more);
+      }
+      row.appendChild(main);
+      var acts = el('div', 'mcp-q-acts');
+      var accept = el('button', 'btn btn-g btn-s', 'Accept');
+      accept.type = 'button';
+      accept.setAttribute('data-mcp-act', 'accept');
+      accept.setAttribute('data-project-id', item.projectId);
+      accept.setAttribute('data-review-id', String(p.id));
+      var reject = el('button', 'btn btn-n btn-s', 'Reject');
+      reject.type = 'button';
+      reject.setAttribute('data-mcp-act', 'reject');
+      reject.setAttribute('data-project-id', item.projectId);
+      reject.setAttribute('data-review-id', String(p.id));
+      acts.appendChild(accept);
+      acts.appendChild(reject);
+      row.appendChild(acts);
+      wrap.appendChild(row);
+    });
+    host.appendChild(wrap);
+  }
+
+  // The management table the owner asked for: one place that shows what every
+  // connected agent has queued, across every project this account owns, with
+  // the decision buttons right here. The project page keeps its own queue; the
+  // two read the same cloud_reviews rows.
+  function loadPending() {
+    pendingList = [];
+    if (!state || !Array.isArray(state.projects)) {
+      renderPending();
+      return Promise.resolve();
+    }
+    var owners = state.projects.filter(function (p) {
+      return p && p.accessRole === 'owner';
+    });
+    var jobs = owners.map(function (p) {
+      return api('/api/cloud/projects/' + encodeURIComponent(p.projectId) + '/reviews')
+        .then(function (r) {
+          if (!r.ok || !r.data.ok || !Array.isArray(r.data.proposals)) {
+            return;
+          }
+          r.data.proposals.forEach(function (row) {
+            if (!row || (row.status !== 'pending' && row.status !== 'accepting')) {
+              return;
+            }
+            pendingList.push({
+              projectId: p.projectId,
+              projectLabel: p.label || p.projectId,
+              proposal: row
+            });
+          });
+        })
+        .catch(function () {
+          /* one unreachable project must not hide the rest */
+        });
+    });
+    return Promise.all(jobs).then(function () {
+      pendingList.sort(function (a, b) {
+        return String(b.proposal.proposedAt || '').localeCompare(
+          String(a.proposal.proposedAt || '')
+        );
+      });
+      renderPending();
+    });
+  }
+
+  function decide(kind, projectId, reviewId, btn) {
+    if (!projectId || !reviewId) {
+      return;
+    }
+    if (btn) {
+      btn.disabled = true;
+    }
+    setStatus((kind === 'accept' ? 'Accepting' : 'Rejecting') + ' proposal #' + reviewId + '...');
+    var path =
+      '/api/cloud/projects/' +
+      encodeURIComponent(projectId) +
+      '/reviews/' +
+      encodeURIComponent(reviewId) +
+      '/' +
+      (kind === 'accept' ? 'accept' : 'reject');
+    api(path, { method: 'POST' })
+      .then(function (r) {
+        if (!r.ok || !r.data.ok) {
+          if (btn) {
+            btn.disabled = false;
+          }
+          setStatus((r.data && (r.data.message || r.data.error)) || errorText(r), 'err');
+          return null;
+        }
+        setStatus(
+          (kind === 'accept' ? 'Accepted' : 'Rejected') +
+            ' proposal #' +
+            reviewId +
+            '. The project list is up to date.',
+          'ok'
+        );
+        return loadPending();
+      })
+      .catch(function () {
+        if (btn) {
+          btn.disabled = false;
+        }
+        setStatus('Could not reach the review service. Press Refresh.', 'err');
+      });
+  }
+
   function syncSubsetVisibility() {
     var policy = $('#mcp-policy');
     var host = $('#mcp-tools');
@@ -287,18 +547,22 @@
         }
         applyConfig(r.data);
         setStatus('');
-        return api('/api/mcp/clients').then(
-          function (c) {
-            if (c.ok && c.data.ok) {
-              renderClients(c.data.clients);
-            } else {
+        return api('/api/mcp/clients')
+          .then(
+            function (c) {
+              if (c.ok && c.data.ok) {
+                renderClients(c.data.clients);
+              } else {
+                renderClients([]);
+              }
+            },
+            function () {
               renderClients([]);
             }
-          },
-          function () {
-            renderClients([]);
-          }
-        );
+          )
+          .then(function () {
+            return loadPending();
+          });
       })
       .catch(function () {
         var offline = typeof navigator !== 'undefined' && navigator.onLine === false;
@@ -362,27 +626,25 @@
     fallback();
   }
 
-  // T-28: the rail's MCP Server dropdown drives the same card. Opening it is
-  // the one action that makes the folded state visible again; scroll honours
-  // prefers-reduced-motion instead of always animating.
-  function openPanel() {
+  // The rail's MCP Server menu drives the management area. Every destination
+  // opens the card, selects its tab, and lands on it; a folded card would hide
+  // the very thing the click asked for.
+  function openPanel(tab) {
     card = document.getElementById('mcp-admin-card');
     if (!card) {
       return;
     }
-    if (card.tagName === 'DETAILS') {
-      card.open = true;
-    }
+    setTab(tab || activeTab);
     var reduce =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     card.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    var sum = card.querySelector('summary');
-    if (sum && sum.focus) {
+    var on = card.querySelector('.mcp-admin-tab.is-on');
+    if (on && on.focus) {
       try {
-        sum.focus({ preventScroll: true });
+        on.focus({ preventScroll: true });
       } catch (e) {
-        sum.focus();
+        on.focus();
       }
     }
     if (!state) {
@@ -401,17 +663,21 @@
   }
 
   function sideAction(kind) {
-    if (kind === 'open') {
-      openPanel();
+    if (kind === 'pending' || kind === 'open') {
+      openPanel('pending');
+      return;
+    }
+    if (kind === 'connection') {
+      openPanel('connection');
       return;
     }
     if (kind === 'clients') {
-      openPanel();
+      openPanel('clients');
       scrollInside(document.getElementById('mcp-clients'));
       return;
     }
     if (kind === 'copy') {
-      openPanel();
+      openPanel('connection');
       copyUrl(function () {
         if (typeof window.toast === 'function') {
           window.toast('Connection URL copied. Paste it into your connector.', 'ok');
@@ -525,6 +791,12 @@
       sideAction(side.getAttribute('data-mcp-side'));
       return;
     }
+    var tabBtn = e.target && e.target.closest ? e.target.closest('[data-mcp-tab]') : null;
+    if (tabBtn && card && card.contains(tabBtn)) {
+      e.preventDefault();
+      setTab(tabBtn.getAttribute('data-mcp-tab'));
+      return;
+    }
     var t = e.target && e.target.closest ? e.target.closest('[data-mcp-act]') : null;
     if (!t || !card || !card.contains(t)) {
       return;
@@ -542,6 +814,9 @@
     } else if (act === 'copy-url') {
       e.preventDefault();
       copyUrl();
+    } else if (act === 'accept' || act === 'reject') {
+      e.preventDefault();
+      decide(act, t.getAttribute('data-project-id'), t.getAttribute('data-review-id'), t);
     }
   });
   document.addEventListener('change', function (e) {
@@ -558,5 +833,5 @@
     }
   });
 
-  MMGR.McpAdmin = { load: load, open: openPanel, copyUrl: copyUrl };
+  MMGR.McpAdmin = { load: load, open: openPanel, copyUrl: copyUrl, setTab: setTab };
 })(window.MMGR || (window.MMGR = {}));

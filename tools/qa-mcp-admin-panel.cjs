@@ -211,6 +211,25 @@ function check(name, val, detail) {
           : CONFIG;
       } else if (u.indexOf('/api/mcp/clients') > -1) {
         body = CLIENTS;
+      } else if (u.indexOf('/reviews') > -1) {
+        body = u.indexOf('/accept') > -1 || u.indexOf('/reject') > -1
+          ? { ok: true, reviewId: 43, status: 'accepted', applied: ['tasks'] }
+          : {
+              ok: true,
+              proposals: [
+                {
+                  id: 43,
+                  status: 'pending',
+                  sourceLabel: 'MCP AI',
+                  proposedAt: '2026-11-12T18:20:00Z',
+                  diffTotal: 2,
+                  diffs: [
+                    { path: 'tasks', recordId: 'T009', recordName: 'MEP Rough-In', field: 'status', before: 'inprogress', after: 'completed', surfaces: ['Kanban board'] },
+                    { path: 'tasks', recordId: 'T012', recordName: 'Seismic Retrofit', field: 'endDate', before: '2026-12-04', after: '2026-12-18', surfaces: ['Gantt'] }
+                  ]
+                }
+              ]
+            };
       }
       return Promise.resolve({
         ok: true,
@@ -337,31 +356,36 @@ function check(name, val, detail) {
     { toggle, revoke }
   );
 
-  // ---- M11: the card is a branded disclosure that states the real state ---
+  // ---- M11: the card is the MCP management area, wearing the brand mark ---
   const m11 = await ev(`(function(){
     const card = document.getElementById('mcp-admin-card');
-    const sum = card.querySelector('summary');
-    const use = sum ? sum.querySelector('use') : null;
+    const title = card.querySelector('.mcp-admin-title');
+    const use = card.querySelector('.mcp-admin-mark use');
     const chip = document.getElementById('mcp-admin-chip');
     return {
-      details: card.tagName === 'DETAILS',
-      summary: !!sum,
+      section: card.tagName === 'SECTION',
+      title: title ? (title.textContent || '').trim() : '',
       icon: use ? use.getAttribute('href') : '',
-      sparkle: !!(sum && sum.querySelector('use[href*="i-sparkle"]')),
+      sparkle: !!card.querySelector('use[href*="i-sparkle"]'),
       chip: chip ? (chip.textContent || '').trim() : '',
       chipKind: chip ? chip.getAttribute('data-kind') : '',
-      open: card.open,
-      height: Math.round(card.getBoundingClientRect().height)
+      tabs: Array.prototype.slice.call(card.querySelectorAll('[data-mcp-tab]')).map(function(t){
+        return t.getAttribute('data-mcp-tab');
+      })
     };
   })()`);
   check(
-    'M11 MCP card is a disclosure wearing the brand mark (no sparkle)',
-    m11.details && m11.summary && /#i-mpw$/.test(m11.icon) && !m11.sparkle,
+    'M11 MCP area is its own card with the brand mark and three tabs',
+    m11.section &&
+      /MCP server/i.test(m11.title) &&
+      /#i-mpw$/.test(m11.icon) &&
+      !m11.sparkle &&
+      m11.tabs.join('|') === 'pending|connection|clients',
     m11
   );
   check(
-    'M11b folded by default, and the chip counts the live client',
-    m11.open === false && m11.height < 90 && /On, 1 client/.test(m11.chip) && m11.chipKind === 'ok',
+    'M11b the chip counts the live client (never a bare "cloud")',
+    /On, 1 client/.test(m11.chip) && m11.chipKind === 'ok',
     m11
   );
 
@@ -398,33 +422,89 @@ function check(name, val, detail) {
     m13
   );
   check(
-    'M13b MCP submenu offers open, copy and clients',
-    m13.sides.join('|') === 'Open MCP panel|Copy connection URL|Connected clients',
+    'M13b MCP submenu offers pending changes, connection and clients',
+    m13.sides.join('|') === 'Pending changes|Connection & link|Connected clients',
     m13
   );
 
-  // ---- M14: the rail action unfolds the card ------------------------------
+  // ---- M14: a rail destination opens the management area ------------------
   await ev(`(function(){
-    document.getElementById('mcp-admin-card').open = false;
-    document.querySelector('#rail-mcp [data-mcp-side="open"]').click();
+    document.querySelector('#rail-mcp [data-mcp-side="pending"]').click();
   })()`);
-  await delay(500);
-  const m14 = await ev(`document.getElementById('mcp-admin-card').open`);
-  check('M14 "Open MCP panel" unfolds the card', m14 === true, m14);
-
-  // ---- M12: the rail copy action copies the real URL ----------------------
-  await ev(`document.querySelector('#rail-mcp [data-mcp-side="copy"]').click();`);
-  await delay(700);
-  const m12 = await ev(`(function(){
+  await delay(1200);
+  const m14 = await ev(`(function(){
+    const card = document.getElementById('mcp-admin-card');
+    const on = card.querySelector('.mcp-admin-tab.is-on');
+    const r = card.getBoundingClientRect();
     return {
-      status: (document.getElementById('mcp-admin-status').textContent || '').trim(),
-      url: document.getElementById('mcp-connect-url').value
+      tab: on ? on.getAttribute('data-mcp-tab') : '',
+      pendingVisible: !document.getElementById('mcp-panel-pending').hidden,
+      y: window.scrollY,
+      top: Math.round(r.top),
+      bottom: Math.round(r.bottom),
+      viewport: window.innerHeight
     };
   })()`);
   check(
-    'M12 rail Copy reports success (or asks for a manual copy)',
-    m12.url.indexOf('/api/mcp') > -1 && /copied|Select the URL/i.test(m12.status),
+    'M14 "Pending changes" selects the queue and lands on the area',
+    m14.tab === 'pending' && m14.pendingVisible && m14.bottom > 0 && m14.top < m14.viewport,
+    m14
+  );
+
+  // ---- M12: the tabs switch the three panels ------------------------------
+  await ev(`document.querySelector('[data-mcp-tab="connection"]').click();`);
+  await delay(300);
+  const m12 = await ev(`(function(){
+    return {
+      connection: !document.getElementById('mcp-panel-connection').hidden,
+      pending: document.getElementById('mcp-panel-pending').hidden,
+      clients: document.getElementById('mcp-panel-clients').hidden
+    };
+  })()`);
+  check(
+    'M12 Connection tab shows the connection panel only',
+    m12.connection && m12.pending && m12.clients,
     m12
+  );
+
+  // ---- M15: the queue names the record and accepts from here --------------
+  await ev(`document.querySelector('[data-mcp-tab="pending"]').click();`);
+  await delay(400);
+  const m15 = await ev(`(function(){
+    const rows = Array.prototype.slice.call(document.querySelectorAll('#mcp-pending .mcp-q-row'));
+    return {
+      rows: rows.length,
+      text: rows.length ? rows[0].textContent.replace(/[ ]+/g, ' ').trim() : '',
+      accept: document.querySelectorAll('#mcp-pending [data-mcp-act="accept"]').length,
+      reject: document.querySelectorAll('#mcp-pending [data-mcp-act="reject"]').length,
+      count: (document.getElementById('mcp-pending-count').textContent || '').trim()
+    };
+  })()`);
+  check(
+    'M15 the queue names the record, the field and both values',
+    m15.rows === 1 &&
+      m15.accept === 1 &&
+      m15.reject === 1 &&
+      m15.count === '1' &&
+      /MEP Rough-In/.test(m15.text) &&
+      /Status/.test(m15.text) &&
+      /inprogress/.test(m15.text) &&
+      /completed/.test(m15.text),
+    m15
+  );
+  await ev(`document.querySelector('#mcp-pending [data-mcp-act="accept"]').click();`);
+  await delay(800);
+  const m15b = await ev(`(function(){
+    const calls = window.__calls || [];
+    return {
+      accept: calls.filter(function(c){ return /\\/reviews\\/43\\/accept$/.test(c.url) && c.method === 'POST'; }).length,
+      status: (document.getElementById('mcp-admin-status').textContent || '').trim()
+    };
+  })()`);
+  check(
+    'M15b Accept posts to the project review accept route',
+    m15b.accept === 1 && /Accepted/i.test(m15b.status),
+    m15b
   );
 
   // ---- M9: 390 has no horizontal overflow --------------------------------

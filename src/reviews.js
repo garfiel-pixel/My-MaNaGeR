@@ -1019,6 +1019,7 @@ async function acceptMcpV2(
           ok: false,
           error: 'accept-failed',
           message: 'The proposal could not be applied: ' + JSON.stringify(applied.hardFailure),
+          hardFailure: applied.hardFailure,
           report: applied.report
         },
         422

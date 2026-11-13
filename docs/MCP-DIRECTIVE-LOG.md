@@ -484,6 +484,7 @@ read-only annotation and an outputSchema.
 | Step | Files | Gate |
 |---|---|---|
 | 5.1 AT01-AT21 acceptance tests (group 1: AT02, AT03, AT04, AT09) | `tools/qa-mcp-agent-first.cjs` | PASS — AT02 a UI edit landing after the queue conflicts exactly one op and the rest apply (report names the op + record, summary counts one applied + one conflict); AT03 both `validate_changes` and `apply_changes` refuse an invalid enum with the allowed list and queue no row; AT04 `critical` / `totalFloat` / `statusSince` / `completedDate` are refused as derived and a create cannot smuggle a computed field; AT09 the large-change counter counts only live decisions (8 incoming, 3 used, a rejected row excluded, limit 10); `qa-mcp-agent-first` 112/112 |
+| 5.1 AT05 hard-failure rollback | `src/cloud/apply-ops.js`, `src/reviews.js`, `test/apply-ops.test.mjs`, `tools/qa-mcp-agent-first.cjs` | PASS — a predecessor cycle queued as two ops (the queue cannot see the closed set) is refused at accept with 422 `accept-failed` + `hardFailure`; the R2 blob etag is unchanged, neither task keeps the cyclic predecessors and the row stays `pending`; every report row is `rolled_back` and the rows that wrote `predecessors` carry `code: 'CYCLE'` with a reason naming the cycle; 16/16 unit tests, `qa-mcp-agent-first` 119/119 |
 
 5.1 detail (group 1): the four gaps were closed on the existing fixtures
 rather than new scenarios. AT02 extends the AT11b setup - two proposals are
@@ -499,6 +500,22 @@ the fake DB's `all()` to honour the `status IN ('pending','accepting',
 'accepted')` filter of the counter query - without it a rejected row kept
 consuming the caller's 10-proposal budget, which is exactly the bug the
 assertion is there to catch.
+
+AT05 detail: the queue validates each op against the model and rejects a
+self-dependency, but it cannot see a cycle that only closes once two ops are
+taken together (`t1 -> t2` plus `t2 -> t1`), so the cycle is a genuine
+accept-time hard failure. Two defects were fixed to make that failure honest.
+First, the report used to keep `result: 'applied'` on rows that were then
+discarded with the working copy, so a 422 body claimed work had happened;
+`markRolledBack()` now rewrites every applied row to `rolled_back` and gives
+the rows whose field matches the failure (`predecessors` for a cycle, `status`
+for a bad enum) the failure's own code plus a reason naming the ids - the
+caller learns which op to fix instead of retrying the identical set. Second,
+the single-accept 422 body omitted `hardFailure` (only the change-set path
+carried it), leaving the agent to parse prose; it is now present on both. The
+rollback itself needed no change: `applyOps` never mutates the caller's state
+(it clones into `work`), and the accept path returns before the conditional
+R2 write, which AT05c proves by comparing the blob etag.
 
 ---
 

@@ -85,6 +85,36 @@ function findCycles(tasks) {
 
 const DERIVED_NULL_FIELDS = ['critical', 'totalFloat', 'freeFloat', 'floatBaseline'];
 
+// The field whose write is blamed when a hard failure fires. A cycle is only
+// reachable through a predecessors write; a bad enum is a status write.
+const HARD_FAILURE_FIELD = { cycle: 'predecessors', bad_enum: 'status' };
+
+// A hard failure throws the whole working copy away, so no row on the 422 body
+// may keep saying "applied". Every row becomes rolled_back, and the row that
+// caused the failure is named with the failure's own code so the caller knows
+// which op to fix instead of retrying the identical set.
+function markRolledBack(report, failure) {
+  const ids = new Set(
+    (failure.ids || (failure.id != null ? [failure.id] : [])).map(function (v) {
+      return String(v);
+    })
+  );
+  const causeField = HARD_FAILURE_FIELD[failure.code] || null;
+  report.forEach(function (entry) {
+    if (entry.result !== 'applied') {
+      return;
+    }
+    const cause = !!causeField && entry.field === causeField && ids.has(String(entry.recordId));
+    entry.result = 'rolled_back';
+    entry.code = cause ? (failure.code === 'cycle' ? 'CYCLE' : 'BAD_ENUM') : 'ROLLED_BACK';
+    entry.reason = cause
+      ? failure.code === 'cycle'
+        ? 'creates a predecessor cycle through ' + Array.from(ids).join(', ')
+        : 'leaves an invalid status on ' + Array.from(ids).join(', ')
+      : 'rolled back: the whole change set failed validation';
+  });
+}
+
 // Re-validate a value against the model: enum/type/max and that a derived
 // field is never written. Returns null when valid, else a reason string.
 //
@@ -561,12 +591,14 @@ export function applyOps(liveState, proposals, deps) {
   // Cycle check on the resulting tasks.
   const cyclic = findCycles(work.tasks);
   if (cyclic.length) {
+    const failure = { code: 'cycle', ids: cyclic };
+    markRolledBack(report, failure);
     return {
       next: null,
       report,
       derivedChanges,
       derivedTouched,
-      hardFailure: { code: 'cycle', ids: cyclic },
+      hardFailure: failure,
       conflicts
     };
   }
@@ -578,12 +610,14 @@ export function applyOps(liveState, proposals, deps) {
     if (statusEnum && t.status != null && statusEnum.enum) {
       const canon = String(t.status).trim().toLowerCase();
       if (!statusEnum.enum.some(e => String(e).toLowerCase() === canon)) {
+        const failure = { code: 'bad_enum', id: t.id, value: t.status };
+        markRolledBack(report, failure);
         return {
           next: null,
           report,
           derivedChanges,
           derivedTouched,
-          hardFailure: { code: 'bad_enum', id: t.id, value: t.status },
+          hardFailure: failure,
           conflicts
         };
       }

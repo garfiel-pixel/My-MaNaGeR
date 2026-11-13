@@ -3245,6 +3245,78 @@ function addReview(env, row) {
   }
 
   // =====================================================================
+  // AT05 — a hard failure (a predecessor cycle the queue could not see) rolls
+  // back the WHOLE accept: 422, the R2 blob is byte-identical, nothing is
+  // applied, and the report names the op that caused it instead of claiming
+  // the set applied.
+  // =====================================================================
+  section('AT05 — a predecessor cycle rolls the whole accept back');
+  {
+    const env = await makeEnv({ mod });
+    const blobBefore = await env.R2.get(R2_KEY);
+    const etagBefore = blobBefore.etag;
+    const stateBefore = await stateOf(env);
+    const q = await tool(env, 950, 'apply_changes', {
+      diffs: [
+        { path: 'tasks', recordId: 't1', field: 'predecessors', after: ['t2'] },
+        { path: 'tasks', recordId: 't2', field: 'predecessors', after: ['t1'] }
+      ]
+    });
+    check(
+      'AT05a the cycle-forming proposal is queued (the queue cannot see the whole set)',
+      env.__store.reviews.length === 1 && env.__store.reviews[0].status === 'pending',
+      { text: textOf(q).slice(0, 160) }
+    );
+    const row = env.__store.reviews[0];
+    const a = await accept(env, row.id);
+    check(
+      'AT05b the accept refuses with 422 accept-failed',
+      a.status === 422 && a.data && a.data.error === 'accept-failed',
+      { status: a.status, error: a.data && a.data.error }
+    );
+    const blobAfter = await env.R2.get(R2_KEY);
+    check(
+      'AT05c the stored blob is byte-identical after the rollback',
+      blobAfter.etag === etagBefore,
+      { before: etagBefore, after: blobAfter.etag }
+    );
+    const stateAfter = await stateOf(env);
+    const untouched =
+      JSON.stringify((stateBefore.tasks[0] || {}).predecessors || []) === '[]' &&
+      JSON.stringify((stateAfter.tasks[0] || {}).predecessors || []) === '[]' &&
+      JSON.stringify((stateAfter.tasks[1] || {}).predecessors || []) === '[]';
+    check('AT05d neither task kept the cyclic predecessors', untouched, {
+      t1: (stateAfter.tasks[0] || {}).predecessors,
+      t2: (stateAfter.tasks[1] || {}).predecessors
+    });
+    const rows = (a.data && a.data.report) || [];
+    const blamed = rows.filter(function (r) {
+      return r.code === 'CYCLE';
+    });
+    const cycleIds = ((a.data && a.data.hardFailure && a.data.hardFailure.ids) || []).map(String);
+    check(
+      'AT05e the report names the op(s) that created the cycle',
+      blamed.length >= 1 &&
+        cycleIds.length >= 2 &&
+        blamed.every(r => r.field === 'predecessors' && cycleIds.indexOf(String(r.recordId)) > -1),
+      { blamed: blamed.map(r => r.recordId + '.' + r.field), cycleIds: cycleIds }
+    );
+    const claimed = rows.filter(function (r) {
+      return r.result === 'applied';
+    });
+    check(
+      'AT05f no row claims it applied after the rollback',
+      rows.length >= 2 && claimed.length === 0 && rows.every(r => r.result === 'rolled_back'),
+      { results: rows.map(r => r.result) }
+    );
+    check(
+      'AT05g the proposal is still pending, not accepted',
+      env.__store.reviews[0].status === 'pending',
+      { status: env.__store.reviews[0].status }
+    );
+  }
+
+  // =====================================================================
   // AT09 — the large-change message counts N (this call) and U (today, this
   // key) against L, and U only counts pending/accepting/accepted rows: a
   // rejected row frees its quota.

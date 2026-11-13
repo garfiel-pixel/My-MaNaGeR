@@ -303,6 +303,41 @@ test('a predecessor cycle is a hard failure and the state is unchanged', () => {
   assert.equal(r.next, null);
 });
 
+test('a cycle rolls every report row back and blames the predecessors op', () => {
+  const st = base();
+  // Both writes must be real changes, otherwise the second is skipped_already
+  // and never reaches the cycle check.
+  st.tasks[0].predecessors = [];
+  st.tasks[1].predecessors = [];
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [
+          { op: 'set', path: 'tasks', recordId: 't1', field: 'predecessors', after: ['t2'] },
+          { op: 'set', path: 'tasks', recordId: 't2', field: 'predecessors', after: ['t1'] }
+        ]
+      }
+    ],
+    { model }
+  );
+  assert.ok(r.hardFailure && r.hardFailure.code === 'cycle');
+  assert.equal(r.report.length, 2);
+  // Nothing was applied, so no row may claim it was.
+  assert.deepEqual(
+    r.report.map(x => x.result),
+    ['rolled_back', 'rolled_back']
+  );
+  assert.deepEqual(
+    r.report.map(x => x.code),
+    ['CYCLE', 'CYCLE']
+  );
+  assert.ok(r.report.every(x => x.field === 'predecessors'));
+  assert.ok(r.report.every(x => /cycle/.test(x.reason)));
+});
+
 test('a bad enum left in state is a hard failure', () => {
   const st = base();
   st.tasks[0].status = 'weird';

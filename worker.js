@@ -4,6 +4,7 @@ import { purgeStaleCloudProjects } from './src/cloud/projects.js';
 import { sweepExpiredInvitations, sweepExpiredAccess } from './src/cloud/team.js';
 import { evaluateWebhooks } from './src/webhooks.js';
 import { fxRefresh } from './src/fx.js';
+import { pruneDecidedReports } from './src/mcp/report-store.js';
 import { bindRequestContext } from './src/lib/http.js';
 
 export { Presence }; // wrangler requires DO classes in the entrypoint
@@ -629,6 +630,22 @@ export default {
       );
     } catch (e) {
       // Table may not exist yet (pre-migration) — that's fine.
+    }
+    // MCP-AGENT-FIRST A6 (2026-11-13): bound the review table. A decided
+    // row older than 90 days drops its op list and keeps only the report
+    // summary; pending rows are never touched.
+    try {
+      const reviewSweep = await pruneDecidedReports(env);
+      console.log(
+        'review retention sweep: scanned=' +
+          reviewSweep.scanned +
+          ' opsCleared=' +
+          reviewSweep.opsCleared +
+          ' reportsPruned=' +
+          reviewSweep.reportsPruned
+      );
+    } catch (e) {
+      console.error('review retention sweep failed:', e && e.message);
     }
   },
 

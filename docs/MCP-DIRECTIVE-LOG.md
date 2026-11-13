@@ -313,6 +313,7 @@ annotations live only in the Worker.
 | 3.7 Owner UI grouping | `js/cloud/review.js`, `js/mmgr-app.js`, `js/mmgr-cloud.js`, `src/reviews.js`, `sw.js`, `css/mmgr.css` | PASS — pending proposals grouped by `change_set_id` with a header showing the proposal + field-change counts and one-click Accept all / Reject all; after Accept all the group renders applied / skipped / conflict (path, record name, wanted, live) / derived summary; `esc()` on every dynamic string (ESLint `no-unsanitized-html` clean); `mmgr-shell` bumped to v652 (verify-sw-cache green); `qa-approval` V12 added and passing |
 | 3.8 Report tools | `src/mcp/server.js`, `src/mcp/appwide.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `get_apply_report`, `get_pending` added to both surfaces; `get_proposal_status` carries `changeSetId` + `accepted-with-conflicts`; AT10 / AT11 / AT12 green (62/62) |
 | 3.9 Deletes in `apply_changes` | `src/mcp/plan.js`, `src/cloud/apply-ops.js`, `test/apply-ops.test.mjs` | PASS — `deletes:[{path, recordId}]` validated in `planProposal` (deletable + in-scope + record exists, cap 200), accepted in `applyOps` (budget-reference / phase-child / predecessor cleanup rules), empty-envelope check covers deletes; GATE AT14 satisfied by `test/apply-ops.test.mjs` (pure unit test, Phase 0 rule 10) rather than a harness AT |
+| 3.6c / 5.3 Report size and retention (ADDENDUM A6) | `src/mcp/report-store.js` (new), `src/reviews.js`, `src/mcp/server.js`, `worker.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `apply_report_json` is now `{v:1, summary, report<=500, truncated, storedCount, derivedChanges, conflicts}` with the summary counted over EVERY entry; the daily cron prunes decided rows older than 90 days (op list dropped, report reduced to `{pruned:true, summary}`, pending rows never touched); `get_apply_report` answers a pruned row with `report: null`, the summary, `pruned: true` and a note; `qa-mcp-agent-first` 95/95 (AT27a-g) |
 
 3.3 detail: `withdraw_changes({proposalId, opIndexes?})` is registered in both
 `TOOLS` (so the per-project and app-wide catalogs both advertise it) and wired
@@ -400,6 +401,29 @@ D1 ends `accepted`, and AT25d repeats the whole cycle through
 `handleChangeSetAccept` for a change set. No production file needed editing;
 the tests pin the contract so a future refactor that reorders the R2 and D1
 writes, or that widens the 409, fails immediately.
+
+3.6c / 5.3 detail (ADDENDUM A6 - report size and retention):
+`src/mcp/report-store.js` owns the write shape and the sweep.
+`storeApplyReport(report, derivedChanges, conflicts)` keeps the first 500
+entries, sets `truncated` and `storedCount`, and stores a `summary`
+(`total` / `applied` / `skipped` / `conflict` / `superseded` / `other`)
+counted over the WHOLE report, so a capped report still says how much
+landed. Both accept paths (`acceptMcpV2` and `handleChangeSetAccept`) call
+it, so the single accept and Accept-all cannot store different shapes.
+`pruneDecidedReports(env, now)` is wired into the daily `scheduled()`
+handler. It walks decided rows in id order (500 per batch, at most 10
+batches per run) and, for anything decided more than 90 days ago, sets
+`ops_json = NULL` (the only copy of what the agent proposed) and reduces
+`apply_report_json` to `{v:1, summary, pruned:true, prunedAt}`. It re-checks
+`decided_at` and `status` per row in JS as well as in SQL - a mock store or a
+stale read must never prune a row that is still pending or still inside the
+window. Pending and accepting rows are excluded outright, because the owner
+may still decide them.
+`get_apply_report` now returns `report`, `summary`, `pruned` and a `note`
+per proposal: a pruned row reads as `report: null` plus its permanent
+summary and an explanation, rather than as a proposal that never had a
+report. The read tool's envelope is otherwise unchanged, so the existing
+AT10/AT11 assertions still hold.
 
 ---
 

@@ -536,6 +536,7 @@ function addReview(env, row) {
   const server = await import('../src/mcp/server.js');
   const http = await import('../src/lib/http.js');
   const reviews = await import('../src/reviews.js');
+  const reportStore = await import('../src/mcp/report-store.js');
   const projects = await import('../src/cloud/projects.js');
   const mod = {
     handleMcpServer: server.handleMcpServer,
@@ -547,7 +548,10 @@ function addReview(env, row) {
     handleCloudSave: projects.handleCloudSave,
     hashOwnerCode: http.hashOwnerCode,
     cloudDecryptState: http.cloudDecryptState,
-    cloudLogSave: http.cloudLogSave
+    cloudLogSave: http.cloudLogSave,
+    storeApplyReport: reportStore.storeApplyReport,
+    summarizeApplyReport: reportStore.summarizeApplyReport,
+    pruneDecidedReports: reportStore.pruneDecidedReports
   };
 
   // =====================================================================
@@ -2539,6 +2543,215 @@ function addReview(env, row) {
         }),
         version: appwide.APPWIDE_SERVER_INFO && appwide.APPWIDE_SERVER_INFO.version
       }
+    );
+  }
+
+  // =====================================================================
+  // AT27 (A6) — report size and retention. A stored report keeps at most 500
+  // entries plus a summary of ALL of them, decided rows older than 90 days
+  // lose their op list and keep only that summary, and get_apply_report says
+  // so instead of pretending the report never existed.
+  // =====================================================================
+  section('AT27 — report size and retention');
+  {
+    const env = await makeEnv({ mod });
+    const store = typeof mod.storeApplyReport === 'function' ? mod.storeApplyReport : null;
+    check('AT27a the report store helper is exported', !!store, {
+      type: typeof mod.storeApplyReport
+    });
+
+    // 600 entries is the shape a bulk proposal produces; the stored copy must
+    // be capped while the summary still counts every one of them.
+    let capped = null;
+    try {
+      capped = store
+        ? JSON.parse(
+            store(
+              Array.from({ length: 600 }, function (_, i) {
+                return { path: 'tasks', recordId: 't' + i, field: 'status', result: 'applied' };
+              }),
+              [{ path: 'tasks', field: 'critical' }],
+              []
+            )
+          )
+        : null;
+    } catch (e) {
+      capped = null;
+    }
+    check(
+      'AT27b a 600-entry report stores 500 entries and counts all 600',
+      !!(
+        capped &&
+        Array.isArray(capped.report) &&
+        capped.report.length === 500 &&
+        capped.truncated === true &&
+        capped.summary &&
+        capped.summary.total === 600 &&
+        capped.summary.applied === 600 &&
+        capped.storedCount === 500
+      ),
+      capped && {
+        kept: capped.report && capped.report.length,
+        truncated: capped.truncated,
+        summary: capped.summary,
+        storedCount: capped.storedCount
+      }
+    );
+
+    // A real accept must persist that shape, not the raw report.
+    const q = await tool(env, 980, 'apply_changes', {
+      diffs: [
+        { path: 'tasks', recordId: 't6', field: 'status', after: 'inprogress' },
+        { path: 'tasks', recordId: 't7', field: 'status', after: 'blocked' }
+      ]
+    });
+    const pid = Number((textOf(q).match(/proposal #(\d+)/) || [])[1] || 0);
+    await accept(env, pid);
+    const stored = env.__store.reviews.find(function (r) {
+      return r.id === pid;
+    });
+    let storedRep = null;
+    try {
+      storedRep = stored && stored.apply_report_json ? JSON.parse(stored.apply_report_json) : null;
+    } catch (e) {
+      storedRep = null;
+    }
+    check(
+      'AT27c a real accept stores the versioned report with its summary',
+      !!(
+        storedRep &&
+        storedRep.v === 1 &&
+        storedRep.summary &&
+        storedRep.summary.total === 2 &&
+        storedRep.summary.applied === 2 &&
+        Array.isArray(storedRep.report) &&
+        storedRep.report.length === 2 &&
+        storedRep.truncated === false
+      ),
+      storedRep && {
+        v: storedRep.v,
+        summary: storedRep.summary,
+        kept: storedRep.report && storedRep.report.length
+      }
+    );
+
+    // Retention: 90 days. Build one old accepted row, one fresh accepted row
+    // and one old PENDING row (which must never be touched).
+    const env2 = await makeEnv({ mod });
+    const DAY = 86400000;
+    const oldIso = new Date(Date.now() - 120 * DAY).toISOString();
+    const freshIso = new Date(Date.now() - 2 * DAY).toISOString();
+    const reportJson = JSON.stringify({
+      v: 1,
+      summary: { total: 1, applied: 1 },
+      report: [{ path: 'tasks', recordId: 't6', field: 'status', result: 'applied' }],
+      truncated: false,
+      storedCount: 1,
+      derivedChanges: [],
+      conflicts: []
+    });
+    const oldId = addReview(env2, {
+      status: 'accepted',
+      decided_at: oldIso,
+      ops_json: JSON.stringify({ v: 2, ops: [{ op: 'set', path: 'tasks' }] }),
+      ops_count: 1,
+      apply_report_json: reportJson,
+      change_set_id: 'cs-AT27-old'
+    });
+    const freshId = addReview(env2, {
+      status: 'accepted',
+      decided_at: freshIso,
+      ops_json: JSON.stringify({ v: 2, ops: [{ op: 'set', path: 'tasks' }] }),
+      ops_count: 1,
+      apply_report_json: reportJson,
+      change_set_id: 'cs-AT27-fresh'
+    });
+    const pendingId = addReview(env2, {
+      status: 'pending',
+      proposed_at: oldIso,
+      ops_json: JSON.stringify({ v: 2, ops: [{ op: 'set', path: 'tasks' }] }),
+      ops_count: 1,
+      change_set_id: 'cs-AT27-pending'
+    });
+
+    const prune = typeof mod.pruneDecidedReports === 'function' ? mod.pruneDecidedReports : null;
+    let pruned = null;
+    try {
+      pruned = prune ? await prune(env2, Date.now()) : null;
+    } catch (e) {
+      pruned = { error: e && e.message };
+    }
+    const byId = function (id) {
+      return env2.__store.reviews.find(function (r) {
+        return r.id === id;
+      });
+    };
+    const oldRow = byId(oldId);
+    const freshRow = byId(freshId);
+    const pendingRow = byId(pendingId);
+    let oldRep = null;
+    try {
+      oldRep = oldRow && oldRow.apply_report_json ? JSON.parse(oldRow.apply_report_json) : null;
+    } catch (e) {
+      oldRep = null;
+    }
+    check(
+      'AT27d a 120-day-old decided row loses its op list and keeps a summary',
+      !!(
+        prune &&
+        oldRow &&
+        oldRow.ops_json === null &&
+        oldRep &&
+        oldRep.pruned === true &&
+        !oldRep.report &&
+        oldRep.summary &&
+        oldRep.summary.total === 1
+      ),
+      {
+        prune: pruned,
+        ops: oldRow && oldRow.ops_json,
+        rep: oldRep && {
+          pruned: oldRep.pruned,
+          summary: oldRep.summary,
+          hasReport: !!oldRep.report
+        }
+      }
+    );
+    check(
+      'AT27e a 2-day-old decided row keeps its op list and its full report',
+      !!(
+        freshRow &&
+        typeof freshRow.ops_json === 'string' &&
+        freshRow.apply_report_json &&
+        JSON.parse(freshRow.apply_report_json).report.length === 1
+      ),
+      {
+        ops: freshRow && typeof freshRow.ops_json,
+        rep: freshRow && freshRow.apply_report_json ? 'present' : null
+      }
+    );
+    check(
+      'AT27f a pending row is never pruned, however old',
+      !!(pendingRow && typeof pendingRow.ops_json === 'string'),
+      { ops: pendingRow && typeof pendingRow.ops_json }
+    );
+
+    // The read tool must say "pruned", not "no report".
+    const rep = await tool(env2, 981, 'get_apply_report', { proposalId: oldId });
+    const repBody = jsonOf(rep);
+    const one = repBody && repBody.reports && repBody.reports[0];
+    check(
+      'AT27g get_apply_report returns the summary and pruned:true for a pruned row',
+      !!(
+        one &&
+        one.pruned === true &&
+        one.report === null &&
+        one.summary &&
+        one.summary.total === 1 &&
+        typeof one.note === 'string' &&
+        one.note.length > 0
+      ),
+      one && { pruned: one.pruned, report: one.report, summary: one.summary, note: one.note }
     );
   }
 

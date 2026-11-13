@@ -29,6 +29,7 @@ import { buildBudgetProposal } from './lib/budget.js';
 import { applyLeafDiffs, normalizeProposalDiffs } from './cloud/proposal-diffs.js';
 import { applyOps } from './cloud/apply-ops.js';
 import { dependsOnIds } from './mcp/deps.js';
+import { storeApplyReport } from './mcp/report-store.js';
 import { fieldSpec, getList, getSection, isDeletable } from './mcp/model.js';
 
 // MCP-AGENT-FIRST 2026-11-12 3.1: ops_json stores v2 ops ({v:2, ops:[...]}).
@@ -1133,13 +1134,15 @@ async function acceptMcpV2(
       changeSetId: row.change_set_id
     }
   );
-  const reportPayload = JSON.stringify({
-    report: reportUsed,
-    derivedChanges: derivedUsed,
-    conflicts: (reportUsed || []).filter(function (r) {
+  // ADDENDUM A6: at most 500 entries plus a summary counted over all of
+  // them, so a bulk proposal cannot write an unbounded row.
+  const reportPayload = storeApplyReport(
+    reportUsed,
+    derivedUsed,
+    (reportUsed || []).filter(function (r) {
       return r.result === 'conflict';
     })
-  });
+  );
   await env.DB.prepare(
     'UPDATE cloud_reviews SET apply_report_json = ?, status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ?, decision_note = ?, decision_edited = ? WHERE id = ?'
   )
@@ -1492,13 +1495,14 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
   const entryIds = [];
   for (let i = 0; i < perProposal.length; i++) {
     const lp = perProposal[i];
-    const reportPayload = JSON.stringify({
-      report: lp.report,
-      derivedChanges: lp.derivedChanges,
-      conflicts: (lp.report || []).filter(function (r) {
+    // ADDENDUM A6: same cap and summary as the single accept path.
+    const reportPayload = storeApplyReport(
+      lp.report,
+      lp.derivedChanges,
+      (lp.report || []).filter(function (r) {
         return r.result === 'conflict';
       })
-    });
+    );
     let entry = null;
     try {
       entry = await cloudLogSave(

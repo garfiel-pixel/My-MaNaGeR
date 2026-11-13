@@ -69,6 +69,7 @@ import {
   structuredRefusals
 } from './plan.js';
 import { MCP_ERROR_CODES } from './errors.js';
+import { isPrunedReport, MCP_REPORT_RETENTION_DAYS } from './report-store.js';
 import { buildOverlay, computeDependsOn, dependsOnIds } from './deps.js';
 import {
   MCP_SERVER_VERSION,
@@ -2119,11 +2120,21 @@ export async function applyReportResult(env, projectId, auth, args, rpcId) {
     } catch (e) {
       report = null;
     }
+    // ADDENDUM A6: a pruned row keeps its summary and says so, instead of
+    // reading as a proposal that never had a report.
+    const pruned = isPrunedReport(report);
     return {
       proposalId: r.id,
       changeSetId: r.change_set_id || null,
       status: r.status === 'accepting' ? 'pending' : r.status,
-      report: report
+      report: pruned ? null : report,
+      summary: report && report.summary ? report.summary : null,
+      pruned: pruned,
+      note: pruned
+        ? 'The entry list was pruned after ' +
+          MCP_REPORT_RETENTION_DAYS +
+          ' days; the summary is permanent.'
+        : ''
     };
   });
   if (one && !reports.length) {

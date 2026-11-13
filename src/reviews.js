@@ -1040,7 +1040,9 @@ async function acceptMcpV2(
         409
       );
     }
-    const effBudget = (Array.isArray(decision.changes) ? decision.changes : budgetChanges).map(normalizeBudgetChange);
+    const effBudget = (Array.isArray(decision.changes) ? decision.changes : budgetChanges).map(
+      normalizeBudgetChange
+    );
     if (effBudget && effBudget.length) {
       const built = buildBudgetProposal(next, effBudget, next && next.currency);
       if (!built.changes.length) {
@@ -1244,7 +1246,13 @@ function normalizeBudgetChange(c) {
   }
   const a = c.after && typeof c.after === 'object' ? c.after : null;
   if (k === 'changeLine') {
-    return { kind: 'changeLine', lineId: c.lineId, field: c.field, value: c.after, before: c.before };
+    return {
+      kind: 'changeLine',
+      lineId: c.lineId,
+      field: c.field,
+      value: c.after,
+      before: c.before
+    };
   }
   if (k === 'addDelivery') {
     return {

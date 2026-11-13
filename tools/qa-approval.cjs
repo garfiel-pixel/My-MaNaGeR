@@ -203,7 +203,7 @@ const snapshot = () => ({
     {
       id: 't2',
       name: 'Footings',
-      status: 'in_progress',
+      status: 'inprogress',
       startDate: '2026-10-05',
       endDate: '2026-10-20'
     }
@@ -793,6 +793,140 @@ const snapshot = () => ({
           'V11 the preview produced no console error',
           !pageLogs.some(l => /Uncaught|TypeError|ReferenceError/.test(l)),
           pageLogs.slice()
+        );
+
+        // V12: MCP-AGENT-FIRST 2026-11-12 3.7 - the owner review UI groups
+        // pending proposals by change set and Accept all renders the applied /
+        // skipped / conflict / derived summary. Two non-budget proposals share
+        // an explicit, isolated set so the check does not depend on the
+        // budget proposals exercised above.
+        // Mint a second, wbs-scoped key: the budget-only key above cannot
+        // write task fields, so the set-accept would render an empty applied
+        // count. A wbs-scoped key lets the two non-budget ops apply and be
+        // counted. The change set is accepted by the OWNER (owner code held),
+        // which is independent of which key queued it.
+        const km2 = await j(
+          await fetch(BASE + '/api/cloud/projects/' + PID + '/api-keys', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: ownerH,
+            body: JSON.stringify({
+              label: 'WBS assistant (3.7)',
+              scope: ['wbs'],
+              budgetRead: false,
+              budgetWrite: false
+            })
+          })
+        );
+        const KEY2 = km2.apiKey;
+        check('V12k wbs-scoped key minted', !!KEY2, km2);
+        const mcpWbs = async (name, args) => {
+          await pace();
+          const res = await fetch(BASE + '/api/mcp/' + PID, {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + KEY2,
+              'Content-Type': 'application/json',
+              Accept: 'application/json, text/event-stream'
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: ++rpc,
+              method: 'tools/call',
+              params: { name: name, arguments: args || {} }
+            })
+          });
+          const text = await res.text();
+          let data = {};
+          try {
+            data = JSON.parse(text);
+          } catch (e) {}
+          return {
+            data: data,
+            text:
+              data.result && data.result.content && data.result.content[0]
+                ? String(data.result.content[0].text)
+                : text,
+            isError: !!(data.result && data.result.isError)
+          };
+        };
+        await pace();
+        const sp1 = await mcpWbs('apply_changes', {
+          changeSetId: 'apvset37',
+          diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'first note from agent' }]
+        });
+        check(
+          'V12a proposal 1 queues in set apvset37',
+          !sp1.isError && /proposal #\d+/.test(sp1.text),
+          sp1.text.slice(0, 160)
+        );
+        await pace();
+        const sp2 = await mcpWbs('apply_changes', {
+          changeSetId: 'apvset37',
+          diffs: [
+            { path: 'tasks', recordId: 't2', field: 'notes', after: 'second note from agent' }
+          ]
+        });
+        check(
+          'V12b proposal 2 queues in set apvset37',
+          !sp2.isError && /proposal #\d+/.test(sp2.text),
+          sp2.text.slice(0, 160)
+        );
+        const v12c = await ev(`(async function(){
+          try {
+            window.confirm = function(){ return true; };
+            await window.MMGR.CloudReview.cloudReviewList();
+            const btn = document.querySelector('#cloud-review-list [data-action="cloudReviewAcceptAll"][data-cs="apvset37"]');
+            return { hasBtn: !!btn, groups: document.querySelectorAll('#cloud-review-list .rv-group').length };
+          } catch (e) { return { threw: String(e && e.message || e) }; }
+        })()`);
+        check(
+          'V12c the review list groups the set and shows Accept all',
+          v12c && v12c.hasBtn && v12c.groups >= 1,
+          v12c
+        );
+        const v12d = await ev(`(async function(){
+          try {
+            window.confirm = function(){ return true; };
+            await window.MMGR.Cloud.cloudReviewAcceptAll('apvset37');
+            await new Promise(r => setTimeout(r, 1000));
+            const sum = document.querySelector('#cloud-review-list .rv-cs-summary');
+            const res = document.querySelector('#cloud-review-list .rv-cs-result');
+            return {
+              hasResult: !!res,
+              summary: sum ? sum.textContent : '',
+              conflicts: document.querySelectorAll('#cloud-review-list .rv-cs-crow').length,
+              derived: document.querySelectorAll('#cloud-review-list .rv-cs-drow').length
+            };
+          } catch (e) { return { threw: String(e && e.message || e) }; }
+        })()`);
+        check(
+          'V12d Accept all renders the applied count',
+          v12d && v12d.hasResult && /Applied/.test(v12d.summary) && /\d/.test(v12d.summary),
+          v12d
+        );
+        check(
+          'V12e the two notes changes were applied (no conflicts)',
+          v12d && v12d.conflicts === 0,
+          v12d
+        );
+        // V12f: confirm server-side the apvset37 proposals are no longer pending
+        // (the accept actually applied them), proving V12d's render is backed
+        // by a real decision rather than a no-op click.
+        const rl = await j(
+          await fetch(BASE + '/api/cloud/projects/' + PID + '/reviews', {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: ownerH
+          })
+        );
+        const setPending = (rl.proposals || []).filter(
+          x => x.changeSetId === 'apvset37' && x.status === 'pending'
+        ).length;
+        check(
+          'V12f both apvset37 proposals were decided by Accept all',
+          rl.ok && setPending === 0,
+          { ok: rl.ok, setPending: setPending }
         );
       } finally {
         try {

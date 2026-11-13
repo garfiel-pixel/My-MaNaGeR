@@ -413,6 +413,15 @@ jobs:
         id: verify-feature-registry
         run: node tools/verify-feature-registry.cjs
 
+      # MCP-AGENT-FIRST ADDENDUM (AT22-AT27): the real `handleMcpServer` /
+      # `handleReviewAccept` / `handleCloudSave` driven against a fake D1 + R2
+      # with real etags. Pure-Node (no Chrome, no wrangler), so it lives in the
+      # static job. Covers abuse limits, fixed error codes, cross-proposal deps,
+      # D1/R2 recovery, MCP polish and report size/retention. Flipped TRIAGE ->
+      # CI here per the ADDENDUM's "wire AT22-AT27 into ci.yml" instruction.
+      - name: "T1: MCP agent-first acceptance (AT22-AT27)"
+        id: qa-mcp-agent-first
+        run: node tools/qa-mcp-agent-first.cjs
 
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.

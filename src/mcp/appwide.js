@@ -45,6 +45,10 @@ import {
   TOOLS,
   executeTool,
   queueMcpProposal,
+  withdrawMcpProposal,
+  proposalStatusResult,
+  applyReportResult,
+  pendingDryRunResult,
   validateProposalEnvelope,
   MCP_PREMIUM_REFUSAL
 } from './server.js';
@@ -59,7 +63,7 @@ const MCP_PROTOCOL_VERSION = '2024-11-05';
 const SERVER_INFO = { name: 'my-manager-mcp-appwide', version: '1.0.0' };
 
 // Tools that write. Everything else is a read. Used for policy + role gating.
-const WRITE_TOOLS = ['create_project', 'apply_changes'];
+const WRITE_TOOLS = ['create_project', 'apply_changes', 'withdraw_changes'];
 
 /* ---- App-wide tool catalog -----------------------------------------------
    Project-scoped read tools reuse the per-project TOOLS descriptions but add a
@@ -78,7 +82,10 @@ function buildAppwideTools() {
     'get_meetings',
     'get_table',
     'get_schema',
-    'run_monte_carlo'
+    'run_monte_carlo',
+    'get_proposal_status',
+    'get_apply_report',
+    'get_pending'
   ];
   const out = [];
   readNames.forEach(function (name) {
@@ -142,6 +149,26 @@ function buildAppwideTools() {
     out.push({
       name: 'validate_changes',
       description: validateBase.description,
+      inputSchema: { type: 'object', properties: props, required: req }
+    });
+  }
+  // MCP-AGENT-FIRST 2026-11-12 3.3: withdraw_changes takes a projectId too.
+  const withdrawBase = TOOLS.filter(function (t) {
+    return t.name === 'withdraw_changes';
+  })[0];
+  if (withdrawBase) {
+    const props = Object.assign({}, withdrawBase.inputSchema.properties || {});
+    props.projectId = {
+      type: 'string',
+      description: 'Cloud project id the proposal was queued on.'
+    };
+    const req = (withdrawBase.inputSchema.required || []).slice();
+    if (req.indexOf('projectId') === -1) {
+      req.push('projectId');
+    }
+    out.push({
+      name: 'withdraw_changes',
+      description: withdrawBase.description,
       inputSchema: { type: 'object', properties: props, required: req }
     });
   }
@@ -535,6 +562,29 @@ export async function handleAppwideMcp(request, env) {
         return json(proposal, 200);
       }
       return rpcResult(id, result);
+    }
+
+    if (toolName === 'withdraw_changes') {
+      // 3.3: withdraw_changes reads and writes only the calling key's own
+      // rows; the same engine as the per-project endpoint.
+      const r = await withdrawMcpProposal(env, projectId, auth, toolArgs, id);
+      return json(r, 200);
+    }
+
+    // 3.8: the report readers are owner/account-scoped on the app-wide surface
+    // (the connecting account is the owner of its own projects), so they read
+    // every proposal on the project rather than just one key's queue.
+    if (toolName === 'get_proposal_status') {
+      const r = await proposalStatusResult(env, projectId, auth, toolArgs, id);
+      return json(r, 200);
+    }
+    if (toolName === 'get_apply_report') {
+      const r = await applyReportResult(env, projectId, auth, toolArgs, id);
+      return json(r, 200);
+    }
+    if (toolName === 'get_pending') {
+      const r = await pendingDryRunResult(env, projectId, auth, toolArgs, id);
+      return json(r, 200);
     }
 
     const result = executeTool(

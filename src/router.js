@@ -158,6 +158,8 @@ import {
   handleReviewList,
   handleReviewAccept,
   handleReviewReject,
+  handleChangeSetAccept,
+  handleChangeSetReject,
   handleTurnstileConfig
 } from './reviews.js';
 import { handleContactCreate } from './contact.js';
@@ -842,6 +844,35 @@ export async function routeApi(request, env, url) {
         return r;
       }
       return handleReviewReject(request, env, reviewRejectMatch[1], Number(reviewRejectMatch[2]));
+    }
+    // 7b. CHANGE-SET ACCEPT / REJECT (MCP-AGENT-FIRST 2026-11-12 3.6): the
+    // owner (or budget approver for a budget-only set) decides a whole set in
+    // one read-modify-write with a single conditional R2 write.
+    const changeSetAcceptMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changesets\/([A-Za-z0-9_-]{1,64})\/accept$/
+    );
+    if (changeSetAcceptMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleChangeSetAccept(
+        request,
+        env,
+        changeSetAcceptMatch[1],
+        changeSetAcceptMatch[2],
+        _cloudPushRev
+      );
+    }
+    const changeSetRejectMatch = path.match(
+      /^\/api\/cloud\/projects\/([A-Za-z0-9_-]{1,64})\/changesets\/([A-Za-z0-9_-]{1,64})\/reject$/
+    );
+    if (changeSetRejectMatch && request.method === 'POST') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleChangeSetReject(request, env, changeSetRejectMatch[1], changeSetRejectMatch[2]);
     }
 
     // BROADCAST

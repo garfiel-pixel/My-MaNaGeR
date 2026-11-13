@@ -7415,6 +7415,20 @@ window.MMGR = MMGR;
         C.cloudReviewReject(el && el.getAttribute('data-id'));
       }
     },
+    // MCP-AGENT-FIRST 2026-11-12 3.7: one-click Accept all / Reject all for a
+    // whole change set.
+    cloudReviewAcceptAll: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudReviewAcceptAll) {
+        C.cloudReviewAcceptAll(el && el.getAttribute('data-cs'));
+      }
+    },
+    cloudReviewRejectAll: el => {
+      const C = window.MMGR.Cloud;
+      if (C && C.cloudReviewRejectAll) {
+        C.cloudReviewRejectAll(el && el.getAttribute('data-cs'));
+      }
+    },
     cloudReviewToggleDiffs: el => {
       const C = window.MMGR.Cloud;
       if (C && C.reviewToggleDiffs) {
@@ -8111,6 +8125,8 @@ window.MMGR = MMGR;
     // throwaway copy), so opening it is safe in view-only mode too.
     cloudReviewView: 1,
     cloudReviewReject: 1,
+    cloudReviewAcceptAll: 1,
+    cloudReviewRejectAll: 1,
     cloudReviewToggleDiffs: 1
   };
   function guardReadonly(action) {

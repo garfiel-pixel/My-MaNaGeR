@@ -51,6 +51,7 @@ import {
 } from '../lib/http.js';
 import { API_SHAPES } from '../api/shapes.js';
 import { enrichDiffs, setPathValue, getPathValue, valuesEqual } from '../cloud/proposal-diffs.js';
+import { applyOps } from '../cloud/apply-ops.js';
 import { ownerTier } from '../cloud/team.js';
 import { structuredLog } from '../lib/observe.js';
 import {
@@ -73,9 +74,20 @@ import {
   SECTION_PATHS,
   STRING_MAX,
   SHORT_MAX,
-  ID_MAX
+  ID_MAX,
+  fieldSpec,
+  getList,
+  getSection,
+  isDeletable
 } from './model.js';
-import { MCP_MAX_DIFFS, MCP_MAX_CREATES, MCP_MAX_SETS, MCP_WRITE_BUDGET_MS } from './plan.js';
+import {
+  MCP_MAX_DIFFS,
+  MCP_MAX_CREATES,
+  MCP_MAX_SETS,
+  MCP_WRITE_BUDGET_MS,
+  MCP_MAX_PENDING_PER_KEY,
+  MCP_MAX_DAILY_OPS_PER_KEY
+} from './plan.js';
 import {
   budgetReadAllowed,
   budgetWriteAllowed,
@@ -175,7 +187,7 @@ export const TOOLS = [
   {
     name: 'get_proposal_status',
     description:
-      "Check what the owner decided about a proposal this key queued: pending, accepted, edited-and-accepted or rejected, with the owner's reason when one was given. Without an id it returns the most recent proposals for this key.",
+      "Check what the owner decided about a proposal this key queued: pending, accepted, accepted-with-conflicts, edited-and-accepted or rejected, with the owner's reason when one was given. Pass proposalId for one proposal, changeSetId for every proposal in a change set, or neither to list the most recent proposals for this key.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -183,9 +195,47 @@ export const TOOLS = [
           type: 'integer',
           description: 'The proposal number returned by apply_changes'
         },
+        changeSetId: {
+          type: 'string',
+          description: 'Return every pending/decided proposal in this change set'
+        },
         limit: {
           type: 'integer',
           description: 'How many recent proposals to list (default 10, max 50)'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'get_apply_report',
+    description:
+      "Read the stored apply report for a queued or decided proposal, so an agent can see exactly which ops were applied, skipped, superseded or conflicted. Pass proposalId for one proposal or changeSetId for every proposal in a change set. Only the calling key's own rows are returned.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        proposalId: {
+          type: 'integer',
+          description: 'The proposal number returned by apply_changes'
+        },
+        changeSetId: {
+          type: 'string',
+          description: 'Read the report for every proposal in this change set'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'get_pending',
+    description:
+      "List this key's own pending proposals grouped by change set, with per-set op counts and a read-only dry run of the accept engine against the live project state, so conflicts (stale before values, scope breaks, budget references) are visible before the owner clicks Accept all. Nothing is written; this is a read-only preview.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        changeSetId: {
+          type: 'string',
+          description: 'Limit the preview to one change set'
         }
       },
       required: []
@@ -271,7 +321,7 @@ export const TOOLS = [
   {
     name: 'apply_changes',
     description:
-      'Submit one change set to the project: edit existing records with diffs, create new records with creates, set whole values / nested object fields with sets, or propose budget lines with budget. Everything goes to the owner review queue - never auto-applied. Validation is strict: unknown fields, wrong types, strings over the field limit and enum misses are refused with the allowed values, and derived fields (id, critical, totalFloat, statusSince, completedDate and the like) are refused because the app recomputes them. Enums (input is case-insensitive, the canonical value is stored): tasks.status todo|inprogress|blocked|completed; issues.status open|resolved|closed; changes.status submitted|review|approved|rejected|cancelled; confidence high|medium|low; probability, impact, influence and interest Low|Medium|High. Call get_schema for every field of every table, and validate_changes to dry-run the same call without queueing anything. diffs: {path, recordId, field, before?, after}; a supplied before that no longer matches the live value is refused as stale, an omitted before is reported as a warning. creates: {path, record, tempId?}; tempId (max 40, unique in the call) lets a later create or any predecessors entry reference the new id, and missing fields get the app defaults. sets: {path, field?, value} for charter, dmaic, closure, raci and the scalar keys projectName, projectDeadline, budgetEnvelope. budget: addLine, changeLine, addDelivery - needs the key\'s "Propose budget changes" switch; every money value is checked on the server and the server computes the delivery amount itself.',
+      'Submit one change set to the project: edit existing records with diffs, create new records with creates, set whole values / nested object fields with sets, delete records with deletes, or propose budget lines with budget. Everything goes to the owner review queue - never auto-applied. Pass changeSetId (max 64) or let it default to cs_<UTC date>_<key id> so a key\'s same-day proposals group for an owner "Accept all". Validation is strict: unknown fields, wrong types, strings over the field limit and enum misses are refused with the allowed values, and derived fields (id, critical, totalFloat, statusSince, completedDate and the like) are refused because the app recomputes them. Enums (input is case-insensitive, the canonical value is stored): tasks.status todo|inprogress|blocked|completed; issues.status open|resolved|closed; changes.status submitted|review|approved|rejected|cancelled; confidence high|medium|low; probability, impact, influence and interest Low|Medium|High. Call get_schema for every field of every table, and validate_changes to dry-run the same call without queueing anything. diffs: {path, recordId, field, before?, after}; a supplied before that no longer matches the live value is refused as stale, an omitted before is reported as a warning. creates: {path, record, tempId?}; tempId (max 40, unique in the call) lets a later create or any predecessors entry reference the new id, and missing fields get the app defaults. sets: {path, field?, value} for charter, dmaic, closure, raci and the scalar keys projectName, projectDeadline, budgetEnvelope. budget: addLine, changeLine, addDelivery - needs the key\'s "Propose budget changes" switch; every money value is checked on the server and the server computes the delivery amount itself.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -365,12 +415,57 @@ export const TOOLS = [
             required: ['kind']
           }
         },
+        deletes: {
+          type: 'array',
+          description:
+            "Records to remove. Each item is {path, recordId}. Only deletable record lists are allowed (every record list except budgetLines and spendLog); the record must exist and be inside the key's granted sections. A delete is refused when a budget line references the task, a phase still has child tasks, or a surviving task lists it as a predecessor (those links are stripped instead).",
+          items: {
+            type: 'object',
+            properties: {
+              path: { type: 'string', description: 'List to delete from (e.g. tasks, risks)' },
+              recordId: { type: 'string', description: 'Record id to remove' }
+            },
+            required: ['path', 'recordId']
+          }
+        },
+        changeSetId: {
+          type: 'string',
+          description:
+            "Optional change-set id (letters, numbers, dash, underscore; max 64). Defaults to cs_<UTC date>_<key id> so a key's same-day proposals group together for an owner Accept all."
+        },
         label: { type: 'string', description: 'Human-readable label for this change set' }
       },
       required: []
     }
   }
 ];
+
+// MCP-AGENT-FIRST 2026-11-12 3.3: withdraw_changes lets an API key pull its
+// own queued proposal (or just some of its ops) back before the owner decides
+// it. There is deliberately no owner counterpart: the owner decides through
+// the Accept/Reject UI, never this tool. The tool reads and writes only the
+// calling key's own rows, enforced by the key_id match below.
+TOOLS.push({
+  name: 'withdraw_changes',
+  description:
+    "Withdraw a proposal this key queued, before the owner accepts or rejects it. Whole withdraw (omit opIndexes) sets the proposal withdrawn and removes it from the owner queue. Partial withdraw (opIndexes lists which ops to pull) rewrites the proposal to just the remaining ops; when that leaves zero ops the proposal becomes withdrawn. Only pending proposals can be withdrawn, and only by the key that queued them - you cannot touch another key's queue.",
+  inputSchema: {
+    type: 'object',
+    properties: {
+      proposalId: {
+        type: 'integer',
+        description: 'The proposal number returned by apply_changes'
+      },
+      opIndexes: {
+        type: 'array',
+        items: { type: 'integer' },
+        description:
+          'Optional zero-based op indexes to withdraw. Omit to withdraw the whole proposal; supply to pull only some ops and leave the rest queued.'
+      }
+    },
+    required: ['proposalId']
+  }
+});
 
 // MCP-AGENT-FIRST 2026-11-12 2.6: validate_changes is the dry run of
 // apply_changes - same envelope, same permission checks, same planProposal,
@@ -588,7 +683,9 @@ function executeGetSchema(scope, args) {
               budgetProposalLimit: BUDGET_PROPOSAL_LIMIT,
               largeChangeAbs: BUDGET_LARGE_ABS,
               largeChangePerDay: BUDGET_LARGE_PER_DAY,
-              budgetLineFields: BUDGET_LINE_FIELDS
+              budgetLineFields: BUDGET_LINE_FIELDS,
+              maxPendingPerKey: MCP_MAX_PENDING_PER_KEY,
+              maxDailyOpsPerKey: MCP_MAX_DAILY_OPS_PER_KEY
             },
             changeSet: {
               atomic: true,
@@ -1834,11 +1931,12 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
 // carry its own label (source_type 'api'), so one agent cannot read another
 // agent's queue. The owner's reason comes back verbatim - that is the whole
 // point of the tool: a refused proposal must be able to explain itself.
-async function proposalStatusResult(env, projectId, auth, args, rpcId) {
+export async function proposalStatusResult(env, projectId, auth, args, rpcId) {
   // MCP-AGENT-FIRST 2026-11-12 1.6(a): an abandoned claim reads as pending.
   await cloudHealStaleClaims(env, projectId);
   const isApi = auth.role === 'api';
   const one = args && args.proposalId != null ? parseInt(args.proposalId, 10) : 0;
+  const cs = args && args.changeSetId ? String(args.changeSetId) : '';
   let limit = args && args.limit != null ? parseInt(args.limit, 10) : 10;
   if (!isFinite(limit) || limit < 1) {
     limit = 10;
@@ -1847,7 +1945,7 @@ async function proposalStatusResult(env, projectId, auth, args, rpcId) {
     limit = 50;
   }
   let sql =
-    'SELECT id, proposal_type, source_type, source_label, status, diffs_json, ops_count, proposal_json, proposed_at, decided_at, decided_by, decision_note, decision_edited, accepted_entry_id FROM cloud_reviews WHERE project_id = ?';
+    'SELECT id, proposal_type, source_type, source_label, status, diffs_json, ops_count, proposal_json, proposed_at, decided_at, decided_by, decision_note, decision_edited, accepted_entry_id, apply_report_json, change_set_id FROM cloud_reviews WHERE project_id = ?';
   const binds = [projectId];
   if (isApi) {
     sql += ' AND source_type = ? AND source_label = ?';
@@ -1856,6 +1954,10 @@ async function proposalStatusResult(env, projectId, auth, args, rpcId) {
   if (one) {
     sql += ' AND id = ?';
     binds.push(one);
+  }
+  if (cs) {
+    sql += ' AND change_set_id = ?';
+    binds.push(cs);
   }
   sql += ' ORDER BY id DESC LIMIT ' + (one ? 1 : limit);
   const rows = await env.DB.prepare(sql)
@@ -1878,17 +1980,35 @@ async function proposalStatusResult(env, projectId, auth, args, rpcId) {
       }
     }
     const edited = r.decision_edited === 1;
+    // 3.8: an accepted row whose stored report holds any conflict is surfaced
+    // as accepted-with-conflicts so the agent knows not everything it proposed
+    // landed.
+    let reportHasConflict = false;
+    if (r.status === 'accepted') {
+      try {
+        const rep = r.apply_report_json ? JSON.parse(r.apply_report_json) : null;
+        const rows = (rep && rep.report) || [];
+        reportHasConflict = rows.some(function (x) {
+          return x && x.result === 'conflict';
+        });
+      } catch (e) {
+        reportHasConflict = false;
+      }
+    }
     return {
       proposalId: r.id,
+      changeSetId: r.change_set_id || null,
       status: r.status === 'accepting' ? 'pending' : r.status,
       outcome:
         r.status === 'pending' || r.status === 'accepting'
           ? 'pending'
           : r.status === 'rejected'
             ? 'rejected'
-            : edited
-              ? 'edited-and-accepted'
-              : 'accepted',
+            : reportHasConflict
+              ? 'accepted-with-conflicts'
+              : edited
+                ? 'edited-and-accepted'
+                : 'accepted',
       summary: proposal && proposal.summary ? proposal.summary : diffCount + ' field change(s)',
       changeCount:
         proposal && Array.isArray(proposal.changes) ? proposal.changes.length : diffCount,
@@ -1931,6 +2051,435 @@ async function proposalStatusResult(env, projectId, auth, args, rpcId) {
             null,
             2
           )
+        }
+      ]
+    }
+  };
+}
+
+// MCP-AGENT-FIRST 2026-11-12 3.8: get_apply_report returns the stored accept
+// report for one proposal or a whole change set. It reads only the calling
+// key's own rows (API role filters by source label; the owner code sees all of
+// its project). A row with no stored report (still pending, or a pre-3.6 row)
+// returns null for the report.
+export async function applyReportResult(env, projectId, auth, args, rpcId) {
+  await cloudHealStaleClaims(env, projectId);
+  const isApi = auth.role === 'api';
+  const one = args && args.proposalId != null ? parseInt(args.proposalId, 10) : 0;
+  const cs = args && args.changeSetId ? String(args.changeSetId) : '';
+  if (!one && !cs) {
+    return {
+      jsonrpc: '2.0',
+      id: rpcId,
+      result: {
+        content: [{ type: 'text', text: 'get_apply_report needs proposalId or changeSetId.' }],
+        isError: true
+      }
+    };
+  }
+  let sql =
+    'SELECT id, source_type, source_label, status, apply_report_json, change_set_id, ops_count, diffs_json FROM cloud_reviews WHERE project_id = ?';
+  const binds = [projectId];
+  if (isApi) {
+    sql += ' AND source_type = ? AND source_label = ?';
+    binds.push('api', auth.label || 'MCP AI');
+  }
+  if (one) {
+    sql += ' AND id = ?';
+    binds.push(one);
+  }
+  if (cs) {
+    sql += ' AND change_set_id = ?';
+    binds.push(cs);
+  }
+  sql += ' ORDER BY id ASC';
+  const rows =
+    (
+      await env.DB.prepare(sql)
+        .bind(...binds)
+        .all()
+    ).results || [];
+  const reports = rows.map(function (r) {
+    let report = null;
+    try {
+      report = r.apply_report_json ? JSON.parse(r.apply_report_json) : null;
+    } catch (e) {
+      report = null;
+    }
+    return {
+      proposalId: r.id,
+      changeSetId: r.change_set_id || null,
+      status: r.status === 'accepting' ? 'pending' : r.status,
+      report: report
+    };
+  });
+  if (one && !reports.length) {
+    return {
+      jsonrpc: '2.0',
+      id: rpcId,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'No proposal #' +
+              one +
+              ' belongs to this key on this project. Use get_apply_report with changeSetId, or get_proposal_status without an id.'
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  return {
+    jsonrpc: '2.0',
+    id: rpcId,
+    result: {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            { projectId: projectId, count: reports.length, reports: reports },
+            null,
+            2
+          )
+        }
+      ]
+    }
+  };
+}
+
+// MCP-AGENT-FIRST 2026-11-12 3.8: get_pending lists the calling key's own
+// pending proposals grouped by change set, with per-set op counts and a
+// read-only dry run of the accept engine against the live state so conflicts
+// surface before the owner clicks Accept all. Nothing is written.
+export async function pendingDryRunResult(env, projectId, auth, args, rpcId) {
+  await cloudHealStaleClaims(env, projectId);
+  const isApi = auth.role === 'api';
+  const cs = args && args.changeSetId ? String(args.changeSetId) : '';
+  let sql =
+    "SELECT id, source_type, source_label, status, ops_json, ops_count, change_set_id, scope, proposal_json FROM cloud_reviews WHERE project_id = ? AND status = 'pending'";
+  const binds = [projectId];
+  if (isApi) {
+    sql += ' AND source_type = ? AND source_label = ?';
+    binds.push('api', auth.label || 'MCP AI');
+  }
+  if (cs) {
+    sql += ' AND change_set_id = ?';
+    binds.push(cs);
+  }
+  sql += ' ORDER BY change_set_id, id ASC';
+  const rows =
+    (
+      await env.DB.prepare(sql)
+        .bind(...binds)
+        .all()
+    ).results || [];
+
+  // Group by change set.
+  const sets = {};
+  rows.forEach(function (r) {
+    const key = r.change_set_id || 'ungrouped';
+    if (!sets[key]) {
+      sets[key] = { changeSetId: r.change_set_id || null, proposals: [] };
+    }
+    let ops = null;
+    try {
+      const o = r.ops_json ? JSON.parse(r.ops_json) : null;
+      ops = o && o.v === 2 && Array.isArray(o.ops) ? o.ops : null;
+    } catch (e) {
+      ops = null;
+    }
+    if (!ops) {
+      try {
+        const d = r.diffs_json ? JSON.parse(r.diffs_json) : [];
+        ops = Array.isArray(d)
+          ? d.map(function () {
+              return {};
+            })
+          : [];
+      } catch (e) {
+        ops = [];
+      }
+    }
+    sets[key].proposals.push({
+      proposalId: r.id,
+      opCount: Array.isArray(ops) ? ops.length : 0
+    });
+  });
+
+  // Read-only dry run: replay the v2 ops through applyOps against the live
+  // state, exactly as the owner's Accept-all would, and report conflicts.
+  let dryRun = null;
+  const v2 = rows
+    .map(function (r) {
+      let ops = null;
+      try {
+        const o = r.ops_json ? JSON.parse(r.ops_json) : null;
+        ops = o && o.v === 2 && Array.isArray(o.ops) ? o.ops : null;
+      } catch (e) {
+        ops = null;
+      }
+      if (!ops || !ops.length) {
+        return null;
+      }
+      let scope = [];
+      try {
+        scope = JSON.parse(r.scope);
+      } catch (e) {
+        scope = [];
+      }
+      return { id: r.id, scope: Array.isArray(scope) ? scope : [], ops: ops };
+    })
+    .filter(Boolean);
+  if (v2.length) {
+    const row = await env.DB.prepare(
+      'SELECT owner_code_hash, owner_code_salt, latest_r2_key FROM cloud_projects WHERE project_id = ?'
+    )
+      .bind(projectId)
+      .first();
+    const live =
+      row && row.latest_r2_key
+        ? await cloudReadState(env, row.latest_r2_key, row.owner_code_hash, row.owner_code_salt)
+        : null;
+    const model = {
+      fieldSpec: fieldSpec,
+      getList: getList,
+      getSection: getSection,
+      isDeletable: isDeletable
+    };
+    if (live) {
+      const applied = applyOps(live, v2, { model: model });
+      dryRun = {
+        ok: !applied.hardFailure,
+        hardFailure: applied.hardFailure || null,
+        conflicts: applied.conflicts || [],
+        report: applied.report || []
+      };
+    } else {
+      dryRun = { ok: false, hardFailure: { reason: 'no-live-state' }, conflicts: [], report: [] };
+    }
+  }
+  return {
+    jsonrpc: '2.0',
+    id: rpcId,
+    result: {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ projectId: projectId, changeSets: sets, dryRun: dryRun }, null, 2)
+        }
+      ]
+    }
+  };
+}
+
+// MCP-AGENT-FIRST 2026-11-12 3.3: withdraw_changes. An API key may pull back
+// its own pending proposal (or just some of its ops) before the owner decides.
+// Whole withdraw (no opIndexes) marks the row withdrawn. Partial withdraw
+// rewrites ops_json / ops_count / diffs_json to the surviving ops and, when
+// that leaves none, withdraws the whole row. Ownership (key_id match) and the
+// pending-only rule are enforced; a key can never touch another key's queue.
+export async function withdrawMcpProposal(env, projectId, auth, toolArgs, rpcId) {
+  const pid = toolArgs && toolArgs.proposalId != null ? parseInt(toolArgs.proposalId, 10) : 0;
+  if (!isFinite(pid) || pid <= 0) {
+    return {
+      jsonrpc: '2.0',
+      id: rpcId,
+      result: {
+        content: [{ type: 'text', text: 'withdraw_changes needs a positive integer proposalId.' }],
+        isError: true
+      }
+    };
+  }
+  const row = await env.DB.prepare(
+    'SELECT id, status, source_type, source_label, key_id, scope, ops_json, ops_count, diffs_json, proposal_json FROM cloud_reviews WHERE project_id = ? AND id = ?'
+  )
+    .bind(projectId, pid)
+    .first();
+  if (!row || row.id == null) {
+    return {
+      jsonrpc: '2.0',
+      id: rpcId,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'No proposal #' +
+              pid +
+              ' belongs to this key on this project. Use get_proposal_status without an id to list the recent ones.'
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  // Ownership: an API key may only withdraw its own rows. The owner code
+  // (full access) is allowed to withdraw anything through this path as well,
+  // though in practice the owner decides through the Accept/Reject UI.
+  if (auth.role === 'api') {
+    const mine =
+      (row.key_id != null && String(row.key_id) === String(auth.apiKeyId)) ||
+      (row.source_type === 'api' && row.source_label === (auth.label || 'MCP AI'));
+    if (!mine) {
+      return {
+        jsonrpc: '2.0',
+        id: rpcId,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: 'This proposal belongs to another key; you can only withdraw your own queued proposals.'
+            }
+          ],
+          isError: true
+        }
+      };
+    }
+  }
+  if (row.status !== 'pending' && row.status !== 'accepting') {
+    return {
+      jsonrpc: '2.0',
+      id: rpcId,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'Proposal #' +
+              pid +
+              ' is ' +
+              row.status +
+              ', not pending; only pending proposals can be withdrawn.'
+          }
+        ],
+        isError: true
+      }
+    };
+  }
+  // Resolve the v2 op list.
+  let ops = [];
+  try {
+    const parsed = row.ops_json ? JSON.parse(row.ops_json) : null;
+    if (parsed && Array.isArray(parsed.ops)) {
+      ops = parsed.ops;
+    } else if (Array.isArray(parsed)) {
+      ops = parsed;
+    }
+  } catch (e) {
+    ops = [];
+  }
+  const withdrawnSet = new Set();
+  const idxRaw = toolArgs && Array.isArray(toolArgs.opIndexes) ? toolArgs.opIndexes : [];
+  if (idxRaw.length) {
+    for (let i = 0; i < idxRaw.length; i++) {
+      const n = parseInt(idxRaw[i], 10);
+      if (!isFinite(n) || n < 0 || n >= ops.length) {
+        return {
+          jsonrpc: '2.0',
+          id: rpcId,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text:
+                  'opIndexes must reference existing ops (0..' +
+                  (ops.length - 1) +
+                  '); index ' +
+                  idxRaw[i] +
+                  ' is out of range.'
+              }
+            ],
+            isError: true
+          }
+        };
+      }
+      withdrawnSet.add(n);
+    }
+  }
+  const now = new Date().toISOString();
+  const note = 'withdrawn by agent';
+  const decidedBy = auth.label || 'MCP AI';
+  const whole = withdrawnSet.size === 0;
+  const remainingOps = ops.filter(function (_, i) {
+    return !withdrawnSet.has(i);
+  });
+  const nowWithdrawn = whole || remainingOps.length === 0;
+  if (nowWithdrawn) {
+    await env.DB.prepare(
+      "UPDATE cloud_reviews SET status = 'withdrawn', decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND status IN ('pending','accepting')"
+    )
+      .bind(now, decidedBy, note, pid)
+      .run();
+    return {
+      jsonrpc: '2.0',
+      id: rpcId,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              (whole
+                ? 'Withdrew proposal #' + pid + ' (all ' + ops.length + ' op(s)).'
+                : 'Withdrew the last ' +
+                  withdrawnSet.size +
+                  ' op(s) from proposal #' +
+                  pid +
+                  '; it now has no ops, so it is withdrawn.') +
+              ' Nothing changes until the owner accepts a proposal, and this one is no longer in the queue.'
+          }
+        ]
+      }
+    };
+  }
+  // Partial withdraw: rewrite ops_json / ops_count / diffs_json for the
+  // surviving ops, recomputed against the live state like the queue does.
+  let granted = [];
+  try {
+    granted = row.scope ? JSON.parse(row.scope) : [];
+  } catch (e) {
+    granted = [];
+  }
+  const projRow = await env.DB.prepare(
+    'SELECT latest_r2_key, owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
+  )
+    .bind(projectId)
+    .first();
+  const state =
+    projRow && projRow.latest_r2_key
+      ? await cloudReadState(
+          env,
+          'projects/' + projectId + '/latest.json',
+          projRow.owner_code_hash,
+          projRow.owner_code_salt
+        )
+      : null;
+  const applied = applyOps(state || {}, [{ id: pid, scope: granted, ops: remainingOps }], {});
+  const next = applied.next || state || {};
+  const rawLeaves = cloudDiffState(state || {}, next) || [];
+  const diffsJson = enrichDiffs(rawLeaves, state || {}, next).diffs;
+  const newOps = { v: 2, ops: remainingOps };
+  await env.DB.prepare(
+    "UPDATE cloud_reviews SET ops_json = ?, ops_count = ?, diffs_json = ?, status = ?, decided_at = NULL, decided_by = NULL, decision_note = NULL WHERE id = ? AND status IN ('pending','accepting')"
+  )
+    .bind(JSON.stringify(newOps), remainingOps.length, JSON.stringify(diffsJson), 'pending', pid)
+    .run();
+  return {
+    jsonrpc: '2.0',
+    id: rpcId,
+    result: {
+      content: [
+        {
+          type: 'text',
+          text:
+            'Withdrew ' +
+            withdrawnSet.size +
+            ' op(s) from proposal #' +
+            pid +
+            '. ' +
+            remainingOps.length +
+            ' op(s) remain queued for the owner.'
         }
       ]
     }
@@ -2025,6 +2574,19 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // and the review endpoints are owner-auth only.
     if (toolName === 'get_proposal_status') {
       return await proposalStatusResult(env, projectId, auth, toolArgs, id);
+    }
+    // 3.8: report readers answer before the (large) state read like
+    // get_proposal_status - they only touch the cloud_reviews row(s).
+    if (toolName === 'get_apply_report') {
+      return await applyReportResult(env, projectId, auth, toolArgs, id);
+    }
+    if (toolName === 'get_pending') {
+      return await pendingDryRunResult(env, projectId, auth, toolArgs, id);
+    }
+    // 3.3: withdraw_changes reads and writes only the calling key's own rows,
+    // so it answers before the (large) state read like get_proposal_status.
+    if (toolName === 'withdraw_changes') {
+      return await withdrawMcpProposal(env, projectId, auth, toolArgs, id);
     }
     // P0 (MCP-DIRECTIVE 2026-11-11): reject an empty/oversized/invalid
     // apply_changes envelope BEFORE loading (and decrypting) the snapshot.
@@ -2245,13 +2807,28 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     };
   }
   const now = new Date().toISOString();
+  // MCP-AGENT-FIRST 2026-11-12 3.2: group a key's same-day proposals into one
+  // change set so the owner can Accept all of them in a single R2 write.
+  const reqChangeSet =
+    typeof toolArgs.changeSetId === 'string' ? toolArgs.changeSetId.trim().slice(0, 64) : '';
+  const dateStamp = now.slice(0, 10).replace(/-/g, '');
+  const idemKeyIdForSet = auth.apiKeyId != null ? String(auth.apiKeyId) : 'owner';
+  const changeSetId = reqChangeSet || 'cs_' + dateStamp + '_' + idemKeyIdForSet;
+  const keyId = auth.apiKeyId != null ? String(auth.apiKeyId) : null;
   const rawLeaves = cloudDiffState(prev, merged.next) || [];
   const diffsJson = enrichDiffs(rawLeaves, prev, merged.next).diffs;
-  // MCP-AGENT-FIRST 2026-11-12 1.3: diffs_json stays capped at 500 for the
-  // review UI, but the full enriched list is stored uncapped in ops_json and
-  // its true total in ops_count. Accept reads ops_json, so nothing an agent
-  // proposed is ever silently dropped.
-  const fullOps = enrichDiffs(rawLeaves, prev, merged.next, 1000000000).diffs;
+  // MCP-AGENT-FIRST 2026-11-12 3.1/3.2: ops_json is now v2 ops
+  // ({v:2, ops:[...]}) - the same set/create/delete op list planProposal
+  // produced, minus the budget ops which stay in proposal_json (H-6). The
+  // capped 500-leaf diffs_json above is the DISPLAY copy for the review UI.
+  // Accept reads the full v2 ops and runs them through the pure applyOps
+  // engine, so nothing an agent proposed is ever silently dropped.
+  const fullOps = {
+    v: 2,
+    ops: plan.ops.filter(function (op) {
+      return op.op !== 'budget';
+    })
+  };
   // MCP-AGENT-FIRST 2026-11-12 1.7: one idempotency key per call. An explicit
   // idempotencyKey is stable forever; otherwise the whole argument object is
   // hashed into a 10-minute bucket, and the previous bucket is checked too so
@@ -2312,7 +2889,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
             type: 'text',
             text: JSON.stringify({
               proposalId: duplicate.id,
-              changeSetId: null,
+              changeSetId: changeSetId,
               duplicate: true,
               counts: {
                 diffs: diffs.length,
@@ -2342,7 +2919,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     : null;
   try {
     res = await env.DB.prepare(
-      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json, ops_json, ops_count, import_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json, ops_json, ops_count, import_key, key_id, change_set_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     )
       .bind(
         projectId,
@@ -2357,8 +2934,10 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
         now,
         proposalJson,
         JSON.stringify(fullOps),
-        fullOps.length,
-        importKey
+        fullOps.ops.length,
+        importKey,
+        keyId,
+        changeSetId
       )
       .run();
   } catch (e) {
@@ -2383,7 +2962,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
               type: 'text',
               text: JSON.stringify({
                 proposalId: raced.id,
-                changeSetId: null,
+                changeSetId: changeSetId,
                 duplicate: true,
                 counts: {
                   diffs: diffs.length,
@@ -2431,7 +3010,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
           type: 'text',
           text:
             'Queued ' +
-            fullOps.length +
+            fullOps.ops.length +
             ' field change(s) for owner review (proposal #' +
             res.meta.last_row_id +
             ').' +
@@ -2444,7 +3023,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
           type: 'text',
           text: JSON.stringify({
             proposalId: res.meta.last_row_id,
-            changeSetId: null,
+            changeSetId: changeSetId,
             duplicate: false,
             counts: {
               diffs: diffs.length,
@@ -2453,7 +3032,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
               deletes: 0,
               budget: budgetCount
             },
-            opsQueued: fullOps.length,
+            opsQueued: fullOps.ops.length,
             refused: refusedStructured,
             refusedText: allRefused,
             warnings: warnings,

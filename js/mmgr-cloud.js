@@ -4544,6 +4544,21 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // MCP-AGENT-FIRST 2026-11-12 3.7: one-click Accept all / Reject all for a
+  // whole change set - delegates to the review module. Propagate the inner
+  // async result so callers (`await MMGR.Cloud.cloudReviewAcceptAll(...)`) wait
+  // for the fetch + render to finish, not just the synchronous dispatch.
+  function cloudReviewAcceptAll(cs) {
+    if (ns.CloudReview) {
+      return ns.CloudReview.cloudReviewAcceptAll(cs);
+    }
+  }
+  function cloudReviewRejectAll(cs) {
+    if (ns.CloudReview) {
+      return ns.CloudReview.cloudReviewRejectAll(cs);
+    }
+  }
+
   // ---- copy the just-created editor code (shown-once banner, G23) ---------
   function copyEditorCode(code) {
     if (ns.CloudReview) {
@@ -5081,6 +5096,8 @@ var MMGR = window.MMGR || {};
     cloudReviewMine: cloudReviewMine,
     cloudReviewAccept: cloudReviewAccept,
     cloudReviewReject: cloudReviewReject,
+    cloudReviewAcceptAll: cloudReviewAcceptAll,
+    cloudReviewRejectAll: cloudReviewRejectAll,
     cloudReviewView: cloudReviewView,
     reviewToggleDiffs: reviewToggleDiffs,
     // IN-PROJECT DELETE (owner 2026-08-17): Settings > Controls > Danger

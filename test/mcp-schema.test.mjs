@@ -16,7 +16,9 @@ import {
   MCP_MAX_DIFFS,
   MCP_MAX_CREATES,
   MCP_MAX_SETS,
-  MCP_WRITE_BUDGET_MS
+  MCP_WRITE_BUDGET_MS,
+  MCP_MAX_PENDING_PER_KEY,
+  MCP_MAX_DAILY_OPS_PER_KEY
 } from '../src/mcp/plan.js';
 import {
   BUDGET_PROPOSAL_LIMIT,
@@ -54,7 +56,9 @@ test('the limits are the real constants', () => {
     budgetProposalLimit: BUDGET_PROPOSAL_LIMIT,
     largeChangeAbs: BUDGET_LARGE_ABS,
     largeChangePerDay: BUDGET_LARGE_PER_DAY,
-    budgetLineFields: BUDGET_LINE_FIELDS
+    budgetLineFields: BUDGET_LINE_FIELDS,
+    maxPendingPerKey: MCP_MAX_PENDING_PER_KEY,
+    maxDailyOpsPerKey: MCP_MAX_DAILY_OPS_PER_KEY
   });
   assert.equal(body.changeSet.atomic, true);
 });

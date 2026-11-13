@@ -32,10 +32,21 @@ import {
   canonicalField,
   fieldSpec,
   getSection,
+  getList,
   isListPath,
-  isSectionPath
+  isSectionPath,
+  isDeletable
 } from './model.js';
 import { budgetWriteAllowed, BUDGET_WRITE_REFUSAL } from './budget-access.js';
+
+// MCP-AGENT-FIRST addendum A1 (2026-11-13): per API key per project abuse
+// limits. A key may hold at most MCP_MAX_PENDING_PER_KEY proposals in status
+// pending or accepting, and at most MCP_MAX_DAILY_OPS_PER_KEY ops (sum of
+// ops_count) across pending, accepting or accepted rows proposed on the
+// current UTC day. A withdrawn or rejected row frees both its pending slot
+// and its daily ops. Exceeding either refuses the whole apply_changes call.
+export const MCP_MAX_PENDING_PER_KEY = 50;
+export const MCP_MAX_DAILY_OPS_PER_KEY = 2000;
 
 // MCP-DIRECTIVE 2026-11-11 P0: validate the apply_changes envelope BEFORE
 // loading project state. An empty or malformed envelope must return a tool
@@ -45,6 +56,9 @@ import { budgetWriteAllowed, BUDGET_WRITE_REFUSAL } from './budget-access.js';
 export const MCP_MAX_DIFFS = 500;
 export const MCP_MAX_CREATES = 500;
 export const MCP_MAX_SETS = 100;
+// 3.9: deletes are capped separately; a single proposal may delete at most
+// this many records.
+export const MCP_MAX_DELETES = 200;
 // Wall-clock ceiling for the write pipeline. Cloudflare's 1102 must never be
 // the first signal: abort with a plain, structured message before the
 // platform limit. The state read is cached (r2DeriveKey), so a normal
@@ -57,17 +71,33 @@ export function validateProposalEnvelope(toolArgs, auth) {
   const creates = Array.isArray(a.creates) ? a.creates : [];
   const budgetRaw = Array.isArray(a.budget) ? a.budget : [];
   const setsRaw = Array.isArray(a.sets) ? a.sets : [];
+  const deletesRaw = Array.isArray(a.deletes) ? a.deletes : [];
   if (
     diffs.length === 0 &&
     creates.length === 0 &&
     budgetRaw.length === 0 &&
-    setsRaw.length === 0
+    setsRaw.length === 0 &&
+    deletesRaw.length === 0
   ) {
     return {
       content: [
         {
           type: 'text',
-          text: 'Nothing provided. Supply diffs as {path, recordId, field, after}, creates as {path, record} objects, sets as {path, field, value} objects, or budget changes as {kind, ...} objects.'
+          text: 'Nothing provided. Supply diffs as {path, recordId, field, after}, creates as {path, record} objects, sets as {path, field, value} objects, deletes as {path, recordId} objects, or budget changes as {kind, ...} objects.'
+        }
+      ],
+      isError: true
+    };
+  }
+  if (deletesRaw.length > MCP_MAX_DELETES) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text:
+            'A proposal can carry at most ' +
+            MCP_MAX_DELETES +
+            ' deletes. Split this into smaller proposals.'
         }
       ],
       isError: true
@@ -404,6 +434,65 @@ function mapTempIds(list, tempIds) {
  * @param {object} [deps]  { env, projectId, tempIds }
  * @returns {Promise<object>} {ops, refused, warnings, submitted, base, counts, budget, usedLarge, error}
  */
+// MCP-AGENT-FIRST addendum A1 (2026-11-13): per-API-key-per-project abuse
+// limits. Returns null when the key is within both limits, or an error object
+// { text, code } (RATE_PENDING_CAP / RATE_DAILY_OPS) when it would exceed one.
+// A withdrawn or rejected row is excluded from both counts (status is neither
+// pending/accepting nor accepted), so it frees its slot and its daily ops.
+// key_id uses the null-safe `IS` operator so owner-session rows (key_id NULL)
+// are scoped to the owner and do not collide with keyed rows.
+async function checkAbuseLimits(env, projectId, apiKeyId, incomingOps) {
+  const key = apiKeyId != null ? String(apiKeyId) : null;
+  const dayStart = new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z';
+  try {
+    const pend = await env.DB.prepare(
+      "SELECT COUNT(*) AS c FROM cloud_reviews WHERE project_id = ? AND key_id IS ? AND status IN ('pending','accepting')"
+    )
+      .bind(projectId, key)
+      .first();
+    const pendingCount = (pend && Number(pend.c)) || 0;
+    const day = await env.DB.prepare(
+      "SELECT COALESCE(SUM(ops_count),0) AS total FROM cloud_reviews WHERE project_id = ? AND key_id IS ? AND status IN ('pending','accepting','accepted') AND proposed_at >= ?"
+    )
+      .bind(projectId, key, dayStart)
+      .first();
+    const dayOps = (day && Number(day.total)) || 0;
+    if (pendingCount >= MCP_MAX_PENDING_PER_KEY) {
+      return {
+        code: 'RATE_PENDING_CAP',
+        text:
+          'This key already has ' +
+          pendingCount +
+          ' pending proposal(s) on this project (limit ' +
+          MCP_MAX_PENDING_PER_KEY +
+          '). Accept or withdraw some before queuing more.'
+      };
+    }
+    if (dayOps + incomingOps > MCP_MAX_DAILY_OPS_PER_KEY) {
+      return {
+        code: 'RATE_DAILY_OPS',
+        text:
+          'This call would push today’s ops for this key to ' +
+          (dayOps + incomingOps) +
+          ' (limit ' +
+          MCP_MAX_DAILY_OPS_PER_KEY +
+          ', ' +
+          dayOps +
+          ' already used, ' +
+          incomingOps +
+          ' incoming). Split the work or wait for the UTC day to roll over.'
+      };
+    }
+  } catch (e) {
+    // A storage fault must not let an unbounded queue through: fail closed.
+    return {
+      code: 'RATE_PENDING_CAP',
+      text: 'Could not verify proposal limits (storage error). Try again.'
+    };
+  }
+  return null;
+}
+
 export async function planProposal(toolArgs, liveState, auth, deps) {
   const a = toolArgs || {};
   const d = deps || {};
@@ -411,6 +500,24 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
   const creates = Array.isArray(a.creates) ? a.creates : [];
   const setsRaw = Array.isArray(a.sets) ? a.sets : [];
   const budgetRaw = Array.isArray(a.budget) ? a.budget : [];
+  const deletesRaw = Array.isArray(a.deletes) ? a.deletes : [];
+  // MCP-AGENT-FIRST addendum A1 (2026-11-13): refuse the whole call when the
+  // key has hit its pending-proposal cap or its per-day op budget. Counted by
+  // key + project so one abusive key cannot starve the others. Budget changes
+  // are stored in proposal_json, not ops_count, so they are not counted here
+  // (matching how the daily cap is summed from ops_count).
+  const incomingOps = diffs.length + creates.length + setsRaw.length + deletesRaw.length;
+  if (d && d.env && d.env.DB) {
+    const capErr = await checkAbuseLimits(d.env, d.projectId, auth.apiKeyId, incomingOps);
+    if (capErr) {
+      return {
+        error: { text: capErr.text, code: capErr.code },
+        ops: [],
+        refused: [],
+        warnings: []
+      };
+    }
+  }
   const writeStartedAt = Date.now();
   const ops = [];
   const refused = [];
@@ -857,7 +964,7 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
         }
         base[spath] = checked.value;
         submitted[spath] = base[spath];
-        ops.push({ op: 'set', path: spath, field: null, before: s.before, value: checked.value });
+        ops.push({ op: 'set', path: spath, field: null, before: s.before, after: checked.value });
         continue;
       }
       if (!SET_FIELD_RE.test(field)) {
@@ -918,7 +1025,7 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
         continue;
       }
       submitted[spath] = base[spath];
-      ops.push({ op: 'set', path: spath, field: field, before: s.before, value: s.value });
+      ops.push({ op: 'set', path: spath, field: field, before: s.before, after: s.value });
       continue;
     }
     // A section path that is not modelled keeps the old generic behaviour.
@@ -1043,6 +1150,48 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
     }
   }
 
+  // ---- deletes (3.9) --------------------------------------------------
+  // Validate every delete before it reaches the queue: the path must be a
+  // deletable list, inside the caller's granted sections, and the record must
+  // exist. Budget lines and spend entries are never deletable through MCP.
+  let deleteCount = 0;
+  for (let i = 0; i < deletesRaw.length; i++) {
+    const raw = deletesRaw[i] || {};
+    const path = String(raw.path || '').trim();
+    const recordId = raw.recordId != null ? String(raw.recordId) : '';
+    if (!isListPath(path)) {
+      refused.push(path + '[' + recordId + ']: not a deletable record list');
+      continue;
+    }
+    if (!isDeletable(path)) {
+      refused.push(path + '[' + recordId + ']: ' + path + ' is not deletable through MCP');
+      continue;
+    }
+    const sec = (getList(path) || {}).section;
+    if (Array.isArray(granted) && granted.indexOf(sec) === -1) {
+      refused.push(path + '[' + recordId + ']: out of the granted sections');
+      continue;
+    }
+    const arr = Array.isArray(base[path]) ? base[path] : [];
+    const rec = arr.find(function (r) {
+      return String(r.id) === recordId;
+    });
+    if (!rec) {
+      refused.push(path + '[' + recordId + ']: record not found');
+      continue;
+    }
+    deleteCount++;
+    ops.push({ op: 'delete', path: path, recordId: recordId });
+  }
+  // MCP-AGENT-FIRST 2026-11-12 1.8: refused ops are reported, accepted ops
+  // are still queued. The whole call is NOT refused for a partial rejection -
+  // the 1.8 design (and the structured `refused` block) assumes the owner is
+  // shown what landed and what was refused, so an agent never believes a good
+  // op was silently dropped. A call whose every op was refused still queues
+  // nothing because `submitted` is then empty (queueMcpProposal's
+  // "Nothing to propose" guard). Only genuinely unprocessable input (no state,
+  // over the size budget, over the large-budget daily cap) hard-refuses.
+
   return {
     ops: ops,
     refused: refused.concat(refusedCreates, refusedSets),
@@ -1054,7 +1203,7 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
       diffs: diffs.length,
       creates: creates.length,
       sets: setsRaw.length,
-      deletes: 0,
+      deletes: deleteCount,
       budget: budgetAll.length
     },
     budget: budgetBuilt,

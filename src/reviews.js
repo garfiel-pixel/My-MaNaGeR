@@ -27,6 +27,26 @@ import { structuredLog } from './lib/observe.js';
 import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
 import { buildBudgetProposal } from './lib/budget.js';
 import { applyLeafDiffs, normalizeProposalDiffs } from './cloud/proposal-diffs.js';
+import { applyOps } from './cloud/apply-ops.js';
+import { fieldSpec, getList, getSection, isDeletable } from './mcp/model.js';
+
+// MCP-AGENT-FIRST 2026-11-12 3.1: ops_json stores v2 ops ({v:2, ops:[...]}).
+// A bare array (no `v`) is a legacy v1 leaf list. This returns the v2 ops
+// array, or null when the row is not v2.
+function parseV2Ops(opsJson) {
+  if (!opsJson) {
+    return null;
+  }
+  try {
+    const o = JSON.parse(opsJson);
+    if (o && o.v === 2 && Array.isArray(o.ops)) {
+      return o.ops;
+    }
+  } catch (e) {
+    /* not JSON */
+  }
+  return null;
+}
 
 // The public config endpoint now lives in the shared Turnstile module; this
 // re-export keeps the router's existing import path valid.
@@ -180,7 +200,7 @@ export async function handleReviewList(request, env, projectId, mine) {
     // is still undecided, so it sorts with pending and reports as pending.
     await cloudHealStaleClaims(env, projectId);
     const rows = await env.DB.prepare(
-      "SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposal_json, proposed_at, decided_at, decided_by, accepted_entry_id, decision_note, decision_edited FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status IN ('pending','accepting') THEN 0 ELSE 1 END, id DESC LIMIT 100"
+      "SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposal_json, proposed_at, decided_at, decided_by, accepted_entry_id, decision_note, decision_edited, change_set_id, key_id FROM cloud_reviews WHERE project_id = ? ORDER BY CASE WHEN status IN ('pending','accepting') THEN 0 ELSE 1 END, id DESC LIMIT 100"
     )
       .bind(projectId)
       .all();
@@ -217,7 +237,9 @@ export async function handleReviewList(request, env, projectId, mine) {
         decidedBy: r.decided_by,
         decisionNote: r.decision_note || '',
         decisionEdited: r.decision_edited === 1,
-        acceptedEntryId: r.accepted_entry_id
+        acceptedEntryId: r.accepted_entry_id,
+        changeSetId: r.change_set_id || '',
+        keyId: r.key_id || ''
       };
     });
     return json({ ok: true, proposals: proposals });
@@ -356,6 +378,9 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
   } catch (e) {
     scopeForAuth = [];
   }
+  // The proposal's granted sections - the scope the agent was allowed to
+  // write. Both the v2 engine and the legacy path apply under this scope.
+  const scope = scopeForAuth.slice();
   const budgetOnly =
     scopeForAuth.length > 0 &&
     scopeForAuth.every(function (s) {
@@ -512,219 +537,37 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       resp.savedAt = now;
     }
   } else if (row.proposal_type === 'mcp') {
-    // API-KEY-AUDIT F3 accept-side (2026-09-16): the old branch only wrote a
-    // changelog line - accepting an MCP proposal changed NOTHING. Mirror the
-    // 'save' branch: merge the stored submission under the proposal's scope,
-    // write the new state to R2, flip latest_r2_key, log the changelog.
-    const key = 'projects/' + projectId + '/latest.json';
-    const projRowM = await env.DB.prepare(
-      'SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
-    )
-      .bind(projectId)
-      .first();
-    let scope = [];
-    try {
-      const p = JSON.parse(row.scope);
-      if (Array.isArray(p)) {
-        scope = p;
-      }
-    } catch (e) {
-      scope = [];
-    }
-    const baseSubmitted = (function () {
-      try {
-        return JSON.parse(row.submitted_json);
-      } catch (e) {
-        return {};
-      }
-    })();
-    // MCP-AGENT-FIRST 2026-11-12 1.6(b): same conditional read/apply/write as
-    // the save branch, so an accept and a UI save cannot silently overwrite
-    // each other.
-    let prevUsed = null;
-    let nextUsed = null;
-    let wrote = false;
-    for (let attempt = 0; attempt < 3 && !wrote; attempt++) {
-      const read = await cloudReadStateEtag(
-        env,
-        key,
-        projRowM && projRowM.owner_code_hash,
-        projRowM && projRowM.owner_code_salt
-      );
-      const prev = read.state;
-      let submitted = baseSubmitted;
-      // H-6 (BUDGET-BOQ directive 2026-11-05): the approval preview sends back
-      // ONLY the changes the owner ticked, with the values the owner left in
-      // the fields. Rebuild the submission from those against the CURRENT state
-      // through the same validator the MCP server uses - so a partial approval
-      // applies a subset, an edited value wins, and a value the browser made up
-      // is refused here. A change whose "before" no longer matches the live
-      // line is STALE: refuse the whole accept and name both values, because
-      // applying half a stale proposal is worse than asking for a refresh.
-      if (Array.isArray(decision.changes)) {
-        const built = buildBudgetProposal(prev, decision.changes, prev && prev.currency);
-        if (!built.changes.length) {
-          await releaseClaim(env, reviewId);
-          return json(
-            {
-              ok: false,
-              error:
-                'Nothing to apply. ' +
-                (built.refused.length ? built.refused.join('; ') : 'No changes were approved.')
-            },
-            400
-          );
-        }
-        const stale = [];
-        built.changes.forEach(function (c) {
-          if (c.kind !== 'changeLine' || c.before === undefined || c.before === null) {
-            return;
-          }
-          const live = (prev && prev.budgetLines ? prev.budgetLines : []).find(function (l) {
-            return String(l.id) === String(c.lineId);
-          });
-          const liveVal = live ? live[c.field] : undefined;
-          if (String(liveVal == null ? '' : liveVal) !== String(c.before)) {
-            stale.push({
-              lineId: c.lineId,
-              field: c.field,
-              expected: c.before,
-              actual: liveVal == null ? null : liveVal
-            });
-          }
-        });
-        if (stale.length) {
-          await releaseClaim(env, reviewId);
-          return json(
-            {
-              ok: false,
-              error: 'stale',
-              message: 'This proposal changed since it was made. Refresh it before approving.',
-              stale: stale
-            },
-            409
-          );
-        }
-        submitted = built.submitted;
-        scope = ['bud'];
-        decision.edited = 1;
-        resp.proposalSummary = built.summary;
-      } else {
-        // One-press accept: apply the proposal's OWN stored leaves to the
-        // current state. The old path merged submitted_json, which replaces a
-        // whole tasks array and silently dropped flat leaves; this path touches
-        // only the fields the owner was shown.
-        const leafDiffs = Array.isArray(decision.diffs) ? decision.diffs : storedDiffs(row);
-        // MCP-AGENT-FIRST 2026-11-12 1.3: a legacy row has no ops_json, so a
-        // 500-leaf list is the cap talking, not the proposal. Accepting it would
-        // apply part of what the owner saw and none of what was dropped.
-        if (
-          !Array.isArray(decision.diffs) &&
-          !row.ops_json &&
-          Array.isArray(leafDiffs) &&
-          leafDiffs.length === 500
-        ) {
-          await releaseClaim(env, reviewId);
-          return json(
-            {
-              ok: false,
-              error: 'truncated',
-              message:
-                'This older proposal was truncated when it was queued. Reject it and ask the agent to resubmit.'
-            },
-            409
-          );
-        }
-        if (Array.isArray(leafDiffs) && leafDiffs.length) {
-          const applied = applyLeafDiffs(prev, leafDiffs, submitted);
-          if (applied.stale.length || applied.unaddressable.length) {
-            await releaseClaim(env, reviewId);
-            return refusalFor(applied);
-          }
-          submitted = applied.submitted;
-          if (Array.isArray(decision.diffs)) {
-            decision.edited = 1;
-          }
-          if (!applied.changed) {
-            resp.noop = true;
-          }
-        } else {
-          // MCP-AGENT-FIRST 2026-11-12 1.3: an MCP row with no stored leaves
-          // would fall through to cloudScopeMerge, which replaces whole arrays
-          // from submitted_json and can roll back a field changed since. An MCP
-          // proposal always has leaves; if they are gone, refuse instead.
-          await releaseClaim(env, reviewId);
-          return json(
-            {
-              ok: false,
-              error: 'no-diffs',
-              message:
-                'This proposal carries no stored field changes, so it cannot be applied safely. Reject it and ask the agent to resubmit.'
-            },
-            409
-          );
-        }
-      }
-      const merged = cloudScopeMerge(prev, submitted, scope);
-      resp.applied = merged.applied;
-      resp.blocked = merged.blocked;
-      if (!merged.applied.length) {
-        wrote = true;
-        break;
-      }
-      merged.next.updatedAt = now;
-      let r2Payload = JSON.stringify(merged.next);
-      if (projRowM && projRowM.owner_code_hash && projRowM.owner_code_salt) {
-        try {
-          r2Payload = await cloudEncryptState(
-            merged.next,
-            projRowM.owner_code_hash,
-            projRowM.owner_code_salt
-          );
-        } catch (e) {
-          /* fall back to plaintext */
-        }
-      }
-      const put = await cloudPutState(env, key, r2Payload, read.etag);
-      if (put.ok) {
-        wrote = true;
-        prevUsed = prev;
-        nextUsed = merged.next;
-      }
-    }
-    if (!wrote) {
-      await releaseClaim(env, reviewId);
-      return json(
-        {
-          ok: false,
-          error: 'busy',
-          message: 'The project is being saved by someone else right now. Try again in a moment.'
-        },
-        409
-      );
-    }
-    if (nextUsed) {
-      await env.DB.prepare(
-        'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?'
-      )
-        .bind(key, now, projectId)
-        .run();
-      const entry = await cloudLogSave(
+    // MCP-AGENT-FIRST 2026-11-12 3.1/3.4: a v2 row (ops_json is {v:2, ops})
+    // is accepted by the pure applyOps engine; everything else keeps the
+    // legacy leaf-diff path (backward compatible with rows queued before this
+    // migration).
+    const v2ops = parseV2Ops(row.ops_json);
+    if (v2ops && v2ops.length) {
+      return await acceptMcpV2(
         env,
         projectId,
-        prevUsed,
-        nextUsed,
-        { type: actorType, label: actorLabel },
-        'accepted'
+        reviewId,
+        row,
+        decision,
+        actorType,
+        actorLabel,
+        scope,
+        now,
+        pushRevChanged
       );
-      if (entry) {
-        resp.changelog = entry;
-      }
-      if (pushRevChanged) {
-        await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
-      }
-      resp.savedAt = now;
     }
+    return await acceptMcpLegacy(
+      env,
+      projectId,
+      reviewId,
+      row,
+      decision,
+      actorType,
+      actorLabel,
+      scope,
+      now,
+      pushRevChanged
+    );
   } else {
     return json({ ok: false, error: 'unsupported proposal type' }, 400);
   }
@@ -832,5 +675,985 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
     status: 'rejected',
     decidedAt: now,
     note: decision.note || ''
+  });
+}
+
+/* ============================================================
+   MCP ACCEPT — legacy (pre-v2) leaf-diff path.
+   ------------------------------------------------------------
+   Used by rows queued before this migration (ops_json is a bare leaf
+   list, not {v:2, ops}). Mirrors the owner "save" branch: merge the
+   stored submission under the proposal scope, write to R2 with a
+   conditional etag, flip latest_r2_key, log the changelog. This is the
+   exact code that lived inline in handleReviewAccept before the v2 engine
+   landed (MCP-AGENT-FIRST 2026-11-12 3.4).
+   ============================================================ */
+async function acceptMcpLegacy(
+  env,
+  projectId,
+  reviewId,
+  row,
+  decision,
+  actorType,
+  actorLabel,
+  scope,
+  now,
+  pushRevChanged
+) {
+  const resp = { ok: true, reviewId: reviewId, status: 'accepted', decidedAt: now };
+  const key = 'projects/' + projectId + '/latest.json';
+  const projRowM = await env.DB.prepare(
+    'SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
+  )
+    .bind(projectId)
+    .first();
+  let scopeLocal = Array.isArray(scope) ? scope : [];
+  const baseSubmitted = (function () {
+    try {
+      return JSON.parse(row.submitted_json);
+    } catch (e) {
+      return {};
+    }
+  })();
+  let prevUsed = null;
+  let nextUsed = null;
+  let wrote = false;
+  for (let attempt = 0; attempt < 3 && !wrote; attempt++) {
+    const read = await cloudReadStateEtag(
+      env,
+      key,
+      projRowM && projRowM.owner_code_hash,
+      projRowM && projRowM.owner_code_salt
+    );
+    const prev = read.state;
+    let submitted = baseSubmitted;
+    if (Array.isArray(decision.changes)) {
+      const built = buildBudgetProposal(prev, decision.changes, prev && prev.currency);
+      if (!built.changes.length) {
+        await releaseClaim(env, reviewId);
+        return json(
+          {
+            ok: false,
+            error:
+              'Nothing to apply. ' +
+              (built.refused.length ? built.refused.join('; ') : 'No changes were approved.')
+          },
+          400
+        );
+      }
+      const stale = [];
+      built.changes.forEach(function (c) {
+        if (c.kind !== 'changeLine' || c.before === undefined || c.before === null) {
+          return;
+        }
+        const live = (prev && prev.budgetLines ? prev.budgetLines : []).find(function (l) {
+          return String(l.id) === String(c.lineId);
+        });
+        const liveVal = live ? live[c.field] : undefined;
+        if (String(liveVal == null ? '' : liveVal) !== String(c.before)) {
+          stale.push({
+            lineId: c.lineId,
+            field: c.field,
+            expected: c.before,
+            actual: liveVal == null ? null : liveVal
+          });
+        }
+      });
+      if (stale.length) {
+        await releaseClaim(env, reviewId);
+        return json(
+          {
+            ok: false,
+            error: 'stale',
+            message: 'This proposal changed since it was made. Refresh it before approving.',
+            stale: stale
+          },
+          409
+        );
+      }
+      submitted = built.submitted;
+      scopeLocal = ['bud'];
+      decision.edited = 1;
+      resp.proposalSummary = built.summary;
+    } else {
+      const leafDiffs = Array.isArray(decision.diffs) ? decision.diffs : storedDiffs(row);
+      if (
+        !Array.isArray(decision.diffs) &&
+        !row.ops_json &&
+        Array.isArray(leafDiffs) &&
+        leafDiffs.length === 500
+      ) {
+        await releaseClaim(env, reviewId);
+        return json(
+          {
+            ok: false,
+            error: 'truncated',
+            message:
+              'This older proposal was truncated when it was queued. Reject it and ask the agent to resubmit.'
+          },
+          409
+        );
+      }
+      if (Array.isArray(leafDiffs) && leafDiffs.length) {
+        const applied = applyLeafDiffs(prev, leafDiffs, submitted);
+        if (applied.stale.length || applied.unaddressable.length) {
+          await releaseClaim(env, reviewId);
+          return refusalFor(applied);
+        }
+        submitted = applied.submitted;
+        if (Array.isArray(decision.diffs)) {
+          decision.edited = 1;
+        }
+        if (!applied.changed) {
+          resp.noop = true;
+        }
+      } else {
+        await releaseClaim(env, reviewId);
+        return json(
+          {
+            ok: false,
+            error: 'no-diffs',
+            message:
+              'This proposal carries no stored field changes, so it cannot be applied safely. Reject it and ask the agent to resubmit.'
+          },
+          409
+        );
+      }
+    }
+    const merged = cloudScopeMerge(prev, submitted, scopeLocal);
+    resp.applied = merged.applied;
+    resp.blocked = merged.blocked;
+    if (!merged.applied.length) {
+      wrote = true;
+      break;
+    }
+    merged.next.updatedAt = now;
+    let r2Payload = JSON.stringify(merged.next);
+    if (projRowM && projRowM.owner_code_hash && projRowM.owner_code_salt) {
+      try {
+        r2Payload = await cloudEncryptState(
+          merged.next,
+          projRowM.owner_code_hash,
+          projRowM.owner_code_salt
+        );
+      } catch (e) {
+        /* fall back to plaintext */
+      }
+    }
+    const put = await cloudPutState(env, key, r2Payload, read.etag);
+    if (put.ok) {
+      wrote = true;
+      prevUsed = prev;
+      nextUsed = merged.next;
+    }
+  }
+  if (!wrote) {
+    await releaseClaim(env, reviewId);
+    return json(
+      {
+        ok: false,
+        error: 'busy',
+        message: 'The project is being saved by someone else right now. Try again in a moment.'
+      },
+      409
+    );
+  }
+  if (nextUsed) {
+    await env.DB.prepare(
+      'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?'
+    )
+      .bind(key, now, projectId)
+      .run();
+    const entry = await cloudLogSave(
+      env,
+      projectId,
+      prevUsed,
+      nextUsed,
+      { type: actorType, label: actorLabel },
+      'accepted'
+    );
+    if (entry) {
+      resp.changelog = entry;
+    }
+    if (pushRevChanged) {
+      await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
+    }
+    resp.savedAt = now;
+  }
+  const acceptedEntryId = resp.entryId || (resp.changelog && resp.changelog.id) || null;
+  await env.DB.prepare(
+    'UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ?, decision_note = ?, decision_edited = ? WHERE id = ?'
+  )
+    .bind(
+      'accepted',
+      now,
+      actorLabel,
+      acceptedEntryId,
+      decision.note || null,
+      decision.edited,
+      reviewId
+    )
+    .run();
+  if (decision.note) {
+    resp.note = decision.note;
+  }
+  if (decision.edited) {
+    resp.edited = true;
+  }
+  return json(resp);
+}
+
+/* ============================================================
+   MCP ACCEPT — v2 engine path (MCP-AGENT-FIRST 2026-11-12 3.4).
+   ============================================================ */
+async function acceptMcpV2(
+  env,
+  projectId,
+  reviewId,
+  row,
+  decision,
+  actorType,
+  actorLabel,
+  scope,
+  now,
+  pushRevChanged
+) {
+  const key = 'projects/' + projectId + '/latest.json';
+  const projRow = await env.DB.prepare(
+    'SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
+  )
+    .bind(projectId)
+    .first();
+  let v2ops = parseV2Ops(row.ops_json);
+  if (!Array.isArray(v2ops) || !v2ops.length) {
+    await releaseClaim(env, reviewId);
+    return json(
+      { ok: false, error: 'no-ops', message: 'This proposal carries no stored v2 ops.' },
+      409
+    );
+  }
+  let budgetChanges = [];
+  try {
+    const p = row.proposal_json ? JSON.parse(row.proposal_json) : null;
+    if (p && Array.isArray(p.changes)) {
+      budgetChanges = p.changes;
+    }
+  } catch (e) {
+    budgetChanges = [];
+  }
+  const proposals = [{ id: reviewId, scope: Array.isArray(scope) ? scope : [], ops: v2ops }];
+  const model = {
+    fieldSpec: fieldSpec,
+    getList: getList,
+    getSection: getSection,
+    isDeletable: isDeletable
+  };
+  let prevUsed = null;
+  let nextUsed = null;
+  let wrote = false;
+  let appliedUsed = null;
+  let reportUsed = null;
+  let derivedUsed = null;
+  for (let attempt = 0; attempt < 3 && !wrote; attempt++) {
+    const read = await cloudReadStateEtag(
+      env,
+      key,
+      projRow && projRow.owner_code_hash,
+      projRow && projRow.owner_code_salt
+    );
+    const prev = read.state;
+    const applied = applyOps(prev, proposals, { model: model });
+    if (applied.hardFailure) {
+      await releaseClaim(env, reviewId);
+      return json(
+        {
+          ok: false,
+          error: 'accept-failed',
+          message: 'The proposal could not be applied: ' + JSON.stringify(applied.hardFailure),
+          report: applied.report
+        },
+        422
+      );
+    }
+    let next = applied.next;
+    if (!next) {
+      await releaseClaim(env, reviewId);
+      return json(
+        {
+          ok: false,
+          error: 'conflict',
+          message:
+            'No changes could be applied - the proposal conflicts with the current project. Refresh and re-propose.',
+          conflicts: applied.conflicts,
+          report: applied.report
+        },
+        409
+      );
+    }
+    const effBudget = Array.isArray(decision.changes) ? decision.changes : budgetChanges;
+    if (effBudget && effBudget.length) {
+      const built = buildBudgetProposal(next, effBudget, next && next.currency);
+      if (!built.changes.length) {
+        await releaseClaim(env, reviewId);
+        return json(
+          {
+            ok: false,
+            error: 'nothing-to-apply',
+            message:
+              'No budget changes to apply.' + (built.refused.length ? built.refused.join('; ') : '')
+          },
+          400
+        );
+      }
+      const stale = [];
+      built.changes.forEach(function (c) {
+        if (c.kind !== 'changeLine' || c.before === undefined || c.before === null) {
+          return;
+        }
+        const live = (next.budgetLines || []).find(function (l) {
+          return String(l.id) === String(c.lineId);
+        });
+        const liveVal = live ? live[c.field] : undefined;
+        if (String(liveVal == null ? '' : liveVal) !== String(c.before)) {
+          stale.push({
+            lineId: c.lineId,
+            field: c.field,
+            expected: c.before,
+            actual: liveVal == null ? null : liveVal
+          });
+        }
+      });
+      if (stale.length) {
+        await releaseClaim(env, reviewId);
+        return json(
+          {
+            ok: false,
+            error: 'stale',
+            message: 'This proposal changed since it was made. Refresh it before approving.',
+            stale: stale
+          },
+          409
+        );
+      }
+      const merged = cloudScopeMerge(next, built.submitted, ['bud']);
+      next = merged.next;
+    }
+    const appliedCount = (applied.report || []).filter(function (r) {
+      return r.result === 'applied';
+    }).length;
+    if (appliedCount === 0 && applied.conflicts.length) {
+      await releaseClaim(env, reviewId);
+      return json(
+        {
+          ok: false,
+          error: 'conflict',
+          message:
+            'No changes could be applied - every op conflicts with the current project. Refresh and re-propose.',
+          conflicts: applied.conflicts,
+          report: applied.report
+        },
+        409
+      );
+    }
+    next.updatedAt = now;
+    let r2Payload = JSON.stringify(next);
+    if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
+      try {
+        r2Payload = await cloudEncryptState(next, projRow.owner_code_hash, projRow.owner_code_salt);
+      } catch (e) {
+        /* fall back to plaintext */
+      }
+    }
+    const put = await cloudPutState(env, key, r2Payload, read.etag);
+    if (put.ok) {
+      wrote = true;
+      prevUsed = prev;
+      nextUsed = next;
+      appliedUsed = applied;
+      reportUsed = applied.report;
+      derivedUsed = applied.derivedChanges;
+    }
+  }
+  if (!wrote) {
+    await releaseClaim(env, reviewId);
+    return json(
+      {
+        ok: false,
+        error: 'busy',
+        message: 'The project is being saved by someone else right now. Try again in a moment.'
+      },
+      409
+    );
+  }
+  await env.DB.prepare(
+    'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?'
+  )
+    .bind(key, now, projectId)
+    .run();
+  const entry = await cloudLogSave(
+    env,
+    projectId,
+    prevUsed,
+    nextUsed,
+    { type: actorType, label: actorLabel },
+    'accepted',
+    {
+      proposalId: reviewId,
+      sourceType: 'agent',
+      sourceLabel: row.source_label || 'MCP AI',
+      keyId: row.key_id,
+      changeSetId: row.change_set_id
+    }
+  );
+  const reportPayload = JSON.stringify({
+    report: reportUsed,
+    derivedChanges: derivedUsed,
+    conflicts: (reportUsed || []).filter(function (r) {
+      return r.result === 'conflict';
+    })
+  });
+  await env.DB.prepare(
+    'UPDATE cloud_reviews SET apply_report_json = ?, status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ?, decision_note = ?, decision_edited = ? WHERE id = ?'
+  )
+    .bind(
+      reportPayload,
+      'accepted',
+      now,
+      actorLabel,
+      (entry && entry.id) || null,
+      decision.note || null,
+      decision.edited,
+      reviewId
+    )
+    .run();
+  if (pushRevChanged) {
+    await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
+  }
+  const resp = {
+    ok: true,
+    reviewId: reviewId,
+    status: 'accepted',
+    decidedAt: now,
+    savedAt: now,
+    applied: (reportUsed || []).filter(function (r) {
+      return r.result === 'applied';
+    }).length,
+    skipped: (reportUsed || []).filter(function (r) {
+      return r.result === 'skipped_already' || r.result === 'superseded';
+    }).length,
+    conflicts: appliedUsed ? appliedUsed.conflicts : [],
+    derivedChanges: derivedUsed || [],
+    changelog: entry
+  };
+  if (decision.note) {
+    resp.note = decision.note;
+  }
+  if (decision.edited) {
+    resp.edited = true;
+  }
+  return json(resp);
+}
+
+/* ============================================================
+   CHANGE-SET ACCEPT / REJECT (MCP-AGENT-FIRST 2026-11-12 3.6).
+   The owner (or, for a budget-only set, the named budget approver)
+   decides a whole set in one click. The engine runs proposal by
+   proposal on a single starting snapshot and logs each intermediate
+   state change as its own cloud_changelog entry, but the resulting
+   union is written to R2 in ONE conditional write (Step 1.6). Every
+   proposal row gets its own apply_report_json.
+   ============================================================ */
+
+export async function handleChangeSetAccept(request, env, projectId, changeSetId, pushRevChanged) {
+  const decision = await readDecisionBody(request);
+  // MCP-AGENT-FIRST 2026-11-12 1.6(a): an abandoned claim reverts to pending.
+  await cloudHealStaleClaims(env, projectId);
+  const rows =
+    (
+      await env.DB.prepare(
+        'SELECT * FROM cloud_reviews WHERE project_id = ? AND change_set_id = ? AND status = ?'
+      )
+        .bind(projectId, changeSetId, 'pending')
+        .all()
+    ).results || [];
+  if (!rows.length) {
+    return json(
+      { ok: false, error: 'no-pending', message: 'This change set has no pending proposals.' },
+      409
+    );
+  }
+  // Auth: owner, or the budget approver only when every proposal is budget-only.
+  let allBudgetOnly = rows.every(function (r) {
+    let s = [];
+    try {
+      s = JSON.parse(r.scope);
+    } catch (e) {
+      s = [];
+    }
+    return (
+      Array.isArray(s) &&
+      s.length &&
+      s.every(function (x) {
+        return x === 'bud';
+      })
+    );
+  });
+  let auth = await cloudAuthOwnerEither(request, env, projectId);
+  let actorLabel = 'Owner';
+  let actorType = 'owner';
+  if (!auth && allBudgetOnly) {
+    const approver = await cloudAuthBudgetApprover(request, env, projectId);
+    if (approver) {
+      auth = approver;
+      actorLabel = approver.label;
+      actorType = approver.actorType;
+    }
+  } else if (auth) {
+    actorLabel = auth.label || 'Owner';
+  }
+  if (!auth) {
+    return cloudForbidden();
+  }
+  const now = new Date().toISOString();
+  // Claim every row; the first one that cannot be claimed (already deciding)
+  // aborts the whole set and heals the rest back to pending.
+  const claimed = [];
+  let claimBroken = false;
+  for (let i = 0; i < rows.length; i++) {
+    const c = await env.DB.prepare(
+      "UPDATE cloud_reviews SET status = 'accepting', decided_at = ? WHERE id = ? AND project_id = ? AND status = 'pending'"
+    )
+      .bind(now, rows[i].id, projectId)
+      .run();
+    if (!c.meta || !c.meta.changes) {
+      claimBroken = true;
+      break;
+    }
+    claimed.push(rows[i].id);
+  }
+  if (claimBroken) {
+    for (let i = 0; i < claimed.length; i++) {
+      await releaseClaim(env, claimed[i]);
+    }
+    return json(
+      {
+        ok: false,
+        error: 'already-being-decided',
+        message: 'One of the proposals in this set is already being decided. Try again.'
+      },
+      409
+    );
+  }
+  const key = 'projects/' + projectId + '/latest.json';
+  const projRow = await env.DB.prepare(
+    'SELECT owner_code_hash, owner_code_salt FROM cloud_projects WHERE project_id = ?'
+  )
+    .bind(projectId)
+    .first();
+  const model = {
+    fieldSpec: fieldSpec,
+    getList: getList,
+    getSection: getSection,
+    isDeletable: isDeletable
+  };
+  const plans = rows.map(function (r) {
+    let ops = parseV2Ops(r.ops_json) || [];
+    let budgetChanges = [];
+    try {
+      const p = r.proposal_json ? JSON.parse(r.proposal_json) : null;
+      if (p && Array.isArray(p.changes)) {
+        budgetChanges = p.changes;
+      }
+    } catch (e) {
+      budgetChanges = [];
+    }
+    let scope = [];
+    try {
+      scope = JSON.parse(r.scope);
+    } catch (e) {
+      scope = [];
+    }
+    return {
+      id: r.id,
+      scope: Array.isArray(scope) ? scope : [],
+      ops: ops,
+      budgetChanges: budgetChanges,
+      row: r
+    };
+  });
+  const currency = (function () {
+    const last = rows[rows.length - 1];
+    try {
+      const p = last.proposal_json ? JSON.parse(last.proposal_json) : null;
+      return p && p.currency ? p.currency : null;
+    } catch (e) {
+      return null;
+    }
+  })();
+  let prevUsed = null;
+  let nextUsed = null;
+  let wrote = false;
+  const perProposal = [];
+  let hardFail = null;
+  for (let attempt = 0; attempt < 3 && !wrote; attempt++) {
+    const read = await cloudReadStateEtag(
+      env,
+      key,
+      projRow && projRow.owner_code_hash,
+      projRow && projRow.owner_code_salt
+    );
+    const prev = read.state;
+    let running = prev;
+    const localPer = [];
+    let failed = false;
+    for (let i = 0; i < plans.length && !failed; i++) {
+      const plan = plans[i];
+      const applied = applyOps(running, [{ id: plan.id, scope: plan.scope, ops: plan.ops }], {
+        model: model
+      });
+      if (applied.hardFailure) {
+        failed = true;
+        hardFail = applied.hardFailure;
+        break;
+      }
+      if (!applied.next) {
+        localPer.push({ plan: plan, report: applied.report, derivedChanges: [], next: running });
+        continue;
+      }
+      localPer.push({
+        plan: plan,
+        report: applied.report,
+        derivedChanges: applied.derivedChanges || [],
+        next: applied.next
+      });
+      running = applied.next;
+    }
+    if (failed) {
+      for (let i = 0; i < claimed.length; i++) {
+        await releaseClaim(env, claimed[i]);
+      }
+      return json(
+        {
+          ok: false,
+          error: 'accept-failed',
+          message: 'A proposal in this set could not be applied: ' + JSON.stringify(hardFail),
+          hardFailure: hardFail
+        },
+        422
+      );
+    }
+    let next = running;
+    let combinedBudget = [];
+    plans.forEach(function (p) {
+      combinedBudget = combinedBudget.concat(p.budgetChanges);
+    });
+    if (combinedBudget.length) {
+      const built = buildBudgetProposal(next, combinedBudget, currency);
+      if (!built.changes.length) {
+        for (let i = 0; i < claimed.length; i++) {
+          await releaseClaim(env, claimed[i]);
+        }
+        return json(
+          { ok: false, error: 'nothing-to-apply', message: 'No budget changes to apply.' },
+          400
+        );
+      }
+      const stale = [];
+      built.changes.forEach(function (c) {
+        if (c.kind !== 'changeLine' || c.before === undefined || c.before === null) {
+          return;
+        }
+        const live = (next.budgetLines || []).find(function (l) {
+          return String(l.id) === String(c.lineId);
+        });
+        const liveVal = live ? live[c.field] : undefined;
+        if (String(liveVal == null ? '' : liveVal) !== String(c.before)) {
+          stale.push({ lineId: c.lineId, field: c.field, expected: c.before, actual: liveVal });
+        }
+      });
+      if (stale.length) {
+        for (let i = 0; i < claimed.length; i++) {
+          await releaseClaim(env, claimed[i]);
+        }
+        return json(
+          {
+            ok: false,
+            error: 'stale',
+            message:
+              'A budget line changed since the proposal was made. Refresh the set before approving.',
+            stale: stale
+          },
+          409
+        );
+      }
+      const merged = cloudScopeMerge(next, built.submitted, ['bud']);
+      next = merged.next;
+    }
+    const totalApplied = localPer.reduce(function (acc, lp) {
+      return (
+        acc +
+        (lp.report || []).filter(function (r) {
+          return r.result === 'applied';
+        }).length
+      );
+    }, 0);
+    const totalConflicts = localPer.reduce(function (acc, lp) {
+      return (
+        acc +
+        (lp.report || []).filter(function (r) {
+          return r.result === 'conflict';
+        }).length
+      );
+    }, 0);
+    if (totalApplied === 0 && totalConflicts > 0) {
+      for (let i = 0; i < claimed.length; i++) {
+        await releaseClaim(env, claimed[i]);
+      }
+      return json(
+        {
+          ok: false,
+          error: 'conflict',
+          message: 'No changes could be applied - every op conflicts. Refresh and re-propose.',
+          conflicts: (localPer[0] && localPer[0].report ? localPer[0].report : []).filter(
+            function (r) {
+              return r.result === 'conflict';
+            }
+          )
+        },
+        409
+      );
+    }
+    next.updatedAt = now;
+    let r2Payload = JSON.stringify(next);
+    if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
+      try {
+        r2Payload = await cloudEncryptState(next, projRow.owner_code_hash, projRow.owner_code_salt);
+      } catch (e) {
+        /* fall back to plaintext */
+      }
+    }
+    const put = await cloudPutState(env, key, r2Payload, read.etag);
+    if (put.ok) {
+      wrote = true;
+      prevUsed = prev;
+      nextUsed = next;
+      perProposal.splice(0, perProposal.length);
+      localPer.forEach(function (lp) {
+        perProposal.push(lp);
+      });
+    }
+  }
+  if (!wrote) {
+    for (let i = 0; i < claimed.length; i++) {
+      await releaseClaim(env, claimed[i]);
+    }
+    return json(
+      {
+        ok: false,
+        error: 'busy',
+        message: 'The project is being saved by someone else right now. Try again in a moment.'
+      },
+      409
+    );
+  }
+  await env.DB.prepare(
+    'UPDATE cloud_projects SET latest_r2_key = ?, updated_at = ? WHERE project_id = ?'
+  )
+    .bind(key, now, projectId)
+    .run();
+  const entryIds = [];
+  for (let i = 0; i < perProposal.length; i++) {
+    const lp = perProposal[i];
+    const reportPayload = JSON.stringify({
+      report: lp.report,
+      derivedChanges: lp.derivedChanges,
+      conflicts: (lp.report || []).filter(function (r) {
+        return r.result === 'conflict';
+      })
+    });
+    let entry = null;
+    try {
+      entry = await cloudLogSave(
+        env,
+        projectId,
+        prevUsed,
+        lp.next || nextUsed,
+        { type: actorType, label: actorLabel },
+        'accepted',
+        {
+          proposalId: lp.plan.id,
+          sourceType: 'agent',
+          sourceLabel: lp.plan.row.source_label || 'MCP AI',
+          keyId: lp.plan.row.key_id,
+          changeSetId: changeSetId
+        }
+      );
+    } catch (e) {
+      entry = null;
+    }
+    entryIds.push((entry && entry.id) || null);
+    await env.DB.prepare(
+      'UPDATE cloud_reviews SET apply_report_json = ?, status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ?, decision_note = ?, decision_edited = ? WHERE id = ?'
+    )
+      .bind(
+        reportPayload,
+        'accepted',
+        now,
+        actorLabel,
+        (entry && entry.id) || null,
+        decision.note || null,
+        decision.edited,
+        lp.plan.id
+      )
+      .run();
+  }
+  if (pushRevChanged) {
+    await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
+  }
+  // MCP-AGENT-FIRST 2026-11-12 3.7: surface the conflict detail and the
+  // derived-field resets so the owner UI can render them after Accept all.
+  // `nextUsed` is the final accepted state; a conflicted op was NOT applied, so
+  // its live value is whatever `nextUsed` holds (the pre-accept live value).
+  const conflictList = [];
+  const derivedChanges = [];
+  perProposal.forEach(function (lp) {
+    const plan = plans.find(function (p) {
+      return p.id === lp.plan.id;
+    });
+    (lp.report || []).forEach(function (r) {
+      if (r.result === 'conflict') {
+        const op = (plan && plan.ops ? plan.ops : [])[r.opIndex];
+        let expected = op ? (op.afterAbsent ? null : op.after) : null;
+        let live = null;
+        let recName = '';
+        if (r.path && Array.isArray(nextUsed[r.path]) && r.recordId != null) {
+          const rec = (nextUsed[r.path] || []).find(function (x) {
+            return String(x.id) === String(r.recordId);
+          });
+          if (rec) {
+            recName = rec.name || rec.title || rec.description || rec.id || '';
+            live = r.field ? (rec[r.field] === undefined ? null : rec[r.field]) : rec;
+          }
+        } else if (r.path) {
+          const sec = nextUsed[r.path];
+          if (r.field) {
+            live = sec && sec[r.field] !== undefined ? sec[r.field] : null;
+          } else {
+            live = sec === undefined ? null : sec;
+          }
+        }
+        conflictList.push({
+          path: r.path,
+          recordId: r.recordId,
+          recordName: recName,
+          field: r.field,
+          expected: expected,
+          live: live,
+          reason: r.reason || ''
+        });
+      }
+    });
+    (lp.derivedChanges || []).forEach(function (dc) {
+      derivedChanges.push(dc);
+    });
+  });
+  const resp = {
+    ok: true,
+    changeSetId: changeSetId,
+    status: 'accepted',
+    decidedAt: now,
+    savedAt: now,
+    proposals: perProposal.length,
+    applied: perProposal.reduce(function (acc, lp) {
+      return (
+        acc +
+        (lp.report || []).filter(function (r) {
+          return r.result === 'applied';
+        }).length
+      );
+    }, 0),
+    skipped: perProposal.reduce(function (acc, lp) {
+      return (
+        acc +
+        (lp.report || []).filter(function (r) {
+          return r.result === 'skipped_already' || r.result === 'superseded';
+        }).length
+      );
+    }, 0),
+    conflicts: perProposal.reduce(function (acc, lp) {
+      return (
+        acc +
+        (lp.report || []).filter(function (r) {
+          return r.result === 'conflict';
+        }).length
+      );
+    }, 0),
+    conflictList: conflictList,
+    derivedChanges: derivedChanges,
+    changelog: entryIds
+  };
+  return json(resp);
+}
+
+export async function handleChangeSetReject(request, env, projectId, changeSetId) {
+  const decision = await readDecisionBody(request);
+  await cloudHealStaleClaims(env, projectId);
+  const rows =
+    (
+      await env.DB.prepare(
+        'SELECT * FROM cloud_reviews WHERE project_id = ? AND change_set_id = ? AND status = ?'
+      )
+        .bind(projectId, changeSetId, 'pending')
+        .all()
+    ).results || [];
+  if (!rows.length) {
+    return json(
+      { ok: false, error: 'no-pending', message: 'This change set has no pending proposals.' },
+      409
+    );
+  }
+  let allBudgetOnly = rows.every(function (r) {
+    let s = [];
+    try {
+      s = JSON.parse(r.scope);
+    } catch (e) {
+      s = [];
+    }
+    return (
+      Array.isArray(s) &&
+      s.length &&
+      s.every(function (x) {
+        return x === 'bud';
+      })
+    );
+  });
+  let auth = await cloudAuthOwnerEither(request, env, projectId);
+  let actorLabel = 'Owner';
+  if (!auth && allBudgetOnly) {
+    const approver = await cloudAuthBudgetApprover(request, env, projectId);
+    if (approver) {
+      auth = approver;
+      actorLabel = approver.label;
+    }
+  } else if (auth) {
+    actorLabel = auth.label || 'Owner';
+  }
+  if (!auth) {
+    return cloudForbidden();
+  }
+  const now = new Date().toISOString();
+  for (let i = 0; i < rows.length; i++) {
+    await env.DB.prepare(
+      "UPDATE cloud_reviews SET status = 'rejected', decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND project_id = ? AND status = 'pending'"
+    )
+      .bind(now, actorLabel, decision.note || null, rows[i].id, projectId)
+      .run();
+  }
+  return json({
+    ok: true,
+    changeSetId: changeSetId,
+    status: 'rejected',
+    decidedAt: now,
+    rejected: rows.length
   });
 }

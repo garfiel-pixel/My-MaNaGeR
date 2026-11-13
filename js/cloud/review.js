@@ -169,6 +169,241 @@ var MMGR = window.MMGR || {};
     return h;
   }
 
+  // One proposal card (used both inside a change-set group and for single
+  // proposals that have no multi-proposal set).
+  function renderProposalCard(p) {
+    // E2E-PROBE FIX 2026-09-25: the MCP server inserts proposal_type='mcp'
+    // with source_type='api' (src/mcp/server.js), so the old sourceType-only
+    // check never matched - MCP proposals rendered as "MCP AI (editor)"
+    // without the sparkle badge. Match the proposal type the server writes.
+    const isMCP = p.proposalType === 'mcp' || p.sourceType === 'mcp';
+    const src = isMCP
+      ? '<span class="badge-ai"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP AI</span> ' +
+        esc(p.sourceLabel || 'AI edit')
+      : '<strong>' + esc(p.sourceLabel || 'Editor') + '</strong> (editor)';
+    const when = String(p.proposedAt || '')
+      .slice(0, 19)
+      .replace('T', ' ');
+    const badge =
+      MMGR.Components && MMGR.Components.reviewBadge
+        ? MMGR.Components.reviewBadge(p.status)
+        : '<span class="badge" style="color:var(--amber);border:1px solid rgba(var(--amber-rgb),.35);background:rgba(var(--amber-rgb),.12)">' +
+          (p.status || 'pending') +
+          '</span>';
+    let actions = '';
+    if (p.status === 'pending') {
+      // H-6 (BUDGET-BOQ directive 2026-11-05): View is the front door -
+      // a full-width preview with the real panels, per-change ticks and
+      // editable values. Accept/Reject stay for the plain one-press
+      // path (and for older harnesses); the preview is where an edit
+      // or a partial approval happens.
+      actions =
+        '<button class="btn btn-g btn-s" data-action="cloudReviewView" data-id="' +
+        p.id +
+        '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View</button>' +
+        '<button class="btn btn-n btn-s" data-action="cloudReviewAccept" data-id="' +
+        p.id +
+        '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Accept</button>' +
+        '<button class="btn btn-o btn-s" data-action="cloudReviewReject" data-id="' +
+        p.id +
+        '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Reject</button>';
+    } else {
+      const decided =
+        (p.status === 'accepted' ? 'Accepted ' : 'Rejected ') +
+        String(p.decidedAt || '')
+          .slice(0, 19)
+          .replace('T', ' ');
+      actions =
+        '<span class="sr-hint" style="margin:0">' +
+        esc(decided) +
+        (p.decidedBy ? ' by ' + esc(p.decidedBy) : '') +
+        '</span>';
+    }
+    const diffs = Array.isArray(p.diffs) ? p.diffs : [];
+    const nDiffs = diffs.length;
+    const groups = groupDiffs(diffs);
+    const nRecords = groups.length;
+    // Long proposals start collapsed; the summary line still states the
+    // full scope, so the owner knows what Accept will apply.
+    const collapsed = nDiffs > 8;
+    const diffsToggle = collapsed
+      ? '<button type="button" class="cl-toggle rv-toggle" data-action="cloudReviewToggleDiffs" data-id="' +
+        p.id +
+        '" data-count="' +
+        nDiffs +
+        '" aria-expanded="false" aria-controls="rv-diffs-' +
+        p.id +
+        '" title="Show every field change">Show all ' +
+        nDiffs +
+        ' changes</button>'
+      : '';
+    const diffsPanel = nDiffs
+      ? '<div class="rv-groups' +
+        (collapsed ? ' is-hide' : '') +
+        '" id="rv-diffs-' +
+        p.id +
+        '">' +
+        renderGroups(groups) +
+        '</div>'
+      : '<div class="sr-hint">This proposal carries no field changes.</div>';
+    const meta =
+      nDiffs +
+      ' field change' +
+      (nDiffs === 1 ? '' : 's') +
+      ' across ' +
+      nRecords +
+      ' record' +
+      (nRecords === 1 ? '' : 's') +
+      (p.diffTruncated ? ' (showing the first ' + nDiffs + ')' : '');
+    return (
+      '<div class="rv-card">' +
+      '<div class="rv-head">' +
+      '<span class="rv-src">' +
+      src +
+      '</span>' +
+      badge +
+      diffsToggle +
+      '</div>' +
+      '<div class="rv-meta">' +
+      esc(meta) +
+      ' &middot; proposed ' +
+      esc(when) +
+      '</div>' +
+      diffsPanel +
+      '<div class="rv-actions">' +
+      actions +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  // MCP-AGENT-FIRST 2026-11-12 3.7: a change-set group header. Only groups
+  // with two or more proposals get the one-click Accept all / Reject all -
+  // a single proposal keeps its own View/Accept/Reject card controls.
+  function renderChangeSetHeader(cs, gProps, isMulti) {
+    const nProps = gProps.length;
+    const nFields = gProps.reduce(function (acc, p) {
+      return acc + (p.diffTotal || (Array.isArray(p.diffs) ? p.diffs.length : 0) || 0);
+    }, 0);
+    const label = cs ? 'Change set ' + esc(cs) : 'Single proposal';
+    const count =
+      nProps +
+      ' proposal' +
+      (nProps === 1 ? '' : 's') +
+      ' &middot; ' +
+      nFields +
+      ' field change' +
+      (nFields === 1 ? '' : 's');
+    let actions = '';
+    if (isMulti) {
+      actions =
+        '<div class="rv-group-actions">' +
+        '<button class="btn btn-g btn-s" data-action="cloudReviewAcceptAll" data-cs="' +
+        esc(cs) +
+        '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Accept all</button>' +
+        '<button class="btn btn-o btn-s" data-action="cloudReviewRejectAll" data-cs="' +
+        esc(cs) +
+        '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Reject all</button>' +
+        '</div>';
+    }
+    return (
+      '<div class="rv-group-head">' +
+      '<span class="rv-group-title">' +
+      label +
+      '</span>' +
+      '<span class="rv-group-count">' +
+      count +
+      '</span>' +
+      actions +
+      '</div>'
+    );
+  }
+
+  // After Accept all, render the applied / skipped / conflict / derived summary
+  // in place of the group's proposal cards (we do NOT blow the whole list away,
+  // so the owner can read what happened). The pull-merge refreshes Gantt/Kanban.
+  function renderChangeSetResult(cs, data) {
+    const group = document.querySelector(
+      '#cloud-review-list .rv-group[data-cs="' + String(cs || '').replace(/"/g, '&quot;') + '"]'
+    );
+    if (!group) {
+      return;
+    }
+    const applied = data.applied || 0;
+    const skipped = data.skipped || 0;
+    const conflicts = data.conflicts || 0;
+    const conflictRows = (data.conflictList || [])
+      .map(function (c) {
+        const name = c.recordName || c.recordId || c.path || '';
+        const field = c.field ? fieldLabel(c.field) : 'value';
+        const expected = valText(c.expected, c.expected === null, 'removed');
+        const live = valText(c.live, c.live === null, 'blank');
+        const loc = esc(pathLabel(c.path || '')) + (field ? ' &middot; ' + esc(field) : '');
+        return (
+          '<div class="rv-cs-crow">' +
+          '<span class="rv-cs-cname">' +
+          esc(String(name)) +
+          '</span>' +
+          '<span class="rv-cs-cloc">' +
+          loc +
+          '</span>' +
+          '<span class="rv-cs-cvals">wanted ' +
+          esc(expected) +
+          ' &middot; live ' +
+          esc(live) +
+          '</span>' +
+          (c.reason ? '<span class="rv-cs-creason">' + esc(c.reason) + '</span>' : '') +
+          '</div>'
+        );
+      })
+      .join('');
+    const derivedRows = (data.derivedChanges || [])
+      .map(function (d) {
+        const name = d.id ? 'task ' + esc(String(d.id)) : 'task';
+        return (
+          '<div class="rv-cs-drow">' +
+          name +
+          (d.field ? ' &middot; ' + esc(fieldLabel(d.field)) : '') +
+          ' reset to recompute in the app</div>'
+        );
+      })
+      .join('');
+    const html =
+      '<div class="rv-cs-result">' +
+      '<div class="rv-cs-summary">Applied <b>' +
+      esc(String(applied)) +
+      '</b> change' +
+      (applied === 1 ? '' : 's') +
+      ', skipped <b>' +
+      esc(String(skipped)) +
+      '</b>' +
+      (conflicts
+        ? ', <b>' +
+          esc(String(conflicts)) +
+          '</b> conflict' +
+          (conflicts === 1 ? '' : 's') +
+          ' (live value kept)'
+        : '') +
+      '</div>' +
+      (conflictRows
+        ? '<div class="rv-cs-conflicts"><h4>Conflicts</h4>' + conflictRows + '</div>'
+        : '') +
+      (derivedRows
+        ? '<div class="rv-cs-derived"><h4>Derived fields reset</h4>' + derivedRows + '</div>'
+        : '') +
+      '</div>';
+    const body = group.querySelector('.rv-group-body');
+    if (body) {
+      body.innerHTML = html;
+    } else {
+      group.innerHTML = html;
+    }
+    const actions = group.querySelector('.rv-group-actions');
+    if (actions) {
+      actions.innerHTML = '<span class="sr-hint" style="margin:0">Set accepted.</span>';
+    }
+  }
+
   async function cloudReviewList() {
     const wrap = $('cloud-review-list');
     if (!wrap) {
@@ -197,115 +432,185 @@ var MMGR = window.MMGR || {};
           '<div class="sr-hint">Nothing waiting for review - edits from editor codes and AI imports land here until you accept them.</div>';
         return;
       }
-      wrap.innerHTML = props
-        .map(function (p) {
-          // E2E-PROBE FIX 2026-09-25: the MCP server inserts proposal_type='mcp'
-          // with source_type='api' (src/mcp/server.js), so the old sourceType-only
-          // check never matched - MCP proposals rendered as "MCP AI (editor)"
-          // without the sparkle badge. Match the proposal type the server writes.
-          const isMCP = p.proposalType === 'mcp' || p.sourceType === 'mcp';
-          const src = isMCP
-            ? '<span class="badge-ai"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP AI</span> ' +
-              esc(p.sourceLabel || 'AI edit')
-            : '<strong>' + esc(p.sourceLabel || 'Editor') + '</strong> (editor)';
-          const when = String(p.proposedAt || '')
-            .slice(0, 19)
-            .replace('T', ' ');
-          const badge =
-            MMGR.Components && MMGR.Components.reviewBadge
-              ? MMGR.Components.reviewBadge(p.status)
-              : '<span class="badge" style="color:var(--amber);border:1px solid rgba(var(--amber-rgb),.35);background:rgba(var(--amber-rgb),.12)">' +
-                (p.status || 'pending') +
-                '</span>';
-          let actions = '';
-          if (p.status === 'pending') {
-            // H-6 (BUDGET-BOQ directive 2026-11-05): View is the front door -
-            // a full-width preview with the real panels, per-change ticks and
-            // editable values. Accept/Reject stay for the plain one-press
-            // path (and for older harnesses); the preview is where an edit
-            // or a partial approval happens.
-            actions =
-              '<button class="btn btn-g btn-s" data-action="cloudReviewView" data-id="' +
-              p.id +
-              '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View</button>' +
-              '<button class="btn btn-n btn-s" data-action="cloudReviewAccept" data-id="' +
-              p.id +
-              '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Accept</button>' +
-              '<button class="btn btn-o btn-s" data-action="cloudReviewReject" data-id="' +
-              p.id +
-              '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Reject</button>';
-          } else {
-            const decided =
-              (p.status === 'accepted' ? 'Accepted ' : 'Rejected ') +
-              String(p.decidedAt || '')
-                .slice(0, 19)
-                .replace('T', ' ');
-            actions =
-              '<span class="sr-hint" style="margin:0">' +
-              esc(decided) +
-              (p.decidedBy ? ' by ' + esc(p.decidedBy) : '') +
-              '</span>';
-          }
-          const diffs = Array.isArray(p.diffs) ? p.diffs : [];
-          const nDiffs = diffs.length;
-          const groups = groupDiffs(diffs);
-          const nRecords = groups.length;
-          // Long proposals start collapsed; the summary line still states the
-          // full scope, so the owner knows what Accept will apply.
-          const collapsed = nDiffs > 8;
-          const diffsToggle = collapsed
-            ? '<button type="button" class="cl-toggle rv-toggle" data-action="cloudReviewToggleDiffs" data-id="' +
-              p.id +
-              '" data-count="' +
-              nDiffs +
-              '" aria-expanded="false" aria-controls="rv-diffs-' +
-              p.id +
-              '" title="Show every field change">Show all ' +
-              nDiffs +
-              ' changes</button>'
-            : '';
-          const diffsPanel = nDiffs
-            ? '<div class="rv-groups' +
-              (collapsed ? ' is-hide' : '') +
-              '" id="rv-diffs-' +
-              p.id +
-              '">' +
-              renderGroups(groups) +
-              '</div>'
-            : '<div class="sr-hint">This proposal carries no field changes.</div>';
-          const meta =
-            nDiffs +
-            ' field change' +
-            (nDiffs === 1 ? '' : 's') +
-            ' across ' +
-            nRecords +
-            ' record' +
-            (nRecords === 1 ? '' : 's') +
-            (p.diffTruncated ? ' (showing the first ' + nDiffs + ')' : '');
+      const pending = props.filter(function (p) {
+        return p.status === 'pending';
+      });
+      const decided = props.filter(function (p) {
+        return p.status !== 'pending';
+      });
+      // Group pending proposals by change set. A proposal with no change set,
+      // or the only one in its set, renders as a plain card (no group header).
+      const groupsMap = {};
+      const groupsOrder = [];
+      pending.forEach(function (p) {
+        const key = p.changeSetId || '';
+        if (!groupsMap[key]) {
+          groupsMap[key] = [];
+          groupsOrder.push(key);
+        }
+        groupsMap[key].push(p);
+      });
+      const multiKeys = groupsOrder.filter(function (k) {
+        return groupsMap[k].length >= 2;
+      });
+      const singleKeys = groupsOrder.filter(function (k) {
+        return groupsMap[k].length < 2;
+      });
+      const groupHtml = multiKeys
+        .map(function (k) {
+          const gProps = groupsMap[k];
           return (
-            '<div class="rv-card">' +
-            '<div class="rv-head">' +
-            '<span class="rv-src">' +
-            src +
-            '</span>' +
-            badge +
-            diffsToggle +
-            '</div>' +
-            '<div class="rv-meta">' +
-            esc(meta) +
-            ' &middot; proposed ' +
-            esc(when) +
-            '</div>' +
-            diffsPanel +
-            '<div class="rv-actions">' +
-            actions +
+            '<div class="rv-group" data-cs="' +
+            esc(k) +
+            '">' +
+            renderChangeSetHeader(k, gProps, true) +
+            '<div class="rv-group-body">' +
+            gProps
+              .map(function (p) {
+                return renderProposalCard(p);
+              })
+              .join('') +
             '</div>' +
             '</div>'
           );
         })
         .join('');
+      const singleHtml = singleKeys
+        .map(function (k) {
+          return groupsMap[k]
+            .map(function (p) {
+              return renderProposalCard(p);
+            })
+            .join('');
+        })
+        .join('');
+      const decidedHtml = decided
+        .map(function (p) {
+          return renderProposalCard(p);
+        })
+        .join('');
+      wrap.innerHTML = groupHtml + singleHtml + decidedHtml;
     } catch (e) {
       wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
+    }
+  }
+
+  // MCP-AGENT-FIRST 2026-11-12 3.7: Accept every pending proposal in a change
+  // set in one atomic click, then render the applied/skipped/conflict/derived
+  // summary and pull-merge so Gantt/Kanban show the result.
+  async function cloudReviewAcceptAll(cs) {
+    if (!hasOwnerAccess() || !cs) {
+      setStatus('Owner access required.', 'warn');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Accept every change in this set? They are applied to the cloud project now and logged in the changelog (and offline copies refresh).'
+      )
+    ) {
+      return;
+    }
+    setStatus('Accepting set\u2026', 'busy');
+    try {
+      const res = await fetch(
+        '/api/cloud/projects/' +
+          encodeURIComponent(pid()) +
+          '/changesets/' +
+          encodeURIComponent(cs) +
+          '/accept',
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, ownerHeaders()),
+          body: JSON.stringify({})
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        // Prefer the server's sentence over its error code.
+        setStatus(
+          (data && (data.message || data.error)) || 'Accept failed (HTTP ' + res.status + ').',
+          'err'
+        );
+        return;
+      }
+      renderChangeSetResult(cs, data);
+      setStatus('Accepted - refreshing this project\u2026', 'busy');
+      try {
+        if (C.cloudPullMerge) {
+          await C.cloudPullMerge();
+        }
+      } catch (e) {
+        /* pull-merge is best-effort; the summary above already reports counts */
+      }
+      setStatus(
+        'Accepted ' +
+          (data.applied || 0) +
+          ' change' +
+          ((data.applied || 0) === 1 ? '' : 's') +
+          (data.conflicts
+            ? '; ' +
+              data.conflicts +
+              ' conflict' +
+              (data.conflicts === 1 ? '' : 's') +
+              ' kept the live value'
+            : '') +
+          '.',
+        'ok'
+      );
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // MCP-AGENT-FIRST 2026-11-12 3.7: Reject every pending proposal in a set.
+  async function cloudReviewRejectAll(cs) {
+    if (!hasOwnerAccess() || !cs) {
+      setStatus('Owner access required.', 'warn');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Reject every change in this set? They are discarded - the cloud project stays as it is.'
+      )
+    ) {
+      return;
+    }
+    setStatus('Rejecting set\u2026', 'busy');
+    try {
+      const res = await fetch(
+        '/api/cloud/projects/' +
+          encodeURIComponent(pid()) +
+          '/changesets/' +
+          encodeURIComponent(cs) +
+          '/reject',
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, ownerHeaders()),
+          body: JSON.stringify({})
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        setStatus((data && data.error) || 'Reject failed (HTTP ' + res.status + ').', 'err');
+        return;
+      }
+      setStatus(
+        'Rejected the set - ' +
+          (data.rejected || 0) +
+          ' proposal' +
+          ((data.rejected || 0) === 1 ? '' : 's') +
+          ' discarded. The cloud project is unchanged.',
+        'ok'
+      );
+      cloudReviewList();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
     }
   }
 
@@ -601,6 +906,8 @@ var MMGR = window.MMGR || {};
     cloudReviewView: cloudReviewView,
     cloudReviewAccept: cloudReviewAccept,
     cloudReviewReject: cloudReviewReject,
+    cloudReviewAcceptAll: cloudReviewAcceptAll,
+    cloudReviewRejectAll: cloudReviewRejectAll,
     copyEditorCode: copyEditorCode,
     editorCodeDone: editorCodeDone
   };

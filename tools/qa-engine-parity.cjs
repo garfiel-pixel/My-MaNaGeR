@@ -486,16 +486,21 @@ async function withChrome(fn) {
         list.result.tools &&
         // P2 (2026-11-11): an API key never sees get_weather (weather is not a
         // grantable section), so the scoped catalog was 11. MCP-AGENT-FIRST
-        // 2.5/2.6 add get_schema and validate_changes, so it is 13 now.
-        list.result.tools.length === 13 &&
+        // 2.5/2.6 add get_schema and validate_changes (13), 3.3 adds
+        // withdraw_changes (14), and 3.8 adds get_apply_report and get_pending
+        // (16).
+        list.result.tools.length === 16 &&
         !list.result.tools.some(t => t.name === 'get_weather') &&
         list.result.tools.some(t => t.name === 'get_schema') &&
         list.result.tools.some(t => t.name === 'validate_changes') &&
+        list.result.tools.some(t => t.name === 'withdraw_changes') &&
         list.result.tools.some(t => t.name === 'get_table') &&
         list.result.tools.some(t => t.name === 'run_monte_carlo') &&
         list.result.tools.some(t => t.name === 'get_deliveries') &&
         list.result.tools.some(t => t.name === 'get_weekly_summary') &&
-        list.result.tools.some(t => t.name === 'get_proposal_status')
+        list.result.tools.some(t => t.name === 'get_proposal_status') &&
+        list.result.tools.some(t => t.name === 'get_apply_report') &&
+        list.result.tools.some(t => t.name === 'get_pending')
       ),
       list && list.result && list.result.tools && list.result.tools.length
     );

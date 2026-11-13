@@ -771,11 +771,12 @@
 // (demo-data.js rides in the app bundle) and the proposal-review card shows
 // the record, field and both values, with the stale-refusal sentence in the
 // project bundle.
-// v651 - MCP-AGENT-FIRST (2026-11-12): the admin MCP panel is the management
-// area with its own pending-changes queue, and the search palette indexes
-// project records. admin.html, the admin bundle, the project bundle and
-// css/mmgr.css are shell assets.
-const CACHE = 'mmgr-shell-v651';
+// v652 - MCP-AGENT-FIRST 2026-11-12 3.7: owner review UI groups pending
+// proposals by change set with one-click Accept all / Reject all, and renders
+// the applied / skipped / conflict / derived summary after a set accept.
+// project.html, the project bundle, admin.html, the admin bundle, the owner
+// review module and css/mmgr.css are shell assets.
+const CACHE = 'mmgr-shell-v652';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

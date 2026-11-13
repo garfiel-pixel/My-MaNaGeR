@@ -1694,7 +1694,7 @@ export function cloudSectionOfDiffs(diffs) {
 
 // ---- Changelog log ---------------------------------------------------------
 
-export async function cloudLogSave(env, projectId, prev, next, actor, entryType) {
+export async function cloudLogSave(env, projectId, prev, next, actor, entryType, extra) {
   // cloudDiffState returns null for a missing `prev`. A brand-new project has no
   // stored state yet, so the FIRST write (including a budget approver accepting
   // the opening proposal) must still be audited as a creation, not dropped.
@@ -1703,6 +1703,16 @@ export async function cloudLogSave(env, projectId, prev, next, actor, entryType)
   if (diffs === null || diffs.length === 0) {
     return null;
   }
+  // MCP-AGENT-FIRST 2026-11-12 3.6/4.1: every agent-written entry carries the
+  // proposal it came from, the source (agent vs ui vs editor) and the key that
+  // proposed it, so get_changes_since can attribute each change.
+  const ex = extra && typeof extra === 'object' ? extra : {};
+  const proposalId = ex.proposalId != null ? ex.proposalId : null;
+  const sourceType = ex.sourceType || null;
+  const sourceLabel = ex.sourceLabel || null;
+  const keyId = ex.keyId != null ? String(ex.keyId) : null;
+  const changeSetId = ex.changeSetId || null;
+  const diffsKey = ex.diffsKey || null;
   const now = new Date().toISOString();
   if (diffs.length > CLOUD_MAX_LEAF_DIFFS) {
     const snapKey =
@@ -1717,15 +1727,30 @@ export async function cloudLogSave(env, projectId, prev, next, actor, entryType)
       httpMetadata: { contentType: 'application/json' }
     });
     const res = await env.DB.prepare(
-      'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at, proposal_id, source_type, source_label, key_id, change_set_id, diffs_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     )
-      .bind(projectId, entryType || 'bulk', actor.type, actor.label, null, null, snapKey, now)
+      .bind(
+        projectId,
+        entryType || 'bulk',
+        actor.type,
+        actor.label,
+        null,
+        null,
+        snapKey,
+        now,
+        proposalId,
+        sourceType,
+        sourceLabel,
+        keyId,
+        changeSetId,
+        diffsKey
+      )
       .run();
     return { id: res.meta.last_row_id, type: entryType || 'bulk' };
   }
   const sec = cloudSectionOfDiffs(diffs);
   const res = await env.DB.prepare(
-    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at) VALUES (?,?,?,?,?,?,?,?)'
+    'INSERT INTO cloud_changelog (project_id, entry_type, actor_type, actor_label, section, diffs_json, snapshot_key, created_at, proposal_id, source_type, source_label, key_id, change_set_id, diffs_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
   )
     .bind(
       projectId,
@@ -1735,7 +1760,13 @@ export async function cloudLogSave(env, projectId, prev, next, actor, entryType)
       sec,
       JSON.stringify(diffs),
       null,
-      now
+      now,
+      proposalId,
+      sourceType,
+      sourceLabel,
+      keyId,
+      changeSetId,
+      diffsKey
     )
     .run();
   return { id: res.meta.last_row_id, type: entryType || 'edit' };

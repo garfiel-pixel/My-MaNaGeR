@@ -528,7 +528,9 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         prevUsed,
         nextUsed,
         { type: actorType, label: actorLabel },
-        'accepted'
+        'accepted',
+        // ADDENDUM 4.1: attribute the writer, not just the approver.
+        reviewSource(row, actorLabel)
       );
       if (entry) {
         resp.changelog = entry;
@@ -595,6 +597,22 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
     resp.edited = true;
   }
   return json(resp);
+}
+
+// MCP-AGENT-FIRST 2026-11-12 4.1: one mapping from a review row to the
+// changelog's source fields, so every accepted proposal is attributed the
+// same way. An MCP proposal or a direct API-key save is 'agent' (the key
+// wrote it); an editor or team save is 'editor'. The human who clicked
+// Accept stays in actor_type / actor_label - this is about who WROTE it.
+function reviewSource(row, fallbackLabel) {
+  const isAgent = row.proposal_type === 'mcp' || row.source_type === 'api';
+  return {
+    proposalId: row.id != null ? row.id : null,
+    sourceType: isAgent ? 'agent' : 'editor',
+    sourceLabel: row.source_label || fallbackLabel || '',
+    keyId: row.key_id != null ? String(row.key_id) : null,
+    changeSetId: row.change_set_id || null
+  };
 }
 
 export async function handleReviewReject(request, env, projectId, reviewId) {
@@ -872,7 +890,9 @@ async function acceptMcpLegacy(
       prevUsed,
       nextUsed,
       { type: actorType, label: actorLabel },
-      'accepted'
+      'accepted',
+      // ADDENDUM 4.1: same attribution on the budget/legacy branch.
+      reviewSource(row, actorLabel)
     );
     if (entry) {
       resp.changelog = entry;

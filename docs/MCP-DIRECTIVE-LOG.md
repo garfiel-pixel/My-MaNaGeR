@@ -314,6 +314,7 @@ annotations live only in the Worker.
 | 3.8 Report tools | `src/mcp/server.js`, `src/mcp/appwide.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `get_apply_report`, `get_pending` added to both surfaces; `get_proposal_status` carries `changeSetId` + `accepted-with-conflicts`; AT10 / AT11 / AT12 green (62/62) |
 | 3.9 Deletes in `apply_changes` | `src/mcp/plan.js`, `src/cloud/apply-ops.js`, `test/apply-ops.test.mjs` | PASS — `deletes:[{path, recordId}]` validated in `planProposal` (deletable + in-scope + record exists, cap 200), accepted in `applyOps` (budget-reference / phase-child / predecessor cleanup rules), empty-envelope check covers deletes; GATE AT14 satisfied by `test/apply-ops.test.mjs` (pure unit test, Phase 0 rule 10) rather than a harness AT |
 | 3.6c / 5.3 Report size and retention (ADDENDUM A6) | `src/mcp/report-store.js` (new), `src/reviews.js`, `src/mcp/server.js`, `worker.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `apply_report_json` is now `{v:1, summary, report<=500, truncated, storedCount, derivedChanges, conflicts}` with the summary counted over EVERY entry; the daily cron prunes decided rows older than 90 days (op list dropped, report reduced to `{pruned:true, summary}`, pending rows never touched); `get_apply_report` answers a pruned row with `report: null`, the summary, `pruned: true` and a note; `qa-mcp-agent-first` 95/95 (AT27a-g) |
+| 4.1 Attribution on every writer | `src/reviews.js`, `src/cloud/projects.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `reviewSource(row)` maps an accepted proposal to `agent` (MCP proposal or direct API-key save, with `source_label` + `key_id`) or `editor` (editor/team save), and `handleCloudSave` tags a direct save `ui` for the owner or `editor` for an editor; the accepting human stays in `actor_type`/`actor_label`; `qa-mcp-agent-first` 98/98 (AT15a-c) |
 
 3.3 detail: `withdraw_changes({proposalId, opIndexes?})` is registered in both
 `TOOLS` (so the per-project and app-wide catalogs both advertise it) and wired
@@ -424,6 +425,22 @@ per proposal: a pruned row reads as `report: null` plus its permanent
 summary and an explanation, rather than as a proposal that never had a
 report. The read tool's envelope is otherwise unchanged, so the existing
 AT10/AT11 assertions still hold.
+
+4.1 detail (attribution): `reviewSource(row, fallbackLabel)` in
+`src/reviews.js` is the single mapping from a review row to the changelog
+source fields. `proposal_type === 'mcp'` or `source_type === 'api'` reads as
+`agent` (an API key is an agent credential, whether it queued through MCP or
+saved directly); an editor or team save reads as `editor`. It returns
+`{proposalId, sourceType, sourceLabel, keyId, changeSetId}` and is passed to
+`cloudLogSave` on both legacy/budget branches of `handleReviewAccept`, which
+previously logged the entry with no attribution at all. The v2 MCP paths
+(3.6) already passed it. `handleCloudSave` now passes
+`{sourceType: actor.type === 'owner' ? 'ui' : 'editor', sourceLabel: actor.label}`,
+so a direct save stops looking like an unattributed bulk edit.
+`actor_type`/`actor_label` are untouched: they record who APPROVED, while
+`source_*` records who WROTE. AT15a-c prove the three cases end to end
+(owner save, accepted agent proposal with key id, accepted legacy editor
+proposal).
 
 ---
 

@@ -766,7 +766,13 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     )
       .bind(key, now, saveStatus, saveSyncMode, projectId)
       .run();
-    const entry = await cloudLogSave(env, projectId, prev, next, actor);
+    // MCP-AGENT-FIRST 2026-11-12 4.1: a direct save is attributed to the
+    // surface that made it - the owner UI or an editor - so the audit
+    // trail can tell a human edit from an accepted agent proposal.
+    const entry = await cloudLogSave(env, projectId, prev, next, actor, undefined, {
+      sourceType: actor.type === 'owner' ? 'ui' : 'editor',
+      sourceLabel: actor.label
+    });
     const resp = {
       ok: true,
       savedAt: now,

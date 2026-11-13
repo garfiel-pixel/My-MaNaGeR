@@ -2755,6 +2755,115 @@ function addReview(env, row) {
     );
   }
 
+  // =====================================================================
+  // AT15 (4.1) — attribution. The changelog must say WHO wrote a change:
+  // 'ui' for the owner's own save, 'editor' for an editor/team save, 'agent'
+  // with the key label and key id for an accepted agent proposal. The human
+  // who clicked Accept stays in actor_type / actor_label.
+  // =====================================================================
+  section('AT15 — changelog attribution (agent vs ui vs editor)');
+  {
+    // 15a: the owner's own save is 'ui'.
+    const env = await makeEnv({ mod });
+    const st = await stateOf(env);
+    st.tasks[8].name = 'Renamed in the UI';
+    const saveReq = new Request('http://localhost/api/cloud/projects/' + PROJECT + '/save', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+      body: JSON.stringify({ state: st, syncMode: 'auto', baseUpdatedAt: st.updatedAt || null })
+    });
+    const saveRes = await mod.handleCloudSave(saveReq, env, PROJECT, null);
+    const saveData = await saveRes
+      .clone()
+      .json()
+      .catch(function () {
+        return null;
+      });
+    const uiEntry = env.__store.changelog[env.__store.changelog.length - 1];
+    check(
+      'AT15a a direct owner save is attributed to the ui',
+      !!(
+        saveRes.status === 200 &&
+        uiEntry &&
+        uiEntry.source_type === 'ui' &&
+        typeof uiEntry.source_label === 'string' &&
+        uiEntry.source_label.length > 0 &&
+        uiEntry.actor_type === 'owner'
+      ),
+      {
+        status: saveRes.status,
+        ok: saveData && saveData.ok,
+        source: uiEntry && { type: uiEntry.source_type, label: uiEntry.source_label },
+        actor: uiEntry && uiEntry.actor_type
+      }
+    );
+
+    // 15b: an accepted agent proposal is 'agent', with the key label and id.
+    const env2 = await makeEnv({ mod });
+    const q = await tool(env2, 950, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't6', field: 'notes', after: 'from the agent' }]
+    });
+    const pid = Number((textOf(q).match(/proposal #(\d+)/) || [])[1] || 0);
+    await accept(env2, pid);
+    const agentEntry = env2.__store.changelog[env2.__store.changelog.length - 1];
+    check(
+      'AT15b an accepted agent proposal carries agent, the key label and key_id',
+      !!(
+        agentEntry &&
+        agentEntry.source_type === 'agent' &&
+        agentEntry.source_label === 'Agent key' &&
+        String(agentEntry.key_id) === '1' &&
+        Number(agentEntry.proposal_id) === pid &&
+        agentEntry.actor_type === 'owner'
+      ),
+      agentEntry && {
+        source: agentEntry.source_type,
+        label: agentEntry.source_label,
+        keyId: agentEntry.key_id,
+        proposalId: agentEntry.proposal_id,
+        actor: agentEntry.actor_type
+      }
+    );
+
+    // 15c: a legacy editor proposal is 'editor', never 'agent'.
+    const env3 = await makeEnv({ mod });
+    const base = await stateOf(env3);
+    const edited = JSON.parse(JSON.stringify(base));
+    edited.tasks[9].notes = 'edited by the site editor';
+    const eid = addReview(env3, {
+      proposal_type: 'save',
+      source_type: 'editor',
+      source_label: 'Site Editor',
+      diffs_json: JSON.stringify([
+        {
+          path: 'tasks',
+          recordId: 't10',
+          field: 'notes',
+          before: '',
+          after: 'edited by the site editor'
+        }
+      ]),
+      submitted_json: JSON.stringify(edited)
+    });
+    const ea = await accept(env3, eid);
+    const editorEntry = env3.__store.changelog[env3.__store.changelog.length - 1];
+    check(
+      'AT15c an accepted editor proposal is attributed to the editor',
+      !!(
+        ea.status === 200 &&
+        editorEntry &&
+        editorEntry.source_type === 'editor' &&
+        editorEntry.source_label === 'Site Editor' &&
+        editorEntry.key_id == null
+      ),
+      {
+        status: ea.status,
+        text: (ea.text || '').slice(0, 120),
+        source: editorEntry && { type: editorEntry.source_type, label: editorEntry.source_label }
+      }
+    );
+  }
+
   console.log('\n========================================');
   console.log(pass + ' passed, ' + fail + ' failed');
   if (failures.length) {

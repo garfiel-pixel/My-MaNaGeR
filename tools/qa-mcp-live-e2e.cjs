@@ -923,7 +923,29 @@ async function main() {
   const e21Key = await api(
     'POST',
     '/api/cloud/projects/' + PID + '/api-keys',
-    { label: 'e21 volume', scope: ['charter','wbs','res','bud','stk','chg','log','risk','close','raci','comms','docs','dmaic','proc','meet','photos'], budgetRead: true, budgetWrite: true },
+    {
+      label: 'e21 volume',
+      scope: [
+        'charter',
+        'wbs',
+        'res',
+        'bud',
+        'stk',
+        'chg',
+        'log',
+        'risk',
+        'close',
+        'raci',
+        'comms',
+        'docs',
+        'dmaic',
+        'proc',
+        'meet',
+        'photos'
+      ],
+      budgetRead: true,
+      budgetWrite: true
+    },
     ownerH(OC)
   );
   check(
@@ -989,7 +1011,12 @@ async function main() {
 
   const e21BudgetBatch = [];
   for (let i = 1; i <= 12; i++) {
-    e21BudgetBatch.push({ kind: 'changeLine', lineId: 'b' + i, field: 'planned', value: 10000 * i + 5000 });
+    e21BudgetBatch.push({
+      kind: 'changeLine',
+      lineId: 'b' + i,
+      field: 'planned',
+      value: 10000 * i + 5000
+    });
   }
   for (let i = 1; i <= 12; i++) {
     e21BudgetBatch.push({
@@ -1010,16 +1037,28 @@ async function main() {
   };
   // 9 proposals (the 10th call is a validation, not a proposal).
   const p1 = await e21Propose(101, {
-    arguments: { diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'completed' }], label: 'e21 P1' }
+    arguments: {
+      diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'completed' }],
+      label: 'e21 P1'
+    }
   });
   const p2 = await e21Propose(102, {
-    arguments: { diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'blocked' }], label: 'e21 P2 collide' }
+    arguments: {
+      diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'blocked' }],
+      label: 'e21 P2 collide'
+    }
   });
   const p3 = await e21Propose(103, {
-    arguments: { diffs: [{ path: 'tasks', recordId: 't2', field: 'status', after: 'completed' }], label: 'e21 P3' }
+    arguments: {
+      diffs: [{ path: 'tasks', recordId: 't2', field: 'status', after: 'completed' }],
+      label: 'e21 P3'
+    }
   });
   const p4 = await e21Propose(104, {
-    arguments: { creates: [{ path: 'risks', record: { description: 'Risk created by agent' } }], label: 'e21 P4' }
+    arguments: {
+      creates: [{ path: 'risks', record: { description: 'Risk created by agent' } }],
+      label: 'e21 P4'
+    }
   });
   const p5 = await e21Propose(105, {
     arguments: { creates: [{ path: 'tasks', record: { name: 'Agent task 61' } }], label: 'e21 P5' }
@@ -1028,24 +1067,49 @@ async function main() {
     arguments: { budget: e21BudgetBatch, label: 'e21 P6 budget batch' }
   });
   const p7 = await e21Propose(107, {
-    arguments: { diffs: [{ path: 'risks', recordId: 'r1', field: 'description', after: 'Risk one edited' }], label: 'e21 P7' }
+    arguments: {
+      diffs: [{ path: 'risks', recordId: 'r1', field: 'description', after: 'Risk one edited' }],
+      label: 'e21 P7'
+    }
   });
   const p8 = await e21Propose(108, {
-    arguments: { diffs: [{ path: 'tasks', recordId: 't3', field: 'notes', after: 'Agent note' }], label: 'e21 P8' }
+    arguments: {
+      diffs: [{ path: 'tasks', recordId: 't3', field: 'notes', after: 'Agent note' }],
+      label: 'e21 P8'
+    }
   });
   const p9 = await e21Propose(109, {
-    arguments: { diffs: [{ path: 'tasks', recordId: 't4', field: 'status', after: 'inprogress' }], label: 'e21 P9' }
+    arguments: {
+      diffs: [{ path: 'tasks', recordId: 't4', field: 'status', after: 'inprogress' }],
+      label: 'e21 P9'
+    }
   });
   // 10th call: validate, must not queue a proposal.
   await sleep(700);
-  const p10 = await mcp(E21_KEY, 'tools/call', { name: 'validate_changes', arguments: { diffs: [{ path: 'tasks', recordId: 't5', field: 'status', after: 'completed' }] } }, 110);
-  const queuedCount = [p1, p2, p3, p4, p5, p6, p7, p8, p9].filter(p => !p.isError && /Queued \d+ field change/.test(p.text)).length;
+  const p10 = await mcp(
+    E21_KEY,
+    'tools/call',
+    {
+      name: 'validate_changes',
+      arguments: { diffs: [{ path: 'tasks', recordId: 't5', field: 'status', after: 'completed' }] }
+    },
+    110
+  );
+  const queuedCount = [p1, p2, p3, p4, p5, p6, p7, p8, p9].filter(
+    p => !p.isError && /Queued \d+ field change/.test(p.text)
+  ).length;
   check('E3 AT21 9 of 9 proposals queue', queuedCount === 9, {
-    counts: [p1, p2, p3, p4, p5, p6, p7, p8, p9].map(p => !p.isError && /Queued \d+ field change/.test(p.text))
+    counts: [p1, p2, p3, p4, p5, p6, p7, p8, p9].map(
+      p => !p.isError && /Queued \d+ field change/.test(p.text)
+    )
   });
   check(
     'E4 AT21 the 10th call (validate) queues no proposal',
-    !(p10.result && p10.result.isError) && !/Queued \d+ field change/.test((p10.result && p10.result.content && p10.result.content[0] && p10.result.content[0].text) || ''),
+    !(p10.result && p10.result.isError) &&
+      !/Queued \d+ field change/.test(
+        (p10.result && p10.result.content && p10.result.content[0] && p10.result.content[0].text) ||
+          ''
+      ),
     p10.result
   );
 
@@ -1053,7 +1117,12 @@ async function main() {
   // Filter to THIS key's numeric id so a leftover proposal queued by a
   // different key in an earlier phase (e.g. A5) cannot form a second change
   // set and get accepted in place of the e21 set.
-  const e21Reviews = await api('GET', '/api/cloud/projects/' + PID + '/reviews', undefined, ownerH(OC));
+  const e21Reviews = await api(
+    'GET',
+    '/api/cloud/projects/' + PID + '/reviews',
+    undefined,
+    ownerH(OC)
+  );
   const e21Pending = (e21Reviews.data.proposals || []).filter(
     p => p.status === 'pending' && p.sourceType === 'api' && String(p.keyId) === String(E21_KEY_ID)
   );
@@ -1085,7 +1154,12 @@ async function main() {
   check(
     'E7 AT21 the accept summary reports the proposal + applied counts',
     e21AccBody.proposals === 9 && e21AccBody.applied >= 1,
-    { proposals: e21AccBody.proposals, applied: e21AccBody.applied, conflicts: e21AccBody.conflicts, skipped: e21AccBody.skipped }
+    {
+      proposals: e21AccBody.proposals,
+      applied: e21AccBody.applied,
+      conflicts: e21AccBody.conflicts,
+      skipped: e21AccBody.skipped
+    }
   );
   await sleep(1200);
   const e21Loaded = await api('POST', '/api/cloud/projects/' + PID + '/load', {}, ownerH(OC));
@@ -1103,8 +1177,24 @@ async function main() {
   const spend = e21St.spendLog || [];
   check(
     'E8 AT21 applied ops landed: t2 completed, t3 note, t4 inprogress, t61+r10 created, r1 edited',
-    t2 && t2.status === 'completed' && t3 && t3.notes === 'Agent note' && t4 && t4.status === 'inprogress' && !!t61 && !!r10 && r1 && r1.description === 'Risk one edited',
-    { t2: t2 && t2.status, t3: t3 && t3.notes, t4: t4 && t4.status, t61: !!t61, r10: !!r10, r1: r1 && r1.description }
+    t2 &&
+      t2.status === 'completed' &&
+      t3 &&
+      t3.notes === 'Agent note' &&
+      t4 &&
+      t4.status === 'inprogress' &&
+      !!t61 &&
+      !!r10 &&
+      r1 &&
+      r1.description === 'Risk one edited',
+    {
+      t2: t2 && t2.status,
+      t3: t3 && t3.notes,
+      t4: t4 && t4.status,
+      t61: !!t61,
+      r10: !!r10,
+      r1: r1 && r1.description
+    }
   );
   // The colliding t1.status must be exactly one of the two values, never both,
   // and the budget batch must have moved (planned changed) with 12 deliveries.

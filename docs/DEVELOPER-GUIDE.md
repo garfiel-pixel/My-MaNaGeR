@@ -234,3 +234,139 @@ list is where new work should think twice about "just add another case."
 4. **Purity contracts exist**: schedule pass functions, `computeHealthScore`,
    `computeEVM` — don't make pure functions impure while moving code.
 5. **Verify**: `npm run verify` + the relevant `qa-*.cjs` harness for the area.
+
+## 4. MCP agent surface (MCP-AGENT-FIRST)
+
+Two JSON-RPC MCP surfaces sit in front of the same tool table:
+
+- `POST /api/mcp` — the **app-wide** surface (`src/mcp/appwide.js`), scoped to the
+  signed-in owner/account (project list, account, connector/calendar). No
+  project id in the path.
+- `POST /api/mcp/:projectId` — the **project** surface (`src/mcp/server.js`), the
+  write path for a single project's records.
+
+Both assemble their tool list from the shared `TOOLS` table in
+`src/mcp/server.js`; a tool declares which surface(s) it belongs to. Auth is a
+`Bearer sk-mmgr-…` (project API key) or the owner code. A key carries a `scope`
+(array of section ids) plus two money switches, `budgetRead` and `budgetWrite`.
+
+### 4.1 The model (`src/mcp/model.js`)
+
+`getList(cpath)`, `getSection(section)`, `fieldSpec`, `isDeletable()` and the
+`MODEL` enums are the single source of truth for every field the agent can touch.
+This is where:
+
+- allowed enums live (e.g. `tasks.status` = `todo|inprogress|blocked|completed`,
+  `probability/impact` = `Low|Medium|High`) — input is case-insensitive, the
+  canonical value is stored;
+- the **derived fields** are declared (`critical`, `totalFloat`, `statusSince`,
+  `completedDate`, `id`, `totalFloat`, …) so the queue refuses any attempt to
+  write them — the app recomputes them, an agent must never smuggle a computed
+  value and read it back as if the app had produced it.
+
+### 4.2 Proposal planning (`src/mcp/plan.js`)
+
+`planProposal(a, auth, …)` is the queuer-side validator. It takes the raw
+`{diffs, creates, sets, deletes, budget}` and returns `{ops, budget, refused,
+warnings, scope}`:
+
+- `ops` is the **v2 op list** (`{v:2, ops:[…]}`) — `set` / `create` / `delete`
+  records. This is what gets stored in `cloud_reviews.ops_json` and what the
+  accept engine runs (minus budget ops, which stay in `proposal_json`).
+- `budget` is the `buildBudgetProposal()` result (`{summary, currency, changes}`);
+  every money value is checked on the server, and delivery amounts are computed
+  by the server, never trusted from the client.
+- Permission gating happens here: a write to a section outside `scope` is
+  refused with "outside the granted sections"; a money op without both
+  `budgetRead` and `budgetWrite` is refused with "may not propose budget
+  changes". Budget-line diffs and envelope sets are re-expressed as budget-array
+  ops so one validator (`buildBudgetProposal`) owns every money check.
+- Unknown fields, over-length strings, enum misses, and derived-field writes are
+  refused with the allowed values. The dry-run tool `validate_changes` runs the
+  same code and queues nothing.
+
+### 4.3 Change sets and the never-auto-apply guarantee
+
+A key's same-day proposals share **one change set**: `cs_<UTCdate>_<keyId>`
+(`src/mcp/server.js`). The agent queues; the owner decides. Nothing an agent
+proposes is ever applied until the owner Accept-all (`POST /api/cloud/projects/
+:pid/changesets/:id/accept`) or the single-proposal Accept. This is the core
+contract — `apply_changes` returning "Queued N field change(s)" with the live
+state left untouched is the assertion every e2e harness pins (`A6`, `C1`).
+
+### 4.4 The accept engine (`src/cloud/applyOps.js`)
+
+`applyOps(liveState, proposals, {model})` returns
+`{next, report, derivedChanges, hardFailure, conflicts}`. It is a **pure**
+function: it clones the caller's state into `work` and never mutates the input,
+so an abandoned or failed accept leaves the blob untouched (proven by the
+R2 etag check in `AT05`). The engine's rules, in order:
+
+1. **before-mismatch → `conflict`**: a diff whose `before` no longer matches the
+   live value is a conflict; the live record is left unchanged and the report
+   names the record + field. The owner UI renders the conflict sentence.
+2. **after-already-live → `skipped_already`**: a diff whose `after` already
+   equals the live value is a no-op and is not re-applied.
+3. **last-op-wins**: two writes to the same record/field in one set — the later
+   op supersedes the earlier; this is `applied`, **not** a conflict (AT21's
+   colliding `t1.status`).
+4. **derived fields nulled for recompute**: every touched record has its
+   derived fields (`critical`, `totalFloat`, `statusSince`, `completedDate`) set
+   to `null` so the app's schedule pass recomputes them on the next load.
+5. **scope violation → `conflict`**: an op whose section is outside the
+   proposal's `scope`.
+6. **delete guards**: deleting a referenced task, a phase with children, or a
+   non-deletable list (`budgetLines`) is refused; a safe delete strips the
+   survivor's now-dangling predecessors.
+7. **hard failures**: a predecessor **cycle** (`findCycles`, ported from
+   `js/mmgr-schedule.js`) or a **bad enum** left in state is a `hardFailure`. On
+   a hard failure the whole set is rejected (`422 accept-failed` + `hardFailure`
+   in the body), and **every** report row is rewritten to `rolled_back`; the rows
+   whose field matches the failure (`predecessors` for a cycle, `status` for a
+   bad enum) carry the failure's own code (`CYCLE` / `BAD_ENUM`) plus a reason
+   naming the offending ids, so the agent learns which op to fix instead of
+   retrying the identical set.
+
+### 4.5 Budget proposals at accept (accept-side shape mismatch)
+
+`buildBudgetProposal()` is the single money validator, but it only understands
+the **raw MCP input shape** (`{kind, lineId, field, value, qty, unitPrice, …}`).
+The stored `proposal_json.changes` is the **output shape** (`{kind, lineId,
+field, before, after, …}`, with delivery details nested under `after`). The
+accept path (`src/reviews.js`) re-runs `buildBudgetProposal` on the stored
+entries, so `normalizeBudgetChange()` maps the stored shape back to the raw shape
+at the boundary before the call. Raw specs (the owner-preview `decision.changes`)
+pass through untouched — this is what makes an owner Accept-all of a budget MCP
+proposal actually apply instead of returning "No budget changes to apply."
+
+### 4.6 Tool catalog (project surface unless noted)
+
+| Tool | Surface | Purpose |
+|---|---|---|
+| `get_schema` | both | every field of every table + enums |
+| `get_table` / `get_tasks` / `get_risks` / `get_meetings` / `get_budget` | project | read a record list (the dedicated readers are the same data, shaped per list) |
+| `get_changes_since` | project | changelog entries since a cursor — the agent's incremental-sync view |
+| `get_pending` | project | the owner's pending review queue (status, counts) |
+| `get_proposal_status` | project | one proposal's state, `changeSetId`, and whether it was accepted-with-conflicts |
+| `get_apply_report` | project | the per-op report of the last accept |
+| `apply_changes` | project | queue diffs/creates/sets/deletes/budget for owner review |
+| `validate_changes` | project | dry-run of `apply_changes`, queues nothing |
+| `withdraw_changes` | project | withdraw the caller's own pending proposal (owns its idempotency key) |
+| `run_monte_carlo` / schedule reads | project | read-only analytics |
+
+### 4.7 Testing the surface
+
+- `tools/qa-mcp-agent-first.cjs` — the fake-DB contract harness: permission
+  matrix (AT11), derived-field guard (AT04), rollback honesty (AT05), summary
+  parity (AT06), create-then-read round trip (AT19). 140/140.
+- `tools/qa-appwide-mcp.cjs` — the app-wide OAuth surface, incl. the wbs-only
+  member read matrix (W5b). 60/60.
+- `tools/qa-mcp-live-e2e.cjs` — the real Worker + headless Chrome end-to-end:
+  PATH-A transport, queue gating, never-auto-apply, and the AT21 volume
+  scenario (Phase E: 9 `apply_changes` + 1 `validate_changes` over a
+  60-task/9-risk/12-line fixture, one shared change set, Accept-all lands mixed
+  applied/collision ops + a 24-change budget batch). Runs API-only in CI
+  (`MMGR_QA_NO_BROWSER=1`, 36/36) and full browser in `extended-qa.yml`.
+- `test/apply-ops.test.mjs` — the pure accept engine, 16/16 (cycle rollback,
+  bad-enum, scope, delete guards, derived-field nulling).
+

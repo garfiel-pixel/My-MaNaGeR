@@ -927,68 +927,119 @@ function addReview(env, row) {
   }
 
   // =====================================================================
-  // R09 — a name-only risk reads as untitled and is missing from openRisks
+  // R09 — a name-only risk reads its name and openRisks is case-insensitive
+  // (2.4 acceptance: the defect this section used to reproduce is fixed)
   // =====================================================================
-  section('R09 — get_risks ignores name and openRisks miscounts');
+  section('R09 — name-only risks read, openRisks case-insensitive');
   {
     const env = await makeEnv({ mod });
     const r = await tool(env, 60, 'get_risks', {});
     const data = jsonOf(r);
-    const names = (data.risks || []).map(function (x) {
-      return x.description;
-    });
+    const risks = data.risks || [];
+    const r1 = risks.filter(function (x) {
+      return x.id === 'r1';
+    })[0];
+    check(
+      'R09a a risk with name only reads its name in both fields',
+      !!r1 && r1.name === 'No description risk' && r1.description === 'No description risk',
+      { r1: r1 }
+    );
+    check(
+      'R09b every risk carries isOpen and openRiskCount counts both',
+      risks.length === 2 &&
+        risks.every(function (x) {
+          return x.isOpen === true;
+        }) &&
+        data.openRiskCount === 2,
+      {
+        openRiskCount: data.openRiskCount,
+        flags: risks.map(function (x) {
+          return x.isOpen;
+        })
+      }
+    );
     const s = await tool(env, 61, 'get_project_summary', {});
     const summary = jsonOf(s);
-    check('R09a a risk with name only reads as "(untitled)"', names.indexOf('(untitled)') > -1, {
-      names
+    check('R09c openRisks counts the "Open"-cased risk too', summary.openRisks === 2, {
+      openRisks: summary.openRisks
     });
+    // A promoted risk (carries issueId) is not open even with status "open".
+    const promotedState = baseState();
+    promotedState.risks.push({
+      id: 'r3',
+      description: 'Promoted risk',
+      status: 'open',
+      issueId: 'i1'
+    });
+    const env2 = await makeEnv({ mod, state: promotedState });
+    const r2 = await tool(env2, 62, 'get_risks', {});
+    const data2 = jsonOf(r2);
+    const r3 = (data2.risks || []).filter(function (x) {
+      return x.id === 'r3';
+    })[0];
     check(
-      'R09b openRisks misses the "Open" risk (case-sensitive status)',
-      summary.openRisks === 1,
-      { openRisks: summary.openRisks }
+      'R09d a promoted risk is not open',
+      !!r3 && r3.isOpen === false && r3.promoted === true && data2.openRiskCount === 2,
+      { r3: r3, openRiskCount: data2.openRiskCount }
     );
   }
 
   // =====================================================================
-  // R10 — status "done" is accepted and completion stays 0
+  // R10 — status "done" is refused with the allowed enum
   // =====================================================================
-  section('R10 — status "done" is queued, accepted, and invisible');
+  section('R10 — an unknown status is refused with the allowed enum');
   {
     const env = await makeEnv({ mod });
     const q = await tool(env, 70, 'apply_changes', {
       diffs: [{ path: 'tasks', recordId: 't6', field: 'status', after: 'done' }]
     });
-    const a = await accept(env, env.__store.reviews[0].id);
     const st = await stateOf(env);
-    const s = await tool(env, 71, 'get_project_summary', {});
-    const summary = jsonOf(s);
+    const txt = textOf(q);
     check(
-      'R10a the unknown enum is queued and accepted without a refusal',
-      /Queued 1 field change/.test(textOf(q)) && a.status === 200 && st.tasks[5].status === 'done',
-      { q: textOf(q).slice(0, 100), status: a.status, live: st.tasks[5].status }
+      'R10a status "done" is refused with the allowed list and no row is queued',
+      /not one of: todo, inprogress, blocked, completed/.test(txt) &&
+        env.__store.reviews.length === 0 &&
+        st.tasks[5].status === 'todo',
+      { q: txt.slice(0, 160), rows: env.__store.reviews.length, live: st.tasks[5].status }
     );
+    // Case-insensitive input maps to the canonical lowercase value.
+    const q2 = await tool(env, 71, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't6', field: 'status', after: 'InProgress' }]
+    });
     check(
-      'R10b completedTasks stays 0 because "done" is not "completed"',
-      summary.completedTasks === 5,
-      { completedTasks: summary.completedTasks }
+      'R10b "InProgress" queues and stores the canonical lowercase value',
+      /Queued 1 field change/.test(textOf(q2)) &&
+        env.__store.reviews.length === 1 &&
+        JSON.parse(env.__store.reviews[0].submitted_json).tasks[5].status === 'inprogress',
+      { q: textOf(q2).slice(0, 120) }
     );
   }
 
   // =====================================================================
-  // R11 — a derived field (critical) is writable
+  // R11 — a derived field is refused
   // =====================================================================
-  section('R11 — critical is accepted as an agent write');
+  section('R11 — a derived field is refused');
   {
     const env = await makeEnv({ mod });
     const q = await tool(env, 80, 'apply_changes', {
       diffs: [{ path: 'tasks', recordId: 't6', field: 'critical', after: true }]
     });
-    const a = await accept(env, env.__store.reviews[0].id);
     const st = await stateOf(env);
     check(
-      'R11 critical:true is queued and accepted (derived field, no guard)',
-      /Queued 1 field change/.test(textOf(q)) && a.status === 200 && st.tasks[5].critical === true,
-      { q: textOf(q).slice(0, 100), status: a.status, critical: st.tasks[5].critical }
+      'R11 critical is refused as derived and nothing is queued',
+      /derived field, recomputed by the app/.test(textOf(q)) &&
+        env.__store.reviews.length === 0 &&
+        st.tasks[5].critical !== true,
+      { q: textOf(q).slice(0, 160), rows: env.__store.reviews.length }
+    );
+    // A create cannot smuggle a derived field either.
+    const q2 = await tool(env, 81, 'apply_changes', {
+      creates: [{ path: 'tasks', record: { name: 'Smuggled', critical: true } }]
+    });
+    check(
+      'R11b a create carrying critical is refused',
+      /critical: derived field/.test(textOf(q2)) && env.__store.reviews.length === 0,
+      { q: textOf(q2).slice(0, 160) }
     );
   }
 
@@ -1056,6 +1107,246 @@ function addReview(env, row) {
     check('R14 tools/list has no get_changes_since', names.indexOf('get_changes_since') === -1, {
       count: names.length
     });
+  }
+
+  // =====================================================================
+  // F1 — validate_changes and apply_changes agree on 50 generated inputs
+  // =====================================================================
+  section('F1 — the dry run and the queue return identical refusals');
+  {
+    // Deterministic PRNG so a failure is reproducible.
+    function mulberry32(a) {
+      return function () {
+        a |= 0;
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    const rnd = mulberry32(20261112);
+    const pick = function (arr) {
+      return arr[Math.floor(rnd() * arr.length)];
+    };
+    const PATHS = [
+      'tasks',
+      'resources',
+      'risks',
+      'issues',
+      'logEntries',
+      'meetings',
+      'stakeholders',
+      'documents',
+      'changes',
+      'commsEntries',
+      'budgetLines',
+      'spendLog',
+      'nope'
+    ];
+    const IDS = ['t1', 't6', 't30', 'b1', 's1', 'R001', 'nope', ''];
+    const FIELDS = [
+      'name',
+      'status',
+      'notes',
+      'description',
+      'critical',
+      'startDate',
+      'predecessors',
+      'probability',
+      'planned',
+      'nope',
+      'id'
+    ];
+    const VALUES = [
+      'todo',
+      'done',
+      'Open',
+      'high',
+      '2026-02-30',
+      '2026-11-12',
+      true,
+      false,
+      0,
+      42,
+      null,
+      '',
+      [],
+      'x'.repeat(4100)
+    ];
+    const build = function () {
+      const args = {};
+      const mode = rnd();
+      if (mode < 0.55) {
+        const n = 1 + Math.floor(rnd() * 3);
+        args.diffs = [];
+        for (let i = 0; i < n; i++) {
+          args.diffs.push({
+            path: pick(PATHS),
+            recordId: pick(IDS),
+            field: pick(FIELDS),
+            after: pick(VALUES)
+          });
+        }
+      } else if (mode < 0.8) {
+        const n = 1 + Math.floor(rnd() * 2);
+        args.creates = [];
+        for (let i = 0; i < n; i++) {
+          const rec = {};
+          const keys = 1 + Math.floor(rnd() * 3);
+          for (let k = 0; k < keys; k++) {
+            rec[pick(FIELDS)] = pick(VALUES);
+          }
+          if (rnd() < 0.7) {
+            rec.name = 'Generated ' + i;
+          }
+          args.creates.push({ path: pick(PATHS), record: rec });
+        }
+      } else {
+        args.sets = [
+          {
+            path: pick([
+              'charter',
+              'dmaic',
+              'closure',
+              'raci',
+              'projectName',
+              'projectDeadline',
+              'methodology',
+              'nope'
+            ]),
+            field: pick([
+              'name',
+              'define.problem',
+              'define.nope',
+              'well',
+              'methodology',
+              'nope',
+              ''
+            ]),
+            value: pick(VALUES)
+          }
+        ];
+      }
+      return args;
+    };
+    const mismatches = [];
+    for (let i = 0; i < 50; i++) {
+      const args = build();
+      const envV = await makeEnv({ mod });
+      const envA = await makeEnv({ mod });
+      const v = await tool(envV, 1000 + i, 'validate_changes', args);
+      const a = await tool(envA, 2000 + i, 'apply_changes', args);
+      const vBody = jsonOf(v);
+      const aBlock = blockJson(a, 1);
+      let same;
+      if (vBody) {
+        // apply_changes has no structured block when nothing was queued; its
+        // prose then carries the same joined refusal list.
+        let aRef = null;
+        if (aBlock) {
+          aRef = aBlock.refusedText;
+        } else {
+          const idx = textOf(a).indexOf('Refused: ');
+          aRef =
+            idx === -1
+              ? []
+              : textOf(a)
+                  .slice(idx + 9)
+                  .replace(/\.$/, '')
+                  .split('; ');
+        }
+        same =
+          JSON.stringify(vBody.refusedText) === JSON.stringify(aRef) &&
+          JSON.stringify(vBody.warnings) === JSON.stringify(aBlock ? aBlock.warnings : []);
+      } else {
+        same = textOf(v) === textOf(a);
+      }
+      if (!same) {
+        mismatches.push({
+          i: i,
+          args: args,
+          validate: textOf(v).slice(0, 300),
+          apply: textOf(a).slice(0, 300)
+        });
+      }
+    }
+    check(
+      'F1 50 generated inputs produce identical refusals from both tools',
+      mismatches.length === 0,
+      mismatches.slice(0, 2)
+    );
+  }
+
+  // =====================================================================
+  // T1 — a 30-task chain with tempId dependencies in one call
+  // =====================================================================
+  section('T1 — tempId maps a create chain onto real ids');
+  {
+    const env = await makeEnv({ mod });
+    const creates = [];
+    for (let i = 0; i < 30; i++) {
+      creates.push({
+        path: 'tasks',
+        tempId: 'tmp' + i,
+        record: {
+          name: 'Chain ' + i,
+          predecessors: i === 0 ? [] : ['tmp' + (i - 1)]
+        }
+      });
+    }
+    const q = await tool(env, 300, 'apply_changes', { creates });
+    const row = env.__store.reviews[0];
+    const submitted = row ? JSON.parse(row.submitted_json) : { tasks: [] };
+    const created = submitted.tasks.slice(BASE_TASKS);
+    check(
+      'T1a 30 creates queue in one proposal',
+      created.length === 30 && /Queued \d+ field change/.test(textOf(q)),
+      { q: textOf(q).slice(0, 120), created: created.length }
+    );
+    check(
+      'T1b every stored predecessor is the previous real id',
+      created.every(function (t, i) {
+        if (i === 0) {
+          return (t.predecessors || []).length === 0;
+        }
+        return t.predecessors && t.predecessors[0] === created[i - 1].id;
+      }),
+      {
+        first: created[0] && created[0].predecessors,
+        second: created[1] && created[1].predecessors,
+        id0: created[0] && created[0].id
+      }
+    );
+    check(
+      'T1c no tempId leaks into the stored state',
+      !JSON.stringify(submitted).includes('tmp0') && !JSON.stringify(submitted).includes('tmp29')
+    );
+    // A forward reference resolves too: A depends on B, B is created after A.
+    const env2 = await makeEnv({ mod });
+    await tool(env2, 301, 'apply_changes', {
+      creates: [
+        { path: 'tasks', tempId: 'a', record: { name: 'A', predecessors: ['b'] } },
+        { path: 'tasks', tempId: 'b', record: { name: 'B' } }
+      ]
+    });
+    const sub2 = JSON.parse(env2.__store.reviews[0].submitted_json).tasks;
+    const a2 = sub2[sub2.length - 2];
+    const b2 = sub2[sub2.length - 1];
+    check(
+      'T1d a forward tempId reference resolves to the later id',
+      a2.name === 'A' && b2.name === 'B' && a2.predecessors[0] === b2.id,
+      { a: a2, b: b2 }
+    );
+    // An unknown reference is refused.
+    const env3 = await makeEnv({ mod });
+    const bad = await tool(env3, 302, 'apply_changes', {
+      creates: [{ path: 'tasks', record: { name: 'Orphan', predecessors: ['nope'] } }]
+    });
+    check(
+      'T1e an unknown predecessor is refused',
+      /not a task in this project/.test(textOf(bad)) && env3.__store.reviews.length === 0,
+      { q: textOf(bad).slice(0, 160) }
+    );
   }
 
   console.log('\n========================================');

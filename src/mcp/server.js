@@ -55,12 +55,33 @@ import { ownerTier } from '../cloud/team.js';
 import { structuredLog } from '../lib/observe.js';
 import {
   BUDGET_PROPOSAL_LIMIT,
+  BUDGET_LARGE_ABS,
   BUDGET_LARGE_PER_DAY,
   BUDGET_LINE_FIELDS,
   parseISO,
   buildBudgetProposal
 } from '../lib/budget.js';
-import { createDefaults, stampCreated, canonicalField } from './model.js';
+import {
+  planProposal,
+  validateProposalEnvelope,
+  validateChangesProposal,
+  structuredRefusals
+} from './plan.js';
+import {
+  describeSchema,
+  LIST_PATHS,
+  SECTION_PATHS,
+  STRING_MAX,
+  SHORT_MAX,
+  ID_MAX
+} from './model.js';
+import { MCP_MAX_DIFFS, MCP_MAX_CREATES, MCP_MAX_SETS, MCP_WRITE_BUDGET_MS } from './plan.js';
+import {
+  budgetReadAllowed,
+  budgetWriteAllowed,
+  BUDGET_READ_REFUSAL,
+  BUDGET_WRITE_REFUSAL
+} from './budget-access.js';
 
 // ---- MCP protocol constants ----
 
@@ -100,13 +121,25 @@ export const TOOLS = [
   },
   {
     name: 'get_tasks',
-    description: 'Get all tasks with status, start/end dates, dependencies, and critical flag.',
-    inputSchema: { type: 'object', properties: {}, required: [] }
+    description:
+      'Get all tasks with status, start/end dates, dependencies, and critical flag. Also returns predecessors, level, isPhase, parentName, milestone, duration, percent, totalFloat, freeFloat, startedDate, completedDate, statusSince, leadTime and confidence. Use fields to choose columns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Optional column list, e.g. ["id","name","status","totalFloat"]. Unknown names are reported in unknownFields.'
+        }
+      },
+      required: []
+    }
   },
   {
     name: 'get_budget',
     description:
-      'Get budget lines with planned vs actual costs, EVM metrics (SPI, CPI, EAC, ETC, VAC). H-5: each line also carries its BOQ quantity, unit, rate, deliveries, remaining quantity and a status chip; the frozen baseline and the variation count are included. Needs the Budget section AND the key\'s "Read budget" switch.',
+      'Get budget lines with planned vs actual costs and EVM metrics (SPI, CPI, EAC, ETC, VAC) computed exactly as the dashboard does. Each line carries id, name, label, category, actualBasis (what "actual" counts), actualToDate and committedFuture (received/paid vs future-dated spend), BOQ quantity/unit/rate, deliveries, remaining quantity and a status chip; the frozen baseline and the variation count are included. evm is null when there are no tasks or no planned budget and evmNote says why. Needs the Budget section AND the key\'s "Read budget" switch.',
     inputSchema: { type: 'object', properties: {}, required: [] }
   },
   {
@@ -187,10 +220,29 @@ export const TOOLS = [
         },
         limit: {
           type: 'integer',
-          description: 'Max records to return from an array table (default 200)'
+          description: 'Max records to return from an array table (default 200, max 1000)'
+        },
+        offset: {
+          type: 'integer',
+          description: 'Records to skip before the page (default 0). nextOffset is null at the end.'
         }
       },
       required: ['table']
+    }
+  },
+  {
+    name: 'get_schema',
+    description:
+      "Describe the writable data model: every table and section this key may touch, with each field's type, max length, enum, input alias, required flag and derived flag, plus the proposal limits (op caps, string max, budget proposal cap, large-change rule). Use it before apply_changes. Pass table to describe one entry; omit it for all. API keys only see tables inside their granted sections.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        table: {
+          type: 'string',
+          description: 'Optional table or section path (for example tasks, budgetLines, charter)'
+        }
+      },
+      required: []
     }
   },
   {
@@ -219,7 +271,7 @@ export const TOOLS = [
   {
     name: 'apply_changes',
     description:
-      'Submit changes to the project: edit existing records with diffs, create new records with creates, or set whole values / nested object fields with sets. Everything goes through the owner review queue - never auto-applied. diffs: array of {path, recordId, field, before, after}. creates: array of {path, record} where record needs at least {name} (tasks also accept startDate/endDate/assignee/status; resources accept name/role/rate/type). sets: array of {path, field, value} for object sections (charter, dmaic, closure, raci) and scalar keys (projectDeadline, budgetEnvelope, projectName) - omit field to replace the whole value. budget: budget-only proposals (addLine, changeLine, addDelivery) - these need the key\'s "Propose budget changes" switch, every money value is checked on the server, and the server computes the delivery amount itself.',
+      'Submit one change set to the project: edit existing records with diffs, create new records with creates, set whole values / nested object fields with sets, or propose budget lines with budget. Everything goes to the owner review queue - never auto-applied. Validation is strict: unknown fields, wrong types, strings over the field limit and enum misses are refused with the allowed values, and derived fields (id, critical, totalFloat, statusSince, completedDate and the like) are refused because the app recomputes them. Enums (input is case-insensitive, the canonical value is stored): tasks.status todo|inprogress|blocked|completed; issues.status open|resolved|closed; changes.status submitted|review|approved|rejected|cancelled; confidence high|medium|low; probability, impact, influence and interest Low|Medium|High. Call get_schema for every field of every table, and validate_changes to dry-run the same call without queueing anything. diffs: {path, recordId, field, before?, after}; a supplied before that no longer matches the live value is refused as stale, an omitted before is reported as a warning. creates: {path, record, tempId?}; tempId (max 40, unique in the call) lets a later create or any predecessors entry reference the new id, and missing fields get the app defaults. sets: {path, field?, value} for charter, dmaic, closure, raci and the scalar keys projectName, projectDeadline, budgetEnvelope. budget: addLine, changeLine, addDelivery - needs the key\'s "Propose budget changes" switch; every money value is checked on the server and the server computes the delivery amount itself.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -252,7 +304,7 @@ export const TOOLS = [
               record: {
                 type: 'object',
                 description:
-                  'The new record. Must carry at least a "name" field. Unknown fields are kept; missing fields get list-appropriate defaults so the record renders correctly in the app.'
+                  'The new record. Missing fields get the app defaults; unknown or derived fields are refused with the allowed list (see get_schema).'
               }
             },
             required: ['path', 'record']
@@ -320,70 +372,25 @@ export const TOOLS = [
   }
 ];
 
+// MCP-AGENT-FIRST 2026-11-12 2.6: validate_changes is the dry run of
+// apply_changes - same envelope, same permission checks, same planProposal,
+// nothing queued. It reuses the apply_changes schema object so the two tools
+// can never advertise different inputs.
+const APPLY_CHANGES_TOOL = TOOLS.find(function (t) {
+  return t.name === 'apply_changes';
+});
+TOOLS.push({
+  name: 'validate_changes',
+  description:
+    'Dry run apply_changes: same diffs/creates/sets/budget input, same permission checks, nothing queued. Returns {ok, refused, warnings, wouldCreateOps, counts, largeChanges} so an agent can fix its proposal before the owner ever sees it.',
+  inputSchema: APPLY_CHANGES_TOOL.inputSchema
+});
 // OWNER 2026-09-17 (CREATE support): the owner's lazy-PM scenario - talk to
 // the AI in a terminal, it ADDS the new people/tasks, the owner verifies.
-// MCP-AGENT-FIRST 2026-11-12 2.1: the defaults now come from src/mcp/model.js,
-// which is derived from the app's own creators (js/mmgr-tasks.js createTask,
-// js/mmgr-resources.js addResource, ...) and proven field-for-field by
-// test/mcp-model.test.mjs. The old CREATE_DEFAULTS had drifted: a created
-// task lacked createdDate/boardPosition/relations/custom, a risk was keyed on
-// `name` while the app stores `description`, and documents/changes were
-// missing their whole register shape. A create on a path that is not an
-// editable list is refused, same as diffs. Scope enforcement is identical:
-// the create lands only if the section is granted, and the whole proposal
-// waits in the review queue regardless.
-function mcpToday(nowMs) {
-  // The client's U.todayStr() uses the browser's local day. The Worker has
-  // only UTC, so a create near midnight can carry the neighbouring day; the
-  // date is informational and the app re-stamps on the next real status move.
-  return new Date(nowMs).toISOString().slice(0, 10);
-}
-
-// Mirrors js/mmgr-kanban.js nextPosition: the new card lands at the end of
-// its column, never in the middle of the owner's ordering.
-function nextTaskPosition(tasks, status) {
-  let max = -1;
-  (tasks || []).forEach(function (t) {
-    if (!t || (t.status || 'todo') !== status) {
-      return;
-    }
-    const p =
-      typeof t.boardPosition === 'number' && isFinite(t.boardPosition)
-        ? t.boardPosition
-        : Number.MAX_SAFE_INTEGER;
-    if (p !== Number.MAX_SAFE_INTEGER && p > max) {
-      max = p;
-    }
-  });
-  return max + 1;
-}
-
-function buildCreatedRecord(path, record, nowMs, counterRef, siblings) {
-  const rec = createDefaults(path);
-  if (!rec) {
-    return null;
-  }
-  rec.id =
-    (path === 'tasks' ? 't_' : path === 'resources' ? 'R' : 'mcp_') +
-    nowMs.toString(36) +
-    '_' +
-    ++counterRef.n;
-  if (record && typeof record === 'object') {
-    for (const k of Object.keys(record)) {
-      if (k === 'id') {
-        continue;
-      } // ids are server-assigned, never client-supplied
-      // A modelled alias lands on its canonical stored name (`name` on a
-      // risk or issue becomes `description`). Unmodelled keys still pass
-      // through in Phase 2.1; Phase 2.2 refuses them in planProposal.
-      rec[canonicalField(path, k) || k] = record[k];
-    }
-  }
-  return stampCreated(path, rec, {
-    today: mcpToday(nowMs),
-    boardPosition: path === 'tasks' ? nextTaskPosition(siblings, rec.status || 'todo') : 0
-  });
-}
+// MCP-AGENT-FIRST 2026-11-12 2.1/2.2: the create defaults and every field
+// rule now live in ./model.js and ./plan.js, derived from the app's own
+// creators (js/mmgr-tasks.js createTask, js/mmgr-resources.js addResource,
+// ...) and proven field-for-field by test/mcp-model.test.mjs.
 
 // ---- B3 (owner 2026-10-11): full table access + Monte Carlo run ----------
 // Two gaps closed, nothing widened. get_table opens the tables the six named
@@ -493,26 +500,108 @@ function executeGetTable(state, scope, args, auth) {
   }
   if (Array.isArray(value)) {
     const limit = Math.min(1000, Math.max(1, +(args && args.limit) || 200));
+    const offset = Math.max(0, +(args && args.offset) || 0);
+    const page = value.slice(offset, offset + limit);
+    const next = offset + page.length;
+    const body = {
+      table: name,
+      count: value.length,
+      offset: offset,
+      returned: page.length,
+      records: page
+    };
+    // 2.4: tell the caller where the next page starts, and stop claiming one
+    // exists at the end.
+    body.nextOffset = next < value.length ? next : null;
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(
-            {
-              table: name,
-              count: value.length,
-              returned: Math.min(limit, value.length),
-              records: value.slice(0, limit)
-            },
-            null,
-            2
-          )
+          text: JSON.stringify(body, null, 2)
         }
       ]
     };
   }
   return {
     content: [{ type: 'text', text: JSON.stringify({ table: name, value: value }, null, 2) }]
+  };
+}
+
+// MCP-AGENT-FIRST 2026-11-12 2.5: the writable model, straight from
+// src/mcp/model.js - the same table the planner validates against, so the
+// schema an agent reads cannot drift from what apply_changes accepts.
+function executeGetSchema(scope, args) {
+  const scopeAllowed = function (sec) {
+    return sectionAllowed(scope, sec);
+  };
+  const want = String((args && args.table) || '').trim();
+  const all = LIST_PATHS.concat(SECTION_PATHS);
+  if (want) {
+    if (all.indexOf(want) === -1) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text:
+              'Unknown table: ' +
+              want +
+              '. Available: ' +
+              all
+                .filter(function (p) {
+                  return scopeAllowed((describeSchema(p) || {}).section);
+                })
+                .join(', ') +
+              '.'
+          }
+        ],
+        isError: true
+      };
+    }
+    const one = describeSchema(want, scopeAllowed);
+    if (!one) {
+      return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+    }
+    return { content: [{ type: 'text', text: JSON.stringify({ table: one }, null, 2) }] };
+  }
+  const tables = {};
+  all.forEach(function (p) {
+    const d = describeSchema(p, scopeAllowed);
+    if (d) {
+      tables[p] = d;
+    }
+  });
+  return {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(
+          {
+            limits: {
+              maxDiffs: MCP_MAX_DIFFS,
+              maxCreates: MCP_MAX_CREATES,
+              maxSets: MCP_MAX_SETS,
+              writeBudgetMs: MCP_WRITE_BUDGET_MS,
+              stringMax: STRING_MAX,
+              shortMax: SHORT_MAX,
+              idMax: ID_MAX,
+              tempIdMax: 40,
+              budgetProposalLimit: BUDGET_PROPOSAL_LIMIT,
+              largeChangeAbs: BUDGET_LARGE_ABS,
+              largeChangePerDay: BUDGET_LARGE_PER_DAY,
+              budgetLineFields: BUDGET_LINE_FIELDS
+            },
+            changeSet: {
+              atomic: true,
+              appliesOn: 'owner accept',
+              note: 'A proposal is one change set: the owner accepts or rejects all of it, and nothing applies automatically.'
+            },
+            tables: tables
+          },
+          null,
+          2
+        )
+      }
+    ]
   };
 }
 
@@ -712,26 +801,13 @@ function sectionRefusal(scope) {
 
 // ---- H-5 budget access (BUDGET-BOQ directive 2026-11-05) ------------------
 //
-// Two switches, separate from the section scope and both OFF until the owner
-// turns them on. The section decides what a key can see at all; these decide
-// what it can do with money. An owner-code caller is not an API key and is
-// never limited by them.
+// The switches and their refusal texts live in ./budget-access.js so the
+// proposal planner (./plan.js) and the read tools cannot drift apart.
 //
 // The read tools below mirror the app's own money functions
 // (js/mmgr-resources.js spendIsSpent / budgetLineActual / deliveryRollup and
 // js/mmgr-weekly.js summary) so an AI client and the owner's screen can never
 // disagree about the same project. When one of those changes, change this too.
-const BUDGET_READ_REFUSAL =
-  'This API key may not read the budget. The project owner can turn on "Read budget" for this key in Cloud, Share, API Keys. No budget figures are included in this answer.';
-const BUDGET_WRITE_REFUSAL =
-  'This API key may not propose budget changes. The owner can turn on "Propose budget changes" for this key in Cloud, Share, API Keys. A proposal never changes a live figure - the owner approves it inside the project.';
-
-function budgetReadAllowed(auth) {
-  return !auth || auth.role !== 'api' || auth.budgetRead === true;
-}
-function budgetWriteAllowed(auth) {
-  return !auth || auth.role !== 'api' || (auth.budgetRead === true && auth.budgetWrite === true);
-}
 function spendIsSpent(e) {
   const st = (e && e.status) || 'received';
   return st !== 'ordered';
@@ -807,6 +883,190 @@ function chipFor(planned, spent, priceVar) {
 function baselineOf(state) {
   const list = Array.isArray(state && state.budgetBaselines) ? state.budgetBaselines : [];
   return list.length ? list[list.length - 1] : null;
+}
+
+// ---- 2.4 read-side helpers ------------------------------------------------
+// A risk is open when it has no issue and its status, lower-cased, is empty
+// or 'open'. ONE predicate for get_project_summary and get_risks (R09).
+function mcpRiskIsOpen(r) {
+  if (!r || r.issueId) {
+    return false;
+  }
+  const st = String(r.status == null ? '' : r.status)
+    .trim()
+    .toLowerCase();
+  return st === '' || st === 'open';
+}
+
+// js/mmgr-kanban.js workItems: phases and rollup parents are schedule
+// scaffolding, not work. Completion is measured on real cards only.
+function mcpWorkItems(tasks) {
+  const rollups = {};
+  (tasks || []).forEach(function (t) {
+    if (t && t.parentName) {
+      rollups[t.parentName] = 1;
+    }
+  });
+  return (tasks || []).filter(function (t) {
+    return t && !t.isPhase && !((t.level || 0) === 0 && rollups[t.name]);
+  });
+}
+
+// Faithful port of js/mmgr-resources.js curveFraction.
+function mcpCurveFraction(t, shape) {
+  t = Math.max(0, Math.min(1, t));
+  const s =
+    shape === 'bell'
+      ? 'scurve'
+      : shape === 'front-loaded'
+        ? 'front'
+        : shape === 'back-loaded'
+          ? 'back'
+          : shape;
+  switch (s) {
+    case 'scurve':
+      return t * t * (3 - 2 * t);
+    case 'front':
+      return 1 - Math.pow(1 - t, 2);
+    case 'back':
+      return t * t;
+    default:
+      return t;
+  }
+}
+
+// Faithful port of js/mmgr-resources.js budgetLineWindow / lineCumulativeAt /
+// budgetCumulativePlannedAt / js/mmgr-evm.js computeEVM. The MCP answer and
+// the dashboard must never disagree about the same project.
+function mcpBudgetLineWindow(line, state) {
+  const linkId = line.linkedTaskId || line.taskId || null;
+  if (linkId) {
+    const t = (state.tasks || []).find(x => String(x.id) === String(linkId));
+    if (t && t.startDate && t.endDate) {
+      return { start: parseISO(t.startDate), end: parseISO(t.endDate) };
+    }
+  }
+  const dated = (state.tasks || []).filter(t => t.startDate && t.endDate);
+  if (!dated.length) {
+    return null;
+  }
+  const starts = dated.map(t => parseISO(t.startDate).getTime());
+  const ends = dated.map(t => parseISO(t.endDate).getTime());
+  return {
+    start: new Date(Math.min.apply(null, starts)),
+    end: new Date(Math.max.apply(null, ends))
+  };
+}
+
+function mcpLineCumulativeAt(line, asOf, state) {
+  const planned = +line.planned || 0;
+  const w = mcpBudgetLineWindow(line, state);
+  if (!w) {
+    const tasks = state.tasks || [];
+    const tot = tasks.length;
+    const dn = tasks.filter(t => t.status === 'completed').length;
+    return planned * (tot ? dn / tot : 0);
+  }
+  const span = w.end - w.start;
+  if (asOf <= w.start) {
+    return 0;
+  }
+  if (asOf >= w.end || span <= 0) {
+    return planned;
+  }
+  return (
+    planned * mcpCurveFraction((asOf - w.start) / span, line.curveShape || line.curve || 'linear')
+  );
+}
+
+function mcpComputeEvm(state) {
+  if (!state || !state.tasks) {
+    return null;
+  }
+  const tot = state.tasks.length;
+  const dn = state.tasks.filter(t => t.status === 'completed').length;
+  const pct = tot ? dn / tot : 0;
+  const tp = (state.budgetLines || []).reduce((sum, b) => sum + (+b.planned || 0), 0);
+  const ta = (state.budgetLines || []).reduce(
+    (sum, b) => sum + lineActual(b, state.spendLog || []),
+    0
+  );
+  if (!tp || !tot) {
+    return null;
+  }
+  const pv = (state.budgetLines || []).reduce(
+    (sum, l) => sum + mcpLineCumulativeAt(l, new Date(), state),
+    0
+  );
+  const ev = (state.budgetLines || []).reduce((sum, l) => {
+    const planned = +l.planned || 0;
+    const linkId = l.linkedTaskId || l.taskId || null;
+    if (linkId) {
+      const t = state.tasks.find(x => String(x.id) === String(linkId));
+      if (t) {
+        return sum + planned * (t.status === 'completed' ? 1 : 0);
+      }
+    }
+    return sum + planned * pct;
+  }, 0);
+  const ac = ta;
+  const spi = pv ? ev / pv : null;
+  const cpi = ac ? ev / ac : null;
+  const bac = tp;
+  const eac = cpi ? ac + (bac - ev) / cpi : null;
+  const etc = eac !== null ? eac - ac : null;
+  const vac = eac !== null ? bac - eac : null;
+  const tden = bac - ac;
+  const tcpi = tden !== 0 ? (bac - ev) / tden : null;
+  return {
+    pct: pct,
+    // tp/ta are part of the client's return value; keep the shapes identical
+    // so a test can deep-compare the two implementations.
+    tp: tp,
+    ta: ta,
+    pv: pv,
+    ev: ev,
+    ac: ac,
+    spi: spi,
+    cpi: cpi,
+    sv: ev - pv,
+    cv: ev - ac,
+    bac: bac,
+    eac: eac,
+    etc: etc,
+    vac: vac,
+    tcpi: tcpi
+  };
+}
+
+// Why a null EVM value is null, read from the formulas above. No invented
+// reasons: each note names the denominator that is zero.
+function mcpEvmNote(evm, state) {
+  const tasks = (state && state.tasks) || [];
+  const planned = ((state && state.budgetLines) || []).reduce((s, b) => s + (+b.planned || 0), 0);
+  if (!tasks.length) {
+    return 'EVM is null: the project has no tasks.';
+  }
+  if (!planned) {
+    return 'EVM is null: the project has no planned budget.';
+  }
+  if (!evm) {
+    return 'EVM is null: the project has no tasks or no planned budget.';
+  }
+  const notes = [];
+  if (evm.spi == null) {
+    notes.push('SPI is null because planned value to date is zero.');
+  }
+  if (evm.cpi == null) {
+    notes.push('CPI is null because actual cost is zero.');
+  }
+  if (evm.eac == null) {
+    notes.push('EAC is null because CPI is null.');
+  }
+  if (evm.tcpi == null) {
+    notes.push('TCPI is null because budget remaining (BAC - AC) is zero.');
+  }
+  return notes.length ? notes.join(' ') : null;
 }
 
 // ---- week helpers (UTC; the client uses local dates for the same rule) ----
@@ -1049,37 +1309,48 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
   switch (name) {
     case 'get_project_summary': {
       const tasks = Array.isArray(state.tasks) ? state.tasks : [];
-      const done = tasks.filter(t => t.status === 'completed').length;
-      const total = tasks.length;
+      // 2.4: completion is measured on Kanban work items (phases and rollup
+      // parents are scaffolding), the same definition the board uses.
+      const work = mcpWorkItems(tasks);
+      const done = work.filter(t => t.status === 'completed').length;
+      const totalWork = work.length;
       const risks = Array.isArray(state.risks) ? state.risks : [];
-      // P3 (MCP-DIRECTIVE 2026-11-11): count risks whose status is actually
-      // open (a promoted risk carries issueId; a mitigated/closed one is not
-      // open), instead of counting every risk that simply lacks an issueId -
-      // which used to include Mitigated risks.
-      const openRisks = risks.filter(function (r) {
-        return !r.issueId && (r.status || 'open') === 'open';
-      }).length;
+      // P3 (MCP-DIRECTIVE 2026-11-11) + 2.4: one open-risk predicate, shared
+      // with get_risks, case-insensitive on status.
+      const openRisks = risks.filter(mcpRiskIsOpen).length;
+      const statusCounts = { todo: 0, inprogress: 0, blocked: 0, completed: 0, other: 0 };
+      const warnings = [];
+      tasks.forEach(function (t) {
+        const st = t.status || 'todo';
+        if (Object.prototype.hasOwnProperty.call(statusCounts, st)) {
+          statusCounts[st]++;
+        } else {
+          statusCounts.other++;
+          warnings.push(
+            'task ' + (t.id || '(no id)') + ' has status "' + st + '" outside the enum'
+          );
+        }
+      });
+      const body = {
+        projectId,
+        name: state.charter && state.charter.name ? state.charter.name : projectId,
+        description: state.charter && state.charter.description ? state.charter.description : '',
+        completion: totalWork ? Math.round((done / totalWork) * 100) : 0,
+        totalTasks: tasks.length,
+        workItemCount: totalWork,
+        completedTasks: done,
+        statusCounts: statusCounts,
+        warnings: warnings,
+        openRisks,
+        projectDeadline: state.projectDeadline || null,
+        charter: state.charter || null
+      };
+      // The envelope is money: only a key with the budget read switch sees it.
+      if (budgetReadAllowed(auth)) {
+        body.budgetEnvelope = state.budgetEnvelope == null ? null : +state.budgetEnvelope || 0;
+      }
       return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(
-              {
-                projectId,
-                name: state.charter && state.charter.name ? state.charter.name : projectId,
-                description:
-                  state.charter && state.charter.description ? state.charter.description : '',
-                completion: total ? Math.round((done / total) * 100) : 0,
-                totalTasks: total,
-                completedTasks: done,
-                openRisks,
-                charter: state.charter || null
-              },
-              null,
-              2
-            )
-          }
-        ]
+        content: [{ type: 'text', text: JSON.stringify(body, null, 2) }]
       };
     }
     case 'get_tasks': {
@@ -1087,41 +1358,94 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
         return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
       }
       const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+      // 2.4: the published `dependencies` name stays (qa-engine-parity
+      // asserts it) and `predecessors` is added beside it. Both read the
+      // app's real dependency field.
+      const rows = tasks.map(t => {
+        const preds =
+          Array.isArray(t.predecessors) && t.predecessors.length
+            ? t.predecessors
+            : Array.isArray(t.dependencies)
+              ? t.dependencies
+              : [];
+        return {
+          id: t.id,
+          name: t.name || t.id,
+          status: t.status || 'todo',
+          startDate: t.startDate || null,
+          endDate: t.endDate || null,
+          critical: !!t.critical,
+          dependencies: preds,
+          predecessors: preds,
+          assignee: t.assignee || null,
+          notes: t.notes || null,
+          level: t.level == null ? 0 : t.level,
+          isPhase: !!t.isPhase,
+          parentName: t.parentName || null,
+          milestone: t.milestone === undefined ? null : !!t.milestone,
+          duration: t.duration === undefined || t.duration === null ? null : t.duration,
+          // The client stores no per-task percent; null is the honest value.
+          percent: t.percent == null ? null : +t.percent,
+          totalFloat: t.totalFloat == null ? null : t.totalFloat,
+          freeFloat: t.freeFloat == null ? null : t.freeFloat,
+          startedDate: t.startedDate || null,
+          completedDate: t.completedDate || null,
+          statusSince: t.statusSince || null,
+          leadTime: !!t.leadTime,
+          confidence: t.confidence || null
+        };
+      });
+      const all = [
+        'id',
+        'name',
+        'status',
+        'startDate',
+        'endDate',
+        'critical',
+        'dependencies',
+        'predecessors',
+        'assignee',
+        'notes',
+        'level',
+        'isPhase',
+        'parentName',
+        'milestone',
+        'duration',
+        'percent',
+        'totalFloat',
+        'freeFloat',
+        'startedDate',
+        'completedDate',
+        'statusSince',
+        'leadTime',
+        'confidence'
+      ];
+      const asked =
+        args && Array.isArray(args.fields)
+          ? args.fields.map(f => String(f)).filter(f => all.indexOf(f) !== -1)
+          : null;
+      const unknownFields =
+        args && Array.isArray(args.fields)
+          ? args.fields.map(f => String(f)).filter(f => all.indexOf(f) === -1)
+          : [];
+      const out = asked
+        ? rows.map(function (r) {
+            const o = {};
+            asked.forEach(function (f) {
+              o[f] = r[f];
+            });
+            return o;
+          })
+        : rows;
+      const body = { count: rows.length, tasks: out };
+      if (asked) {
+        body.fields = asked;
+      }
+      if (unknownFields.length) {
+        body.unknownFields = unknownFields;
+      }
       return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(
-              {
-                count: tasks.length,
-                tasks: tasks.map(t => ({
-                  id: t.id,
-                  name: t.name || t.id,
-                  status: t.status || 'todo',
-                  startDate: t.startDate || null,
-                  endDate: t.endDate || null,
-                  critical: !!t.critical,
-                  // B16 (audit 2026-09-28): the app's dependency field is
-                  // `predecessors` (mmgr-tasks.js defaults, mmgr-schedule.js
-                  // engine) - the old read of t.dependencies ALWAYS produced [],
-                  // so every AI client saw an unlinked schedule with no critical
-                  // path. Output field name stays `dependencies` (the published
-                  // MCP shape qa-engine-parity asserts); the source is corrected.
-                  dependencies:
-                    Array.isArray(t.predecessors) && t.predecessors.length
-                      ? t.predecessors
-                      : Array.isArray(t.dependencies)
-                        ? t.dependencies
-                        : [],
-                  assignee: t.assignee || null,
-                  notes: t.notes || null
-                }))
-              },
-              null,
-              2
-            )
-          }
-        ]
+        content: [{ type: 'text', text: JSON.stringify(body, null, 2) }]
       };
     }
     case 'get_budget': {
@@ -1133,19 +1457,36 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
       }
       const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
       const spendLog = Array.isArray(state.spendLog) ? state.spendLog : [];
+      const todayIso = new Date().toISOString().slice(0, 10);
       const enriched = lines.map(line => {
         const roll = deliveryRollup(line, spendLog);
         const actual = lineActual(line, spendLog);
         const chipInfo = chipFor(roll.planned, actual, roll.priceVar);
         const own = spendLog.filter(e => e.budgetLineId === line.id);
+        const ownSpent = own.filter(spendIsSpent);
+        // 2.4: say exactly what `actual` counts. With received/paid entries it
+        // is their sum; with none it is the stored lump value.
+        const actualBasis = ownSpent.length
+          ? 'spendLog: sum of ' +
+            ownSpent.length +
+            ' received/paid entry(ies) for this line (ordered entries are committed, not spent)'
+          : 'line.actual: stored lump sum (no received/paid spend entries)';
+        const future = ownSpent
+          .filter(e => e.date && String(e.date).slice(0, 10) > todayIso)
+          .reduce((sum, e) => sum + (+e.amount || 0), 0);
         return {
           id: line.id,
-          name: line.name || line.id,
+          // The real label: a line name, else its category, else the id.
+          name: line.name || line.category || line.id,
+          label: line.name || line.category || null,
           category: line.category || null,
           source: line.source || 'manual',
           boqRef: line.boqRef || null,
           planned: roll.planned,
           actual: actual,
+          actualToDate: actual - future,
+          committedFuture: future,
+          actualBasis: actualBasis,
           committed: roll.committed,
           paid: roll.paid,
           owed: roll.owed,
@@ -1184,6 +1525,13 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
       // set an envelope, so 0/null are treated as unset.
       const rawEnv = state.budgetEnvelope == null ? null : Number(state.budgetEnvelope);
       const envelope = rawEnv != null && rawEnv > 0 ? rawEnv : null;
+      // 2.4: EVM from the same formulas as js/mmgr-evm.js. A key without the
+      // WBS section has no task completion to earn value against, so the note
+      // names the scope rather than pretending the project has no tasks.
+      const evmValues = Array.isArray(state.tasks) ? mcpComputeEvm(state) : null;
+      const evmNote = Array.isArray(state.tasks)
+        ? mcpEvmNote(evmValues, state)
+        : 'EVM is null: the WBS section is not granted to this key.';
       return {
         content: [
           {
@@ -1197,6 +1545,8 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
                 lineCount: enriched.length,
                 envelope: envelope,
                 envelopeRemaining: envelope == null ? null : envelope - totalPlanned,
+                evm: evmValues,
+                evmNote: evmNote,
                 baseline: base
                   ? {
                       id: base.id,
@@ -1335,6 +1685,10 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
       }
       const risks = Array.isArray(state.risks) ? state.risks : [];
       const issues = Array.isArray(state.issues) ? state.issues : [];
+      // 2.4: the stored text is `description`, but older records (and the
+      // risk renderer) use `name`. Emit both with the same value and read
+      // with a fallback. `isOpen` is the shared predicate.
+      const textOfRecord = r => r.description || r.name || '(untitled)';
       return {
         content: [
           {
@@ -1343,18 +1697,22 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
               {
                 riskCount: risks.length,
                 issueCount: issues.length,
+                openRiskCount: risks.filter(mcpRiskIsOpen).length,
                 risks: risks.map(r => ({
                   id: r.id,
-                  description: r.description || '(untitled)',
+                  description: textOfRecord(r),
+                  name: textOfRecord(r),
                   probability: r.probability || null,
                   impact: r.impact || null,
                   status: r.status || 'open',
+                  isOpen: mcpRiskIsOpen(r),
                   promoted: !!r.issueId,
                   mitigation: r.mitigation || null
                 })),
                 issues: issues.map(i => ({
                   id: i.id,
-                  description: i.description || '(untitled)',
+                  description: textOfRecord(i),
+                  name: textOfRecord(i),
                   status: i.status || 'open',
                   owner: i.owner || null
                 }))
@@ -1441,16 +1799,19 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
     }
     case 'get_table':
       return executeGetTable(state, scope, args, auth);
+    case 'get_schema':
+      return executeGetSchema(scope, args);
     case 'run_monte_carlo':
       return executeMonteCarlo(state, scope, args);
-    case 'apply_changes': {
+    case 'apply_changes':
+    case 'validate_changes': {
       // API-KEY-AUDIT F3 (2026-09-16): this used to return a special result
       // and the route handler fetched /changelog/import - an AUDIT-LOG
       // importer that only records diffs already true in the stored state,
       // so a genuinely new change always came back 'diverged' and the tool
       // could never do what its description promised. The queueing now lives
       // in handleMcpRequest (below) and creates a pending cloud_reviews row.
-      return { pendingApply: true };
+      return name === 'validate_changes' ? { pendingValidate: true } : { pendingApply: true };
     }
     default:
       return { content: [{ type: 'text', text: 'Unknown tool: ' + name }], isError: true };
@@ -1699,6 +2060,11 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // REST save path, and inserted as a pending cloud_reviews row. NOTHING
     // is written to live project state here - the owner accepts or rejects
     // inside the project, and only the accept applies the change.
+    if (result.pendingValidate) {
+      // 2.6: the dry run shares planProposal and writes nothing.
+      return await validateChangesProposal(env, projectId, auth, toolArgs, id, state);
+    }
+
     if (result.pendingApply) {
       // APP-WIDE MCP (Wave 1): the proposal-queue engine is now a shared,
       // exported function so the per-project and app-wide servers cannot drift.
@@ -1723,139 +2089,17 @@ async function handleMcpRequest(body, projectId, env, auth) {
 // row (proposal_type 'mcp'). Nothing reaches live project state until the
 // owner accepts it inside the project.
 
-// MCP-DIRECTIVE 2026-11-11 P0: validate the apply_changes envelope BEFORE
-// loading project state. An empty or malformed envelope must return a tool
-// error in microseconds - never load and decrypt a multi-megabyte snapshot
-// (and never reach the platform CPU limit) just to reject it. Both servers
-// call this same function, so the refusal text cannot drift.
-export const MCP_MAX_DIFFS = 500;
-export const MCP_MAX_CREATES = 500;
-export const MCP_MAX_SETS = 100;
-// Wall-clock ceiling for the write pipeline. Cloudflare's 1102 must never be
-// the first signal: abort with a plain, structured message before the
-// platform limit. The state read is cached (r2DeriveKey), so a normal
-// 1/30/200-diff proposal finishes far inside this budget.
-export const MCP_WRITE_BUDGET_MS = 4000;
-
-export function validateProposalEnvelope(toolArgs, auth) {
-  const a = toolArgs || {};
-  const diffs = Array.isArray(a.diffs) ? a.diffs : [];
-  const creates = Array.isArray(a.creates) ? a.creates : [];
-  const budgetRaw = Array.isArray(a.budget) ? a.budget : [];
-  const setsRaw = Array.isArray(a.sets) ? a.sets : [];
-  if (
-    diffs.length === 0 &&
-    creates.length === 0 &&
-    budgetRaw.length === 0 &&
-    setsRaw.length === 0
-  ) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'Nothing provided. Supply diffs as {path, recordId, field, after}, creates as {path, record} objects, sets as {path, field, value} objects, or budget changes as {kind, ...} objects.'
-        }
-      ],
-      isError: true
-    };
-  }
-  if (diffs.length > MCP_MAX_DIFFS) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text:
-            'A proposal can carry at most ' +
-            MCP_MAX_DIFFS +
-            ' diffs. Split this into smaller proposals.'
-        }
-      ],
-      isError: true
-    };
-  }
-  if (creates.length > MCP_MAX_CREATES) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text:
-            'A proposal can carry at most ' +
-            MCP_MAX_CREATES +
-            ' creates. Split this into smaller proposals.'
-        }
-      ],
-      isError: true
-    };
-  }
-  if (setsRaw.length > MCP_MAX_SETS) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text:
-            'A proposal can carry at most ' +
-            MCP_MAX_SETS +
-            ' sets. Split this into smaller proposals.'
-        }
-      ],
-      isError: true
-    };
-  }
-  // H-5: the write switch. A key without it cannot queue a budget proposal
-  // AT ALL - the whole call is refused rather than silently dropping the
-  // budget part and queuing the rest.
-  if (budgetRaw.length && !budgetWriteAllowed(auth)) {
-    return { content: [{ type: 'text', text: BUDGET_WRITE_REFUSAL }], isError: true };
-  }
-  if (budgetRaw.length > BUDGET_PROPOSAL_LIMIT) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text:
-            'A proposal can carry at most ' +
-            BUDGET_PROPOSAL_LIMIT +
-            ' budget changes. Split this into smaller proposals.'
-        }
-      ],
-      isError: true
-    };
-  }
-  return null;
-}
-
-function writeBudgetExceeded(id) {
-  return {
-    jsonrpc: '2.0',
-    id,
-    result: {
-      content: [
-        {
-          type: 'text',
-          text: 'MCP_WRITE_BUDGET_EXCEEDED - this proposal is too large to process safely. Split it into smaller proposals.'
-        }
-      ],
-      isError: true
-    }
-  };
-}
-
-function mcpShortValue(v) {
-  if (v === undefined) {
-    return '(absent)';
-  }
-  if (v === null) {
-    return 'null';
-  }
-  if (typeof v === 'object') {
-    try {
-      return JSON.stringify(v);
-    } catch (e) {
-      return String(v);
-    }
-  }
-  return String(v);
-}
+// MCP-DIRECTIVE 2026-11-11 P0 / MCP-AGENT-FIRST 2.2: the envelope
+// validator and its caps moved to ./plan.js so the planner and both servers
+// share one refusal text.
+export {
+  MCP_MAX_DIFFS,
+  MCP_MAX_CREATES,
+  MCP_MAX_SETS,
+  MCP_WRITE_BUDGET_MS,
+  validateProposalEnvelope,
+  mcpShortValue
+} from './plan.js';
 
 // MCP-AGENT-FIRST 2026-11-12 1.7: canonical JSON (sorted keys) so the same
 // arguments always hash the same, whatever order the client serialised them.
@@ -1915,441 +2159,29 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   if (precheck) {
     return { jsonrpc: '2.0', id, result: precheck };
   }
+  // MCP-AGENT-FIRST 2026-11-12 2.2: every validation rule lives in
+  // planProposal (src/mcp/plan.js), so this queue and validate_changes share
+  // one answer. The plan materialises the accepted parts on a copy; nothing
+  // here reaches live state.
+  const plan = await planProposal(toolArgs, state, auth, { env: env, projectId: projectId });
+  if (plan.error) {
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: { content: [{ type: 'text', text: plan.error.text }], isError: true }
+    };
+  }
   const diffs = Array.isArray(toolArgs.diffs) ? toolArgs.diffs : [];
   const creates = Array.isArray(toolArgs.creates) ? toolArgs.creates : [];
   const setsRaw = Array.isArray(toolArgs.sets) ? toolArgs.sets : [];
-  const budgetRaw = Array.isArray(toolArgs.budget) ? toolArgs.budget : [];
-  const writeStartedAt = Date.now();
-  // MCP-AGENT-FIRST 2026-11-12 1.2: the generic paths (diffs, creates, sets)
-  // can name the money tables too. Before this, a key with "Propose budget
-  // changes" OFF could queue a budget-line diff, a spendLog create or an
-  // envelope set and bypass the switch the budget array has always honoured.
-  // The whole call is refused, exactly like the budget array.
-  const BUDGET_WRITE_PATHS = ['budgetLines', 'spendLog', 'budgetEnvelope', 'nspid'];
-  const touchesBudget =
-    diffs.some(function (d) {
-      return d && BUDGET_WRITE_PATHS.indexOf(String(d.path || '')) !== -1;
-    }) ||
-    creates.some(function (c) {
-      return c && BUDGET_WRITE_PATHS.indexOf(String(c.path || '')) !== -1;
-    }) ||
-    setsRaw.some(function (s) {
-      return s && BUDGET_WRITE_PATHS.indexOf(String(s.path || '')) !== -1;
-    });
-  if (touchesBudget && !budgetWriteAllowed(auth)) {
-    return {
-      jsonrpc: '2.0',
-      id,
-      result: { content: [{ type: 'text', text: BUDGET_WRITE_REFUSAL }], isError: true }
-    };
-  }
-  // Budget-line diffs and envelope sets are re-expressed as budget-array ops so
-  // ONE validator (buildBudgetProposal) owns every money check.
-  const budgetFromDiffs = [];
-  const budgetFromSets = [];
-
+  const warnings = plan.warnings;
+  const allRefused = plan.refused;
+  const submitted = plan.submitted;
+  const budgetBuilt = plan.budget;
+  const budgetCount = plan.counts.budget;
+  const prev = plan.prev;
   const granted = Array.isArray(auth.scope) ? auth.scope : Object.keys(CLOUD_SECTIONS);
-  let prev = state; // the full stored state fetched above (pre-scope)
-  // CREATE into an empty project (owner 2026-09-17): a brand-new cloud
-  // project has no snapshot yet - the owner's lazy-PM scenario starts
-  // exactly there. With creates only, seed a minimal prev instead of
-  // refusing; the review-accept path writes the merged state either way.
-  if (!prev && diffs.length === 0 && (creates.length > 0 || setsRaw.length > 0)) {
-    prev = { schemaVersion: 19, projectId: projectId, updatedAt: new Date().toISOString() };
-  }
-  if (!prev) {
-    return {
-      jsonrpc: '2.0',
-      id,
-      result: {
-        content: [
-          {
-            type: 'text',
-            text: 'No project data available. Save a snapshot first, or use creates to add new records to the empty project.'
-          }
-        ],
-        isError: true
-      }
-    };
-  }
-  const base = JSON.parse(JSON.stringify(prev));
-  const submitted = {};
-  const refused = [];
-  const warnings = [];
-  for (let i = 0; i < diffs.length; i++) {
-    if (Date.now() - writeStartedAt > MCP_WRITE_BUDGET_MS) {
-      return writeBudgetExceeded(id);
-    }
-    const d = diffs[i];
-    if (!d || typeof d !== 'object') {
-      refused.push('diff ' + i + ': invalid');
-      continue;
-    }
-    const path = String(d.path || '');
-    const rec = String(d.recordId || '');
-    const field = String(d.field || '');
-    const sec = CLOUD_KEY_TO_SECTION[path];
-    if (!sec) {
-      refused.push((path || '(empty)') + ': not a project section');
-      continue;
-    }
-    if (granted.indexOf(sec) === -1) {
-      refused.push(path + ': outside the granted sections');
-      continue;
-    }
-    // MCP-AGENT-FIRST 2026-11-12 1.2: money tables do not take generic diffs.
-    // A budget-line diff on a writable field becomes a changeLine op so the
-    // money validation and the large-change flag still run; everything else
-    // is refused with the path the agent should use instead.
-    if (path === 'budgetLines') {
-      if (BUDGET_LINE_FIELDS.indexOf(field) === -1) {
-        refused.push(
-          path +
-            '.' +
-            (field || '(no field)') +
-            ': not writable through MCP. Allowed: ' +
-            BUDGET_LINE_FIELDS.join(', ') +
-            '.'
-        );
-        continue;
-      }
-      budgetFromDiffs.push({
-        kind: 'changeLine',
-        lineId: rec,
-        field: field,
-        value: d.after,
-        before: d.before
-      });
-      continue;
-    }
-    if (path === 'spendLog') {
-      refused.push(path + ': use the budget array (addDelivery)');
-      continue;
-    }
-    if (path === 'budgetEnvelope') {
-      refused.push(
-        path + ': use a set ({"path":"budgetEnvelope","value":<number>}) rather than a diff'
-      );
-      continue;
-    }
-    if (path === 'nspid') {
-      refused.push(path + ': server-managed and cannot be written');
-      continue;
-    }
-    const arr = base[path];
-    if (!Array.isArray(arr)) {
-      refused.push(path + ': not an editable list');
-      continue;
-    }
-    let item = null;
-    for (let j = 0; j < arr.length; j++) {
-      if (arr[j] && String(arr[j].id) === rec) {
-        item = arr[j];
-        break;
-      }
-    }
-    if (!item) {
-      refused.push((rec || '(no record id)') + ': not found in ' + path);
-      continue;
-    }
-    if (!field) {
-      refused.push('diff ' + i + ': missing field');
-      continue;
-    }
-    // MCP-AGENT-FIRST 2026-11-12 1.4: a supplied `before` is a promise about
-    // the live value. When it does not match, the op is refused with both
-    // values instead of being silently rewritten to the live one. An omitted
-    // `before` is allowed, but the owner is told it was not checked.
-    if (d.before !== undefined) {
-      if (!valuesEqual(d.before, item[field])) {
-        refused.push(
-          path +
-            '[' +
-            rec +
-            '].' +
-            field +
-            ': stale before: expected ' +
-            mcpShortValue(d.before) +
-            ', live ' +
-            mcpShortValue(item[field])
-        );
-        continue;
-      }
-    } else {
-      warnings.push(path + '[' + rec + '].' + field + ': before not checked');
-    }
-    item[field] = d.after !== undefined ? d.after : null;
-    submitted[path] = arr;
-  }
-  // CREATE support (owner 2026-09-17): append new records to editable
-  // list paths, defaults per list, ids server-assigned. Same scope and
-  // review-queue rules as diffs.
-  const refusedCreates = [];
-  const counterRef = { n: 0 };
-  const nowMs = Date.now();
-  for (let i = 0; i < creates.length; i++) {
-    if (Date.now() - writeStartedAt > MCP_WRITE_BUDGET_MS) {
-      return writeBudgetExceeded(id);
-    }
-    const c = creates[i];
-    if (!c || typeof c !== 'object') {
-      refusedCreates.push('create ' + i + ': invalid');
-      continue;
-    }
-    const cpath = String(c.path || '');
-    const recInput = c.record;
-    const csec = CLOUD_KEY_TO_SECTION[cpath];
-    if (!csec) {
-      refusedCreates.push((cpath || '(empty)') + ': not a project section');
-      continue;
-    }
-    if (granted.indexOf(csec) === -1) {
-      refusedCreates.push(cpath + ': outside the granted sections');
-      continue;
-    }
-    // MCP-AGENT-FIRST 2026-11-12 1.2: a budget line is created through
-    // addLine (money validation, server-assigned id) and a delivery through
-    // addDelivery (the server computes the amount). The generic create path
-    // must not bypass either.
-    if (cpath === 'budgetLines' || cpath === 'spendLog') {
-      refusedCreates.push(
-        cpath +
-          ': use the budget array (' +
-          (cpath === 'budgetLines' ? 'addLine' : 'addDelivery') +
-          ')'
-      );
-      continue;
-    }
-    if (cpath === 'nspid') {
-      refusedCreates.push(cpath + ': server-managed and cannot be written');
-      continue;
-    }
-    if (!recInput || typeof recInput !== 'object') {
-      refusedCreates.push('create ' + i + ': missing record');
-      continue;
-    }
-    // TITLE-KEYED LISTS (2026-09-26): meetings, logEntries and commsEntries
-    // are title-keyed by the app's own creators (mmgr-meetings.js,
-    // mmgr-decisions.js, mmgr-closure.js) AND by CREATE_DEFAULTS below, so
-    // the gate must accept name OR title. A title-only create used to be
-    // refused with 'record needs at least a name', silently shrinking the
-    // queued proposal (found via the bank-renovation #20 field-count gap).
-    const titleVal =
-      recInput.title !== undefined && recInput.title !== null ? String(recInput.title).trim() : '';
-    const hasName =
-      (recInput.name !== undefined &&
-        recInput.name !== null &&
-        String(recInput.name).trim() !== '') ||
-      titleVal !== '';
-    if (!hasName) {
-      refusedCreates.push(
-        'create ' + i + ' (' + cpath + '): record needs at least a name or title'
-      );
-      continue;
-    }
-    if (!createDefaults(cpath)) {
-      refusedCreates.push(cpath + ': not a list that accepts new records');
-      continue;
-    }
-    const arr2 = Array.isArray(base[cpath]) ? base[cpath] : (base[cpath] = []);
-    arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef, arr2));
-    submitted[cpath] = arr2;
-  }
-  // SETS (owner 2026-11-12): object sections and scalar keys are not record
-  // lists, so diffs/creates cannot reach them. A set writes one nested field
-  // ("dmaic.define.problem") or a whole scalar ("projectDeadline"), then the
-  // same review queue decides it. Lists are refused here on purpose - a
-  // wholesale array replacement is what the tasks-array guard exists to stop.
-  const refusedSets = [];
-  const SET_FIELD_RE = /^[A-Za-z0-9_]+(\[\d+\])?(\.[A-Za-z0-9_]+(\[\d+\])?)*$/;
-  for (let i = 0; i < setsRaw.length; i++) {
-    if (Date.now() - writeStartedAt > MCP_WRITE_BUDGET_MS) {
-      return writeBudgetExceeded(id);
-    }
-    const s = setsRaw[i];
-    if (!s || typeof s !== 'object') {
-      refusedSets.push('set ' + i + ': invalid');
-      continue;
-    }
-    const spath = String(s.path || '');
-    const sec = CLOUD_KEY_TO_SECTION[spath];
-    if (!sec) {
-      refusedSets.push((spath || '(empty)') + ': not a project section');
-      continue;
-    }
-    if (granted.indexOf(sec) === -1) {
-      refusedSets.push(spath + ': outside the granted sections');
-      continue;
-    }
-    // MCP-AGENT-FIRST 2026-11-12 1.2: the envelope is money, so it goes
-    // through buildBudgetProposal (finite, non-negative, large-change flag)
-    // instead of the generic scalar set.
-    if (spath === 'budgetEnvelope') {
-      const envField = s.field === undefined || s.field === null ? '' : String(s.field);
-      if (envField) {
-        refusedSets.push(spath + '.' + envField + ': the envelope is a single number - omit field');
-        continue;
-      }
-      if (
-        s.before !== undefined &&
-        !valuesEqual(s.before, base.budgetEnvelope == null ? null : +base.budgetEnvelope)
-      ) {
-        refusedSets.push(
-          spath +
-            ': stale before: expected ' +
-            mcpShortValue(s.before) +
-            ', live ' +
-            mcpShortValue(base.budgetEnvelope)
-        );
-        continue;
-      }
-      budgetFromSets.push({ kind: 'changeEnvelope', value: s.value, before: s.before });
-      continue;
-    }
-    if (spath === 'nspid') {
-      refusedSets.push(spath + ': server-managed and cannot be written');
-      continue;
-    }
-    if (Array.isArray(base[spath])) {
-      refusedSets.push(spath + ': is a record list - use diffs or creates');
-      continue;
-    }
-    if (s.value === undefined) {
-      refusedSets.push(spath + ': missing value');
-      continue;
-    }
-    const field = s.field === undefined || s.field === null ? '' : String(s.field);
-    if (field) {
-      if (!SET_FIELD_RE.test(field)) {
-        refusedSets.push(spath + '.' + field + ': not a valid field path');
-        continue;
-      }
-      // MCP-AGENT-FIRST 2026-11-12 1.4: same `before` promise as a diff.
-      if (s.before !== undefined) {
-        const cur = getPathValue(base, spath + '.' + field);
-        if (!valuesEqual(s.before, cur)) {
-          refusedSets.push(
-            spath +
-              '.' +
-              field +
-              ': stale before: expected ' +
-              mcpShortValue(s.before) +
-              ', live ' +
-              mcpShortValue(cur)
-          );
-          continue;
-        }
-      } else {
-        warnings.push(spath + '.' + field + ': before not checked');
-      }
-      if (!setPathValue(base, spath + '.' + field, s.value)) {
-        refusedSets.push(spath + '.' + field + ': could not be set');
-        continue;
-      }
-    } else if (s.value && typeof s.value === 'object') {
-      base[spath] = JSON.parse(JSON.stringify(s.value));
-    } else {
-      base[spath] = s.value;
-    }
-    submitted[spath] = base[spath];
-  }
 
-  // H-5: budget proposals. Built and validated on the server, then folded
-  // into the same review row as any other change set.
-  let budgetBuilt = { submitted: {}, changes: [], refused: [], summary: '' };
-  const budgetAll = budgetRaw.concat(budgetFromDiffs, budgetFromSets);
-  if (budgetAll.length) {
-    if (granted.indexOf('bud') === -1) {
-      refusedCreates.push('budget: outside the granted sections');
-    } else if (budgetAll.length > BUDGET_PROPOSAL_LIMIT) {
-      return {
-        jsonrpc: '2.0',
-        id,
-        result: {
-          content: [
-            {
-              type: 'text',
-              text:
-                'A proposal can carry at most ' +
-                BUDGET_PROPOSAL_LIMIT +
-                ' budget changes. Split this into smaller proposals.'
-            }
-          ],
-          isError: true
-        }
-      };
-    } else {
-      budgetBuilt = buildBudgetProposal(base, budgetAll, base.currency);
-      Object.keys(budgetBuilt.submitted).forEach(function (k) {
-        submitted[k] = budgetBuilt.submitted[k];
-      });
-      if (budgetBuilt.refused.length) {
-        refusedCreates.push.apply(refusedCreates, budgetBuilt.refused);
-      }
-      // Q5 + the per-key daily cap: a large change is 10 percent of the
-      // line or 50,000 in project currency, whichever is smaller. Count
-      // what this key already queued today before accepting more.
-      const newLarge = budgetBuilt.changes.filter(function (c) {
-        return c.large;
-      }).length;
-      if (newLarge) {
-        const dayStart = new Date();
-        dayStart.setUTCHours(0, 0, 0, 0);
-        let usedLarge = 0;
-        try {
-          // MCP-AGENT-FIRST 2026-11-12 1.5: only undecided or accepted rows
-          // count. A rejected row frees its quota, and `accepting` is a
-          // pending decision (1.6).
-          const todayRows = await env.DB.prepare(
-            "SELECT proposal_json FROM cloud_reviews WHERE project_id = ? AND source_type = 'api' AND source_label = ? AND proposed_at >= ? AND status IN ('pending','accepting','accepted')"
-          )
-            .bind(projectId, auth.label || 'MCP AI', dayStart.toISOString())
-            .all();
-          (todayRows.results || []).forEach(function (r) {
-            try {
-              const p = r.proposal_json ? JSON.parse(r.proposal_json) : null;
-              if (p && Array.isArray(p.changes)) {
-                usedLarge += p.changes.filter(function (c) {
-                  return c.large;
-                }).length;
-              }
-            } catch (e) {
-              /* a malformed old row must not block a new proposal */
-            }
-          });
-        } catch (e) {
-          usedLarge = 0;
-        }
-        if (usedLarge + newLarge > BUDGET_LARGE_PER_DAY) {
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              content: [
-                {
-                  type: 'text',
-                  text:
-                    'This call has ' +
-                    newLarge +
-                    ' large budget change(s). This key has ' +
-                    usedLarge +
-                    ' large change(s) pending or accepted today (UTC). The limit is ' +
-                    BUDGET_LARGE_PER_DAY +
-                    ' per day and ' +
-                    BUDGET_LARGE_PER_DAY +
-                    ' per call. Split into calls of at most ' +
-                    BUDGET_LARGE_PER_DAY +
-                    ' large changes, or ask the owner to decide pending ones.'
-                }
-              ],
-              isError: true
-            }
-          };
-        }
-      }
-    }
-  }
-  const allRefused = refused.concat(refusedCreates, refusedSets);
   if (!Object.keys(submitted).length) {
     return {
       jsonrpc: '2.0',
@@ -2487,10 +2319,11 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
                 creates: creates.length,
                 sets: setsRaw.length,
                 deletes: 0,
-                budget: budgetAll.length
+                budget: budgetCount
               },
               opsQueued: dupCount,
               refused: [],
+              refusedText: [],
               warnings: warnings,
               truncated: false
             })
@@ -2557,10 +2390,11 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
                   creates: creates.length,
                   sets: setsRaw.length,
                   deletes: 0,
-                  budget: budgetAll.length
+                  budget: budgetCount
                 },
                 opsQueued: raced.ops_count != null ? Number(raced.ops_count) || 0 : 0,
                 refused: [],
+                refusedText: [],
                 warnings: warnings,
                 truncated: false
               })
@@ -2585,20 +2419,9 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   }
   // MCP-AGENT-FIRST 2026-11-12 1.8: the first block stays byte-compatible with
   // every existing assertion; the second block is machine-readable so an agent
-  // can see exactly what was refused and why without parsing prose.
-  const refusedStructured = allRefused.map(function (s) {
-    const text = String(s);
-    const m = /^([A-Za-z0-9_]+)(?:\[([^\]]+)\])?(?:\.([A-Za-z0-9_.\[\]]+))?:\s*(.*)$/.exec(text);
-    const path = m ? m[1] : null;
-    return {
-      section: path && CLOUD_KEY_TO_SECTION[path] ? CLOUD_KEY_TO_SECTION[path] : null,
-      index: null,
-      path: path,
-      recordId: m && m[2] ? m[2] : null,
-      field: m && m[3] ? m[3] : null,
-      reason: m ? m[4] : text
-    };
-  });
+  // can see exactly what was refused and why without parsing prose. The shape
+  // is shared with validate_changes (structuredRefusals).
+  const refusedStructured = structuredRefusals(allRefused);
   return {
     jsonrpc: '2.0',
     id,
@@ -2628,10 +2451,11 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
               creates: creates.length,
               sets: setsRaw.length,
               deletes: 0,
-              budget: budgetAll.length
+              budget: budgetCount
             },
             opsQueued: fullOps.length,
             refused: refusedStructured,
+            refusedText: allRefused,
             warnings: warnings,
             truncated: false
           })

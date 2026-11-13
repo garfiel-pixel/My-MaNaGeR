@@ -48,6 +48,7 @@ import {
   validateProposalEnvelope,
   MCP_PREMIUM_REFUSAL
 } from './server.js';
+import { validateChangesProposal } from './plan.js';
 import {
   verifyAccessToken,
   authorizationServerMetadata,
@@ -76,6 +77,7 @@ function buildAppwideTools() {
     'get_weather',
     'get_meetings',
     'get_table',
+    'get_schema',
     'run_monte_carlo'
   ];
   const out = [];
@@ -120,6 +122,26 @@ function buildAppwideTools() {
       description:
         applyBase.description +
         ' Changes are queued for the owner to accept inside the project - they never apply automatically.',
+      inputSchema: { type: 'object', properties: props, required: req }
+    });
+  }
+  // MCP-AGENT-FIRST 2.6: the dry run takes a projectId like apply_changes.
+  const validateBase = TOOLS.filter(function (t) {
+    return t.name === 'validate_changes';
+  })[0];
+  if (validateBase) {
+    const props = Object.assign({}, validateBase.inputSchema.properties || {});
+    props.projectId = {
+      type: 'string',
+      description: 'Cloud project id to dry-run the proposal against.'
+    };
+    const req = (validateBase.inputSchema.required || []).slice();
+    if (req.indexOf('projectId') === -1) {
+      req.push('projectId');
+    }
+    out.push({
+      name: 'validate_changes',
+      description: validateBase.description,
       inputSchema: { type: 'object', properties: props, required: req }
     });
   }
@@ -490,7 +512,7 @@ export async function handleAppwideMcp(request, env) {
         )
       : null;
 
-    if (toolName === 'apply_changes') {
+    if (toolName === 'apply_changes' || toolName === 'validate_changes') {
       const result = executeTool(
         toolName,
         state,
@@ -501,6 +523,10 @@ export async function handleAppwideMcp(request, env) {
         auth,
         state
       );
+      if (result.pendingValidate) {
+        const dry = await validateChangesProposal(env, projectId, auth, toolArgs, id, state);
+        return json(dry, 200);
+      }
       if (result.pendingApply) {
         // queueMcpProposal returns a JSON-RPC envelope object; the router
         // expects a Response from this handler, so wrap it here (the project

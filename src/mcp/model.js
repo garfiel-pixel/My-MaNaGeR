@@ -112,6 +112,9 @@ function field(type, opts) {
   if (o.nested) {
     spec.nested = o.nested;
   }
+  if (o.numeric) {
+    spec.numeric = true;
+  }
   return spec;
 }
 
@@ -137,7 +140,7 @@ export const MODEL = {
         status: field('string', { enum: TASK_STATUSES, default: 'todo' }),
         startDate: phaseDate(''),
         endDate: phaseDate(''),
-        duration: field('string', { max: 20, default: '' }),
+        duration: field('string', { max: 20, default: '', numeric: true }),
         assignee: field('string', { max: SHORT_MAX, default: '' }),
         // Schedule engine writes: js/mmgr-schedule.js markCritical / applyPlan.
         critical: field('boolean', { derived: true, default: false }),
@@ -239,7 +242,9 @@ export const MODEL = {
         // can be addressed by recordId later. Read-only either way.
         id: field('string', { max: ID_MAX, derived: true, default: null }),
         date: field('string', { default: '' }),
-        decision: field('string', { default: '' }),
+        // `title` is accepted on input because the create gate and the app's
+        // title-keyed lists accept it; the stored decision text is `decision`.
+        decision: field('string', { alias: 'title', default: '' }),
         by: field('string', { max: SHORT_MAX, default: '' }),
         actionItems: field('string', { default: '' })
       }
@@ -263,7 +268,15 @@ export const MODEL = {
         captureState: field('string', { default: null }),
         captureMethod: field('string', { default: null }),
         captureSession: field('string', { default: null }),
-        transcribeState: field('string', { default: null })
+        transcribeState: field('string', { default: null }),
+        // Legacy / read-side fields: get_meetings reads date, notes,
+        // decisions and actions, and an agent may create a title-keyed
+        // meeting with a date and notes (qa-api-keys P18a).
+        date: field('string', { date: true }),
+        notes: field('string'),
+        decisions: field('array', { of: 'string' }),
+        actions: field('array', { of: 'string' }),
+        actionItems: field('array', { of: 'string' })
       }
     },
     stakeholders: {

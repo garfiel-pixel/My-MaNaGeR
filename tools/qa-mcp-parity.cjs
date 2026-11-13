@@ -125,6 +125,38 @@ const ARGS = {
     { extra, expected: APPWIDE_ONLY }
   );
 
+  section('P2b — validate_changes and get_schema are registered in both catalogs');
+  const projValidate = TOOLS.filter(t => t.name === 'validate_changes')[0];
+  const appValidate = APPWIDE_TOOLS.filter(t => t.name === 'validate_changes')[0];
+  check(
+    'validate_changes is in the project catalog',
+    !!projValidate && !!projValidate.inputSchema,
+    { projectNames }
+  );
+  check(
+    'app-wide validate_changes requires a string projectId',
+    !!appValidate &&
+      !!(appValidate.inputSchema.properties || {}).projectId &&
+      (appValidate.inputSchema.required || []).indexOf('projectId') > -1,
+    { appValidate }
+  );
+  check(
+    'get_schema is in both catalogs and takes an optional table',
+    projectNames.indexOf('get_schema') > -1 &&
+      appwideNames.indexOf('get_schema') > -1 &&
+      (function () {
+        const s = APPWIDE_TOOLS.filter(t => t.name === 'get_schema')[0];
+        return (
+          !!s &&
+          !!(s.inputSchema.properties || {}).table &&
+          !!(s.inputSchema.properties || {}).projectId &&
+          JSON.stringify((s.inputSchema.required || []).slice().sort()) ===
+            JSON.stringify(['projectId'])
+        );
+      })(),
+    { projectNames, appwideNames }
+  );
+
   section('P3 — schema parity for every shared tool');
   const byName = {};
   TOOLS.forEach(t => {

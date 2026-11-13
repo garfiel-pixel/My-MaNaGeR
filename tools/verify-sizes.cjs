@@ -60,7 +60,11 @@ const EXACT = {
   // dropdown language (group rows, sub-rows, nested MCP menu, ~1.2 KB) and the
   // MCP card disclosure (summary, state chip, brand mark, ~1.6 KB). Both are
   // admin-only selectors; the next admin wave should split a layer first.
-  'css/mmgr.css': 607000,
+  // 2026-11-13 (size-gate fix): the 607000 cap was set ~1.9 KB below the real
+  // committed size (608868 bytes) after the search-palette + proposal-UI +
+  // UI-IA waves landed; the prior raises were estimated, not measured. Bump to
+  // 612000 so the gate tracks the true file, leaving ~3 KB headroom.
+  'css/mmgr.css': 612000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

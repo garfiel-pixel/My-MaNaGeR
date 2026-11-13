@@ -2700,3 +2700,57 @@ narrower reading of §14.3).
   finding, outside T-02 scope: mcp_muga445f_18/19/20 already carry
   descriptions that belong to different risks - propose replacements
   separately. Still open after this: owner acceptance of #43.
+
+- DEMO FIXTURE RE-BASELINE 2026-11-12 (owner: "the project is not a real
+  project... change the entirety of the dates and ensure that all tasks are
+  not overdue anymore"): demo-data.js was anchored at 2025-01-06 and ended
+  2026-06-30, so every one of its 30 tasks read overdue on the dashboard and
+  the Gantt was red end to end. Re-baselined by +315 days (45 whole weeks,
+  weekdays preserved): project start Mon 2025-11-17, fixture clock
+  2026-11-11, forecast completion 2027-08-10 (21 months). A blind shift was
+  not enough - T009/T012/T015/T017/T025 kept an overdue band and T013/T018/
+  T019/T021 sat at 0% inside an elapsed window - so the remaining work was
+  re-sequenced from Mon 2026-11-16 with an explicit per-task table; the
+  baseline block keeps the original dates so the slip shows as variance.
+  Also fixed by the same pass: `duration` added to all 30 tasks (working-day
+  span), charter target/objective aligned, spend log + meetings + log +
+  comms + documents + issues + changes shifted, weather log moved to the
+  winter just passed with a 2026-11-01..2027-03-31 window, and the process
+  model's load-time repair silenced (approved changes now carry a title and
+  approver, the resolved issue a resolution). Guard: tools/verify-demo-dates.cjs
+  (15 checks, judged against the fixture's own updatedAt so it cannot rot),
+  wired into `npm run verify`, the CI static job and the test registry; the
+  skeptical-code-audit skill gained rule 12. Browser-verified: dashboard
+  Overdue 0 / In Progress 4 / Health 73, WBS 30 rows none red, Kanban To Do
+  15 / In Progress 4 / Completed 11, agenda 5 entries 0 overdue.
+
+- MCP E2E RE-BASELINED + BILLING BIND FIX 2026-11-12 (run of
+  tools/qa-mcp-live-e2e.cjs after Phase 5): 24 passed / 9 failed, every
+  failure downstream of A2c. Root cause: the Phase 5 INSERT binds cancel_at,
+  but the LemonSqueezy webhook path never passes one, so D1 threw
+  D1_TYPE_ERROR ("Type 'undefined' not supported") and answered 500; the
+  owner never became Premium, so A5 refused with MCP_PREMIUM_REFUSAL and the
+  review/browser phases had nothing to accept. Fix: applySubscription
+  normalises periodEnd/cancelAt to null, and the unit fake D1 now rejects
+  undefined exactly like the real binding (50/50 billing tests). The two
+  remaining failures were stale harness contracts from the Phase 3 review
+  work, re-baselined together: B3 now reads the .rv-card markup and asserts
+  the card NAMES the record ("Pour slab"), the field ("Status") and both
+  values (inprogress -> completed); B5 now asserts the 2026-11-12 stale
+  refusal (409, "no longer matches ... Refresh the project") instead of the
+  retired v318 "nothing left to apply" warning, and that the row STAYS for
+  review. The client now shows the server's sentence rather than the bare
+  error code "stale". Result: 33/33. Companion harnesses green the same pass:
+  qa-mcp-admin-panel 20/20, qa-mcp-parity 13/13, qa-mcp-write-path 20/20,
+  qa-mcp-budget 46/46. Live #43 acceptance is still the owner's click.
+
+- ACCEPT-CREATE INTO A MISSING SECTION 2026-11-12 (CI red on PR #8,
+  cloud-auth step "T2: Project API keys E2E", P18c/P18d): accepting a
+  title-keyed create (meetings/logEntries) answered 409 stale with
+  "not_a_list" when the live snapshot did not carry that section yet, so the
+  owner's accept applied nothing. The per-field applier (Phase 3) only knew
+  how to push a created record into an EXISTING array; the old whole-section
+  merge did not care. Fix: applyLeafDiffs seeds an empty array for a create
+  (recordId + beforeAbsent) when the section is absent, then appends from the
+  submission as before; anything else still refuses as not_a_list. Unit test
+  added; qa-api-keys re-run locally: ALL API-KEY GATES PASSED (P18a-e).

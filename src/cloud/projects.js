@@ -45,7 +45,8 @@ import {
   cloudAuthApiKey,
   cloudScopeState
 } from '../lib/http.js';
-import { billingConfigured, billingFreeCap, billingStatusActive } from '../billing.js';
+import { billingConfigured, billingFreeCap, subscriptionActive } from '../billing.js';
+import { enrichDiffs } from './proposal-diffs.js';
 import { trackEvent } from '../lib/observe.js';
 
 // ROLE-VIEW (Wave 7, owner 2026-10-06): the role->sections matrix now lives in
@@ -239,10 +240,12 @@ export async function handleCloudCreate(request, env) {
       .first();
     const owned = (cnt && cnt.c) || 0;
     if (owned >= billingFreeCap(env)) {
-      const sub = await env.DB.prepare('SELECT status FROM cloud_subscriptions WHERE owner_sub = ?')
+      const sub = await env.DB.prepare(
+        'SELECT status, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
+      )
         .bind(session.sub)
         .first();
-      if (!(sub && billingStatusActive(sub.status))) {
+      if (!subscriptionActive(sub)) {
         return json(
           {
             ok: false,
@@ -356,10 +359,7 @@ export async function queueEditorProposal(env, projectId, a, submitted, prev, no
   if (!merged.applied.length) {
     return { status: 'noop', reviewId: null, applied: merged.applied, blocked: merged.blocked };
   }
-  let diffs = cloudDiffState(prev, merged.next) || [];
-  diffs = diffs.filter(function (d) {
-    return String(d.path).indexOf('fieldTs') !== 0;
-  });
+  let diffs = enrichDiffs(cloudDiffState(prev, merged.next) || [], prev, merged.next).diffs;
   await env.DB.prepare(
     'DELETE FROM cloud_reviews WHERE project_id = ? AND editor_code_id = ? AND status = ?'
   )
@@ -413,10 +413,7 @@ export async function queueTeamProposal(env, projectId, member, submitted, prev,
       scope: scope
     };
   }
-  let diffs = cloudDiffState(prev, merged.next) || [];
-  diffs = diffs.filter(function (d) {
-    return String(d.path).indexOf('fieldTs') !== 0;
-  });
+  let diffs = enrichDiffs(cloudDiffState(prev, merged.next) || [], prev, merged.next).diffs;
   // One pending proposal per member per project: a second save from the same
   // person replaces their own queued one instead of stacking a queue.
   await env.DB.prepare(
@@ -495,9 +492,7 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     if (!merged.applied.length) {
       return json({ ok: false, error: "no changes within this key's section scope" }, 403);
     }
-    const diffs = (cloudDiffState(prev, merged.next) || []).filter(function (d) {
-      return String(d.path).indexOf('fieldTs') !== 0;
-    });
+    const diffs = enrichDiffs(cloudDiffState(prev, merged.next) || [], prev, merged.next).diffs;
     const res = await env.DB.prepare(
       'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
     )

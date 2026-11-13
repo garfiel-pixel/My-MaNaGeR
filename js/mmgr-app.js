@@ -4660,6 +4660,41 @@ var MMGR = window.MMGR || {};
     showSec('dash', document.querySelector('.sec-btn'));
   }
 
+  // Wave 2 (owner 2026-11-12): the status menu is a native [popover]; with no
+  // anchor rule it opened at the viewport's top-left. Place it under the chip
+  // and keep it inside the window; re-place on resize and on any scroll while
+  // it is open (the header is sticky, so the chip can move under it).
+  function placeStatusPop() {
+    const chip = document.getElementById('status-chip');
+    const pop = document.getElementById('status-pop');
+    if (!chip || !pop || !pop.matches(':popover-open')) {
+      return;
+    }
+    const r = chip.getBoundingClientRect();
+    pop.style.left = Math.round(r.left) + 'px';
+    pop.style.top = Math.round(r.bottom + 6) + 'px';
+    const pr = pop.getBoundingClientRect();
+    if (pr.right > window.innerWidth - 8) {
+      pop.style.left = Math.max(8, Math.round(window.innerWidth - pr.width - 8)) + 'px';
+    }
+    if (pr.bottom > window.innerHeight - 8) {
+      pop.style.top = Math.max(8, Math.round(r.top - pr.height - 6)) + 'px';
+    }
+  }
+  (function initStatusPopPlacement() {
+    const pop = document.getElementById('status-pop');
+    if (!pop) {
+      return;
+    }
+    pop.addEventListener('toggle', function (e) {
+      if (e.newState === 'open') {
+        placeStatusPop();
+      }
+    });
+    window.addEventListener('resize', placeStatusPop);
+    window.addEventListener('scroll', placeStatusPop, true);
+  })();
+
   // Wave 2 (owner 2026-11-10): the header status chip writes state.status.
   // The cloud card and the launcher card read the same value, so this is the
   // one control that gives a cloud-only project a lifecycle state at all.

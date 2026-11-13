@@ -1,0 +1,14 @@
+-- UI-IA Phase 5 (2026-11-12): a canceled subscription keeps Premium until the
+-- end of the period the owner already paid for.
+--
+-- Before this column the app could only ask "is the status active?", and
+-- Paddle's cancel signal can arrive (or be scheduled) before the paid period
+-- ends. The owner then lost the Premium badge, the project cap and the paid
+-- features on the spot, while Paddle still showed a paid period running.
+--
+-- cancel_at is epoch SECONDS, like current_period_end, and is the moment the
+-- scheduled cancel takes effect. NULL means no cancel is scheduled. A row with
+-- status='canceled' and a future cancel_at (or current_period_end) is still
+-- entitled; the status route reports it as "canceling" so the panel offers
+-- Upgrade instead of a second Cancel.
+ALTER TABLE cloud_subscriptions ADD COLUMN cancel_at INTEGER;

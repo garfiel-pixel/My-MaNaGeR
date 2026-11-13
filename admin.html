@@ -568,9 +568,16 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     <!-- T-25 (2026-11-12): account-scoped MCP server panel. It sits outside
          the operator disclosure because it is the owner's own account, not a
          site-wide tool. The Worker answers 403 until a session exists, so the
-         module renders a sign-in hint in that state instead of dead controls. -->
-    <div class="card" id="mcp-admin-card">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP server</div>
+         module renders a sign-in hint in that state instead of dead controls.
+         T-28 (2026-11-12): the card is a native disclosure, so it folds to one
+         row that still carries the real state in a chip, and the title wears
+         the app's own brand mark (i-mpw) instead of a generic sparkle. -->
+    <details class="card mcp-admin-card" id="mcp-admin-card">
+      <summary class="card-title mcp-admin-sum">
+        <span class="mcp-admin-sum-l"><svg class="ico mcp-brand-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> MCP server</span>
+        <span class="mcp-admin-sum-r"><span class="mcp-admin-chip" id="mcp-admin-chip" data-kind="">Checking...</span><svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></span>
+      </summary>
+      <div class="mcp-admin-inner">
       <p class="hint">Connect Claude, Cursor or your own scripts to your projects. They read only the sections you grant, and every change they propose waits for your approval. This panel is scoped to your account.</p>
       <div class="mcp-admin-connect">
         <div class="sr" style="padding:0;border:0;margin:0 0 6px">
@@ -616,7 +623,8 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         <div class="card-title" style="margin-top:18px">Projects</div>
         <div id="mcp-projects"></div>
       </div>
-    </div>
+      </div>
+    </details>
 
     <div id="project-list"></div>
   </main>
@@ -632,18 +640,36 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <button type="button" class="db-side-close" data-action="tglNav" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     </div>
     <nav class="db-nav" id="db-nav">
-      <div class="db-g">Projects</div>
-      <button type="button" class="db-link" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
-      <button type="button" class="db-link" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
-      <a class="db-link" href="#project-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Project List</a>
-      <a class="db-link" href="#operator-tools" id="rail-operator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Admin</a>
-      <div class="db-g">Export</div>
-      <button type="button" class="db-link" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Static Manifest</button>
-      <button type="button" class="db-link" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Backup CSV</button>
-      <div class="db-g">Go</div>
-      <a class="db-link" href="app.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Projects / Dashboard</a>
-      <div class="db-g">Customize</div>
-      <button type="button" class="db-link" data-rail-toggle="rail-admin-customize" aria-expanded="false" aria-controls="rail-admin-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+      <!-- OWNER 2026-11-12 (UI-IA Phase 4): four dropdown groups instead of
+           eight flat rows, so the panel opens calm and every destination is
+           one click away. Each group is a [data-rail-toggle] row; the page's
+           existing delegated handler opens it, aria-expanded stays in step. -->
+      <button type="button" class="db-link db-grp" data-rail-toggle="rail-g-projects" aria-expanded="false" aria-controls="rail-g-projects"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+      <div class="db-sub" id="rail-g-projects" hidden>
+        <button type="button" class="db-link db-link-sub" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
+        <button type="button" class="db-link db-link-sub" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
+        <a class="db-link db-link-sub" href="#project-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Project List</a>
+        <a class="db-link db-link-sub" href="#operator-tools" id="rail-operator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Admin</a>
+      </div>
+      <button type="button" class="db-link db-grp" data-rail-toggle="rail-g-export" aria-expanded="false" aria-controls="rail-g-export"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+      <div class="db-sub" id="rail-g-export" hidden>
+        <button type="button" class="db-link db-link-sub" data-action="downloadPublicData"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Static Manifest</button>
+        <button type="button" class="db-link db-link-sub" data-action="downloadAdminBackup"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Backup CSV</button>
+      </div>
+      <button type="button" class="db-link db-grp" data-rail-toggle="rail-g-go" aria-expanded="false" aria-controls="rail-g-go"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Go <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+      <div class="db-sub" id="rail-g-go" hidden>
+        <a class="db-link db-link-sub" href="app.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Projects / Dashboard</a>
+        <!-- T-28 (2026-11-12): the MCP server is a destination of its own,
+             so it gets its own dropdown instead of a flat row. The brand mark
+             is My MaNaGeR's (i-mpw), never a generic sparkle. -->
+        <button type="button" class="db-link db-link-sub" data-rail-toggle="rail-mcp" aria-expanded="false" aria-controls="rail-mcp"><svg class="ico mcp-brand-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> MCP Server <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+        <div class="db-sub db-sub-nest" id="rail-mcp" hidden>
+          <button type="button" class="db-link db-link-sub" data-mcp-side="open"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open MCP panel</button>
+          <button type="button" class="db-link db-link-sub" data-mcp-side="copy"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy connection URL</button>
+          <button type="button" class="db-link db-link-sub" data-mcp-side="clients"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Connected clients</button>
+        </div>
+      </div>
+      <button type="button" class="db-link db-grp" data-rail-toggle="rail-admin-customize" aria-expanded="false" aria-controls="rail-admin-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       <div class="db-sub" id="rail-admin-customize" hidden>
         <!-- T-19 (UI-IA-AND-MCP 2026-11-11): the plan status used to sit here
              as a dead "Premium" label. A plan is not a customisation - the

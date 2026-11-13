@@ -50,7 +50,17 @@ const EXACT = {
   // css/src/36-search.css layer (overlay, combobox rows, group headings and
   // the reduced-motion search-hit outline, ~2.9 KB). One additive layer; the
   // next CSS wave should split a layer rather than raise this again.
-  'css/mmgr.css': 598000,
+  // 2026-11-12 (proposal review UI + drawer type): raised 598000 -> 604000
+  // for the grouped review card (record name + field rows + affected-surface
+  // chips) and the approval modal's surface line (~2.6 KB), plus the Controls
+  // drawer's readable type scale and the non-wrapping tab bar (~1.4 KB). The
+  // old 0.66rem flat diff grid and 10.9px hints were unreadable; this is the
+  // replacement surface.
+  // 2026-11-12 (UI-IA Phase 4): raised 604000 -> 607000 for the admin rail's
+  // dropdown language (group rows, sub-rows, nested MCP menu, ~1.2 KB) and the
+  // MCP card disclosure (summary, state chip, brand mark, ~1.6 KB). Both are
+  // admin-only selectors; the next admin wave should split a layer first.
+  'css/mmgr.css': 607000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
@@ -87,7 +97,10 @@ const DIRS = {
   // 32 bytes with the status-chip action (setProjStatus) and the backup row
   // delegate. It is the next split candidate - the action map alone is a few
   // hundred lines - so this bump buys one wave, not a habit.
-  js: 305000,
+  // 2026-11-12 (status menu placement): 305000 -> 307000 for the [popover]
+  // anchoring helper (~1 KB). The menu opened at the viewport origin; this is
+  // the fix, and the file remains the next split candidate.
+  js: 307000,
   css: 160000,
   src: 300000
 };

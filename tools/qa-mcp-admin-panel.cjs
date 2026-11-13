@@ -337,6 +337,96 @@ function check(name, val, detail) {
     { toggle, revoke }
   );
 
+  // ---- M11: the card is a branded disclosure that states the real state ---
+  const m11 = await ev(`(function(){
+    const card = document.getElementById('mcp-admin-card');
+    const sum = card.querySelector('summary');
+    const use = sum ? sum.querySelector('use') : null;
+    const chip = document.getElementById('mcp-admin-chip');
+    return {
+      details: card.tagName === 'DETAILS',
+      summary: !!sum,
+      icon: use ? use.getAttribute('href') : '',
+      sparkle: !!(sum && sum.querySelector('use[href*="i-sparkle"]')),
+      chip: chip ? (chip.textContent || '').trim() : '',
+      chipKind: chip ? chip.getAttribute('data-kind') : '',
+      open: card.open,
+      height: Math.round(card.getBoundingClientRect().height)
+    };
+  })()`);
+  check(
+    'M11 MCP card is a disclosure wearing the brand mark (no sparkle)',
+    m11.details && m11.summary && /#i-mpw$/.test(m11.icon) && !m11.sparkle,
+    m11
+  );
+  check(
+    'M11b folded by default, and the chip counts the live client',
+    m11.open === false && m11.height < 90 && /On, 1 client/.test(m11.chip) && m11.chipKind === 'ok',
+    m11
+  );
+
+  // ---- M13: the rail is dropdown groups, with MCP Server under Go ---------
+  const m13 = await ev(`(function(){
+    const nav = document.getElementById('db-nav');
+    const groups = Array.prototype.slice.call(nav.querySelectorAll(':scope > .db-link[data-rail-toggle]'));
+    const go = document.getElementById('rail-g-go');
+    const mcpRow = document.querySelector('[data-rail-toggle="rail-mcp"]');
+    const inGo = !!(go && mcpRow && go.contains(mcpRow));
+    const goT = document.querySelector('[data-rail-toggle="rail-g-go"]');
+    if (go && go.hidden) goT.click();
+    const mcpT = document.querySelector('[data-rail-toggle="rail-mcp"]');
+    if (mcpT && document.getElementById('rail-mcp').hidden) mcpT.click();
+    const sides = Array.prototype.slice.call(document.querySelectorAll('#rail-mcp [data-mcp-side]')).map(function(b){
+      return b.textContent.replace(/[ ]+/g, ' ').trim();
+    });
+    return {
+      groupCount: groups.length,
+      groupLabels: groups.map(function(b){ return b.textContent.trim(); }),
+      inGo: inGo,
+      goOpen: !go.hidden,
+      mcpOpen: !document.getElementById('rail-mcp').hidden,
+      sides: sides
+    };
+  })()`);
+  check(
+    'M13 rail is four dropdown groups and MCP Server sits inside Go',
+    m13.groupCount === 4 &&
+      m13.groupLabels.join(',') === 'Projects,Export,Go,Customize' &&
+      m13.inGo &&
+      m13.goOpen &&
+      m13.mcpOpen,
+    m13
+  );
+  check(
+    'M13b MCP submenu offers open, copy and clients',
+    m13.sides.join('|') === 'Open MCP panel|Copy connection URL|Connected clients',
+    m13
+  );
+
+  // ---- M14: the rail action unfolds the card ------------------------------
+  await ev(`(function(){
+    document.getElementById('mcp-admin-card').open = false;
+    document.querySelector('#rail-mcp [data-mcp-side="open"]').click();
+  })()`);
+  await delay(500);
+  const m14 = await ev(`document.getElementById('mcp-admin-card').open`);
+  check('M14 "Open MCP panel" unfolds the card', m14 === true, m14);
+
+  // ---- M12: the rail copy action copies the real URL ----------------------
+  await ev(`document.querySelector('#rail-mcp [data-mcp-side="copy"]').click();`);
+  await delay(700);
+  const m12 = await ev(`(function(){
+    return {
+      status: (document.getElementById('mcp-admin-status').textContent || '').trim(),
+      url: document.getElementById('mcp-connect-url').value
+    };
+  })()`);
+  check(
+    'M12 rail Copy reports success (or asks for a manual copy)',
+    m12.url.indexOf('/api/mcp') > -1 && /copied|Select the URL/i.test(m12.status),
+    m12
+  );
+
   // ---- M9: 390 has no horizontal overflow --------------------------------
   await send('Emulation.setDeviceMetricsOverride', {
     width: 390,

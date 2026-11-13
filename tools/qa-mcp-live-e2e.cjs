@@ -12,10 +12,11 @@
              proposal queued, cloud state UNCHANGED before accept,
              proposal visible in the review queue.
      B0-B5   Real headless Chrome on the local Worker: access-gate
-             seeding, owner-code cloud section, MCP AI badge, REAL
-             Accept click applies (status + row), duplicate
-             proposal -> zero-diff accept warns 'nothing left to
-             apply' (v318 contract, no false success).
+             seeding, owner-code cloud section, MCP AI badge, the review
+             card naming the record + field + before/after, a REAL
+             Accept click applying (status + pull), and a duplicate
+             proposal refused as STALE with the remedy sentence, the row
+             left in place (2026-11-12 contract, no false success).
      C1-C6   Cloud state carries the change, changelog logged, key
              revoked (refuses calls, no data leak), project deleted,
              meta refuses afterwards.
@@ -477,7 +478,18 @@ async function main() {
   );
 
   const verifierD = 'd-verifier-' + Math.random().toString(36).slice(2);
-  const challengeD = require('crypto').createHash('sha256').update(verifierD).digest('hex');
+  const challengeD = require('crypto').createHash('sha256').update(verifierD).digest('base64url');
+  // RFC 7636 appendix B: a real client computes base64url, so a hex-only
+  // server passes its own fixture and fails every connector.
+  const rfcVector = require('crypto')
+    .createHash('sha256')
+    .update('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk')
+    .digest('base64url');
+  check(
+    'D0 RFC 7636 S256 test vector is base64url',
+    rfcVector === 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+    rfcVector
+  );
   const redirectD = 'https://claude.ai/api/mcp/auth_callback';
   const regD = await api('POST', '/api/oauth/register', {
     client_name: 'Claude',
@@ -506,6 +518,17 @@ async function main() {
       consentHtml.indexOf('Claude') > -1 &&
       consentHtml.indexOf('claude.ai') > -1,
     { status: consentRes.status }
+  );
+  check(
+    'D4b consent page is branded, shows the signed-in account and both decisions',
+    consentHtml.indexOf('mmgr-icons.svg#i-mpw') > -1 &&
+      consentHtml.indexOf(E2E_EMAIL) > -1 &&
+      consentHtml.indexOf('name="decision" value="approve"') > -1 &&
+      consentHtml.indexOf('name="decision" value="deny"') > -1,
+    {
+      mark: consentHtml.indexOf('mmgr-icons.svg#i-mpw') > -1,
+      email: consentHtml.indexOf(E2E_EMAIL) > -1
+    }
   );
 
   const approveRes = await fetch(BASE + '/api/oauth/authorize', {
@@ -775,14 +798,29 @@ async function main() {
       // Populate the queue through the module (the Refresh button's own path).
       const b3 = await ev(`(async function(){
         try { await window.MMGR.CloudReview.cloudReviewList(); await new Promise(r => setTimeout(r, 400));
-          return { rows: document.querySelectorAll('#cloud-review-list .sr').length,
+          const card = document.querySelector('#cloud-review-list .rv-card');
+          const txt = function (sel) { const el = document.querySelector('#cloud-review-list ' + sel); return el ? el.textContent.replace(/\\s+/g, ' ').trim() : ''; };
+          return { rows: document.querySelectorAll('#cloud-review-list .rv-card').length,
             acceptBtns: document.querySelectorAll('#cloud-review-list [data-action="cloudReviewAccept"]').length,
-            badge: !!document.querySelector('#cloud-review-list .badge-ai') };
+            badge: !!document.querySelector('#cloud-review-list .badge-ai'),
+            card: !!card,
+            record: txt('.rv-name'),
+            field: txt('.rv-f'),
+            before: txt('.rv-b'),
+            after: txt('.rv-a'),
+            affects: txt('.rv-surf') };
         } catch (e) { return { threw: String(e && e.message || e) }; }
       })()`);
       check(
-        'B3 queue shows the MCP proposal with an Accept button + AI badge',
-        b3 && b3.rows >= 1 && b3.acceptBtns === 1 && b3.badge,
+        'B3 queue names the record, field and before/after with an Accept button + AI badge',
+        b3 &&
+          b3.rows >= 1 &&
+          b3.acceptBtns === 1 &&
+          b3.badge &&
+          /Pour slab/.test(b3.record) &&
+          /Status/i.test(b3.field) &&
+          /inprogress/i.test(b3.before) &&
+          /completed/i.test(b3.after),
         b3
       );
 
@@ -835,10 +873,11 @@ async function main() {
         b4
       );
 
-      // B5 (v318): accept the duplicate - the change is already applied, the
-      // merge finds zero diffs, the server answers ok:true with NO savedAt,
-      // and the v318 contract must WARN 'nothing left to apply' in the
-      // status line (a false success message would be a regression).
+      // B5 (2026-11-12 contract): the duplicate's "before" no longer matches
+      // the live record after B4 applied the change, so the server refuses the
+      // whole accept with 409 stale and a sentence naming the remedy. The row
+      // STAYS (nothing was applied) and the status must carry the sentence,
+      // never a bare "stale" code and never a false success.
       const b5 = await ev(`(async function(){
         try {
           await window.MMGR.CloudReview.cloudReviewList();
@@ -849,12 +888,12 @@ async function main() {
           await new Promise(r => setTimeout(r, 2500));
           const status = (document.getElementById('cloud-status') || {}).textContent || '';
           const acceptLeft = document.querySelectorAll('#cloud-review-list [data-action="cloudReviewAccept"]').length;
-          return { status: status, warned: /nothing left to apply/.test(status), acceptLeft: acceptLeft };
+          return { status: status, warned: /no longer matches|Refresh the project/i.test(status), acceptLeft: acceptLeft };
         } catch (e) { return { threw: String(e && e.message || e) }; }
       })()`);
       check(
-        'B5 zero-diff accept warns nothing-left-to-apply (no false success)',
-        b5 && b5.warned && b5.acceptLeft === 0,
+        'B5 stale accept refuses with a sentence and leaves the row for review',
+        b5 && b5.warned && b5.acceptLeft === 1,
         b5
       );
     } catch (e) {

@@ -110,6 +110,11 @@ export function billingFreeCap(env) {
 // on an old link) still resolves to the same plan instead of quietly falling
 // back to contractor - an alias that changed entitlements would be a silent
 // downgrade, which is the one thing this function must never do.
+// Plan order for an in-place change. Only a move UP (or a lateral move to a
+// different product) is applied immediately; a lower plan is refused with a
+// clear message instead of silently stripping paid features mid-period.
+export const TIER_RANK = { contractor: 1, estimator: 2, company: 3, enterprise: 4 };
+
 export function deriveTier(priceId, env) {
   if (!priceId || !env) {
     return 'contractor';
@@ -134,6 +139,30 @@ export function deriveTier(priceId, env) {
 // tier-dependent features (RBAC member caps) on the SAME rule.
 export function billingStatusActive(status) {
   return status === 'active' || status === 'on_trial' || status === 'past_due';
+}
+
+// UI-IA Phase 5 (2026-11-12): "active" is not the whole question. A cancel
+// scheduled for the end of a paid period (or a status Paddle already flipped
+// to 'canceled' while the period still runs) must keep every paid feature
+// until that moment - the owner paid for it. Every entitlement reader uses
+// this, not billingStatusActive alone, so the badge, the project cap, photos,
+// team templates and the AI relay cannot disagree about who is paid.
+// cancel_at and current_period_end are epoch SECONDS; nowSec is optional so a
+// caller (and a test) can pin the clock.
+export function subscriptionActive(row, nowSec) {
+  if (!row) {
+    return false;
+  }
+  if (billingStatusActive(row.status)) {
+    return true;
+  }
+  const status = String(row.status || '');
+  if (status !== 'canceled' && status !== 'cancelled') {
+    return false;
+  }
+  const until = Number(row.cancel_at) || Number(row.current_period_end) || 0;
+  const now = Number.isFinite(Number(nowSec)) ? Number(nowSec) : Math.floor(Date.now() / 1000);
+  return until > now;
 }
 
 // D1 stores current_period_end as epoch SECONDS. JavaScript's Date() takes
@@ -341,7 +370,8 @@ async function paddleApplyWebhook(env, rawBody) {
     /* keep now */
   }
   let status,
-    periodEnd = null;
+    periodEnd = null,
+    cancelAt = null;
   if (event === 'transaction.completed') {
     // One-time purchase: grant a tier with no period end (nothing renews).
     status = 'active';
@@ -351,13 +381,32 @@ async function paddleApplyWebhook(env, rawBody) {
     if (endRaw) {
       periodEnd = Math.floor(new Date(endRaw).getTime() / 1000);
     }
+    // A scheduled cancel is part of the subscription's state. Persist WHEN it
+    // takes effect; every other event (a resume, a plan change, a fresh
+    // subscription) carries no cancel and therefore clears the column.
+    const sched = data.scheduled_change;
+    if (sched && sched.action === 'cancel' && sched.effective_at) {
+      const at = new Date(sched.effective_at).getTime();
+      if (Number.isFinite(at)) {
+        cancelAt = Math.floor(at / 1000);
+      }
+    }
   }
   // Paddle events carry items[0].price.id on subscription and transaction
   // events; the price ID is what names the tier, never a hardcoded 'pro'.
   const priceId =
     (data && data.items && data.items[0] && data.items[0].price && data.items[0].price.id) || null;
   const tier = deriveTier(priceId, env);
-  const applied = await applySubscription(env, ownerSub, pdId, status, tier, periodEnd, occurredAt);
+  const applied = await applySubscription(
+    env,
+    ownerSub,
+    pdId,
+    status,
+    tier,
+    periodEnd,
+    cancelAt,
+    occurredAt
+  );
   if (
     applied &&
     authEmailConfigured(env) &&
@@ -378,9 +427,17 @@ async function applySubscription(
   status,
   tier,
   periodEnd,
+  cancelAt,
   occurredAt
 ) {
   const now = occurredAt || new Date().toISOString();
+  // D1 refuses `undefined` binds. The LemonSqueezy path (and any caller that
+  // predates a scheduled cancel) has no cancelAt, so normalise every optional
+  // epoch to null here rather than trusting each caller to remember.
+  const periodEndSec =
+    Number.isFinite(Number(periodEnd)) && Number(periodEnd) > 0 ? Number(periodEnd) : null;
+  const cancelAtSec =
+    Number.isFinite(Number(cancelAt)) && Number(cancelAt) > 0 ? Number(cancelAt) : null;
   // ONE ROW PER OWNER, so an event about a DIFFERENT subscription must not
   // strip the one the owner is actually paying for: cancelling an old/duplicate
   // subscription in the Paddle dashboard fires subscription.canceled for the
@@ -420,13 +477,13 @@ async function applySubscription(
   // every reader already used, `tier` is the migration-0023 column the cloud
   // layer reads. They are written together so neither can silently drift.
   await env.DB.prepare(
-    'INSERT INTO cloud_subscriptions (owner_sub, ls_subscription_id, status, plan, tier, current_period_end, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?) ' +
+    'INSERT INTO cloud_subscriptions (owner_sub, ls_subscription_id, status, plan, tier, current_period_end, cancel_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?) ' +
       'ON CONFLICT(owner_sub) DO UPDATE SET ls_subscription_id = excluded.ls_subscription_id, status = excluded.status, ' +
       'plan = excluded.plan, tier = excluded.tier, ' +
-      'current_period_end = excluded.current_period_end, updated_at = excluded.updated_at ' +
+      'current_period_end = excluded.current_period_end, cancel_at = excluded.cancel_at, updated_at = excluded.updated_at ' +
       'WHERE excluded.updated_at >= cloud_subscriptions.updated_at'
   )
-    .bind(ownerSub, providerSubId, status, tier, tier, periodEnd, now, now)
+    .bind(ownerSub, providerSubId, status, tier, tier, periodEndSec, cancelAtSec, now, now)
     .run();
   return true;
 }
@@ -512,11 +569,23 @@ export async function handleBillingStatus(request, env) {
     });
   }
   const sub = await env.DB.prepare(
-    'SELECT status, plan, tier, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?'
+    'SELECT status, plan, tier, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
   )
     .bind(session.sub)
     .first();
-  const active = !!(sub && billingStatusActive(sub.status));
+  const nowSec = Math.floor(Date.now() / 1000);
+  const active = !!(sub && subscriptionActive(sub, nowSec));
+  // A cancel that has not taken effect yet: the owner keeps Premium, the panel
+  // must not offer a second Cancel, and it should say when access ends.
+  const cancelAtSec = Number(sub && sub.cancel_at) || 0;
+  const statusNow = String((sub && sub.status) || '');
+  const periodEndSec = Number(sub && sub.current_period_end) || 0;
+  const canceling = !!(
+    active &&
+    (cancelAtSec > nowSec ||
+      ((statusNow === 'canceled' || statusNow === 'cancelled') && periodEndSec > nowSec))
+  );
+  const cancelAtIso = periodEndIso(canceling ? cancelAtSec || periodEndSec : cancelAtSec);
   // OWNER 2026-10-09 (L11): free = exactly the free cap (one linked project),
   // and EVERY paid tier - estimator included - is unlimited. This used to
   // report the free cap for every tier including paying ones, which is what
@@ -532,6 +601,8 @@ export async function handleBillingStatus(request, env) {
     provider: provider,
     plan: active ? sub.tier || sub.plan || 'contractor' : 'free',
     active: active,
+    canceling: canceling,
+    cancelAt: cancelAtIso,
     currentPeriodEnd: periodEndIso(sub && sub.current_period_end),
     projectCap: active ? null : cap,
     projectCount: projectCount
@@ -696,6 +767,135 @@ async function lsCheckout(env, session) {
   }
 }
 
+// ---- upgrade an existing subscription (UI-IA Phase 5, owner 2026-11-12) -----
+// The owner's rule: a paying subscriber who picks another plan gets THAT plan,
+// not a second subscription. Paddle changes a subscription's items in place:
+//   PATCH /subscriptions/{id} { items:[{price_id, quantity}],
+//                               proration_billing_mode:'prorated_immediately' }
+// If a cancel is already scheduled, it is cleared first (PATCH
+// { scheduled_change: null }) - otherwise the plan would change and then still
+// end at the period boundary the owner had asked to cancel. Two PATCHes, in
+// that order, and the second is the one that moves the money.
+async function paddleUpgrade(env, session, held, priceId, tierParam, nowSec) {
+  const sandbox = String(env.PADDLE_ENV || '') === 'sandbox';
+  const base = paddleApiBase(env);
+  const auth = {
+    Authorization: 'Bearer ' + env.PADDLE_API_KEY,
+    'Content-Type': 'application/json'
+  };
+  const subId = String(held.ls_subscription_id || '');
+  try {
+    if (Number(held.cancel_at) > nowSec) {
+      const clear = await fetch(base + '/subscriptions/' + encodeURIComponent(subId), {
+        method: 'PATCH',
+        headers: auth,
+        body: JSON.stringify({ scheduled_change: null })
+      });
+      if (!clear.ok) {
+        const cd = await clear.json().catch(function () {
+          return {};
+        });
+        let detail = '';
+        try {
+          const err = (cd && cd.error) || {};
+          const first = (err.errors && err.errors[0]) || {};
+          detail = String(first.detail || err.detail || err.code || '').slice(0, 300);
+        } catch (e) {
+          /* keep empty */
+        }
+        console.warn(
+          'billing upgrade: could not clear the scheduled cancel, subId=' +
+            subId +
+            ' env=' +
+            (sandbox ? 'sandbox' : 'live') +
+            ' http=' +
+            clear.status
+        );
+        return json(
+          {
+            ok: false,
+            error:
+              'upgrade failed: the scheduled cancel could not be cleared (Paddle HTTP ' +
+              clear.status +
+              ')' +
+              (detail ? ' , ' + detail : '')
+          },
+          502
+        );
+      }
+    }
+    const res = await fetch(base + '/subscriptions/' + encodeURIComponent(subId), {
+      method: 'PATCH',
+      headers: auth,
+      body: JSON.stringify({
+        items: [{ price_id: priceId, quantity: 1 }],
+        proration_billing_mode: 'prorated_immediately'
+      })
+    });
+    const data = await res.json().catch(function () {
+      return {};
+    });
+    if (!res.ok) {
+      let detail = '';
+      let code = '';
+      try {
+        const err = (data && data.error) || {};
+        const first = (err.errors && err.errors[0]) || {};
+        detail = String(first.detail || err.detail || err.code || '').slice(0, 300);
+        code = String(err.code || '');
+      } catch (e) {
+        /* keep empty */
+      }
+      console.warn(
+        'billing upgrade failed: subId=' +
+          subId +
+          ' env=' +
+          (sandbox ? 'sandbox' : 'live') +
+          ' http=' +
+          res.status +
+          ' code=' +
+          code +
+          ' detail=' +
+          detail
+      );
+      return json(
+        {
+          ok: false,
+          error:
+            'upgrade failed (Paddle HTTP ' +
+            res.status +
+            (code ? ', code ' + code : '') +
+            ')' +
+            (detail ? ' , ' + detail : '')
+        },
+        502
+      );
+    }
+    const next = (data && data.data) || {};
+    const nextStatus = String(next.status || 'active');
+    // Reflect the change now so the panel and the next page load agree with
+    // what Paddle just accepted. The subscription.updated webhook repeats it.
+    try {
+      await env.DB.prepare(
+        'UPDATE cloud_subscriptions SET status = ?, plan = ?, tier = ?, cancel_at = NULL, updated_at = ? WHERE owner_sub = ?'
+      )
+        .bind(nextStatus, tierParam, tierParam, new Date().toISOString(), session.sub)
+        .run();
+    } catch (e) {
+      /* the webhook will write the same facts */
+    }
+    return json({
+      ok: true,
+      upgraded: true,
+      plan: tierParam,
+      status: nextStatus,
+      effective: 'immediately'
+    });
+  } catch (e) {
+    return json({ ok: false, error: 'upgrade failed (upstream unreachable)' }, 502);
+  }
+}
+
 export async function handleBillingCheckout(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) {
@@ -708,32 +908,10 @@ export async function handleBillingCheckout(request, env) {
   if (provider !== 'paddle') {
     return lsCheckout(env, session);
   }
-  // A second checkout while a subscription is live creates a SECOND Paddle
-  // subscription that is billed separately. The one-row-per-owner table can
-  // only remember one of them, so the other keeps charging and can no longer
-  // be seen or cancelled from the app. Refuse until the first is cancelled.
-  const held = await env.DB.prepare(
-    'SELECT status, ls_subscription_id FROM cloud_subscriptions WHERE owner_sub = ?'
-  )
-    .bind(session.sub)
-    .first();
-  if (
-    held &&
-    billingStatusActive(held.status) &&
-    String(held.ls_subscription_id || '').indexOf('sub_') === 0
-  ) {
-    return json(
-      {
-        ok: false,
-        code: 'already_subscribed',
-        error:
-          'You already have an active subscription. Cancel it from your dashboard first - a second one would be billed separately and could not be managed from here.'
-      },
-      409
-    );
-  }
   const url = new URL(request.url);
   const tierParam = url.searchParams.get('tier') || 'contractor';
+  // homeowner is the pre-rename alias for the same plan.
+  const wantTier = tierParam === 'homeowner' ? 'estimator' : tierParam;
   let priceId;
   if (tierParam === 'enterprise' && env.PADDLE_ENTERPRISE_PRICE_ID) {
     priceId = String(env.PADDLE_ENTERPRISE_PRICE_ID);
@@ -743,14 +921,49 @@ export async function handleBillingCheckout(request, env) {
     (tierParam === 'estimator' || tierParam === 'homeowner') &&
     (env.PADDLE_ESTIMATOR_PRICE_ID || env.PADDLE_HOMEOWNER_PRICE_ID)
   ) {
-    // estimator is the plan; homeowner is the pre-rename alias for the same one
     priceId = String(env.PADDLE_ESTIMATOR_PRICE_ID || env.PADDLE_HOMEOWNER_PRICE_ID);
   } else {
     priceId = String(env.PADDLE_PRICE_ID); // contractor (default)
   }
-  return paddleCheckout(env, session, priceId, tierParam === 'homeowner' ? 'estimator' : tierParam);
+  // UI-IA Phase 5 (owner 2026-11-12): a paying subscriber who picks another
+  // plan changes THE plan. The old rule refused with 409, which left an owner
+  // who wanted Company stuck on Contractor until they cancelled first - and a
+  // second checkout would have billed separately anyway.
+  const held = await env.DB.prepare(
+    'SELECT status, ls_subscription_id, current_period_end, cancel_at, plan, tier FROM cloud_subscriptions WHERE owner_sub = ?'
+  )
+    .bind(session.sub)
+    .first();
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (
+    held &&
+    subscriptionActive(held, nowSec) &&
+    String(held.ls_subscription_id || '').indexOf('sub_') === 0
+  ) {
+    const heldTier = held.tier || held.plan || 'contractor';
+    if (heldTier === wantTier) {
+      return json({ ok: true, samePlan: true, plan: heldTier, active: true });
+    }
+    if ((TIER_RANK[wantTier] || 0) < (TIER_RANK[heldTier] || 0)) {
+      return json(
+        {
+          ok: false,
+          code: 'downgrade_not_supported',
+          error:
+            'Your current plan is higher. To move to a lower plan, contact support and we will schedule it for the end of the period you have paid for.'
+        },
+        409
+      );
+    }
+    if (billingStatusActive(held.status)) {
+      return paddleUpgrade(env, session, held, priceId, wantTier, nowSec);
+    }
+    // canceled, but the paid period is still running: Paddle will not change a
+    // canceled subscription, and it will not renew either. A fresh checkout
+    // replaces it when the owner pays; the old row is replaced by the new sub.
+  }
+  return paddleCheckout(env, session, priceId, wantTier);
 }
-
 // ---- cancel for ACCOUNT DELETION (W3, owner 2026-10-15) --------------------
 // Deleting your account cancels the subscription IMMEDIATELY. Owner decision:
 // the remaining paid days are forfeited, and the refund policy says so. This is
@@ -863,6 +1076,27 @@ export async function paddleCancelSubscription(env, subId) {
 // Paddle's own subscription.canceled webhook is the only thing that flips the
 // local status, so the local row cannot disagree with Paddle about when access
 // ends. The row is never deleted.
+// UI-IA Phase 5: the scheduled cancel is now remembered locally, so the panel
+// can stop offering Cancel and can name the end date without asking Paddle on
+// every page load. Paddle's webhook remains the authority on STATUS; this only
+// records WHEN the paid period ends. A write failure is not fatal - the
+// webhook repeats the same fact.
+async function rememberCancelAt(env, ownerSub, iso) {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(t)) {
+    return;
+  }
+  try {
+    await env.DB.prepare(
+      'UPDATE cloud_subscriptions SET cancel_at = ?, updated_at = ? WHERE owner_sub = ?'
+    )
+      .bind(Math.floor(t / 1000), new Date().toISOString(), ownerSub)
+      .run();
+  } catch (e) {
+    /* the webhook still carries the truth */
+  }
+}
+
 export async function handleBillingCancel(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) {
@@ -905,12 +1139,27 @@ export async function handleBillingCancel(request, env) {
     );
   }
   const sub = await env.DB.prepare(
-    'SELECT status, ls_subscription_id, current_period_end FROM cloud_subscriptions WHERE owner_sub = ?'
+    'SELECT status, ls_subscription_id, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
   )
     .bind(session.sub)
     .first();
-  if (!sub || !billingStatusActive(sub.status)) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!sub || !subscriptionActive(sub, nowSec)) {
     return json({ ok: false, error: 'no active subscription' }, 404);
+  }
+  // Already scheduled (or Paddle already flipped the status while the paid
+  // period runs): this is a success with the real date, not a second cancel.
+  // Answering here also keeps a stale tab from sending Paddle a request that
+  // can only fail.
+  const storedCancelAt = Number(sub.cancel_at) || 0;
+  if (storedCancelAt > nowSec || !billingStatusActive(sub.status)) {
+    return json({
+      ok: true,
+      alreadyScheduled: true,
+      cancelAt: periodEndIso(storedCancelAt || sub.current_period_end),
+      currentPeriodEnd: periodEndIso(sub.current_period_end),
+      status: sub.status
+    });
   }
   // ls_subscription_id is the generic provider subscription id; Paddle writes
   // its sub_... there via applySubscription().
@@ -1005,6 +1254,7 @@ export async function handleBillingCancel(request, env) {
                 ' code=' +
                 code
             );
+            await rememberCancelAt(env, session.sub, String(sched.effective_at));
             return json(body, 200);
           }
           if (sched && sched.action === 'pause') {
@@ -1072,6 +1322,7 @@ export async function handleBillingCancel(request, env) {
     }
     const sched = data && data.data && data.data.scheduled_change;
     const cancelAt = (sched && sched.effective_at) || null;
+    await rememberCancelAt(env, session.sub, cancelAt || periodEndIso(sub.current_period_end));
     // Access runs to the end of the paid period; report the truth and let the
     // webhook finalise the status.
     return json({

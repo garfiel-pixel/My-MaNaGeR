@@ -39,9 +39,24 @@ async function sha256Hex(str) {
   return arr.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// RFC 7636 section 4.2: S256 is BASE64URL(SHA256(ASCII(verifier))), not hex.
+// A hex challenge is self-consistent but no compliant client can ever match
+// it - every real connector (Claude, Cursor) fails token exchange with
+// "PKCE verification failed". Keep this function base64url forever.
+async function sha256Base64Url(str) {
+  const data = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(digest);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) {
+    bin += String.fromCharCode(bytes[i]);
+  }
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 // S256 PKCE challenge from a verifier.
 export async function pkceChallenge(verifier) {
-  return sha256Hex(verifier);
+  return sha256Base64Url(verifier);
 }
 
 function isoIn(ms) {
@@ -362,28 +377,83 @@ export function renderConsentHtml(params) {
     .join('');
   const clientName = escapeHtml(params.client_name || params.client_id || 'this application');
   const redirectHost = escapeHtml(params.redirect_host || '');
+  const account = escapeHtml(params.account_email || '');
   return (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="robots" content="noindex,nofollow">' +
     '<title>Authorize MCP access | My MaNaGeR</title>' +
-    '<style>html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}' +
-    'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F5EFE6;color:#1C1917}' +
-    'main{max-width:30rem;padding:2rem;text-align:center}' +
-    'h1{font-size:1.25rem;margin:0 0 .75rem}p{color:#57606a;line-height:1.6;margin:0 0 1.25rem}' +
-    '.btn{border:0;border-radius:.5rem;padding:.6rem 1.1rem;font-size:.95rem;font-weight:600;cursor:pointer;margin:.25rem}' +
-    '.allow{background:#B45309;color:#fff}.deny{background:#E7DDD0;color:#1C1917}</style></head>' +
-    '<body><main><h1>Connect My MaNaGeR to ' +
+    '<style>' +
+    '*{box-sizing:border-box}' +
+    'html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}' +
+    'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;' +
+    'background:#F5EFE6;color:#1C1917}' +
+    'main{width:100%;max-width:30rem;background:#FFFDF9;border:1px solid #E7DDD0;border-radius:18px;' +
+    'padding:30px 30px 24px;box-shadow:0 18px 48px rgba(28,25,23,.10)}' +
+    '.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px}' +
+    '.mark{width:30px;height:30px;color:#B45309}' +
+    '.mark,.ico{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}' +
+    '.wordmark{font-size:.95rem;font-weight:800;letter-spacing:.2px}' +
+    '.eyebrow{margin:0 0 6px;font-size:.72rem;font-weight:700;letter-spacing:.8px;' +
+    'text-transform:uppercase;color:#8A5A2B}' +
+    'h1{font-size:1.35rem;line-height:1.3;margin:0 0 10px;letter-spacing:-.01em}' +
+    'h1 .client{color:#B45309}' +
+    '.lead{margin:0 0 16px;font-size:.95rem;line-height:1.55;color:#57534E}' +
+    '.who{display:flex;align-items:center;gap:8px;padding:10px 12px;margin:0 0 18px;' +
+    'background:#F5EFE6;border:1px solid #E7DDD0;border-radius:10px;font-size:.86rem;color:#57534E}' +
+    '.who b{color:#1C1917;font-weight:650;overflow-wrap:anywhere}' +
+    '.scope{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:10px}' +
+    '.scope li{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;line-height:1.45;color:#44403C}' +
+    '.scope .ico{flex:0 0 auto;width:18px;height:18px;margin-top:1px}' +
+    '.scope .yes{color:#15803D}.scope .no{color:#B91C1C}' +
+    '.return{margin:0 0 20px;font-size:.86rem;line-height:1.5;color:#57534E}' +
+    '.return b{color:#1C1917;overflow-wrap:anywhere}' +
+    '.actions{display:flex;gap:10px;margin:0 0 16px}' +
+    '.btn{appearance:none;border:1px solid transparent;border-radius:10px;padding:12px 20px;' +
+    'font:inherit;font-size:.95rem;font-weight:700;cursor:pointer;min-height:46px}' +
+    '.btn:focus-visible{outline:3px solid rgba(180,83,9,.35);outline-offset:2px}' +
+    '.allow{flex:1;background:#B45309;color:#fff}.allow:hover{background:#9A4608}' +
+    '.deny{flex:0 0 auto;background:#F5EFE6;color:#1C1917;border-color:#D8CCBC}' +
+    '.deny:hover{background:#EFE5D8}' +
+    '.foot{margin:0;font-size:.76rem;line-height:1.5;color:#78716C}' +
+    '@media (max-width:420px){main{padding:24px 20px 20px}.actions{flex-direction:column}' +
+    '.deny{flex:1}.btn{width:100%}}' +
+    '</style></head>' +
+    '<body><main>' +
+    '<div class="brand"><svg class="mark" aria-hidden="true"><use href="/css/mmgr-icons.svg#i-mpw"></use></svg>' +
+    '<span class="wordmark">My MaNaGeR</span></div>' +
+    '<p class="eyebrow">Connection request</p>' +
+    '<h1>Connect to <span class="client">' +
     clientName +
-    '</h1>' +
-    '<p>This application is asking to connect to your My MaNaGeR account through MCP. It will be able to read and act on the projects you choose, under the controls you set in the admin panel. It cannot open the admin panel.</p>' +
+    '</span></h1>' +
+    '<p class="lead">An AI client is asking to use your My MaNaGeR account through MCP.</p>' +
+    (account
+      ? '<div class="who"><svg class="ico" aria-hidden="true" width="16" height="16">' +
+        '<use href="/css/mmgr-icons.svg#i-users"></use></svg> Signed in as <b>' +
+        account +
+        '</b></div>'
+      : '') +
+    '<ul class="scope">' +
+    '<li><svg class="ico yes" aria-hidden="true"><use href="/css/mmgr-icons.svg#i-check"></use></svg>' +
+    'Read the projects and sections you grant in the admin panel.</li>' +
+    '<li><svg class="ico yes" aria-hidden="true"><use href="/css/mmgr-icons.svg#i-check"></use></svg>' +
+    'Propose changes to those projects. Every change waits for your approval.</li>' +
+    '<li><svg class="ico no" aria-hidden="true"><use href="/css/mmgr-icons.svg#i-x"></use></svg>' +
+    'It cannot open the admin panel, change your plan or see your password.</li>' +
+    '</ul>' +
     (redirectHost
-      ? '<p>After you press Allow you will return to <strong>' + redirectHost + '</strong>.</p>'
+      ? '<p class="return">After you press Allow you will return to <b>' +
+        redirectHost +
+        '</b>.</p>'
       : '') +
     '<form method="post" action="/api/oauth/authorize">' +
     hidden +
+    '<div class="actions">' +
     '<button type="submit" class="btn allow" name="decision" value="approve">Allow</button>' +
     '<button type="submit" class="btn deny" name="decision" value="deny">Deny</button>' +
-    '</form></main></body></html>'
+    '</div></form>' +
+    '<p class="foot">You can revoke this connection any time in Admin &gt; MCP server.</p>' +
+    '</main></body></html>'
   );
 }
 
@@ -512,6 +582,7 @@ export async function handleOauthAuthorize(request, env, url) {
       renderConsentHtml({
         client_name: client.name || clientId,
         redirect_host: host,
+        account_email: session.email || '',
         response_type: 'code',
         client_id: clientId,
         redirect_uri: redirectUri,

@@ -624,6 +624,31 @@
               });
           })
           .then(function (r) {
+            // UI-IA Phase 5 (owner 2026-11-12): a signed-in subscriber changes
+            // plan on the same subscription, so the server answers with the new
+            // plan and no checkout URL. Close the gesture tab and say so.
+            if (r.ok && r.data && r.data.ok && (r.data.upgraded || r.data.samePlan)) {
+              if (tab) {
+                try {
+                  tab.close();
+                } catch (e) {
+                  /* already gone */
+                }
+              }
+              btn.disabled = false;
+              var planName = String(r.data.plan || '').replace(/^./, function (c) {
+                return c.toUpperCase();
+              });
+              say(
+                r.data.upgraded
+                  ? 'Your plan is now ' + planName + '. You can close this page.'
+                  : 'You are already on the ' + planName + ' plan.'
+              );
+              document.dispatchEvent(
+                new CustomEvent('mmgr:plan-changed', { detail: { plan: r.data.plan || '' } })
+              );
+              return;
+            }
             if (!r.ok || !r.data || !r.data.ok || !r.data.checkoutUrl) {
               if (tab) {
                 try {

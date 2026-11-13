@@ -56,11 +56,15 @@
   }
 
   function badgeActive(periodEnd) {
-    var when = periodEnd ? ' until ' + fmtDate(periodEnd) : '';
+    // Two deliberate lines (plan, then the date) instead of one long pill that
+    // breaks wherever it runs out of room - the old badge split the year onto
+    // its own line inside the 211px popover.
+    var when = periodEnd ? 'until ' + fmtDate(periodEnd) : 'active';
     return (
-      '<span class="db-plan-badge"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Premium' +
+      '<span class="db-plan-badge"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg>' +
+      '<span class="db-plan-badge-txt"><b>Premium</b><span>' +
       esc(when) +
-      '</span>'
+      '</span></span></span>'
     );
   }
 
@@ -109,11 +113,27 @@
     }
   }
 
-  function renderActive(plan, periodEnd) {
+  function renderActive(plan, periodEnd, data) {
     plan.hidden = false;
+    // UI-IA Phase 5 (owner 2026-11-12): a cancel that has not taken effect yet
+    // keeps Premium. Say when it ends, and never offer a second Cancel - offer
+    // the plan change instead.
+    if (data && data.canceling) {
+      var ends = data.cancelAt || periodEnd;
+      plan.innerHTML =
+        badgeActive(ends) +
+        '<div class="t-xs lh18" data-bmg="note" role="status">Cancelling on ' +
+        esc(ends ? fmtDate(ends) : 'the end of this period') +
+        '. You keep Premium until then, and you can change plans any time.</div>' +
+        '<button type="button" class="btn btn-g btn-s" data-bmg="upgrade">Upgrade plan</button>';
+      return;
+    }
     plan.innerHTML =
       badgeActive(periodEnd) +
-      '<button type="button" class="btn btn-n btn-s" data-bmg="manage">Manage subscription</button>';
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+      '<button type="button" class="btn btn-g btn-s" data-bmg="upgrade">Upgrade plan</button>' +
+      '<button type="button" class="btn btn-n btn-s" data-bmg="manage">Manage subscription</button>' +
+      '</div>';
   }
 
   function hidePlan() {
@@ -195,6 +215,7 @@
   }
 
   var periodEnd = null;
+  var planState = null;
 
   async function loadPlan() {
     var plan = $(PLAN);
@@ -274,8 +295,9 @@
       return;
     }
     setBadge(true);
+    planState = data;
     periodEnd = data.currentPeriodEnd || null;
-    renderActive(plan, periodEnd);
+    renderActive(plan, periodEnd, data);
   }
 
   async function cancelSubscription() {
@@ -338,7 +360,12 @@
       }
       if (act === 'keep') {
         e.preventDefault();
-        renderActive(plan, periodEnd);
+        renderActive(plan, periodEnd, planState);
+        return;
+      }
+      if (act === 'upgrade') {
+        e.preventDefault();
+        window.location.href = PRICING_PAGE;
         return;
       }
       if (act === 'confirm') {
@@ -391,6 +418,9 @@
      than leaving a stale control that can only answer 403. */
   document.addEventListener('mmgr:google-signed-in', loadPlan);
   document.addEventListener('mmgr:google-signed-out', hidePlan);
+  /* A plan change made from the checkout path (upgrade on the same
+     subscription) lands here, so the header updates without a reload. */
+  document.addEventListener('mmgr:plan-changed', loadPlan);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadPlan);

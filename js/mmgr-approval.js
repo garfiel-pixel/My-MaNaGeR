@@ -181,8 +181,7 @@ var MMGR = window.MMGR || {};
 
   function approvedDiffs() {
     const diffs = (_p && Array.isArray(_p.diffs) ? _p.diffs : []).filter(function (d) {
-      const key = d.path + '|' + d.recordId + '|' + d.field;
-      return _tickMap[key] !== false;
+      return _tickMap[diffKey(d)] !== false;
     });
     return diffs;
   }
@@ -249,17 +248,26 @@ var MMGR = window.MMGR || {};
     // Budget proposals keep their snapshot diff out of the draft: their
     // changes array is the authoritative edit.
     (_draft.length ? [] : _p && Array.isArray(_p.diffs) ? _p.diffs : []).forEach(function (d) {
-      const key = d.path + '|' + d.recordId + '|' + d.field;
-      if (_tickMap[key] === false) {
+      if (_tickMap[diffKey(d)] === false) {
+        return;
+      }
+      if (!d.field) {
+        tmp[d.path] = d.after;
         return;
       }
       const arr = tmp[d.path];
       if (!Array.isArray(arr)) {
         return;
       }
-      const item = arr.find(x => x && String(x.id) === String(d.recordId));
+      let item = null;
+      if (d.recordId) {
+        item = arr.find(x => x && String(x.id) === String(d.recordId));
+      }
+      if (!item && typeof d.index === 'number' && arr[d.index]) {
+        item = arr[d.index];
+      }
       if (item) {
-        item[d.field] = d.after;
+        setField(item, d.field, d.after);
       }
     });
     tmp.nspid = nspid;
@@ -415,7 +423,22 @@ var MMGR = window.MMGR || {};
     mitigation: 'Mitigation',
     supplierRef: 'Supplier reference',
     date: 'Date',
-    amount: 'Amount'
+    amount: 'Amount',
+    assignee: 'Assignee',
+    dependsOn: 'Depends on',
+    duration: 'Duration',
+    workingDays: 'Working days',
+    priority: 'Priority',
+    impact: 'Impact',
+    probability: 'Probability',
+    response: 'Response',
+    note: 'Note',
+    ref: 'Reference',
+    text: 'Text',
+    problem: 'Problem statement',
+    goal: 'Goal',
+    phase: 'Phase',
+    percent: 'Percent complete'
   };
   const PATH_LABELS = {
     tasks: 'Task',
@@ -429,7 +452,21 @@ var MMGR = window.MMGR || {};
     logEntries: 'Decision',
     documents: 'Document',
     commsEntries: 'Comms entry',
-    raci: 'RACI entry'
+    raci: 'RACI entry',
+    meetings: 'Meeting',
+    meetingPromises: 'Promise',
+    charter: 'Charter',
+    closure: 'Closure',
+    dmaic: 'DMAIC',
+    supplierBook: 'Supplier',
+    projectName: 'Project name',
+    methodology: 'Methodology',
+    methodologyLocked: 'Methodology lock',
+    projectDeadline: 'Project deadline',
+    budgetEnvelope: 'Budget envelope',
+    nspid: 'Delivery counter',
+    nmeetid: 'Meeting counter',
+    currency: 'Currency'
   };
   const MONEY_FIELDS = { planned: 1, actual: 1, rate: 1, unitPrice: 1, amount: 1 };
   const PCT_FIELDS = { progress: 1, percent: 1 };
@@ -478,14 +515,90 @@ var MMGR = window.MMGR || {};
     }
     return (d > 0 ? '+' : '') + d.toLocaleString('en-US', { maximumFractionDigits: 2 });
   }
-  function recordLabel(path, id) {
+  function recordLabel(path, id, index, name) {
+    // The proposal's own record name wins: the live state may not carry the
+    // record yet (a create) or may have been renamed since it was queued.
+    if (name) {
+      return String(name);
+    }
     const s = ns.State.getState() || {};
     const arr = Array.isArray(s[path]) ? s[path] : [];
-    const item = arr.find(function (x) {
-      return x && String(x.id) === String(id);
-    });
+    let item = null;
+    if (id !== undefined && id !== null && id !== '') {
+      item = arr.find(function (x) {
+        return x && String(x.id) === String(id);
+      });
+    }
+    // Legacy rows carry only an array index - point at that row rather than
+    // rendering an empty or "undefined" name.
+    if (!item && typeof index === 'number' && arr[index]) {
+      item = arr[index];
+    }
     const label = item && (item.name || item.title || item.description || item.label || item.ref);
-    return label ? String(label) : String(id);
+    if (label) {
+      return String(label);
+    }
+    if (id !== undefined && id !== null && id !== '') {
+      return String(id);
+    }
+    if (typeof index === 'number') {
+      return 'Item ' + (index + 1);
+    }
+    return '';
+  }
+  function pathLabel(p) {
+    const k = String(p || '');
+    if (PATH_LABELS[k]) {
+      return PATH_LABELS[k];
+    }
+    return k.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, function (c) {
+      return c.toUpperCase();
+    });
+  }
+  // Must match the server's diffKey: legacy leaves have no recordId, so the
+  // array index is the identity.
+  function diffKey(d) {
+    const rec = d.recordId || (d.index === null || d.index === undefined ? '' : '#' + d.index);
+    return d.path + '|' + rec + '|' + d.field;
+  }
+  // Set a nested field ("define.problem", "lessons[0].text") on a preview copy.
+  function setField(obj, field, value) {
+    const parts = [];
+    String(field || '')
+      .split('.')
+      .forEach(function (part) {
+        const m = /^([A-Za-z0-9_]+)((?:\[\d+\])*)$/.exec(part);
+        if (!m) {
+          parts.push(part);
+          return;
+        }
+        parts.push(m[1]);
+        (m[2].match(/\[(\d+)\]/g) || []).forEach(function (tok) {
+          parts.push(Number(tok.slice(1, -1)));
+        });
+      });
+    if (!parts.length) {
+      return false;
+    }
+    let cur = obj;
+    for (let i = 0; i < parts.length; i++) {
+      const k = parts[i];
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') {
+        return false;
+      }
+      if (i === parts.length - 1) {
+        cur[k] = value;
+        return true;
+      }
+      if (cur[k] === null || cur[k] === undefined) {
+        cur[k] = typeof parts[i + 1] === 'number' ? [] : {};
+      }
+      cur = cur[k];
+      if (!cur || typeof cur !== 'object') {
+        return false;
+      }
+    }
+    return false;
   }
   function lineName(state, id) {
     const line = lineOf(state, id);
@@ -666,8 +779,24 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  function surfacesLine(d) {
+    const list = Array.isArray(d.surfaces) ? d.surfaces : [];
+    if (!list.length) {
+      return '';
+    }
+    return (
+      '<div class="apv-surf"><span>Affects</span>' +
+      list
+        .map(function (s) {
+          return '<em>' + esc(s) + '</em>';
+        })
+        .join('') +
+      '</div>'
+    );
+  }
+
   function diffCard(d, i) {
-    const key = d.path + '|' + d.recordId + '|' + d.field;
+    const key = diffKey(d);
     return (
       '<div class="apv-chg" data-diff="' +
       esc(key) +
@@ -681,11 +810,14 @@ var MMGR = window.MMGR || {};
       '</span></label>' +
       '<div class="apv-chg-b">' +
       '<div class="apv-tag"><span class="apv-pill">' +
-      esc(PATH_LABELS[d.path] || d.path) +
+      esc(pathLabel(d.path)) +
       '</span>' +
-      esc(recordLabel(d.path, d.recordId)) +
+      esc(d.field ? recordLabel(d.path, d.recordId, d.index, d.recordName) : pathLabel(d.path)) +
       '</div>' +
-      deltaRow(fieldLabel(d.field), plainVal(d.field, d.before), plainVal(d.field, d.after), '') +
+      (d.field
+        ? deltaRow(fieldLabel(d.field), plainVal(d.field, d.before), plainVal(d.field, d.after), '')
+        : deltaRow('Value', plainVal('', d.before), plainVal('', d.after), '')) +
+      surfacesLine(d) +
       '</div></div>'
     );
   }
@@ -799,13 +931,12 @@ var MMGR = window.MMGR || {};
       }
     });
     fieldDiffs().forEach(function (d) {
-      const key = d.path + '|' + d.recordId + '|' + d.field;
-      if (_tickMap[key] === false) {
+      if (_tickMap[diffKey(d)] === false) {
         return;
       }
       rows.push([
-        recordLabel(d.path, d.recordId),
-        fieldLabel(d.field),
+        d.field ? recordLabel(d.path, d.recordId, d.index, d.recordName) : pathLabel(d.path),
+        d.field ? fieldLabel(d.field) : 'Value',
         plainVal(d.field, d.before),
         plainVal(d.field, d.after)
       ]);
@@ -1348,7 +1479,10 @@ var MMGR = window.MMGR || {};
     reject: reject,
     refresh: refresh,
     refreshBadge: refreshBadge,
-    openLatest: openLatest
+    openLatest: openLatest,
+    fieldLabel: fieldLabel,
+    pathLabel: pathLabel,
+    diffKey: diffKey
   };
 })(MMGR);
 window.MMGR = MMGR;

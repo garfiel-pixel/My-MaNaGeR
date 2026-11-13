@@ -588,10 +588,15 @@ body.dark-mode .kqa-in {
 }
 .dtabs {
   display: flex;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
 }
+/* OWNER 2026-11-12: five sub-tabs in a 380px drawer used to break labels
+   mid-word ("Look &" / "feel", "Cloud &" / "Sync"). A tab is a whole label:
+   it never wraps internally, and the bar wraps between tabs instead. */
 .dtab {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: max-content;
   padding: 11px;
   text-align: center;
   font-size: 0.78rem;
@@ -602,6 +607,7 @@ body.dark-mode .kqa-in {
   background: none;
   border-bottom: 2px solid transparent;
   transition: var(--tr-ui);
+  white-space: nowrap;
 }
 .dtab.active {
   color: var(--gold-text);
@@ -625,7 +631,8 @@ body.dark-mode .kqa-in {
   margin-bottom: 3px;
 }
 .fd {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--slate);
 }
 
@@ -657,7 +664,8 @@ body.dark-mode .kqa-in {
   transition:
     max-height 0.3s ease,
     padding 0.3s ease;
-  font-size: 0.74rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
   color: var(--slate);
 }
 .qa.open {
@@ -795,7 +803,7 @@ body.dark-mode .kqa-in {
   margin-top: 2px;
 }
 .sl {
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   color: var(--text);
 }
 
@@ -804,7 +812,7 @@ body.dark-mode .kqa-in {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -867,7 +875,8 @@ body.dark-mode .kqa-in {
   }
 }
 .ctl-lead {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
   color: var(--slate);
   margin: 0 0 10px;
 }
@@ -946,7 +955,7 @@ body.dark-mode .kqa-in {
   border: 1px solid var(--border);
   border-radius: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;

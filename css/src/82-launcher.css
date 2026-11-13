@@ -117,6 +117,42 @@ body.db-page [data-rail-toggle] .ico-caret {
 body.db-page [data-rail-toggle].open .ico-caret {
   transform: rotate(90deg);
 }
+/* T-28 (owner 2026-11-12): the admin rail is dropdown groups. A group row
+   reads as a destination header (a little more weight than a plain link and
+   air above it); a sub-row is the same language one step down, so the rail
+   never turns into an undifferentiated list. */
+body.db-page .db-grp {
+  font-weight: 700;
+  margin-top: 8px;
+}
+body.db-page .db-grp:first-child {
+  margin-top: 0;
+}
+body.db-page .db-link-sub {
+  padding: 7px 10px 7px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+body.db-page .db-link-sub .ico {
+  width: 15px;
+  height: 15px;
+}
+body.db-page .db-sub-nest {
+  padding: 0 0 2px 6px;
+  border-left: 1px solid var(--border);
+  margin-left: 8px;
+}
+body.db-page .db-sub-nest .db-link-sub {
+  padding-left: 9px;
+  gap: 8px;
+  font-size: 0.74rem;
+}
+body.db-page .db-sub-nest .db-link-sub .ico {
+  width: 14px;
+  height: 14px;
+}
 body.db-page .db-sub {
   padding: 2px 6px 6px;
   display: flex;
@@ -1117,9 +1153,28 @@ body.db-page .db-plan-badge {
   background: color-mix(in oklch, var(--gold) 10%, transparent);
   border: 1px solid color-mix(in oklch, var(--gold) 32%, transparent);
 }
+/* UI-IA Phase 5: the plan and the paid-through date are two lines by design.
+   One long pill split "2026" onto a line of its own in the 211px popover. */
+body.db-page .db-plan-badge-txt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+  min-width: 0;
+}
+body.db-page .db-plan-badge-txt b {
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+}
+body.db-page .db-plan-badge-txt span {
+  font-size: 0.66rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
 body.db-page .db-plan-badge .ico {
   width: 14px;
   height: 14px;
+  flex: 0 0 auto;
 }
 body.db-page .db-upgrade-note {
   font-size: 0.58rem;

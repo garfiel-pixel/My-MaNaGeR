@@ -468,11 +468,12 @@ var MMGR = window.MMGR || {};
   // silent whole-file overwrite). Works with any held credential; with no
   // credential it routes through sign-in first (session fallback), keeping
   // the bond for retry on failure.
-  async function resyncNow() {
+  async function resyncNow(opts) {
+    const force = !!(opts && opts.force);
     const b = getBond();
-    if (!b) {
+    if (!b && !force) {
       setStatus('No cloud bond stored for this project.', 'warn');
-      return;
+      return null;
     }
     const cred = activeCredential();
     if (!cred) {
@@ -520,7 +521,9 @@ var MMGR = window.MMGR || {};
         return;
       }
       setLastSeen(data.savedAt || '');
-      setBond({ cloudProjectId: b.cloudProjectId, lastSyncedAt: new Date().toISOString() });
+      if (b) {
+        setBond({ cloudProjectId: b.cloudProjectId, lastSyncedAt: new Date().toISOString() });
+      }
       bondOfferDone(); // a successful re-sync IS the offer's answer
       if (ns.Render && ns.Render.renderAll) {
         ns.Render.renderAll();
@@ -535,12 +538,14 @@ var MMGR = window.MMGR || {};
           '.',
         'ok'
       );
+      return { ok: true, adopted: report.adopted };
     } catch (e) {
       var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
       setStatus(
         'Cloud is unavailable on this host (needs the Worker API). [' + _detail + ']',
         'err'
       );
+      return { ok: false, adopted: 0 };
     }
   }
   function bondLater() {
@@ -1055,6 +1060,33 @@ var MMGR = window.MMGR || {};
       const data = await res.json().catch(function () {
         return {};
       });
+      // UI-IA Phase 5 (owner 2026-11-12): an existing subscriber changes plan
+      // on the same subscription, so there is no checkout page to open. The
+      // tab opened for the gesture is closed and the panel states the result.
+      if (res.ok && data.ok && (data.upgraded || data.samePlan)) {
+        if (tab) {
+          try {
+            tab.close();
+          } catch (e) {
+            /* already gone */
+          }
+        }
+        _upgradePending = false;
+        const planName = String(data.plan || '').replace(/^./, function (c) {
+          return c.toUpperCase();
+        });
+        await render();
+        setStatus(
+          data.upgraded
+            ? 'Your plan is now ' + (planName || 'updated') + '. Every project follows it.'
+            : 'You are already on the ' + (planName || 'selected') + ' plan.',
+          'ok'
+        );
+        document.dispatchEvent(
+          new CustomEvent('mmgr:plan-changed', { detail: { plan: data.plan || '' } })
+        );
+        return;
+      }
       if (!res.ok || !data.ok || !data.checkoutUrl) {
         if (tab) {
           try {
@@ -5009,6 +5041,12 @@ var MMGR = window.MMGR || {};
     cloudRemoveCopy: cloudRemoveCopy,
     // SYNC BOND (Task 13): bond-aware re-link + explicit re-sync + offer.
     cloudResync: resyncNow,
+    // Pull the cloud snapshot into the open workspace even when no bond is
+    // stored - used after an accept so the project shows the applied change
+    // without a full page reload.
+    cloudPullMerge: function () {
+      return resyncNow({ force: true });
+    },
     cloudBondLater: bondLater,
     cloudBroadcast: cloudBroadcast,
     cloudAutoBroadcast: cloudAutoBroadcast,

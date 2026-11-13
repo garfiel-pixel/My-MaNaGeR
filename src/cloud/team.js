@@ -45,7 +45,7 @@ import {
   normalizeTeamMatrix,
   parseTeamMatrix
 } from '../lib/http.js';
-import { billingStatusActive } from '../billing.js';
+import { subscriptionActive } from '../billing.js';
 
 export const TEAM_ROLES = ['manager', 'supervisor', 'contractor', 'client'];
 // Sprint 3 enterprise layer: custom matrices, time-boxed access, bulk invite,
@@ -98,11 +98,11 @@ async function hashInviteToken(token) {
 // Owner tier from the entitlement row. No active row (or no row) is 'free'.
 async function ownerTier(env, ownerSub) {
   const sub = await env.DB.prepare(
-    'SELECT status, tier, plan FROM cloud_subscriptions WHERE owner_sub = ?'
+    'SELECT status, tier, plan, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
   )
     .bind(ownerSub)
     .first();
-  if (!sub || !billingStatusActive(sub.status)) {
+  if (!subscriptionActive(sub)) {
     return 'free';
   }
   return sub.tier || sub.plan || 'contractor';

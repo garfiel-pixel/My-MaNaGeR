@@ -332,23 +332,22 @@ var MMGR = window.MMGR || {};
     const id = getIdentity();
     let html = '';
 
-    // Status line.
-    html +=
-      '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign-in</span></div>';
+    // Status line. OWNER 2026-11-12: the label row, the hint and then a
+    // full-width button stacked three deep; the action now sits on the right
+    // of the status row, where every other drawer control lives.
     html +=
       '<div class="sr-hint">Optional , sign in once and the whole app (launcher, admin, every project) shares the same signed-in state. It never gates a feature and never leaves this device.</div>';
 
     if (signedIn && id) {
       html +=
-        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Already signed in as <strong>' +
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check-circle"></use></svg> Signed in as <strong>' +
         U.escapeHtml(id.email || id.name || id.sub) +
         '</strong></span>' +
         '<button class="btn btn-n btn-s" data-action="syncSignOut"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg> Sign Out</button></div>';
     } else {
       html +=
-        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Not signed in , works fully without an account</span></div>';
-      html +=
-        '<div class="exp-row"><button class="btn btn-n btn-s" data-action="syncConnect"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign in with Google (optional)</button></div>';
+        '<div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Not signed in</span>' +
+        '<button class="btn btn-n btn-s" data-action="syncConnect" title="Sign in with Google (optional)" aria-label="Sign in with Google (optional)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Sign in</button></div>';
       html += '<div id="sync-gis-btn" class="sync-gis-btn"></div>';
 
       // Single dismissible suggestion , ONLY after multi-device use was

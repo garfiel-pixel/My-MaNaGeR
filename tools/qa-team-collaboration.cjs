@@ -14,7 +14,10 @@
    This gate loads the REAL project page and the REAL served
    stylesheet, inserts the same markup js/cloud/team-ui.js renders,
    and measures the computed style and geometry at desktop and phone
-   widths. It proves the rule is applied, not just present in source.
+   widths. It proves the rule is applied, not just present in source.   It also loads app.html and proves the launcher's global
+   .btn{width:100%} does not reach the body-level #team-pop: that rule
+   squeezed the name column to 0px and made the Open button 384px wide
+   (owner report 2026-11-12).
 
    Runs against the shared QA server (:8765 by default, MMGR_BASE to
    override). Usage: node tools/qa-team-collaboration.cjs
@@ -196,6 +199,52 @@ function assertOneLine(tag, m) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(250);
     assertOneLine('390px', await measure(page));
+
+    // ---- launcher: app.html's global .btn{width:100%} must not reach the
+    // body-level #team-pop. OWNER 2026-11-12: that rule squeezed the name
+    // column to 0px, so "Bank Renovation" rendered one letter per line and
+    // the Open button measured 384px. ------------------------------------
+    const launcher = await ctx.newPage();
+    await launcher.goto(BASE + '/app.html', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000
+    });
+    await launcher.waitForFunction(() => !!(window.MMGR && document.getElementById('team-pop')), {
+      timeout: 30000
+    });
+    const lg = await launcher.evaluate(() => {
+      const pop = document.getElementById('team-pop');
+      pop.hidden = false;
+      pop.innerHTML =
+        '<div class="team-person"><div class="team-person-id"><b>Bank Renovation - Phase Two</b>' +
+        '<span class="team-person-sub">Owner &middot; Manager</span></div>' +
+        '<button type="button" class="btn btn-o btn-s">Open</button></div>';
+      const name = pop.querySelector('.team-person-id b');
+      const btn = pop.querySelector('.btn');
+      const nr = name.getBoundingClientRect();
+      const br = btn.getBoundingClientRect();
+      return {
+        nameWidth: Math.round(nr.width),
+        nameHeight: Math.round(nr.height),
+        btnWidth: Math.round(br.width)
+      };
+    });
+    if (lg.nameWidth >= 120) {
+      ok('launcher: the record name keeps a real column (' + lg.nameWidth + 'px)');
+    } else {
+      bad('launcher: the record name keeps a real column', JSON.stringify(lg));
+    }
+    if (lg.nameHeight <= 30) {
+      ok('launcher: the name renders on one line (' + lg.nameHeight + 'px)');
+    } else {
+      bad('launcher: the name renders on one line', JSON.stringify(lg));
+    }
+    if (lg.btnWidth <= 120) {
+      ok('launcher: the action button is not full width (' + lg.btnWidth + 'px)');
+    } else {
+      bad('launcher: the action button is not full width', JSON.stringify(lg));
+    }
+    await launcher.close();
 
     if (pageErrors.length === 0) {
       ok('no page errors');

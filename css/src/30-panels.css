@@ -531,6 +531,187 @@
   padding: 4px 0 0;
 }
 
+/* ---- Review queue: grouped proposal cards (owner 2026-11-12) --------------
+   Each proposal names the records it touches, lists only those records' field
+   changes, and states which screens the change reaches. Type is deliberately
+   at body size - the old 0.66rem rows were unreadable in the drawer. */
+.rv-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  padding: 10px 12px;
+  margin-top: 8px;
+  min-width: 0;
+}
+.rv-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.rv-src {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+  font-size: 0.84rem;
+}
+.rv-meta {
+  margin: 4px 0 8px;
+  color: var(--slate);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+.rv-groups {
+  border-top: 1px solid var(--border);
+}
+.rv-g {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rv-g:last-child {
+  border-bottom: none;
+}
+.rv-g-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+.rv-kind {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  background: rgba(var(--gold-rgb), 0.12);
+  border: 1px solid rgba(var(--gold-rgb), 0.28);
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+.rv-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.rv-rows {
+  display: block;
+}
+.rv-row {
+  display: grid;
+  grid-template-columns: minmax(108px, 0.9fr) minmax(90px, 1fr) 16px minmax(90px, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+}
+.rv-f {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--slate);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.rv-b,
+.rv-a {
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.rv-b {
+  color: var(--slate);
+}
+.rv-a {
+  color: var(--ink);
+  font-weight: 600;
+}
+.rv-arrow {
+  color: var(--gold-text);
+  text-align: center;
+  font-size: 0.8rem;
+}
+.rv-surf {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.rv-surf-k {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.rv-surf em,
+.apv-surf em {
+  font-style: normal;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gold-text);
+  background: rgba(var(--gold-rgb), 0.1);
+  border: 1px solid rgba(var(--gold-rgb), 0.24);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+.rv-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.rv-toggle {
+  width: auto;
+  height: auto;
+  padding: 3px 9px;
+  gap: 4px;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+@media (max-width: 520px) {
+  .rv-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 6px 0;
+  }
+  .rv-arrow {
+    display: none;
+  }
+  .rv-b::before {
+    content: 'was ';
+    color: var(--slate);
+    font-weight: 400;
+  }
+  .rv-a::before {
+    content: 'now ';
+    color: var(--slate);
+    font-weight: 400;
+  }
+}
+.apv-surf {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+
 /* ---- RACI ---- */
 .raci-cell {
   width: 46px;
@@ -2144,8 +2325,8 @@ body.dark-mode .dmaic-chip {
      light card only reached 3.3:1. The ink step passes AA. */
   color: var(--gold-ink);
   border-radius: 4px;
-  padding: 0 6px;
-  font-size: 0.66rem;
+  padding: 1px 6px;
+  font-size: 0.72rem;
   font-weight: 700;
   font-family: ui-monospace, Consolas, monospace;
   white-space: nowrap;
@@ -2281,7 +2462,10 @@ body.dark-mode .dmaic-chip {
 
 /* ---- DMAIC / KPI / resources-leveling / misc class pass ---- */
 .sr-hint {
-  font-size: 0.68rem;
+  /* OWNER 2026-11-12: 0.68rem (10.9px) read as fine print in the drawer.
+     Hints carry the meaning of a control, so they sit at body size. */
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--slate);
   margin: -2px 0 8px;
 }
@@ -2498,6 +2682,16 @@ body.dark-mode .dmaic-chip {
 }
 .exp-row .btn {
   flex: 1;
+}
+/* OWNER 2026-11-12: inside the settings drawer an action sizes to its label
+   and wraps, instead of a lone button stretching the full width below the
+   text it belongs to. */
+#db-ctrl .exp-row {
+  flex-wrap: wrap;
+  align-items: center;
+}
+#db-ctrl .exp-row .btn {
+  flex: 0 1 auto;
 }
 /* ACTION-PLAN 4.2 RACI workload heatmap */
 .rw-grid {
@@ -3738,6 +3932,20 @@ body.dark-mode #team-access-banner {
 }
 .team-pop[hidden] {
   display: none;
+}
+/* OWNER 2026-11-12: the launcher page carries a global .btn{width:100%} for
+   its create-project form, which also reached this body-level popover. The
+   full-width button ate the whole row and squeezed .team-person-id to 0px,
+   so the project name rendered one letter per line. Popover buttons are
+   inline actions, never full-width. */
+.team-pop .btn {
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.team-pop .btn-s {
+  padding: 6px 12px;
+  font-size: 0.78rem;
 }
 .team-pop-head {
   display: flex;

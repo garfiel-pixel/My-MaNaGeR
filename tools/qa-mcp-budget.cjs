@@ -26,11 +26,14 @@
      B15 get_proposal_status reports rejected + the owner's reason
      B16 an accepted-with-edit proposal reads edited-and-accepted
      B17 the accepted delivery lands with the SERVER-computed amount
-     B18 switching the two switches after the key was minted works, and
+     B18 a task field diff queues with its record name and affected
+         screens, and one-press accept actually writes it
+     B18f a sets proposal reaches a scalar key and a nested object field
+     B18i a set against a record list is refused (use diffs)
+     B19 switching the two switches after the key was minted works, and
          the write-without-read pair is refused
-     B19 an unknown kind and a delete are refused
-     B20 the proposal's plain summary names the line, the quantity and
-         the amount
+     B20 an unknown kind and a delete are refused
+     B21 tools/list advertises the budget read tools
 
    Exit 0 only when every arm passes.
    Usage: node tools/qa-mcp-budget.cjs
@@ -737,6 +740,121 @@ const j = async res => {
       'B18 the accepted delivery lands with the SERVER-computed amount (5 x 1,600 = 8,000)',
       s2row.amount === 8000 && s2row.qty === 5 && s2row.unitPrice === 1600 && s2row.id,
       s2row
+    );
+
+    // ---- B18b..B18e: a FIELD-DIFF proposal applies on one-press accept ----
+    // Owner report 2026-11-12: a queued task change rendered as "undefined"
+    // and Accept closed the row without moving the project. This proves the
+    // stored leaf names its record + surfaces AND that accepting {} writes it.
+    const keyTask = (await mint('Task assistant', { scope: ['wbs'] })).body.apiKey;
+    const t3Before = ((await live()).tasks || []).find(t => t.id === 't3') || {};
+    const diffPropose = await mcp(keyTask, 'apply_changes', {
+      diffs: [
+        {
+          path: 'tasks',
+          recordId: 't3',
+          field: 'status',
+          before: t3Before.status,
+          after: 'blocked'
+        }
+      ]
+    });
+    const diffId = (diffPropose.text.match(/proposal #(\d+)/) || [])[1];
+    check(
+      'B18b a task field diff queues (proposal number returned)',
+      !diffPropose.isError && !!diffId,
+      diffPropose.text.slice(0, 240)
+    );
+
+    const reviewsRes = await fetch(BASE + '/api/cloud/projects/' + pid + '/reviews', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: ownerHeaders
+    });
+    const reviewsBody = await j(reviewsRes);
+    const row = (reviewsBody.proposals || []).find(p => String(p.id) === String(diffId)) || {};
+    const leaf = (row.diffs || [])[0] || {};
+    check(
+      'B18c the review row names the record and the affected screens',
+      leaf.recordId === 't3' &&
+        leaf.recordName === 'Walls' &&
+        Array.isArray(leaf.surfaces) &&
+        leaf.surfaces.indexOf('Kanban board') > -1,
+      leaf
+    );
+
+    const accRes = await fetch(
+      BASE + '/api/cloud/projects/' + pid + '/reviews/' + diffId + '/accept',
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: ownerHeaders,
+        body: JSON.stringify({})
+      }
+    );
+    const accBody = await j(accRes);
+    check(
+      'B18d one-press accept saves the project',
+      accRes.ok && accBody.ok && !!accBody.savedAt,
+      accBody
+    );
+
+    const t3After = ((await live()).tasks || []).find(t => t.id === 't3') || {};
+    check(
+      'B18e the task status changed and its other fields survived',
+      t3After.status === 'blocked' &&
+        t3After.name === t3Before.name &&
+        t3After.startDate === t3Before.startDate &&
+        t3After.endDate === t3Before.endDate,
+      { before: t3Before, after: t3After }
+    );
+
+    // ---- B18f..B18i: SETS reach object sections and scalar keys -----------
+    // diffs/creates only touch record lists. projectName (scalar) and
+    // dmaic.define.problem (nested object) need the scoped sets write.
+    const keySets = (await mint('Charter assistant', { scope: ['charter', 'dmaic'] })).body.apiKey;
+    const setsPropose = await mcp(keySets, 'apply_changes', {
+      sets: [
+        { path: 'projectName', value: 'MCP Budget QA (rebaselined)' },
+        { path: 'dmaic', field: 'define.problem', value: 'Concrete strength below spec' }
+      ]
+    });
+    const setsId = (setsPropose.text.match(/proposal #(\d+)/) || [])[1];
+    check(
+      'B18f a sets proposal queues both a scalar and a nested object field',
+      !setsPropose.isError && !!setsId,
+      setsPropose.text.slice(0, 240)
+    );
+    const setsAccept = await fetch(
+      BASE + '/api/cloud/projects/' + pid + '/reviews/' + setsId + '/accept',
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: ownerHeaders,
+        body: JSON.stringify({})
+      }
+    );
+    const setsBody = await j(setsAccept);
+    const liveSets = await live();
+    check(
+      'B18g the accepted scalar set lands',
+      setsAccept.ok && setsBody.ok && liveSets.projectName === 'MCP Budget QA (rebaselined)',
+      { status: setsAccept.status, name: liveSets.projectName, body: setsBody }
+    );
+    check(
+      'B18h the accepted nested object set lands',
+      !!liveSets.dmaic &&
+        liveSets.dmaic.define &&
+        liveSets.dmaic.define.problem === 'Concrete strength below spec',
+      liveSets.dmaic
+    );
+    const listTry = await mcp(keyTask, 'apply_changes', {
+      sets: [{ path: 'tasks', field: 'status', value: 'todo' }]
+    });
+    check(
+      'B18i a set against a record list is refused (use diffs)',
+      listTry.isError && /record list/.test(listTry.text),
+      listTry.text.slice(0, 240)
     );
 
     // ---- B19: switches after minting ------------------------------------

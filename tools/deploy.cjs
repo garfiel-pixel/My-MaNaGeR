@@ -93,7 +93,12 @@ const SKIP_FILE_RE = [
   /\.gitleaks\.toml$/i,
   /\.txt$/i,
   /^(robots|planners|reflection|SECURITY)\.txt$/i,
-  /favicon/i,
+  // 2026-11-12: this used to be /favicon/i, which skipped the REAL icons too
+  // (favicon.ico and images/mpw-favicon.svg) - production served 404 for both
+  // and the browser tab had no icon. Only the two owner source images are
+  // repo-only; every file the pages reference must ship.
+  /^(my_manager_web favicon image to use|mymanagerworkspace\.com favicon)\.png$/i,
+  /^favicon\.png$/i,
   /\.claude$/i,
   /\.codebuff$/i,
   // 2026-10-03: a stray claude-cli-1.0.5.tgz sat untracked in the repo root and

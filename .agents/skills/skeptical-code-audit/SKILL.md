@@ -101,6 +101,8 @@ Run these checks systematically across every relevant file, not just the one cur
     - Static gates that strip HTML for scanning must not one-pass `replace()` multi-character sequences: CodeQL's "incomplete multi-character sanitization" gate fails the PR. Use a regex-free indexOf helper (`tools/lib/html-strip.cjs`) that also handles spaced end tags such as `</script >`.
     - A split module's private function must not reuse a monolith function name (`init` collided with the app boot); the delegate gate matches by name only.
 
+12. **A seeded fixture has a shelf life** — `demo-data.js` is written into `localStorage` on every launcher visit, so its dates are served copy, not internal test data. Judge it against its own `updatedAt` ("as of" clock), never the wall clock, or the gate itself rots: `node tools/verify-demo-dates.cjs` fails when an open task ends before that clock, a 0% task's start has elapsed, `duration` disagrees with the working-day span, or the process model would silently rewrite a record on load (approved change without a title, resolved issue without a resolution). Re-baseline with an explicit per-task date table, not a blind offset: a uniform shift preserves the original overdue band and can leave 0% work inside an elapsed window.
+
 ## Reporting findings
 
 Structure the final report as:

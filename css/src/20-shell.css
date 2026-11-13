@@ -1011,6 +1011,11 @@ body.db-page[data-skin] #app-header {
   opacity: 0.7;
 }
 .status-pop {
+  /* OWNER 2026-11-12: a [popover] with margin:0 kept the UA's inset:0, so
+     the menu pinned to the viewport's top-left instead of the chip. JS places
+     it on the toggle event; inset:auto lets those left/top values win. */
+  position: fixed;
+  inset: auto;
   margin: 0;
   padding: 4px;
   border: 1px solid var(--border);
@@ -1019,6 +1024,7 @@ body.db-page[data-skin] #app-header {
   color: var(--text);
   box-shadow: var(--glass-shadow);
   min-width: 172px;
+  max-width: calc(100vw - 16px);
 }
 .status-pop button {
   display: flex;

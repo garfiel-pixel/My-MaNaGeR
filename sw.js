@@ -757,7 +757,21 @@
 // so the T-15 search button no longer rides over the wordmark.
 // v641 - T-25 ADMIN MCP PANEL (2026-11-12): admin.html is a shell asset and
 // js/app/mcp-admin.js joins the shell. The account-scoped MCP panel is new UI.
-const CACHE = 'mmgr-shell-v645';
+// v647 - UI-IA PHASE 3 (2026-11-12): the controls drawer type scale and row
+// layout, the wrapping workspace tabs, the anchored project-status popover
+// (js/mmgr-app.js placement helper) and the compact sync sign-in row all ship
+// in css/mmgr.css + the bundles.
+// v649 - UI-IA PHASE 5 (2026-11-12): a canceled-but-unexpired subscription keeps
+// Premium (cancel_at), the plan popover states the end date, and the plan pill
+// is two deliberate lines. The bundles and css/mmgr.css move.
+// v648 - UI-IA PHASE 4 (2026-11-12): the admin rail is dropdown groups with an
+// MCP Server submenu, and the MCP card is a branded disclosure with a state
+// chip. admin.html and the admin bundle are shell assets.
+// v650 - UI-IA PHASE 6 (2026-11-12): the seeded demo project is re-baselined
+// (demo-data.js rides in the app bundle) and the proposal-review card shows
+// the record, field and both values, with the stale-refusal sentence in the
+// project bundle.
+const CACHE = 'mmgr-shell-v650';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

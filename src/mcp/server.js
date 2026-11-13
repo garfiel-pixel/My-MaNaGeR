@@ -49,6 +49,7 @@ import {
   CLOUD_KEY_TO_SECTION
 } from '../lib/http.js';
 import { API_SHAPES } from '../api/shapes.js';
+import { enrichDiffs, setPathValue } from '../cloud/proposal-diffs.js';
 import { ownerTier } from '../cloud/team.js';
 import { structuredLog } from '../lib/observe.js';
 import {
@@ -215,7 +216,7 @@ export const TOOLS = [
   {
     name: 'apply_changes',
     description:
-      'Submit changes to the project: edit existing records with diffs, or create new records with creates. Everything goes through the owner review queue - never auto-applied. diffs: array of {path, recordId, field, before, after}. creates: array of {path, record} where record needs at least {name} (tasks also accept startDate/endDate/assignee/status; resources accept name/role/rate/type). budget: budget-only proposals (addLine, changeLine, addDelivery) - these need the key\'s "Propose budget changes" switch, every money value is checked on the server, and the server computes the delivery amount itself.',
+      'Submit changes to the project: edit existing records with diffs, create new records with creates, or set whole values / nested object fields with sets. Everything goes through the owner review queue - never auto-applied. diffs: array of {path, recordId, field, before, after}. creates: array of {path, record} where record needs at least {name} (tasks also accept startDate/endDate/assignee/status; resources accept name/role/rate/type). sets: array of {path, field, value} for object sections (charter, dmaic, closure, raci) and scalar keys (projectDeadline, budgetEnvelope, projectName) - omit field to replace the whole value. budget: budget-only proposals (addLine, changeLine, addDelivery) - these need the key\'s "Propose budget changes" switch, every money value is checked on the server, and the server computes the delivery amount itself.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -252,6 +253,23 @@ export const TOOLS = [
               }
             },
             required: ['path', 'record']
+          }
+        },
+        sets: {
+          type: 'array',
+          description:
+            'Whole-value changes for sections that are objects or scalars rather than record lists. Each item is {path, field, value}: path is the state key ("dmaic", "closure", "raci", "charter", "projectDeadline", "budgetEnvelope"); field is a nested key ("define.problem", "lessons[0].text") and may be omitted for a scalar key. Queued for owner review like every other change.',
+          items: {
+            type: 'object',
+            properties: {
+              path: { type: 'string', description: 'State key (e.g. "dmaic", "projectDeadline")' },
+              field: {
+                type: 'string',
+                description: 'Nested field inside an object section; omit for a scalar key'
+              },
+              value: { description: 'The new value' }
+            },
+            required: ['path', 'value']
           }
         },
         budget: {
@@ -1699,6 +1717,7 @@ async function handleMcpRequest(body, projectId, env, auth) {
 // call this same function, so the refusal text cannot drift.
 export const MCP_MAX_DIFFS = 500;
 export const MCP_MAX_CREATES = 500;
+export const MCP_MAX_SETS = 100;
 // Wall-clock ceiling for the write pipeline. Cloudflare's 1102 must never be
 // the first signal: abort with a plain, structured message before the
 // platform limit. The state read is cached (r2DeriveKey), so a normal
@@ -1710,12 +1729,18 @@ export function validateProposalEnvelope(toolArgs, auth) {
   const diffs = Array.isArray(a.diffs) ? a.diffs : [];
   const creates = Array.isArray(a.creates) ? a.creates : [];
   const budgetRaw = Array.isArray(a.budget) ? a.budget : [];
-  if (diffs.length === 0 && creates.length === 0 && budgetRaw.length === 0) {
+  const setsRaw = Array.isArray(a.sets) ? a.sets : [];
+  if (
+    diffs.length === 0 &&
+    creates.length === 0 &&
+    budgetRaw.length === 0 &&
+    setsRaw.length === 0
+  ) {
     return {
       content: [
         {
           type: 'text',
-          text: 'Nothing provided. Supply diffs as {path, recordId, field, after}, creates as {path, record} objects, or budget changes as {kind, ...} objects.'
+          text: 'Nothing provided. Supply diffs as {path, recordId, field, after}, creates as {path, record} objects, sets as {path, field, value} objects, or budget changes as {kind, ...} objects.'
         }
       ],
       isError: true
@@ -1744,6 +1769,20 @@ export function validateProposalEnvelope(toolArgs, auth) {
             'A proposal can carry at most ' +
             MCP_MAX_CREATES +
             ' creates. Split this into smaller proposals.'
+        }
+      ],
+      isError: true
+    };
+  }
+  if (setsRaw.length > MCP_MAX_SETS) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text:
+            'A proposal can carry at most ' +
+            MCP_MAX_SETS +
+            ' sets. Split this into smaller proposals.'
         }
       ],
       isError: true
@@ -1795,6 +1834,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   }
   const diffs = Array.isArray(toolArgs.diffs) ? toolArgs.diffs : [];
   const creates = Array.isArray(toolArgs.creates) ? toolArgs.creates : [];
+  const setsRaw = Array.isArray(toolArgs.sets) ? toolArgs.sets : [];
   const budgetRaw = Array.isArray(toolArgs.budget) ? toolArgs.budget : [];
   const writeStartedAt = Date.now();
 
@@ -1804,7 +1844,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   // project has no snapshot yet - the owner's lazy-PM scenario starts
   // exactly there. With creates only, seed a minimal prev instead of
   // refusing; the review-accept path writes the merged state either way.
-  if (!prev && diffs.length === 0 && creates.length > 0) {
+  if (!prev && diffs.length === 0 && (creates.length > 0 || setsRaw.length > 0)) {
     prev = { schemaVersion: 19, projectId: projectId, updatedAt: new Date().toISOString() };
   }
   if (!prev) {
@@ -1926,6 +1966,58 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef));
     submitted[cpath] = arr2;
   }
+  // SETS (owner 2026-11-12): object sections and scalar keys are not record
+  // lists, so diffs/creates cannot reach them. A set writes one nested field
+  // ("dmaic.define.problem") or a whole scalar ("projectDeadline"), then the
+  // same review queue decides it. Lists are refused here on purpose - a
+  // wholesale array replacement is what the tasks-array guard exists to stop.
+  const refusedSets = [];
+  const SET_FIELD_RE = /^[A-Za-z0-9_]+(\[\d+\])?(\.[A-Za-z0-9_]+(\[\d+\])?)*$/;
+  for (let i = 0; i < setsRaw.length; i++) {
+    if (Date.now() - writeStartedAt > MCP_WRITE_BUDGET_MS) {
+      return writeBudgetExceeded(id);
+    }
+    const s = setsRaw[i];
+    if (!s || typeof s !== 'object') {
+      refusedSets.push('set ' + i + ': invalid');
+      continue;
+    }
+    const spath = String(s.path || '');
+    const sec = CLOUD_KEY_TO_SECTION[spath];
+    if (!sec) {
+      refusedSets.push((spath || '(empty)') + ': not a project section');
+      continue;
+    }
+    if (granted.indexOf(sec) === -1) {
+      refusedSets.push(spath + ': outside the granted sections');
+      continue;
+    }
+    if (Array.isArray(base[spath])) {
+      refusedSets.push(spath + ': is a record list - use diffs or creates');
+      continue;
+    }
+    if (s.value === undefined) {
+      refusedSets.push(spath + ': missing value');
+      continue;
+    }
+    const field = s.field === undefined || s.field === null ? '' : String(s.field);
+    if (field) {
+      if (!SET_FIELD_RE.test(field)) {
+        refusedSets.push(spath + '.' + field + ': not a valid field path');
+        continue;
+      }
+      if (!setPathValue(base, spath + '.' + field, s.value)) {
+        refusedSets.push(spath + '.' + field + ': could not be set');
+        continue;
+      }
+    } else if (s.value && typeof s.value === 'object') {
+      base[spath] = JSON.parse(JSON.stringify(s.value));
+    } else {
+      base[spath] = s.value;
+    }
+    submitted[spath] = base[spath];
+  }
+
   // H-5: budget proposals. Built and validated on the server, then folded
   // into the same review row as any other change set.
   let budgetBuilt = { submitted: {}, changes: [], refused: [], summary: '' };
@@ -1994,7 +2086,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       }
     }
   }
-  const allRefused = refused.concat(refusedCreates);
+  const allRefused = refused.concat(refusedCreates, refusedSets);
   if (!Object.keys(submitted).length) {
     return {
       jsonrpc: '2.0',
@@ -2050,7 +2142,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
             type: 'text',
             text:
               'No changes were within the granted sections.' +
-              (refused.length ? ' Refused: ' + refused.join('; ') + '.' : '')
+              (allRefused.length ? ' Refused: ' + allRefused.join('; ') + '.' : '')
           }
         ],
         isError: true
@@ -2058,9 +2150,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     };
   }
   const now = new Date().toISOString();
-  const diffsJson = (cloudDiffState(prev, merged.next) || []).filter(function (d) {
-    return String(d.path).indexOf('fieldTs') !== 0;
-  });
+  const diffsJson = enrichDiffs(cloudDiffState(prev, merged.next) || [], prev, merged.next).diffs;
   let res;
   const proposalJson = budgetBuilt.changes.length
     ? JSON.stringify({

@@ -24,6 +24,7 @@ import {
 import { structuredLog } from './lib/observe.js';
 import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
 import { buildBudgetProposal } from './lib/budget.js';
+import { applyLeafDiffs, normalizeProposalDiffs } from './cloud/proposal-diffs.js';
 
 // The public config endpoint now lives in the shared Turnstile module; this
 // re-export keeps the router's existing import path valid.
@@ -187,6 +188,9 @@ export async function handleReviewList(request, env, projectId, mine) {
       } catch (e) {
         diffs = null;
       }
+      // Every row leaves this route in one shape, including rows written
+      // before producers stamped record names and affected surfaces.
+      const normalized = normalizeProposalDiffs(diffs);
       let proposal = null;
       try {
         proposal = r.proposal_json ? JSON.parse(r.proposal_json) : null;
@@ -199,7 +203,9 @@ export async function handleReviewList(request, env, projectId, mine) {
         sourceType: r.source_type,
         sourceLabel: r.source_label,
         status: r.status,
-        diffs: diffs,
+        diffs: normalized.diffs,
+        diffTotal: normalized.total,
+        diffTruncated: normalized.truncated,
         proposal: proposal,
         proposedAt: r.proposed_at,
         decidedAt: r.decided_at,
@@ -225,13 +231,16 @@ export async function handleReviewList(request, env, projectId, mine) {
     } catch (e) {
       diffs = null;
     }
+    const normalized = normalizeProposalDiffs(diffs);
     return {
       id: r.id,
       proposalType: r.proposal_type,
       sourceType: r.source_type,
       sourceLabel: r.source_label || editorLabel,
       status: r.status,
-      diffs: diffs,
+      diffs: normalized.diffs,
+      diffTotal: normalized.total,
+      diffTruncated: normalized.truncated,
       proposedAt: r.proposed_at,
       decidedAt: r.decided_at
     };
@@ -264,50 +273,32 @@ async function readDecisionBody(request) {
 
 // H-6: apply only the field diffs the owner ticked, to the CURRENT state.
 // A diff whose "before" no longer matches the live record is stale - the
-// caller refuses the whole accept and names both values.
-function applyApprovedDiffs(prev, approved) {
-  const base = JSON.parse(JSON.stringify(prev || {}));
-  const submitted = {};
-  const stale = [];
-  (approved || []).forEach(function (d) {
-    if (!d || typeof d !== 'object' || !d.path || !d.recordId || !d.field) {
-      return;
-    }
-    const arr = base[d.path];
-    if (!Array.isArray(arr)) {
-      return;
-    }
-    const item = arr.find(function (x) {
-      return x && String(x.id) === String(d.recordId);
-    });
-    if (!item) {
-      stale.push({
-        path: d.path,
-        recordId: d.recordId,
-        field: d.field,
-        expected: d.before,
-        actual: null
-      });
-      return;
-    }
-    if (
-      d.before !== undefined &&
-      String(item[d.field] == null ? '' : item[d.field]) !==
-        String(d.before == null ? '' : d.before)
-    ) {
-      stale.push({
-        path: d.path,
-        recordId: d.recordId,
-        field: d.field,
-        expected: d.before == null ? null : d.before,
-        actual: item[d.field] == null ? null : item[d.field]
-      });
-      return;
-    }
-    item[d.field] = d.after !== undefined ? d.after : null;
-    submitted[d.path] = arr;
-  });
-  return { submitted: submitted, stale: stale };
+// caller refuses the whole accept and names both values. The applier itself
+// lives in proposal-diffs.js so producers, the read route and this route all
+// agree on what a diff means.
+function storedDiffs(row) {
+  try {
+    const list = row.diffs_json ? JSON.parse(row.diffs_json) : null;
+    return Array.isArray(list) ? list : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function refusalFor(applied) {
+  const problems = applied.stale.concat(applied.unaddressable);
+  return json(
+    {
+      ok: false,
+      error: 'stale',
+      message:
+        'This proposal no longer matches the project. Refresh the project and review it again.',
+      stale: applied.stale,
+      unaddressable: applied.unaddressable,
+      problems: problems.length
+    },
+    409
+  );
 }
 
 export async function handleReviewAccept(request, env, projectId, reviewId, pushRevChanged) {
@@ -383,6 +374,20 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       submitted = JSON.parse(row.submitted_json);
     } catch (e) {
       submitted = {};
+    }
+    // Partial approval: the owner ticked a subset of the listed fields. Apply
+    // those leaves to the CURRENT state instead of replacing whole sections,
+    // so an unrelated field that moved since the save is not rolled back.
+    if (Array.isArray(decision.diffs) && decision.diffs.length) {
+      const applied = applyLeafDiffs(prev, decision.diffs, submitted);
+      if (applied.stale.length || applied.unaddressable.length) {
+        return refusalFor(applied);
+      }
+      submitted = applied.submitted;
+      decision.edited = 1;
+      if (!applied.changed) {
+        resp.noop = true;
+      }
     }
     const merged = cloudScopeMerge(prev, submitted, scope);
     resp.applied = merged.applied;
@@ -515,22 +520,25 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       scope = ['bud'];
       decision.edited = 1;
       resp.proposalSummary = built.summary;
-    } else if (Array.isArray(decision.diffs)) {
-      // Same idea for task/risk proposals: apply only the ticked field diffs.
-      const applied = applyApprovedDiffs(prev, decision.diffs);
-      if (applied.stale.length) {
-        return json(
-          {
-            ok: false,
-            error: 'stale',
-            message: 'This proposal changed since it was made. Refresh it before approving.',
-            stale: applied.stale
-          },
-          409
-        );
+    } else {
+      // One-press accept: apply the proposal's OWN stored leaves to the
+      // current state. The old path merged submitted_json, which replaces a
+      // whole tasks array and silently dropped flat leaves; this path touches
+      // only the fields the owner was shown.
+      const leafDiffs = Array.isArray(decision.diffs) ? decision.diffs : storedDiffs(row);
+      if (Array.isArray(leafDiffs) && leafDiffs.length) {
+        const applied = applyLeafDiffs(prev, leafDiffs, submitted);
+        if (applied.stale.length || applied.unaddressable.length) {
+          return refusalFor(applied);
+        }
+        submitted = applied.submitted;
+        if (Array.isArray(decision.diffs)) {
+          decision.edited = 1;
+        }
+        if (!applied.changed) {
+          resp.noop = true;
+        }
       }
-      submitted = applied.submitted;
-      decision.edited = 1;
     }
     const merged = cloudScopeMerge(prev, submitted, scope);
     resp.applied = merged.applied;

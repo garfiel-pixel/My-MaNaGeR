@@ -1,7 +1,8 @@
 # AGENTS.md - Instructions for AI agents working in this repository
 
 > **READ ORDER: `CONTINUATION-DIRECTIVE.md` first, then `EXECUTION-PLAN.md` for the
-> build order, then the newest `AUDIT-DIRECTIVE-*.md`. Do not open `docs/history/`
+> build order, then `MCP-AGENT-FIRST-DIRECTIVE.md` for the current plan. Load the
+> `high-grade-mcp` skill before any MCP work. Do not open `docs/history/`
 > unless a task cites it.**
 >
 > Read this file before making ANY change. It tells you which skills to load first.
@@ -37,6 +38,7 @@ How to load: use your skill-loading mechanism on the skill **name** below
 | Skill dir | Load before… |
 |---|---|
 | `.agents/skills/skeptical-code-audit` | Auditing the app for broken wiring (CSS classes toggled by JS, `data-action` handlers with no map entry, DOM ids referenced but missing, features that silently no-op). |
+| `.agents/skills/high-grade-mcp` | Any MCP work: tools, the proposal queue, change sets, the accept engine (`applyOps`), budget read/write gates, scoped API keys, the agent write path. The reference contract for a production-grade MCP surface. |
 | `.agents/skills/universal-ui-architect` | Any UI/UX work: design tokens, WCAG 2.2/APCA contrast gates, Liquid Glass surfaces, responsive/interaction polish. Hard gates block ship. |
 | `.agents/skills/ui-modernization` | Modernizing existing UI - typography, cards, buttons, banners, admin panels, marketing pages; token-first, dark-mode parity, SVG icons only, minimal changes, zero feature removal. Complements `universal-ui-architect` (gates) with a concrete step-by-step process. |
 | `.agents/skills/accessibility-rules` | WCAG 2.2 accessibility rules reference - note: oriented to documents (Word/Excel/PPT/PDF); for web pages rely on `universal-ui-architect`'s gates instead. |
@@ -304,7 +306,7 @@ reports a CI failure:
    `static`) proves the `run:` multiset, the T4 count and those id references
    after any workflow edit. Baseline: 24.4 min -> 7.6 min slowest job.
 
-6. **Record the fix in the tracker** (PLANNING-TODO-2026-09-03.txt) -    commit message + which harness/app contract changed - so future waves
+6. **Record the fix in the tracker** (docs/history/PLANNING-TODO-2026-09-03.txt) -    commit message + which harness/app contract changed - so future waves
    don't re-break the same gate.
 
 Latest CI state (2026-09-04): GREEN on 1339a3f after fixing

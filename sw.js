@@ -767,7 +767,11 @@
 // v648 - UI-IA PHASE 4 (2026-11-12): the admin rail is dropdown groups with an
 // MCP Server submenu, and the MCP card is a branded disclosure with a state
 // chip. admin.html and the admin bundle are shell assets.
-const CACHE = 'mmgr-shell-v649';
+// v650 - UI-IA PHASE 6 (2026-11-12): the seeded demo project is re-baselined
+// (demo-data.js rides in the app bundle) and the proposal-review card shows
+// the record, field and both values, with the stale-refusal sentence in the
+// project bundle.
+const CACHE = 'mmgr-shell-v650';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

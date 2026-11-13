@@ -484,7 +484,10 @@ async function withChrome(fn) {
         list &&
         list.result &&
         list.result.tools &&
-        list.result.tools.length === 12 &&
+        // P2 (2026-11-11): an API key never sees get_weather (weather is not a
+        // grantable section), so the scoped catalog is 11, not 12.
+        list.result.tools.length === 11 &&
+        !list.result.tools.some(t => t.name === 'get_weather') &&
         list.result.tools.some(t => t.name === 'get_table') &&
         list.result.tools.some(t => t.name === 'run_monte_carlo') &&
         list.result.tools.some(t => t.name === 'get_deliveries') &&

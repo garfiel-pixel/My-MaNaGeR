@@ -311,7 +311,10 @@ async function main() {
 
   const propose = list.tools.find(t => t.name === 'mmgr_propose_change');
   const srcDesc = fs.readFileSync(SERVER, 'utf8');
-  const descKeyCount = (srcDesc.match(/description: 'Validate and stage a batch/g) || []).length;
+  // The description moved to its own line when the tool table was reflowed;
+  // count the sentence itself, not the old "description: '" prefix.
+  const descKeyCount = (srcDesc.match(/Validate and stage a batch of write operations/g) || [])
+    .length;
   check(
     'C3 propose_change has ONE description listing meeting ops (B4 dedup)',
     descKeyCount === 1 &&

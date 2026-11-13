@@ -60,6 +60,7 @@ import {
   parseISO,
   buildBudgetProposal
 } from '../lib/budget.js';
+import { createDefaults, stampCreated, canonicalField } from './model.js';
 
 // ---- MCP protocol constants ----
 
@@ -321,55 +322,47 @@ export const TOOLS = [
 
 // OWNER 2026-09-17 (CREATE support): the owner's lazy-PM scenario - talk to
 // the AI in a terminal, it ADDS the new people/tasks, the owner verifies.
-// Defaults mirror the app's own creators (js/mmgr-tasks.js addTask,
-// js/mmgr-resources.js addResource) so an MCP-created record renders and
-// behaves exactly like one created in the UI. A create on a path that is not
-// an editable list is refused, same as diffs. Scope enforcement is identical:
+// MCP-AGENT-FIRST 2026-11-12 2.1: the defaults now come from src/mcp/model.js,
+// which is derived from the app's own creators (js/mmgr-tasks.js createTask,
+// js/mmgr-resources.js addResource, ...) and proven field-for-field by
+// test/mcp-model.test.mjs. The old CREATE_DEFAULTS had drifted: a created
+// task lacked createdDate/boardPosition/relations/custom, a risk was keyed on
+// `name` while the app stores `description`, and documents/changes were
+// missing their whole register shape. A create on a path that is not an
+// editable list is refused, same as diffs. Scope enforcement is identical:
 // the create lands only if the section is granted, and the whole proposal
 // waits in the review queue regardless.
-const CREATE_DEFAULTS = {
-  tasks: {
-    id: null,
-    name: 'New Task',
-    level: 0,
-    indent: 0,
-    isPhase: false,
-    status: 'todo',
-    startDate: '',
-    endDate: '',
-    duration: '',
-    assignee: '',
-    critical: false,
-    leadTime: false,
-    recurring: false,
-    weatherExposed: false,
-    confidence: 'high',
-    predecessors: [],
-    notes: '',
-    weatherSensitive: false
-  },
-  resources: {
-    id: null,
-    name: '',
-    type: 'Labor',
-    role: '',
-    availability: 100,
-    rate: 0,
-    hoursAllocated: 0,
-    utilization: 0
-  },
-  risks: { id: null, name: '', probability: 'Low', impact: 'Medium', status: 'Open', notes: '' },
-  issues: { id: null, name: '', status: 'Open', notes: '' },
-  logEntries: { id: null, title: '', decision: '', date: '' },
-  meetings: { id: null, title: '', date: '', notes: '' },
-  stakeholders: { id: null, name: '', role: '', notes: '' },
-  commsEntries: { id: null, title: '', notes: '', date: '' },
-  documents: { id: null, name: '', notes: '' },
-  changes: { id: null, name: '', notes: '' }
-};
-function buildCreatedRecord(path, record, nowMs, counterRef) {
-  const base = CREATE_DEFAULTS[path] || { id: null, name: '' };
-  const rec = JSON.parse(JSON.stringify(base));
+function mcpToday(nowMs) {
+  // The client's U.todayStr() uses the browser's local day. The Worker has
+  // only UTC, so a create near midnight can carry the neighbouring day; the
+  // date is informational and the app re-stamps on the next real status move.
+  return new Date(nowMs).toISOString().slice(0, 10);
+}
+
+// Mirrors js/mmgr-kanban.js nextPosition: the new card lands at the end of
+// its column, never in the middle of the owner's ordering.
+function nextTaskPosition(tasks, status) {
+  let max = -1;
+  (tasks || []).forEach(function (t) {
+    if (!t || (t.status || 'todo') !== status) {
+      return;
+    }
+    const p =
+      typeof t.boardPosition === 'number' && isFinite(t.boardPosition)
+        ? t.boardPosition
+        : Number.MAX_SAFE_INTEGER;
+    if (p !== Number.MAX_SAFE_INTEGER && p > max) {
+      max = p;
+    }
+  });
+  return max + 1;
+}
+
+function buildCreatedRecord(path, record, nowMs, counterRef, siblings) {
+  const rec = createDefaults(path);
+  if (!rec) {
+    return null;
+  }
   rec.id =
     (path === 'tasks' ? 't_' : path === 'resources' ? 'R' : 'mcp_') +
     nowMs.toString(36) +
@@ -380,10 +373,16 @@ function buildCreatedRecord(path, record, nowMs, counterRef) {
       if (k === 'id') {
         continue;
       } // ids are server-assigned, never client-supplied
-      rec[k] = record[k];
+      // A modelled alias lands on its canonical stored name (`name` on a
+      // risk or issue becomes `description`). Unmodelled keys still pass
+      // through in Phase 2.1; Phase 2.2 refuses them in planProposal.
+      rec[canonicalField(path, k) || k] = record[k];
     }
   }
-  return rec;
+  return stampCreated(path, rec, {
+    today: mcpToday(nowMs),
+    boardPosition: path === 'tasks' ? nextTaskPosition(siblings, rec.status || 'todo') : 0
+  });
 }
 
 // ---- B3 (owner 2026-10-11): full table access + Monte Carlo run ----------
@@ -2148,12 +2147,12 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       );
       continue;
     }
-    if (!CREATE_DEFAULTS[cpath]) {
+    if (!createDefaults(cpath)) {
       refusedCreates.push(cpath + ': not a list that accepts new records');
       continue;
     }
     const arr2 = Array.isArray(base[cpath]) ? base[cpath] : (base[cpath] = []);
-    arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef));
+    arr2.push(buildCreatedRecord(cpath, recInput, nowMs, counterRef, arr2));
     submitted[cpath] = arr2;
   }
   // SETS (owner 2026-11-12): object sections and scalar keys are not record

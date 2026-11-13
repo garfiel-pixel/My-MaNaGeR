@@ -99,7 +99,8 @@ With the switch on:
   other field is refused as not writable;
 - a `spendLog` diff is refused with "use the budget array (addDelivery)";
 - a `budgetLines` / `spendLog` create is refused the same way, and both entries
-  are gone from `CREATE_DEFAULTS`;
+  are absent from the create defaults (now `src/mcp/model.js`, `writeVia:
+  'budget'`);
 - a `budgetEnvelope` set becomes a `changeEnvelope` op: finite, non-negative,
   large when the change is at least min(10% of the envelope, 50000);
 - `nspid` is refused everywhere as server-managed.
@@ -151,6 +152,39 @@ opsQueued, refused[], warnings[], truncated}`; every refused op appears in
 
 ---
 
+## Phase 2 — one model contract
+
+| Step | Files | Gate |
+|---|---|---|
+| 2.1 `src/mcp/model.js` | `src/mcp/model.js` (new), `src/mcp/server.js`, `test/mcp-model.test.mjs` (new) | PASS — 22/22 model tests (10 creator field-set comparisons, COLUMNS/process enums, aliases, derived set, dates, deletability); `npm test` 411/411; `qa-mcp-write-path` 20/20; `qa-appwide-mcp` 56/56; `qa-mcp-budget` 46/46; `qa-mcp-parity` 13/13; `mcp/qa-mcp` 52/52; `qa-engine-parity` 19/19; `qa-mcp-agent-first` 37/37 |
+
+2.1 detail: `MODEL.lists` covers the ten record lists plus `budgetLines` and
+`spendLog` (marked `writeVia: 'budget'`, not deletable), and `MODEL.sections`
+covers `charter`, `dmaic`, `closure`, `raci` and the five scalars
+(`projectName`, `projectDeadline`, `budgetEnvelope`, `methodology`,
+`methodologyLocked`). Every field records type, max, enum, required, derived,
+alias and date. `CREATE_DEFAULTS` and the old `buildCreatedRecord` defaults are
+deleted: a create starts from `createDefaults(path)`, aliases are resolved by
+`canonicalField` (`name` on a risk/issue becomes `description`), and
+`stampCreated` fills the three dynamic task stamps the client creator writes
+(`createdDate`, `statusSince`, `boardPosition`). The derived set includes every
+field written by `markCritical`, `applyPlan`, `rollupPhases`, `stampStatus` and
+`checkWeatherExposure`, plus `id` on every list, `actual` on a budget line and
+`utilization` on a resource.
+
+The gate is a real harness, not a copy of the model: `test/mcp-model.test.mjs`
+loads `js/mmgr-kanban.js`, `mmgr-process.js`, `mmgr-tasks.js`,
+`mmgr-resources.js`, `mmgr-risks.js`, `mmgr-stakeholders.js`,
+`mmgr-closure.js` and `mmgr-meetings.js` in a vm sandbox, calls the actual
+creators (`createTask`, `addResource`, `addRisk`, `toggleRiskIssue`, `addLog`,
+`startMeeting`, `addStake`, `addDoc`, `addChange`, `addComms`) and compares the
+record keys with `createDefaults(path)`. Enums are asserted against the live
+constants (`Kanban.COLUMNS`, `Process.ISSUE_STATUSES`,
+`Process.CHANGE_STATUSES`) and against the exact select arrays in the render
+sources, so a new column or option cannot drift silently.
+
+---
+
 ## Deviations
 
 1. **R04's fake state needed a `spendLog` row.** The first run refused the
@@ -179,3 +213,17 @@ opsQueued, refused[], warnings[], truncated}`; every refused op appears in
 6. **Steps 1.4, 1.5 and 1.6 share one commit.** Their edits interleave inside
    `queueMcpProposal` and the accept loop, and `git add -p` is unavailable in
    this session. The log records them separately; the commit names all three.
+7. **The Decision Log creator writes no `id`.** `js/mmgr-stakeholders.js`
+   `addLog()` stores `{date, decision, by, actionItems}` and the table is
+   index-addressed. The model still marks `id` read-only and server-assigned
+   (MCP needs a stable `recordId` for later diffs), and the field-set test
+   excludes `id` on both sides. No client change.
+8. **Meeting records are captured from `startMeeting`, not `endMeeting`.**
+   `endMeeting` stores `JSON.parse(JSON.stringify(activeMeeting))`, so the
+   active session IS the stored field set; calling it would drag in timers,
+   Comms logging and promise extraction for no extra coverage.
+9. **Dynamic task stamps are placeholders in `createDefaults`.** `createdDate`,
+   `statusSince` and `boardPosition` have defaults so the field-set comparison
+   is exact, then `stampCreated` overwrites them at creation time. The server
+   has only UTC, so `createdDate` near local midnight can be the neighbouring
+   day; the app re-stamps on the next real status move.

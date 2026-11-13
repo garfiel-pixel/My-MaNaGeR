@@ -431,6 +431,13 @@ async function applySubscription(
   occurredAt
 ) {
   const now = occurredAt || new Date().toISOString();
+  // D1 refuses `undefined` binds. The LemonSqueezy path (and any caller that
+  // predates a scheduled cancel) has no cancelAt, so normalise every optional
+  // epoch to null here rather than trusting each caller to remember.
+  const periodEndSec =
+    Number.isFinite(Number(periodEnd)) && Number(periodEnd) > 0 ? Number(periodEnd) : null;
+  const cancelAtSec =
+    Number.isFinite(Number(cancelAt)) && Number(cancelAt) > 0 ? Number(cancelAt) : null;
   // ONE ROW PER OWNER, so an event about a DIFFERENT subscription must not
   // strip the one the owner is actually paying for: cancelling an old/duplicate
   // subscription in the Paddle dashboard fires subscription.canceled for the
@@ -476,7 +483,7 @@ async function applySubscription(
       'current_period_end = excluded.current_period_end, cancel_at = excluded.cancel_at, updated_at = excluded.updated_at ' +
       'WHERE excluded.updated_at >= cloud_subscriptions.updated_at'
   )
-    .bind(ownerSub, providerSubId, status, tier, tier, periodEnd, cancelAt, now, now)
+    .bind(ownerSub, providerSubId, status, tier, tier, periodEndSec, cancelAtSec, now, now)
     .run();
   return true;
 }

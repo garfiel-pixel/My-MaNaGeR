@@ -135,6 +135,16 @@ function fakeDb(state) {
     prepare(sql) {
       return {
         bind(...args) {
+          // D1 refuses `undefined` binds (D1_TYPE_ERROR). Mirror that here so a
+          // missing optional argument fails the unit suite instead of only the
+          // deployed Worker.
+          for (const a of args) {
+            if (a === undefined) {
+              throw new TypeError(
+                "D1_TYPE_ERROR: Type 'undefined' not supported for value 'undefined'"
+              );
+            }
+          }
           return {
             async first() {
               log.push({ sql, args, kind: 'first' });
@@ -737,6 +747,45 @@ test('webhook: a bad signature is 401 and writes nothing', async () => {
   const res = await handleBillingWebhook(req, env);
   assert.equal(res.status, 401);
   assert.equal(env.DB.log.length, 0);
+});
+
+async function lsSignedWebhook(env, event) {
+  const body = JSON.stringify(event);
+  const k = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(env.LEMONSQUEEZY_WEBHOOK_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const mac = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(body));
+  const hex = [...new Uint8Array(mac)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return new Request('https://x.test/api/billing/webhook', {
+    method: 'POST',
+    headers: { 'X-Signature': hex },
+    body
+  });
+}
+
+test('webhook: a LemonSqueezy event with no scheduled cancel binds null, not undefined', async () => {
+  const env = baseEnv({ sub: null }, { LEMONSQUEEZY_WEBHOOK_SECRET: 'ls_test_secret' });
+  const res = await handleBillingWebhook(
+    await lsSignedWebhook(env, {
+      meta: { event_name: 'subscription_created', custom_data: { sub: 'email:o@example.com' } },
+      data: {
+        id: 'ls_sub_1',
+        attributes: {
+          status: 'active',
+          renews_at: new Date(Date.now() + 30 * 86400000).toISOString()
+        }
+      }
+    }),
+    env
+  );
+  assert.equal(res.status, 200);
+  const w = env.DB.log.filter(l => l.kind === 'run')[0];
+  assert.equal(w.args[5] > 0, true, 'period end is a positive epoch');
+  assert.equal(w.args[6], null, 'cancel_at is null, never undefined');
 });
 
 // ---------------------------------------------------------------------------

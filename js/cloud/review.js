@@ -422,7 +422,13 @@ var MMGR = window.MMGR || {};
         return {};
       });
       if (!res.ok || !data.ok) {
-        setStatus((data && data.error) || 'Accept failed (HTTP ' + res.status + ').', 'err');
+        // Prefer the server's sentence ("This proposal no longer matches the
+        // project. Refresh the project and review it again.") over its error
+        // code ("stale") - the code is not something an owner can act on.
+        setStatus(
+          (data && (data.message || data.error)) || 'Accept failed (HTTP ' + res.status + ').',
+          'err'
+        );
         return;
       }
       // FAILURE-SURFACE AUDIT 2026-09-25: the server answers ok:true with NO

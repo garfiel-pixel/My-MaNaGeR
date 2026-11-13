@@ -2271,6 +2271,108 @@ function addReview(env, row) {
     );
   }
 
+  // =====================================================================
+  // AT25 (A4) — D1/R2 recovery. The R2 state is written BEFORE the D1 status
+  // update, so a crash between them leaves the change persisted but the
+  // proposal still pending. Re-accepting then finds every op already applied
+  // (skipped_already) and must HEAL to accepted instead of 409.
+  // =====================================================================
+  section('AT25 — D1/R2 recovery (all-skipped heals to accepted)');
+  {
+    // 25a: single accept, then simulate a lost D1 status update (R2 keeps the
+    // change); the retry must heal to accepted.
+    const env = await makeEnv({ mod });
+    const q = await tool(env, 970, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't6', field: 'status', after: 'inprogress' }]
+    });
+    const id = Number((textOf(q).match(/proposal #(\d+)/) || [])[1] || 0);
+    await accept(env, id);
+    const row = env.__store.reviews.find(function (r) {
+      return r.id === id;
+    });
+    // R2 holds the change now; simulate the D1 status update being lost.
+    row.status = 'pending';
+    row.apply_report_json = null;
+    const retry = await accept(env, id);
+    check(
+      'AT25a a retry after a lost D1 status heals to accepted (not 409)',
+      retry.status === 200 &&
+        !!(retry.data && retry.data.ok === true && retry.data.status === 'accepted'),
+      { status: retry.status, data: retry.data && { ok: retry.data.ok, status: retry.data.status } }
+    );
+    check(
+      'AT25b the healing retry reports the op as skipped, not applied',
+      !!(retry.data && retry.data.skipped >= 1 && retry.data.applied === 0),
+      retry.data && { skipped: retry.data.skipped, applied: retry.data.applied }
+    );
+    const rowAfter = env.__store.reviews.find(function (r) {
+      return r.id === id;
+    });
+    check(
+      'AT25c D1 status is accepted after the healing retry',
+      !!(rowAfter && rowAfter.status === 'accepted'),
+      { status: rowAfter && rowAfter.status }
+    );
+
+    // 25d: the same recovery for a whole change set (Accept-all).
+    const env2 = await makeEnv({ mod });
+    const CS = 'cs-AT25';
+    addReview(env2, {
+      change_set_id: CS,
+      key_id: 'k-AT25',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't6',
+            field: 'status',
+            before: 'todo',
+            beforeAbsent: false,
+            after: 'inprogress',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const setReq = function () {
+      return new Request(
+        'http://localhost/api/cloud/projects/' + PROJECT + '/changesets/' + CS + '/accept',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+          body: '{}'
+        }
+      );
+    };
+    const firstSet = await mod.handleChangeSetAccept(setReq(), env2, PROJECT, CS, undefined);
+    // Simulate the D1 status update being lost for every row in the set.
+    env2.__store.reviews.forEach(function (r) {
+      if (r.change_set_id === CS) {
+        r.status = 'pending';
+      }
+    });
+    const retrySet = await mod.handleChangeSetAccept(setReq(), env2, PROJECT, CS, undefined);
+    let retryData = null;
+    try {
+      retryData = await retrySet.clone().json();
+    } catch (e) {
+      retryData = null;
+    }
+    check(
+      'AT25d a change-set retry after a lost D1 status heals to accepted',
+      firstSet.status === 200 && retrySet.status === 200 && !!(retryData && retryData.ok === true),
+      {
+        firstStatus: firstSet.status,
+        retryStatus: retrySet.status,
+        retryOk: retryData && retryData.ok
+      }
+    );
+  }
+
   console.log('\n========================================');
   console.log(pass + ' passed, ' + fail + ' failed');
   if (failures.length) {

@@ -273,6 +273,7 @@ sources, so a new column or option cannot drift silently.
 | 3.4 Accept engine | `src/cloud/apply-ops.js` (new), `test/apply-ops.test.mjs` (new), `src/mcp/reviews.js`, `src/mcp/server.js`, `src/mcp/plan.js` | PASS — 15/15 unit tests; scalar + nested section sets now validate via `getSection`; create supersession keyed by record id; derived fields skipped on create revalidation; `qa-mcp-budget` 46/46; `qa-mcp-agent-first` 51/51 |
 | 3.5 Post-apply recompute | `src/cloud/apply-ops.js` | FALLBACK BRANCH SHIPPED — derived schedule fields (`critical`, `totalFloat`, `freeFloat`, `floatBaseline`) set to `null` on every touched task and tagged `pending recompute (opens in the app)`; the app's `annotateSchedule` recomputes and persists on next pull-merge. Step A (stampStatus/rollupPhases port) and Step B parity harness were NOT shipped: weather data + work-week are browser-only, so shipping an approximation was refused per the directive. Recorded here as the sanctioned fallback. AT05/AT06/R11/R12 pending in 5.1. |
 | 3.6 Change-set endpoints | `src/reviews.js`, `src/router.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `POST …/changesets/:id/accept` + `…/reject` wired (owner, budget-approver only for budget-only sets); accept claims all rows, runs `applyOps` proposal-by-proposal on one snapshot, ONE conditional R2 write, per-proposal `apply_report_json` + changelog; AT08 (one R2 write, both applied, reports) + AT09 (reject-all) 5/5; `qa-mcp-agent-first` 56/56; `qa-changelog-diffs` green |
+| 3.4b / 3.6b D1/R2 recovery (ADDENDUM A4) | `src/reviews.js`, `src/cloud/apply-ops.js`, `tools/qa-mcp-agent-first.cjs` | PASS — verified (not changed) that both accept paths already write R2 BEFORE the D1 status update and only return 409 on a genuine conflict, so a crash between the two writes leaves the change persisted and the proposal still pending; re-accepting finds every op `skipped_already`, writes R2 again (no-op) and heals the row to `accepted` instead of 409. AT25a-d lock it in for a single accept (AT25a accepted-not-409, AT25b `skipped>=1 && applied===0`, AT25c D1 `status='accepted'`) and for Accept-all (AT25d); `qa-mcp-agent-first` 78/78 |
 | 3.7 Owner UI grouping | `js/cloud/review.js`, `js/mmgr-app.js`, `js/mmgr-cloud.js`, `src/reviews.js`, `sw.js`, `css/mmgr.css` | PASS — pending proposals grouped by `change_set_id` with a header showing the proposal + field-change counts and one-click Accept all / Reject all; after Accept all the group renders applied / skipped / conflict (path, record name, wanted, live) / derived summary; `esc()` on every dynamic string (ESLint `no-unsanitized-html` clean); `mmgr-shell` bumped to v652 (verify-sw-cache green); `qa-approval` V12 added and passing |
 | 3.8 Report tools | `src/mcp/server.js`, `src/mcp/appwide.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `get_apply_report`, `get_pending` added to both surfaces; `get_proposal_status` carries `changeSetId` + `accepted-with-conflicts`; AT10 / AT11 / AT12 green (62/62) |
 | 3.9 Deletes in `apply_changes` | `src/mcp/plan.js`, `src/cloud/apply-ops.js`, `test/apply-ops.test.mjs` | PASS — `deletes:[{path, recordId}]` validated in `planProposal` (deletable + in-scope + record exists, cap 200), accepted in `applyOps` (budget-reference / phase-child / predecessor cleanup rules), empty-envelope check covers deletes; GATE AT14 satisfied by `test/apply-ops.test.mjs` (pure unit test, Phase 0 rule 10) rather than a harness AT |
@@ -344,6 +345,25 @@ also surfaced and fixed a harness seed bug — `base.tasks[1].status` was the
 non-canonical `in_progress` (underscore), which `applyOps`'s post-condition enum
 check (Ruling #2: canonical is `inprogress`) was correctly rejecting, blocking
 every accept that touched that task.
+
+3.4b / 3.6b detail (ADDENDUM A4 - D1/R2 recovery): both accept paths already
+satisfy the required ordering. `acceptMcpV2` (single) and
+`handleChangeSetAccept` (Accept-all) build the next state, write it to R2 with
+ONE conditional `cloudPutState`, and only then `UPDATE cloud_reviews SET
+status='accepted'`. The 409 branches are narrow on purpose: a single accept
+conflicts only when `appliedCount === 0 && conflicts.length`; a change set
+only when `totalApplied === 0 && totalConflicts > 0`. An all-`skipped_already`
+result has zero conflicts, so it falls through to the R2 write (idempotent,
+same bytes) and the D1 status update - the lost update heals.
+The step therefore shipped as a LOCK-IN, not a code change: AT25 drives the
+crash window directly by accepting once, forcing the fake D1 row back to
+`pending` with `apply_report_json = null` (R2 untouched), and accepting again.
+AT25a asserts the retry is 200 `accepted` (never 409), AT25b that the report
+says `skipped >= 1` and `applied === 0` (the work was not redone), AT25c that
+D1 ends `accepted`, and AT25d repeats the whole cycle through
+`handleChangeSetAccept` for a change set. No production file needed editing;
+the tests pin the contract so a future refactor that reorders the R2 and D1
+writes, or that widens the 409, fails immediately.
 
 ---
 

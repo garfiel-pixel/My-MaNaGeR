@@ -1040,7 +1040,7 @@ async function acceptMcpV2(
         409
       );
     }
-    const effBudget = Array.isArray(decision.changes) ? decision.changes : budgetChanges;
+    const effBudget = (Array.isArray(decision.changes) ? decision.changes : budgetChanges).map(normalizeBudgetChange);
     if (effBudget && effBudget.length) {
       const built = buildBudgetProposal(next, effBudget, next && next.currency);
       if (!built.changes.length) {
@@ -1215,6 +1215,58 @@ async function acceptMcpV2(
    union is written to R2 in ONE conditional write (Step 1.6). Every
    proposal row gets its own apply_report_json.
    ============================================================ */
+
+// MCP-AGENT-FIRST 2026-11-12 3.6 (accept-side bug fix): a stored budget
+// proposal carries the OUTPUT shape that buildBudgetProposal produced at
+// proposal time ({kind, lineId, field, before, after, ...}) where money/delivery
+// details live under `after` (or, for changeLine, as `after` not `value`). The
+// accept path re-runs buildBudgetProposal, which only understands the RAW MCP
+// input shape ({kind, lineId, field, value, qty, unitPrice, ...}). Without this
+// shim, every stored budget change is refused ("must be a number") and an owner
+// Accept-all of a budget MCP proposal can never apply. Raw specs (owner preview
+// passes `decision.changes`) pass through untouched.
+function normalizeBudgetChange(c) {
+  if (!c || typeof c !== 'object') {
+    return c;
+  }
+  const k = String(c.kind || '');
+  if (k === 'changeLine' && 'value' in c) {
+    return c;
+  }
+  if (k === 'addDelivery' && ('qty' in c || 'unitPrice' in c)) {
+    return c;
+  }
+  if (k === 'changeEnvelope' && 'value' in c) {
+    return c;
+  }
+  if (k === 'addLine' && c.line) {
+    return c;
+  }
+  const a = c.after && typeof c.after === 'object' ? c.after : null;
+  if (k === 'changeLine') {
+    return { kind: 'changeLine', lineId: c.lineId, field: c.field, value: c.after, before: c.before };
+  }
+  if (k === 'addDelivery') {
+    return {
+      kind: 'addDelivery',
+      lineId: c.lineId,
+      qty: a ? a.qty : undefined,
+      unitPrice: a ? a.unitPrice : undefined,
+      date: a ? a.date : undefined,
+      status: a ? a.status : undefined,
+      unit: a ? a.unit : undefined,
+      supplierRef: a ? a.supplierRef : undefined,
+      note: a ? a.notes : undefined
+    };
+  }
+  if (k === 'changeEnvelope') {
+    return { kind: 'changeEnvelope', value: c.after };
+  }
+  if (k === 'addLine') {
+    return { kind: 'addLine', line: a ? a : c.after || null };
+  }
+  return c;
+}
 
 export async function handleChangeSetAccept(request, env, projectId, changeSetId, pushRevChanged) {
   const decision = await readDecisionBody(request);
@@ -1397,7 +1449,7 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
     let next = running;
     let combinedBudget = [];
     plans.forEach(function (p) {
-      combinedBudget = combinedBudget.concat(p.budgetChanges);
+      combinedBudget = combinedBudget.concat(p.budgetChanges.map(normalizeBudgetChange));
     });
     if (combinedBudget.length) {
       const built = buildBudgetProposal(next, combinedBudget, currency);

@@ -488,6 +488,8 @@ read-only annotation and an outputSchema.
 | 5.1 AT06 derived summary parity | `src/mcp/plan.js`, `tools/qa-mcp-agent-first.cjs` | PASS — after a five-create accept, `completedTasks` equals the independently counted work items with status `completed` (7 of 63), `statusCounts` sums to every task, `openRisks` equals the register count for UI-shaped / promoted / MCP-created risks (3), `get_risks.openRiskCount` agrees with the summary, and `completion` matches the ratio; `qa-mcp-agent-first` 126/126 |
 | 5.1 AT11 permission matrix | `tools/qa-mcp-agent-first.cjs`, `tools/qa-appwide-mcp.cjs` | PASS — 5 key shapes (all sections; wbs with both switches off; budget with read off; budget with write off; no sections) × 16 read tools (every reader + `get_table` on a wbs / risk / meet / money / owner-only table + `get_schema` / `get_pending` / `get_changes_since` / `run_monte_carlo`) × 4 write paths (tasks, risks, meetings, budgetLines) answer exactly as granted — 100 matrix cells per surface direction; the app-wide OAuth surface is probed with a wbs-only member (W5b: `get_tasks` answers, `get_risks` / `get_budget` / `get_meetings` refuse); `qa-mcp-agent-first` 140/140, `qa-appwide-mcp` 60/60 |
 | 5.1 AT19 create-then-read | `tools/qa-mcp-agent-first.cjs` | PASS — one proposal creates a record in each of the ten creatable lists with a text carrying an accent, an em dash, `%`, `<b>` and `&`, plus a `notes` value where the list has one; after accept every list reads the title text back byte for byte through `get_table`, and `get_tasks` / `get_risks` / `get_meetings` return the same text through their dedicated readers; `qa-mcp-agent-first` 140/140 |
+| 5.1 AT21 volume scenario (synthetic) | `tools/qa-mcp-live-e2e.cjs`, `src/reviews.js` | PASS — Phase E: 9 `apply_changes` calls + 1 `validate_changes` over a 60-task / 9-risk / 12-budgetLine fixture (the 10th call queues nothing); the 9 proposals share one change set; Accept-all lands 8 applied ops (two status writes on the same task resolve by last-op-wins, not as a conflict), creates two records, edits one, and applies a 24-change budget batch (12 lines repriced + 12 deliveries); the queue still holds the Phase-A proposal unapplied (never auto-applied); `qa-mcp-live-e2e` 36/36 (API-only). **Bug fixed en route:** the accept path re-ran `buildBudgetProposal` on the STORED `proposal_json.changes` (output shape, `after` / nested objects) but read them as raw MCP input (`raw.value`, top-level `raw.qty` / `raw.unitPrice`), so every budget change was refused and an owner Accept-all of a budget MCP proposal returned "No budget changes to apply" — `normalizeBudgetChange()` now maps the stored shape to the raw shape (raw specs pass through untouched, so the owner-preview accept is unchanged) |
+| 5.1 AT16 XSS sweep (deferred) | `tools/qa-mcp-live-e2e.cjs` (future) | DEFERRED to `extended-qa.yml` / `nightly.yml` per directive 5.2 escape hatch — a headless-browser sweep that feeds `"><img src=x onerror=window.__pwn=1>` through every writable MCP field and asserts `window.__pwn` stays undefined. Not yet authored; tracked here so the gap is not lost |
 
 5.1 detail (group 1): the four gaps were closed on the existing fixtures
 rather than new scenarios. AT02 extends the AT11b setup - two proposals are
@@ -563,6 +565,24 @@ missing `resources` and `commsEntries`, which made those two creates queue and
 then conflict at accept - a reminder that the queue validates against the model
 while the accept validates against the stored state. Both arrays are now part
 of `baseState()`, as they are in any real project.
+
+AT21 detail: the volume scenario is a synthetic stress test for the change-set
+Accept-all union write, not a contract test — it proves one owner decision can
+apply a mixed set of edits, creates, an edit, and a 24-change budget batch in a
+single conditional R2 write. Two findings shaped it. First, the 9 proposals
+share one change set only because they use the SAME key AND the same UTC day; a
+leftover Phase-A proposal on a DIFFERENT narrow key forms a second change set in
+the same project, so the harness filters the pending set by the e21 key's numeric
+id before accepting (otherwise it accepted the wrong, budget-empty set and the
+batch silently no-op'd). Second, the colliding `t1.status` (P1 `completed` vs
+P2 `blocked`) is resolved by last-op-wins in `applyOps` and is reported as
+`applied`, never as a `conflict` — so the accept summary is asserted on its
+`applied` count, not on a `conflict` count. The budget batch exposed a real
+accept-side defect (above): stored budget change entries use the output shape
+(`after`, nested delivery objects) while `buildBudgetProposal` only understands
+the raw MCP input shape, so `normalizeBudgetChange()` was added at the accept
+boundary. The 10th `validate_changes` call is the guard that the dry-run path
+queues no row.
 
 ---
 

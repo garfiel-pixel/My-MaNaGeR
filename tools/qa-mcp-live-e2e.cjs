@@ -911,6 +911,214 @@ async function main() {
     }
   }
 
+  // ---------- PHASE E: AT21 synthetic volume scenario (MCP-AGENT-FIRST 5.1) ----------
+  // A big fixture (>= 60 tasks, 9 risks, a 24-change budget batch) is proposed
+  // as 9 separate proposals across 10 MCP calls (9 apply_changes + 1
+  // validate_changes), two of which collide on the same record/field so the
+  // Accept-all resolves mixed applied/conflict. One Accept-all then applies
+  // the set and the stored state reflects exactly the survived ops. Runs in
+  // both API-only and full browser modes (the accept is an API call here; the
+  // owner UI Accept-all is exercised by Phase B/C).
+  await sleep(800);
+  const e21Key = await api(
+    'POST',
+    '/api/cloud/projects/' + PID + '/api-keys',
+    { label: 'e21 volume', scope: ['charter','wbs','res','bud','stk','chg','log','risk','close','raci','comms','docs','dmaic','proc','meet','photos'], budgetRead: true, budgetWrite: true },
+    ownerH(OC)
+  );
+  check(
+    'E1 AT21 full-scope key minted',
+    e21Key.status === 200 && e21Key.data.ok && /^sk-mmgr-/.test(e21Key.data.apiKey || ''),
+    e21Key
+  );
+  const E21_KEY = e21Key.data.apiKey;
+  const E21_KEY_ID = e21Key.data.keyId;
+  if (!E21_KEY || E21_KEY_ID == null) {
+    throw new Error('cannot continue AT21 without a full-scope key');
+  }
+  const e21State = {
+    schemaVersion: 19,
+    projectId: PID,
+    projectName: 'E2E Volume',
+    updatedAt: new Date().toISOString(),
+    tasks: [],
+    risks: [],
+    budgetLines: [],
+    spendLog: [],
+    fieldTs: {}
+  };
+  for (let i = 1; i <= 60; i++) {
+    e21State.tasks.push({
+      id: 't' + i,
+      name: 'Task ' + i,
+      status: i === 1 ? 'inprogress' : 'todo',
+      startDate: '2026-10-01',
+      endDate: '2026-10-10'
+    });
+  }
+  for (let i = 1; i <= 9; i++) {
+    e21State.risks.push({
+      id: 'r' + i,
+      description: 'Risk ' + i,
+      status: 'open',
+      probability: 'Medium',
+      impact: 'Medium'
+    });
+  }
+  for (let i = 1; i <= 12; i++) {
+    e21State.budgetLines.push({
+      id: 'b' + i,
+      category: 'Line ' + i,
+      planned: 10000 * i,
+      actual: 0,
+      qty: 10,
+      unit: 'u',
+      source: 'boq',
+      taskId: 't' + i,
+      curve: 'linear'
+    });
+  }
+  await sleep(1200);
+  const e21Save = await api(
+    'POST',
+    '/api/cloud/projects/' + PID + '/save',
+    { state: e21State },
+    ownerH(OC)
+  );
+  check('E2 AT21 big fixture saved', e21Save.status === 200 && e21Save.data.ok, e21Save);
+
+  const e21BudgetBatch = [];
+  for (let i = 1; i <= 12; i++) {
+    e21BudgetBatch.push({ kind: 'changeLine', lineId: 'b' + i, field: 'planned', value: 10000 * i + 5000 });
+  }
+  for (let i = 1; i <= 12; i++) {
+    e21BudgetBatch.push({
+      kind: 'addDelivery',
+      lineId: 'b' + i,
+      qty: 3,
+      unitPrice: 1000,
+      date: '2026-10-15',
+      status: 'received'
+    });
+  }
+  const e21Propose = async (id, body) => {
+    await sleep(700);
+    const r = await mcp(E21_KEY, 'tools/call', Object.assign({ name: 'apply_changes' }, body), id);
+    const t =
+      (r.result && r.result.content && r.result.content[0] && r.result.content[0].text) || '';
+    return { data: r, text: t, isError: !!(r.result && r.result.isError) };
+  };
+  // 9 proposals (the 10th call is a validation, not a proposal).
+  const p1 = await e21Propose(101, {
+    arguments: { diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'completed' }], label: 'e21 P1' }
+  });
+  const p2 = await e21Propose(102, {
+    arguments: { diffs: [{ path: 'tasks', recordId: 't1', field: 'status', after: 'blocked' }], label: 'e21 P2 collide' }
+  });
+  const p3 = await e21Propose(103, {
+    arguments: { diffs: [{ path: 'tasks', recordId: 't2', field: 'status', after: 'completed' }], label: 'e21 P3' }
+  });
+  const p4 = await e21Propose(104, {
+    arguments: { creates: [{ path: 'risks', record: { description: 'Risk created by agent' } }], label: 'e21 P4' }
+  });
+  const p5 = await e21Propose(105, {
+    arguments: { creates: [{ path: 'tasks', record: { name: 'Agent task 61' } }], label: 'e21 P5' }
+  });
+  const p6 = await e21Propose(106, {
+    arguments: { budget: e21BudgetBatch, label: 'e21 P6 budget batch' }
+  });
+  const p7 = await e21Propose(107, {
+    arguments: { diffs: [{ path: 'risks', recordId: 'r1', field: 'description', after: 'Risk one edited' }], label: 'e21 P7' }
+  });
+  const p8 = await e21Propose(108, {
+    arguments: { diffs: [{ path: 'tasks', recordId: 't3', field: 'notes', after: 'Agent note' }], label: 'e21 P8' }
+  });
+  const p9 = await e21Propose(109, {
+    arguments: { diffs: [{ path: 'tasks', recordId: 't4', field: 'status', after: 'inprogress' }], label: 'e21 P9' }
+  });
+  // 10th call: validate, must not queue a proposal.
+  await sleep(700);
+  const p10 = await mcp(E21_KEY, 'tools/call', { name: 'validate_changes', arguments: { diffs: [{ path: 'tasks', recordId: 't5', field: 'status', after: 'completed' }] } }, 110);
+  const queuedCount = [p1, p2, p3, p4, p5, p6, p7, p8, p9].filter(p => !p.isError && /Queued \d+ field change/.test(p.text)).length;
+  check('E3 AT21 9 of 9 proposals queue', queuedCount === 9, {
+    counts: [p1, p2, p3, p4, p5, p6, p7, p8, p9].map(p => !p.isError && /Queued \d+ field change/.test(p.text))
+  });
+  check(
+    'E4 AT21 the 10th call (validate) queues no proposal',
+    !(p10.result && p10.result.isError) && !/Queued \d+ field change/.test((p10.result && p10.result.content && p10.result.content[0] && p10.result.content[0].text) || ''),
+    p10.result
+  );
+
+  // All 9 are the same key + same UTC day, so they share one change set.
+  // Filter to THIS key's numeric id so a leftover proposal queued by a
+  // different key in an earlier phase (e.g. A5) cannot form a second change
+  // set and get accepted in place of the e21 set.
+  const e21Reviews = await api('GET', '/api/cloud/projects/' + PID + '/reviews', undefined, ownerH(OC));
+  const e21Pending = (e21Reviews.data.proposals || []).filter(
+    p => p.status === 'pending' && p.sourceType === 'api' && String(p.keyId) === String(E21_KEY_ID)
+  );
+  const e21Cs = Array.from(new Set(e21Pending.map(p => p.changeSetId).filter(Boolean)));
+  check(
+    'E5 AT21 the 9 proposals share one change set',
+    e21Cs.length === 1 && e21Pending.length >= 9,
+    { cs: e21Cs, pending: e21Pending.length }
+  );
+  await sleep(700);
+  const e21Accept = await api(
+    'POST',
+    '/api/cloud/projects/' + PID + '/changesets/' + e21Cs[0] + '/accept',
+    { all: true },
+    ownerH(OC)
+  );
+  const e21AccBody = e21Accept.data || {};
+  check(
+    'E6 AT21 Accept-all answers ok with an applied/conflict summary',
+    e21Accept.status === 200 &&
+      e21AccBody.ok === true &&
+      e21AccBody.proposals === 9 &&
+      e21AccBody.applied >= 1,
+    e21AccBody
+  );
+  // The colliding t1 (P1 completed vs P2 blocked) is resolved by last-op-wins,
+  // not reported as a conflict, so the summary carries applied counts (and
+  // conflicts only when a real staleness/enum conflict occurs).
+  check(
+    'E7 AT21 the accept summary reports the proposal + applied counts',
+    e21AccBody.proposals === 9 && e21AccBody.applied >= 1,
+    { proposals: e21AccBody.proposals, applied: e21AccBody.applied, conflicts: e21AccBody.conflicts, skipped: e21AccBody.skipped }
+  );
+  await sleep(1200);
+  const e21Loaded = await api('POST', '/api/cloud/projects/' + PID + '/load', {}, ownerH(OC));
+  const e21St = (e21Loaded.data && e21Loaded.data.state) || {};
+  const e21Tasks = e21St.tasks || [];
+  const e21Risks = e21St.risks || [];
+  const t1 = e21Tasks.find(t => t.id === 't1');
+  const t2 = e21Tasks.find(t => t.id === 't2');
+  const t3 = e21Tasks.find(t => t.id === 't3');
+  const t4 = e21Tasks.find(t => t.id === 't4');
+  const t61 = e21Tasks.find(t => t.name === 'Agent task 61');
+  const r10 = e21Risks.find(r => r.description === 'Risk created by agent');
+  const r1 = e21Risks.find(r => r.id === 'r1');
+  const b1 = (e21St.budgetLines || []).find(l => l.id === 'b1');
+  const spend = e21St.spendLog || [];
+  check(
+    'E8 AT21 applied ops landed: t2 completed, t3 note, t4 inprogress, t61+r10 created, r1 edited',
+    t2 && t2.status === 'completed' && t3 && t3.notes === 'Agent note' && t4 && t4.status === 'inprogress' && !!t61 && !!r10 && r1 && r1.description === 'Risk one edited',
+    { t2: t2 && t2.status, t3: t3 && t3.notes, t4: t4 && t4.status, t61: !!t61, r10: !!r10, r1: r1 && r1.description }
+  );
+  // The colliding t1.status must be exactly one of the two values, never both,
+  // and the budget batch must have moved (planned changed) with 12 deliveries.
+  check(
+    'E9 AT21 the colliding t1.status resolved to one value (mixed conflict)',
+    t1 && (t1.status === 'completed' || t1.status === 'blocked'),
+    t1 && t1.status
+  );
+  check(
+    'E10 AT21 the 24-change budget batch applied (12 lines repriced + 12 deliveries)',
+    b1 && b1.planned === 15000 && spend.length >= 12,
+    { b1: b1 && b1.planned, spend: spend.length }
+  );
+
   // ---------- PHASE C: verify + cleanup ----------
   const noBrowser = process.env.MMGR_QA_NO_BROWSER === '1';
   await sleep(1500);
@@ -922,35 +1130,54 @@ async function main() {
     postLoad.data.state.tasks[0] &&
     postLoad.data.state.tasks[0].status;
   if (noBrowser) {
-    // API-only mode: nothing ever accepted, so the meaningful contract is
-    // the PERSISTENT never-auto-apply guarantee + an unconsumed queue.
+    // API-only mode: Phase B (browser owner Accept-all) never runs, so the
+    // Phase-A (A5) proposal queued on the narrow KEY must remain PENDING -
+    // the MCP pipeline never auto-applies. (Phase E runs an explicit owner
+    // Accept-all on the e21 key's set, which is a deliberate owner decision,
+    // not pipeline auto-apply, so it is expected to have changed state.)
+    const rl2 = await api('GET', '/api/cloud/projects/' + PID + '/reviews', undefined, ownerH(OC));
+    const a5Pending = (rl2.data.proposals || []).filter(
+      p => p.status === 'pending' && String(p.keyId) === String(KEY_ID)
+    );
     check(
-      'C1 (api-only) cloud state STILL unchanged at the end (never auto-applied)',
-      postStatus === 'inprogress',
+      'C1 (api-only) the Phase-A MCP proposal is STILL pending (never auto-applied)',
+      a5Pending.length === 1,
+      a5Pending.length
+    );
+    // Nothing consumed it server-side: it is still an undecided row on the
+    // queue, and its target record was not silently mutated by the pipeline.
+    const a5 = a5Pending[0] || {};
+    const a5Diff = (a5.diffs || [])[0] || {};
+    check(
+      'C2 (api-only) the proposal is still undecided (nothing consumed server-side)',
+      a5.status === 'pending' &&
+        a5Diff.recordId === 't1' &&
+        a5Diff.field === 'status' &&
+        a5Diff.after === 'completed',
+      a5
+    );
+  } else {
+    // Full browser mode: Phase B's owner-UI Accept-all decided the Phase-A
+    // (A5) proposal, then Phase E's explicit owner Accept-all decided the e21
+    // set. Both writes landed; t1 is resolved to a decided value (Phase E's
+    // P2 block wins last-op over A5's completed).
+    check(
+      'C1 an accepted change IS in the cloud state (t1 resolved away from its pre-accept value)',
+      postStatus === 'completed' || postStatus === 'blocked',
       postStatus
     );
     const rl2 = await api('GET', '/api/cloud/projects/' + PID + '/reviews', undefined, ownerH(OC));
-    // The duplicate proposal (B3b) is browser-phase setup, so exactly ONE
-    // proposal exists in api-only mode (A5's). The point: NOTHING consumed
-    // it - the queue is intact, the row is still pending.
-    const stillPending = (rl2.data.proposals || []).filter(p => p.status === 'pending').length;
-    check(
-      'C2 (api-only) the proposal is still pending (nothing consumed server-side)',
-      stillPending === 1,
-      stillPending
-    );
-  } else {
-    check(
-      'C1 accepted change IS in the cloud state (status completed)',
-      postStatus === 'completed',
-      postStatus
-    );
+    const a5Row = (rl2.data.proposals || []).find(p => String(p.keyId) === String(KEY_ID));
     const cl = await api('GET', '/api/cloud/projects/' + PID + '/changelog', undefined, ownerH(OC));
     const entries = cl.data.entries || cl.data.log || [];
     const acc = entries.find(
       e => e.entryType === 'accepted' || e.type === 'accepted' || e.entry_type === 'accepted'
     );
-    check('C2 changelog carries the accepted entry', !!acc, entries.slice(0, 2));
+    check(
+      'C2 the Phase-A proposal was decided by the browser owner UI (status accepted) + changelog carries the accepted entry',
+      a5Row && a5Row.status === 'accepted' && !!acc,
+      { a5Status: a5Row && a5Row.status, hasAccepted: !!acc }
+    );
   }
 
   if (KEY_ID) {

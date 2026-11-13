@@ -302,6 +302,29 @@ async function makeEnv(opts) {
                     return r.status === 'pending';
                   });
                 }
+                // ADDENDUM 4.1/AT09: the large-change counter asks for
+                // pending+accepting+accepted, so the mock must honour it -
+                // otherwise a rejected row would count against the quota.
+                const isLargeCounter =
+                  low.includes("status in ('pending','accepting','accepted')") &&
+                  low.includes('proposal_json');
+                if (isLargeCounter) {
+                  rows = rows.filter(function (r) {
+                    return (
+                      r.status === 'pending' || r.status === 'accepting' || r.status === 'accepted'
+                    );
+                  });
+                }
+                if (isLargeCounter && low.includes('source_label = ?')) {
+                  rows = rows.filter(function (r) {
+                    return String(r.source_label) === String(args[1]);
+                  });
+                }
+                if (low.includes('proposed_at >= ?')) {
+                  rows = rows.filter(function (r) {
+                    return String(r.proposed_at || '') >= String(args[2]);
+                  });
+                }
                 return { results: rows };
               }
               return { results: [] };
@@ -3052,6 +3075,226 @@ function addReview(env, row) {
         total: ids.length,
         totalLeaves: totalLeaves
       }
+    );
+  }
+
+  // =====================================================================
+  // AT02 — the owner edits a record in the UI after the proposal was queued.
+  // Accepting the older proposal must conflict THAT op (the UI value wins),
+  // apply the rest, and name the conflicted op in the stored report.
+  // =====================================================================
+  section('AT02 — a UI edit after the queue conflicts one op, applies the rest');
+  {
+    const env = await makeEnv({ mod });
+    const id = addReview(env, {
+      change_set_id: 'cs-AT02',
+      key_id: 'k-AT02',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't6',
+            field: 'status',
+            before: 'todo',
+            beforeAbsent: false,
+            after: 'inprogress',
+            afterAbsent: false
+          },
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't7',
+            field: 'notes',
+            before: '',
+            beforeAbsent: false,
+            after: 'the agent note',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 2,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    // The owner edits t7's notes in the UI between queue and accept.
+    const live = await stateOf(env);
+    live.tasks[6].notes = 'the owner note';
+    await env.R2.put(R2_KEY, JSON.stringify(live));
+    const acc = await accept(env, id);
+    const after = await stateOf(env);
+    const row = env.__store.reviews.find(function (r) {
+      return r.id === id;
+    });
+    let rep = null;
+    try {
+      rep = row && row.apply_report_json ? JSON.parse(row.apply_report_json) : null;
+    } catch (e) {
+      rep = null;
+    }
+    const conflictEntry =
+      rep && Array.isArray(rep.report)
+        ? rep.report.filter(function (e) {
+            return e && e.result === 'conflict';
+          })[0]
+        : null;
+    check(
+      'AT02a the accept succeeds and applies the unconflicted op',
+      !!(acc.status === 200 && after.tasks[5].status === 'inprogress'),
+      { status: acc.status, t6: after.tasks[5].status }
+    );
+    check(
+      'AT02b the UI value survives the older proposal',
+      after.tasks[6].notes === 'the owner note',
+      { t7: after.tasks[6].notes }
+    );
+    check(
+      'AT02c the report names the conflicted op and its record',
+      !!(
+        conflictEntry &&
+        String(conflictEntry.recordId) === 't7' &&
+        conflictEntry.field === 'notes' &&
+        (conflictEntry.code === 'CONFLICT' || conflictEntry.code === 'STALE_BEFORE')
+      ),
+      conflictEntry && {
+        recordId: conflictEntry.recordId,
+        field: conflictEntry.field,
+        code: conflictEntry.code,
+        reason: conflictEntry.reason
+      }
+    );
+    check(
+      'AT02d the summary counts one applied and one conflict',
+      !!(rep && rep.summary && rep.summary.applied === 1 && rep.summary.conflict === 1),
+      rep && rep.summary
+    );
+  }
+
+  // =====================================================================
+  // AT03 — an invalid enum is answered by BOTH tools with the allowed list:
+  // validate_changes refuses it in the dry run, apply_changes refuses it and
+  // queues nothing.
+  // =====================================================================
+  section('AT03 — both tools refuse an invalid enum with the allowed list');
+  {
+    const env = await makeEnv({ mod });
+    const args = {
+      diffs: [{ path: 'tasks', recordId: 't6', field: 'status', after: 'done' }]
+    };
+    const dry = await tool(env, 920, 'validate_changes', args);
+    const dryBody = jsonOf(dry);
+    const dryRefused = (dryBody && dryBody.refused) || [];
+    check(
+      'AT03a validate_changes refuses "done" and lists the allowed values',
+      !!(
+        dryBody &&
+        dryBody.ok === false &&
+        dryRefused.length === 1 &&
+        dryRefused[0].code === 'INVALID_ENUM' &&
+        /todo, inprogress, blocked, completed/.test(String(dryRefused[0].reason || ''))
+      ),
+      dryBody && { ok: dryBody.ok, refused: dryRefused }
+    );
+    const real = await tool(env, 921, 'apply_changes', args);
+    check(
+      'AT03b apply_changes refuses the same op and queues no row',
+      !!(
+        /not one of: todo, inprogress, blocked, completed/.test(textOf(real)) &&
+        env.__store.reviews.length === 0
+      ),
+      { text: textOf(real).slice(0, 120), rows: env.__store.reviews.length }
+    );
+  }
+
+  // =====================================================================
+  // AT04 — every derived field family is refused: the computed task fields
+  // (critical, totalFloat) and the two status stamps (statusSince,
+  // completedDate), on a diff and on a create.
+  // =====================================================================
+  section('AT04 — computed and stamp fields are refused as derived');
+  {
+    const env = await makeEnv({ mod });
+    const cases = [
+      { field: 'critical', after: true },
+      { field: 'totalFloat', after: 4.5 },
+      { field: 'statusSince', after: '2026-11-01' },
+      { field: 'completedDate', after: '2026-11-01' }
+    ];
+    let bad = [];
+    for (let i = 0; i < cases.length; i++) {
+      const r = await tool(env, 930 + i, 'apply_changes', {
+        diffs: [{ path: 'tasks', recordId: 't6', field: cases[i].field, after: cases[i].after }]
+      });
+      if (!/derived field, recomputed by the app/.test(textOf(r))) {
+        bad.push({ field: cases[i].field, text: textOf(r).slice(0, 100) });
+      }
+    }
+    check(
+      'AT04a critical, totalFloat, statusSince and completedDate are all refused as derived',
+      bad.length === 0 && env.__store.reviews.length === 0,
+      { bad: bad, rows: env.__store.reviews.length }
+    );
+    const created = await tool(env, 935, 'apply_changes', {
+      creates: [{ path: 'tasks', record: { name: 'Smuggled float', totalFloat: 2 } }]
+    });
+    check(
+      'AT04b a create cannot smuggle a computed field',
+      !!(/totalFloat: derived field/.test(textOf(created)) && env.__store.reviews.length === 0),
+      { text: textOf(created).slice(0, 140) }
+    );
+  }
+
+  // =====================================================================
+  // AT09 — the large-change message counts N (this call) and U (today, this
+  // key) against L, and U only counts pending/accepting/accepted rows: a
+  // rejected row frees its quota.
+  // =====================================================================
+  section('AT09 — the large-change counter counts only live decisions');
+  {
+    const env = await makeEnv({ mod });
+    const large = function (n) {
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        out.push({ kind: 'addLine', line: { name: 'Large ' + i, planned: 60000 } });
+      }
+      return out;
+    };
+    // Three large changes already pending (they count), five in a REJECTED row
+    // (they must not).
+    addReview(env, {
+      source_type: 'api',
+      source_label: 'Agent key',
+      status: 'pending',
+      proposal_json: JSON.stringify({
+        changes: [
+          { kind: 'addLine', large: true },
+          { kind: 'addLine', large: true },
+          { kind: 'addLine', large: true }
+        ]
+      })
+    });
+    addReview(env, {
+      source_type: 'api',
+      source_label: 'Agent key',
+      status: 'rejected',
+      proposal_json: JSON.stringify({
+        changes: [
+          { kind: 'addLine', large: true },
+          { kind: 'addLine', large: true },
+          { kind: 'addLine', large: true },
+          { kind: 'addLine', large: true },
+          { kind: 'addLine', large: true }
+        ]
+      })
+    });
+    const q = await tool(env, 940, 'apply_changes', { budget: large(8) });
+    const t = textOf(q);
+    check(
+      'AT09a the message names 8 incoming, 3 used (rejected 5 excluded) and the 10 limit',
+      /This call has 8 large budget change\(s\)/.test(t) &&
+        /This key has 3 large change\(s\) pending or accepted today \(UTC\)/.test(t) &&
+        /The limit is 10 per day and 10 per call/.test(t),
+      { text: t.slice(0, 320) }
     );
   }
 

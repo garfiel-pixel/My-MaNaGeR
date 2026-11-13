@@ -479,6 +479,29 @@ read-only annotation and an outputSchema.
 
 ---
 
+## Phase 5 — Acceptance coverage, CI, documentation
+
+| Step | Files | Gate |
+|---|---|---|
+| 5.1 AT01-AT21 acceptance tests (group 1: AT02, AT03, AT04, AT09) | `tools/qa-mcp-agent-first.cjs` | PASS — AT02 a UI edit landing after the queue conflicts exactly one op and the rest apply (report names the op + record, summary counts one applied + one conflict); AT03 both `validate_changes` and `apply_changes` refuse an invalid enum with the allowed list and queue no row; AT04 `critical` / `totalFloat` / `statusSince` / `completedDate` are refused as derived and a create cannot smuggle a computed field; AT09 the large-change counter counts only live decisions (8 incoming, 3 used, a rejected row excluded, limit 10); `qa-mcp-agent-first` 112/112 |
+
+5.1 detail (group 1): the four gaps were closed on the existing fixtures
+rather than new scenarios. AT02 extends the AT11b setup - two proposals are
+queued against the same record, the UI then writes one of the two fields, and
+the accept must apply the survivor and report the other as `conflict` with
+its record name, which is the contract the owner UI renders after Accept all.
+AT03 pins the refusal text on BOTH entry points, because a validator that is
+stricter than the queuer (or vice versa) is how an agent ends up retrying
+forever. AT04 is the derived-field guard: the accept engine nulls these
+fields for recompute in the app, so an agent must never be able to write them
+and then read back its own value as if the app had computed it. AT09 needed
+the fake DB's `all()` to honour the `status IN ('pending','accepting',
+'accepted')` filter of the counter query - without it a rejected row kept
+consuming the caller's 10-proposal budget, which is exactly the bug the
+assertion is there to catch.
+
+---
+
 ## Deviations
 
 1. **R04's fake state needed a `spendLog` row.** The first run refused the

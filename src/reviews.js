@@ -277,6 +277,16 @@ async function readDecisionBody(request) {
 // lives in proposal-diffs.js so producers, the read route and this route all
 // agree on what a diff means.
 function storedDiffs(row) {
+  // MCP-AGENT-FIRST 2026-11-12 1.3: ops_json is the uncapped list; diffs_json
+  // is the display copy capped at 500. Prefer the full list when present.
+  try {
+    const list = row.ops_json ? JSON.parse(row.ops_json) : null;
+    if (Array.isArray(list)) {
+      return list;
+    }
+  } catch (e) {
+    /* fall through to the capped copy */
+  }
   try {
     const list = row.diffs_json ? JSON.parse(row.diffs_json) : null;
     return Array.isArray(list) ? list : null;
@@ -526,6 +536,25 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       // whole tasks array and silently dropped flat leaves; this path touches
       // only the fields the owner was shown.
       const leafDiffs = Array.isArray(decision.diffs) ? decision.diffs : storedDiffs(row);
+      // MCP-AGENT-FIRST 2026-11-12 1.3: a legacy row has no ops_json, so a
+      // 500-leaf list is the cap talking, not the proposal. Accepting it would
+      // apply part of what the owner saw and none of what was dropped.
+      if (
+        !Array.isArray(decision.diffs) &&
+        !row.ops_json &&
+        Array.isArray(leafDiffs) &&
+        leafDiffs.length === 500
+      ) {
+        return json(
+          {
+            ok: false,
+            error: 'truncated',
+            message:
+              'This older proposal was truncated when it was queued. Reject it and ask the agent to resubmit.'
+          },
+          409
+        );
+      }
       if (Array.isArray(leafDiffs) && leafDiffs.length) {
         const applied = applyLeafDiffs(prev, leafDiffs, submitted);
         if (applied.stale.length || applied.unaddressable.length) {
@@ -538,6 +567,20 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         if (!applied.changed) {
           resp.noop = true;
         }
+      } else if (row.proposal_type === 'mcp') {
+        // MCP-AGENT-FIRST 2026-11-12 1.3: an MCP row with no stored leaves
+        // would fall through to cloudScopeMerge, which replaces whole arrays
+        // from submitted_json and can roll back a field changed since. An MCP
+        // proposal always has leaves; if they are gone, refuse instead.
+        return json(
+          {
+            ok: false,
+            error: 'no-diffs',
+            message:
+              'This proposal carries no stored field changes, so it cannot be applied safely. Reject it and ask the agent to resubmit.'
+          },
+          409
+        );
       }
     }
     const merged = cloudScopeMerge(prev, submitted, scope);

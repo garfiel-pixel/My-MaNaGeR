@@ -1484,7 +1484,7 @@ async function proposalStatusResult(env, projectId, auth, args, rpcId) {
     limit = 50;
   }
   let sql =
-    'SELECT id, proposal_type, source_type, source_label, status, diffs_json, proposal_json, proposed_at, decided_at, decided_by, decision_note, decision_edited, accepted_entry_id FROM cloud_reviews WHERE project_id = ?';
+    'SELECT id, proposal_type, source_type, source_label, status, diffs_json, ops_count, proposal_json, proposed_at, decided_at, decided_by, decision_note, decision_edited, accepted_entry_id FROM cloud_reviews WHERE project_id = ?';
   const binds = [projectId];
   if (isApi) {
     sql += ' AND source_type = ? AND source_label = ?';
@@ -1505,12 +1505,14 @@ async function proposalStatusResult(env, projectId, auth, args, rpcId) {
     } catch (e) {
       proposal = null;
     }
-    let diffCount = 0;
-    try {
-      const d = r.diffs_json ? JSON.parse(r.diffs_json) : [];
-      diffCount = Array.isArray(d) ? d.length : 0;
-    } catch (e) {
-      diffCount = 0;
+    let diffCount = r.ops_count == null ? 0 : Number(r.ops_count) || 0;
+    if (!diffCount) {
+      try {
+        const d = r.diffs_json ? JSON.parse(r.diffs_json) : [];
+        diffCount = Array.isArray(d) ? d.length : 0;
+      } catch (e) {
+        diffCount = 0;
+      }
     }
     const edited = r.decision_edited === 1;
     return {
@@ -2276,7 +2278,13 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     };
   }
   const now = new Date().toISOString();
-  const diffsJson = enrichDiffs(cloudDiffState(prev, merged.next) || [], prev, merged.next).diffs;
+  const rawLeaves = cloudDiffState(prev, merged.next) || [];
+  const diffsJson = enrichDiffs(rawLeaves, prev, merged.next).diffs;
+  // MCP-AGENT-FIRST 2026-11-12 1.3: diffs_json stays capped at 500 for the
+  // review UI, but the full enriched list is stored uncapped in ops_json and
+  // its true total in ops_count. Accept reads ops_json, so nothing an agent
+  // proposed is ever silently dropped.
+  const fullOps = enrichDiffs(rawLeaves, prev, merged.next, 1000000000).diffs;
   let res;
   const proposalJson = budgetBuilt.changes.length
     ? JSON.stringify({
@@ -2287,7 +2295,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
     : null;
   try {
     res = await env.DB.prepare(
-      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+      'INSERT INTO cloud_reviews (project_id, proposal_type, source_type, source_label, editor_code_id, scope, submitted_json, diffs_json, status, proposed_at, proposal_json, ops_json, ops_count) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
     )
       .bind(
         projectId,
@@ -2300,7 +2308,9 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
         JSON.stringify(diffsJson),
         'pending',
         now,
-        proposalJson
+        proposalJson,
+        JSON.stringify(fullOps),
+        fullOps.length
       )
       .run();
   } catch (e) {
@@ -2327,7 +2337,7 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
           type: 'text',
           text:
             'Queued ' +
-            diffsJson.length +
+            fullOps.length +
             ' field change(s) for owner review (proposal #' +
             res.meta.last_row_id +
             ').' +

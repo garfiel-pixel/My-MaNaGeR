@@ -321,7 +321,7 @@ function jsonOf(res) {
 
 // The accept route reads the owner code header, so the fake project carries a
 // real PBKDF2 hash of this code.
-function accept(env, reviewId, body) {
+async function accept(env, reviewId, body) {
   const mod = env.__mod;
   const req = new Request(
     'http://localhost/api/cloud/projects/' + PROJECT + '/reviews/' + reviewId + '/accept',
@@ -334,7 +334,18 @@ function accept(env, reviewId, body) {
       body: JSON.stringify(body || {})
     }
   );
-  return mod.handleReviewAccept(req, env, PROJECT, reviewId);
+  const res = await mod.handleReviewAccept(req, env, PROJECT, reviewId);
+  let data = null;
+  try {
+    data = await res.clone().json();
+  } catch (e) {
+    data = null;
+  }
+  return {
+    status: res.status,
+    data: data,
+    text: data ? String(data.message || data.error || '') : ''
+  };
 }
 
 async function stateOf(env) {
@@ -400,19 +411,22 @@ function addReview(env, row) {
     const a = await accept(env, row.id);
     const st = await stateOf(env);
     const created = st.tasks.length - BASE_TASKS;
-    check('R01a the queue reports the capped count (500), not the true op count', queued === 500, {
-      queued,
-      trueOps: 100 * 18
+    const capped = JSON.parse(row.diffs_json).length;
+    const full = JSON.parse(row.ops_json || '[]').length;
+    check(
+      'R01a the queue reports the true op count, above the 500-leaf display cap',
+      queued > 500 && queued === row.ops_count && queued === full,
+      { queued, opsCount: row.ops_count, full, capped }
+    );
+    check('R01b accept applies all 100 proposed creates', created === 100, {
+      created,
+      total: st.tasks.length,
+      acceptStatus: a.status
     });
     check(
-      'R01b accept applies far fewer than the 100 proposed creates',
-      created > 0 && created < 40,
-      { created, total: st.tasks.length, acceptStatus: a.status }
-    );
-    check(
-      'R01c the row carries no uncapped op list (no ops_json yet)',
-      row.ops_json === undefined && row.ops_count === undefined,
-      { ops_json: row.ops_json, ops_count: row.ops_count }
+      'R01c the row carries the uncapped op list and keeps diffs_json at 500',
+      typeof row.ops_json === 'string' && capped === 500 && full === row.ops_count,
+      { opsCount: row.ops_count, capped, full }
     );
   }
 
@@ -420,7 +434,7 @@ function addReview(env, row) {
   // R02 — a row with no stored diffs merges the whole array and rolls back
   //        a field that moved in the live state since
   // =====================================================================
-  section('R02 — legacy whole-array merge overwrites a live field');
+  section('R02 — a diffless MCP row is refused, never whole-array merged');
   {
     const env = await makeEnv({ mod });
     const st = await stateOf(env);
@@ -434,13 +448,28 @@ function addReview(env, row) {
     });
     const a = await accept(env, id);
     const after = await stateOf(env);
-    check('R02 a row without diffs_json accepts through the whole-array merge', a.status === 200, {
-      status: a.status
-    });
     check(
-      'R02b the merge rolled the live status back to the proposal value',
-      after.tasks[0].status === 'inprogress',
+      'R02 a row without stored diffs is refused with 409',
+      a.status === 409 && /no stored field changes/i.test(a.text || ''),
+      { status: a.status, text: (a.text || '').slice(0, 140) }
+    );
+    check(
+      'R02b the live status is untouched by the refused accept',
+      after.tasks[0].status === 'completed',
       { live: after.tasks[0].status }
+    );
+    const legacy = await makeEnv({ mod });
+    const lrow = addReview(legacy, {
+      diffs_json: JSON.stringify(
+        new Array(500).fill({ path: 'tasks', recordId: 't1', field: 'x' })
+      ),
+      submitted_json: '{}'
+    });
+    const la = await accept(legacy, lrow);
+    check(
+      'R02c a legacy 500-leaf row is refused as truncated',
+      la.status === 409 && /truncated when it was queued/i.test(la.text || ''),
+      { status: la.status, text: (la.text || '').slice(0, 140) }
     );
   }
 

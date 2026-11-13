@@ -78,6 +78,7 @@ decryption through `cloudDecryptState`.
 |---|---|---|
 | 1.1 Budget read gate on `get_table` | `src/mcp/server.js` | PASS — R03 4/4; `qa-appwide-mcp` 56/56; `qa-mcp-parity` 13/13 |
 | 1.2 Budget write gate on the generic path | `src/mcp/server.js`, `src/lib/budget.js`, `tools/qa-mcp-agent-first.cjs`, `tools/qa-appwide-mcp.cjs` | PASS — R04 5/5 + R04m 32-case matrix; `qa-mcp-budget` 46/46; `qa-mcp-write-path` 20/20 |
+| 1.3 No silent truncation | `migrations/0040_mcp_agent_first.sql` (new), `src/mcp/server.js`, `src/reviews.js`, `tools/qa-mcp-agent-first.cjs` | PASS — R01 3/3, R02 3/3; `qa-approval` 24/24; `qa-changelog-diffs` all gates |
 
 1.1 detail: `executeGetTable` takes `auth` and refuses `budgetLines`, `spendLog`
 and `budgetEnvelope` with `BUDGET_READ_REFUSAL` when the key's Read budget
@@ -97,6 +98,18 @@ With the switch on:
 - a `budgetEnvelope` set becomes a `changeEnvelope` op: finite, non-negative,
   large when the change is at least min(10% of the envelope, 50000);
 - `nspid` is refused everywhere as server-managed.
+
+1.3 detail: `migrations/0040_mcp_agent_first.sql` adds `ops_json`, `ops_count`,
+`change_set_id`, `key_id` and `apply_report_json` to `cloud_reviews` (plus the
+`(project_id, change_set_id)` index) and `proposal_id`, `source_type`,
+`source_label`, `key_id`, `change_set_id`, `diffs_key` to `cloud_changelog`.
+Queue stores the uncapped enriched list in `ops_json`, the true total in
+`ops_count`, and keeps `diffs_json` at 500 for display. The queue text and
+`get_proposal_status` read `ops_count`. Accept prefers `ops_json`; a legacy row
+whose only list is exactly 500 leaves is refused 409 "This older proposal was
+truncated when it was queued. Reject it and ask the agent to resubmit." An MCP
+row with no stored leaves at all is refused 409 rather than falling through to
+the whole-array `submitted_json` merge.
 
 ---
 

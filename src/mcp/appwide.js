@@ -53,6 +53,7 @@ import {
   MCP_PREMIUM_REFUSAL
 } from './server.js';
 import { validateChangesProposal } from './plan.js';
+import { changesSinceResult } from './changes.js';
 import {
   MCP_SERVER_VERSION,
   MCP_SERVER_INSTRUCTIONS,
@@ -94,7 +95,8 @@ function buildAppwideTools() {
     'run_monte_carlo',
     'get_proposal_status',
     'get_apply_report',
-    'get_pending'
+    'get_pending',
+    'get_changes_since'
   ];
   const out = [];
   readNames.forEach(function (name) {
@@ -599,6 +601,12 @@ export async function handleAppwideMcp(request, env) {
     }
     if (toolName === 'get_pending') {
       const r = await pendingDryRunResult(env, projectId, auth, toolArgs, id);
+      return json(r, 200);
+    }
+    // 4.2: the audit read answers from the changelog table, same engine as
+    // the per-project endpoint.
+    if (toolName === 'get_changes_since') {
+      const r = await changesSinceResult(env, projectId, auth, toolArgs, id);
       return json(r, 200);
     }
 

@@ -1218,18 +1218,34 @@ function addReview(env, row) {
   }
 
   // =====================================================================
-  // R14 — get_changes_since is absent from tools/list
+  // R14 — get_changes_since is part of the catalog (Phase 4.2 RE-BASELINE:
+  // the Phase 0 defect was a missing tool; the fix is the tool plus its
+  // paging contract, so this test now proves PRESENCE and the schema).
   // =====================================================================
-  section('R14 — get_changes_since is not in the catalog');
+  section('R14 — get_changes_since is in the catalog with its paging schema');
   {
     const env = await makeEnv({ mod });
     const r = await call(env, { jsonrpc: '2.0', id: 100, method: 'tools/list' });
-    const names = (r.result.tools || []).map(function (t) {
-      return t.name;
-    });
-    check('R14 tools/list has no get_changes_since', names.indexOf('get_changes_since') === -1, {
-      count: names.length
-    });
+    const tool = (r.result.tools || []).filter(function (t) {
+      return t.name === 'get_changes_since';
+    })[0];
+    const props = (tool && tool.inputSchema && tool.inputSchema.properties) || {};
+    check(
+      'R14 tools/list advertises get_changes_since with since, cursor, limit and path',
+      !!(tool && props.since && props.cursor && props.limit && props.path),
+      { found: !!tool, props: Object.keys(props) }
+    );
+    check(
+      'R14b it is a read tool with an outputSchema',
+      !!(
+        tool &&
+        tool.annotations &&
+        tool.annotations.readOnlyHint === true &&
+        tool.outputSchema &&
+        tool.outputSchema.type === 'object'
+      ),
+      { annotations: tool && tool.annotations }
+    );
   }
 
   // =====================================================================
@@ -2860,6 +2876,181 @@ function addReview(env, row) {
         status: ea.status,
         text: (ea.text || '').slice(0, 120),
         source: editorEntry && { type: editorEntry.source_type, label: editorEntry.source_label }
+      }
+    );
+  }
+
+  // =====================================================================
+  // AT15 (4.2) — get_changes_since. Attribution, field-level changes, scope
+  // filtering and two-dimensional paging (500 changes / 200 entries per call,
+  // a single huge entry split by changeId:offset).
+  // =====================================================================
+  section('AT15 — get_changes_since (audit read)');
+  {
+    // 15d: a real accepted proposal reads back with its attribution.
+    const env = await makeEnv({ mod });
+    const q = await tool(env, 970, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't6', field: 'notes', after: 'audited note' }],
+      changeSetId: 'cs-AT15'
+    });
+    const pid = Number((textOf(q).match(/proposal #(\d+)/) || [])[1] || 0);
+    await accept(env, pid);
+    const read = await tool(env, 971, 'get_changes_since', {});
+    const body = jsonOf(read);
+    const entry = body && body.entries && body.entries[0];
+    const all = (body && body.entries ? body.entries : []).reduce(function (acc, e) {
+      return acc.concat(e.changes || []);
+    }, []);
+    const ch = all.filter(function (c) {
+      return String(c.recordId) === 't6' && String(c.field).indexOf('notes') !== -1;
+    })[0];
+    check(
+      'AT15d an accepted agent change reads back with its attribution',
+      !!(
+        entry &&
+        entry.approvedBy &&
+        entry.approvedBy.type === 'owner' &&
+        entry.source &&
+        entry.source.type === 'agent' &&
+        entry.source.label === 'Agent key' &&
+        String(entry.source.keyId) === '1' &&
+        Number(entry.proposalId) === pid &&
+        entry.changeSetId === 'cs-AT15'
+      ),
+      entry && {
+        approvedBy: entry.approvedBy,
+        source: entry.source,
+        proposalId: entry.proposalId,
+        changeSetId: entry.changeSetId
+      }
+    );
+    check(
+      'AT15e each change names the table, record, field and both values',
+      !!(
+        ch &&
+        ch.path === 'tasks' &&
+        String(ch.recordId) === 't6' &&
+        typeof ch.field === 'string' &&
+        ch.field.indexOf('notes') !== -1 &&
+        ch.after === 'audited note'
+      ),
+      ch
+    );
+
+    // 15f: a scoped key sees only its own sections, and budget needs the switch.
+    const scoped = await makeEnv({ mod, scope: ['wbs'], budgetRead: false });
+    const st = await stateOf(scoped);
+    const next = JSON.parse(JSON.stringify(st));
+    next.tasks[0].notes = 'wbs change';
+    next.budgetLines[0].planned = 123456;
+    await scoped.__mod.cloudLogSave(
+      scoped,
+      PROJECT,
+      st,
+      next,
+      { type: 'owner', label: 'Owner' },
+      'accepted'
+    );
+    const scopedRead = await tool(scoped, 972, 'get_changes_since', {});
+    const scopedBody = jsonOf(scopedRead);
+    const allChanges = (scopedBody && scopedBody.entries ? scopedBody.entries : []).reduce(
+      function (acc, e) {
+        return acc.concat(e.changes || []);
+      },
+      []
+    );
+    const paths = allChanges.map(function (c) {
+      return c.path;
+    });
+    check(
+      'AT15f a wbs-only key sees the task change and never the budget change',
+      !!(paths.indexOf('tasks') !== -1 && paths.indexOf('budgetLines') === -1),
+      { paths: paths }
+    );
+
+    // 15g: paging. A 600-record entry is far over the 500-change cap.
+    const big = await makeEnv({ mod });
+    const bprev = await stateOf(big);
+    const bnext = JSON.parse(JSON.stringify(bprev));
+    for (let i = 0; i < 600; i++) {
+      bnext.tasks.push({
+        id: 'bulk' + i,
+        name: 'Bulk ' + i,
+        status: 'todo',
+        notes: '',
+        startDate: '2026-11-01',
+        endDate: '2026-11-02'
+      });
+    }
+    const saved = await big.__mod.cloudLogSave(
+      big,
+      PROJECT,
+      bprev,
+      bnext,
+      { type: 'owner', label: 'Owner' },
+      'accepted',
+      { proposalId: 4242, sourceType: 'agent', sourceLabel: 'Agent key', keyId: '1' }
+    );
+    const bigRow = big.__store.changelog[big.__store.changelog.length - 1];
+    const totalLeaves = (function () {
+      try {
+        return JSON.parse(bigRow.diffs_json || 'null') ? 0 : 0;
+      } catch (e) {
+        return 0;
+      }
+    })();
+    // Page 1.
+    const p1 = jsonOf(await tool(big, 973, 'get_changes_since', {}));
+    // Page 2 and 3 follow the cursor.
+    const p2 =
+      p1 && p1.nextCursor
+        ? jsonOf(await tool(big, 974, 'get_changes_since', { cursor: p1.nextCursor }))
+        : null;
+    const p3 =
+      p2 && p2.nextCursor
+        ? jsonOf(await tool(big, 975, 'get_changes_since', { cursor: p2.nextCursor }))
+        : null;
+    const pages = [p1, p2, p3].filter(Boolean);
+    const totalChanges = pages.reduce(function (n, pg) {
+      return n + (pg.changeCount || 0);
+    }, 0);
+    const ids = pages.reduce(function (acc, pg) {
+      (pg.entries || []).forEach(function (e) {
+        (e.changes || []).forEach(function (c) {
+          acc.push(String(c.recordId) + '|' + String(c.field) + '|' + String(c.before));
+        });
+      });
+      return acc;
+    }, []);
+    check(
+      'AT15g a 600-record entry pages 500 + 500 + rest with no repeats',
+      !!(
+        saved &&
+        p1 &&
+        p1.changeCount === 500 &&
+        p1.moreInEntry === true &&
+        typeof p1.nextCursor === 'string' &&
+        p2 &&
+        p2.changeCount === 500 &&
+        p3 &&
+        p3.changeCount > 0 &&
+        totalChanges > 600 &&
+        new Set(ids).size === ids.length
+      ),
+      {
+        saved: saved,
+        pageCounts: pages.map(function (pg) {
+          return pg.changeCount;
+        }),
+        moreInEntry: pages.map(function (pg) {
+          return pg.moreInEntry;
+        }),
+        cursors: pages.map(function (pg) {
+          return pg.nextCursor;
+        }),
+        unique: new Set(ids).size,
+        total: ids.length,
+        totalLeaves: totalLeaves
       }
     );
   }

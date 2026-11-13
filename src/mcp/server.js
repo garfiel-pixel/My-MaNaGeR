@@ -70,6 +70,7 @@ import {
 } from './plan.js';
 import { MCP_ERROR_CODES } from './errors.js';
 import { isPrunedReport, MCP_REPORT_RETENTION_DAYS } from './report-store.js';
+import { changesSinceResult, CHANGES_MAX_ENTRIES } from './changes.js';
 import { buildOverlay, computeDependsOn, dependsOnIds } from './deps.js';
 import {
   MCP_SERVER_VERSION,
@@ -488,6 +489,43 @@ TOOLS.push({
   description:
     'Dry run apply_changes: same diffs/creates/sets/budget input, same permission checks, nothing queued. Returns {ok, refused, warnings, wouldCreateOps, counts, largeChanges} so an agent can fix its proposal before the owner ever sees it.',
   inputSchema: APPLY_CHANGES_TOOL.inputSchema
+});
+// MCP-AGENT-FIRST 2026-11-12 4.2: get_changes_since is the audit read. It
+// was pulled in Phase 1 because the old one answered from a table the
+// agent could not scope; this one filters every change through the
+// caller's sections before it leaves the server.
+TOOLS.push({
+  name: 'get_changes_since',
+  description:
+    'Read the audit trail: every accepted change after a point in time, with who approved it, who wrote it (owner UI, editor or an agent key) and the exact field-level changes. Pass since (ISO date-time) to start from a moment, or cursor to continue a previous page. Each entry lists {path, recordId, recordName, field, before, after}. At most 500 changes and 200 entries come back per call; when one entry is larger than what is left it returns part of it with moreInEntry and a nextCursor of changeId:offset - call again with that cursor. API keys only see changes inside their granted sections, and budget changes need the key\'s "Read budget" switch.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      since: {
+        type: 'string',
+        description:
+          'ISO date-time; return changes created after it (for example 2026-11-01T00:00:00Z)'
+      },
+      cursor: {
+        type: 'string',
+        description:
+          'A nextCursor from a previous call (changeId:offset). Resumes exactly there; takes precedence over since for the entry it names.'
+      },
+      limit: {
+        type: 'integer',
+        description:
+          'How many changelog entries to return (default 50, max ' +
+          CHANGES_MAX_ENTRIES +
+          '). The 500-change cap per call still applies.'
+      },
+      path: {
+        type: 'string',
+        description:
+          'Only return changes to this table or section (for example tasks, budgetLines, dmaic)'
+      }
+    },
+    required: []
+  }
 });
 // MCP-AGENT-FIRST 2026-11-12 2.8 (ADDENDUM A5): the catalog is decorated
 // once, after every tool is pushed, so both surfaces advertise the same
@@ -2660,6 +2698,11 @@ async function handleMcpRequest(body, projectId, env, auth) {
     }
     if (toolName === 'get_pending') {
       return await pendingDryRunResult(env, projectId, auth, toolArgs, id);
+    }
+    // 4.2: the audit read needs the changelog table, not the project
+    // snapshot, so it answers before the (large) state read.
+    if (toolName === 'get_changes_since') {
+      return await changesSinceResult(env, projectId, auth, toolArgs, id);
     }
     // 3.3: withdraw_changes reads and writes only the calling key's own rows,
     // so it answers before the (large) state read like get_proposal_status.

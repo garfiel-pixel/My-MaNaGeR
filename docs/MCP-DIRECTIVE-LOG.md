@@ -314,7 +314,6 @@ annotations live only in the Worker.
 | 3.8 Report tools | `src/mcp/server.js`, `src/mcp/appwide.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `get_apply_report`, `get_pending` added to both surfaces; `get_proposal_status` carries `changeSetId` + `accepted-with-conflicts`; AT10 / AT11 / AT12 green (62/62) |
 | 3.9 Deletes in `apply_changes` | `src/mcp/plan.js`, `src/cloud/apply-ops.js`, `test/apply-ops.test.mjs` | PASS — `deletes:[{path, recordId}]` validated in `planProposal` (deletable + in-scope + record exists, cap 200), accepted in `applyOps` (budget-reference / phase-child / predecessor cleanup rules), empty-envelope check covers deletes; GATE AT14 satisfied by `test/apply-ops.test.mjs` (pure unit test, Phase 0 rule 10) rather than a harness AT |
 | 3.6c / 5.3 Report size and retention (ADDENDUM A6) | `src/mcp/report-store.js` (new), `src/reviews.js`, `src/mcp/server.js`, `worker.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `apply_report_json` is now `{v:1, summary, report<=500, truncated, storedCount, derivedChanges, conflicts}` with the summary counted over EVERY entry; the daily cron prunes decided rows older than 90 days (op list dropped, report reduced to `{pruned:true, summary}`, pending rows never touched); `get_apply_report` answers a pruned row with `report: null`, the summary, `pruned: true` and a note; `qa-mcp-agent-first` 95/95 (AT27a-g) |
-| 4.1 Attribution on every writer | `src/reviews.js`, `src/cloud/projects.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `reviewSource(row)` maps an accepted proposal to `agent` (MCP proposal or direct API-key save, with `source_label` + `key_id`) or `editor` (editor/team save), and `handleCloudSave` tags a direct save `ui` for the owner or `editor` for an editor; the accepting human stays in `actor_type`/`actor_label`; `qa-mcp-agent-first` 98/98 (AT15a-c) |
 
 3.3 detail: `withdraw_changes({proposalId, opIndexes?})` is registered in both
 `TOOLS` (so the per-project and app-wide catalogs both advertise it) and wired
@@ -426,6 +425,15 @@ summary and an explanation, rather than as a proposal that never had a
 report. The read tool's envelope is otherwise unchanged, so the existing
 AT10/AT11 assertions still hold.
 
+---
+
+## Phase 4 — Audit trail and `get_changes_since`
+
+| Step | Files | Gate |
+|---|---|---|
+| 4.1 Attribution on every writer | `src/reviews.js`, `src/cloud/projects.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `reviewSource(row)` maps an accepted proposal to `agent` (MCP proposal or direct API-key save, with `source_label` + `key_id`) or `editor` (editor/team save), and `handleCloudSave` tags a direct save `ui` for the owner or `editor` for an editor; the accepting human stays in `actor_type`/`actor_label`; AT15a-c |
+| 4.2 `get_changes_since` | `src/mcp/changes.js` (new), `src/lib/http.js`, `src/mcp/server.js`, `src/mcp/appwide.js`, `src/mcp/tool-meta.js`, `tools/qa-mcp-agent-first.cjs` | PASS — the tool returns `{changeId, at, approvedBy, source, proposalId, changeSetId, changes[]}` per changelog entry, scoped to the key's sections (budget also needs the read switch) and filterable by `path`; `since` (ISO) and `cursor` (`changeId:offset`) resume exactly; 500 changes / 200 entries per call, a larger entry returns part with `moreInEntry` + `nextCursor`; `cloudLogSave` writes the enriched diff list to R2 (`diffs_key`) so over-cap entries keep their diffs; R14 RE-BASELINED to assert presence + schema; `qa-mcp-agent-first` 103/103 (AT15d-g, R14/R14b) |
+
 4.1 detail (attribution): `reviewSource(row, fallbackLabel)` in
 `src/reviews.js` is the single mapping from a review row to the changelog
 source fields. `proposal_type === 'mcp'` or `source_type === 'api'` reads as
@@ -441,6 +449,33 @@ so a direct save stops looking like an unattributed bulk edit.
 `source_*` records who WROTE. AT15a-c prove the three cases end to end
 (owner save, accepted agent proposal with key id, accepted legacy editor
 proposal).
+
+4.2 detail (`get_changes_since`): the read lives in `src/mcp/changes.js` and
+answers from `cloud_changelog`, not the project snapshot, so it returns
+before the (large) state read on both surfaces. Every change is filtered
+through `CLOUD_KEY_TO_SECTION` + the key's granted sections before it
+leaves the server, and the four budget tables additionally need
+`budgetReadAllowed`; an unknown path is never visible, so the audit trail
+cannot become a scope bypass (AT15f).
+Paging is two-dimensional on purpose: `limit` caps entries (default 50, max
+200) and a hard 500-change cap applies per call. When the entry being sent
+is larger than what is left, the tool sends the slice it can and returns
+`moreInEntry: true` with `nextCursor = changeId:offset`; the next call
+resumes at that offset (AT15g pages a 600-record entry 500 + 500 + rest with
+no repeats). `since` filters on `created_at`; a malformed cursor restarts
+from the beginning instead of erroring.
+The field-level list comes from `diffs_key` (R2). `cloudLogSave` now writes
+the ENRICHED list there (`path` / `recordId` / `recordName` / `field` /
+`before` / `after`) for every non-empty entry, uncapped - the inline
+`diffs_json` keeps its raw leaf form and its 500 cap for the UI, which is
+why an over-cap entry (`diffs_json = null`) no longer loses its diffs.
+Cost: one extra small R2 put per changelog entry. Legacy rows with no
+`diffs_key` fall back to parsing `diffs_json`, which cannot name the record
+(the leaf path carries an array index), so those changes report
+`recordId: null` rather than a wrong id.
+R14 is RE-BASELINED: the Phase 0 defect was a missing tool, so the test now
+proves the tool is advertised with `since` / `cursor` / `limit` / `path`, a
+read-only annotation and an outputSchema.
 
 ---
 

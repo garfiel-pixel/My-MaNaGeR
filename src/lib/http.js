@@ -1,4 +1,5 @@
 // Shared utilities extracted from worker.js.
+import { enrichDiffs } from '../cloud/proposal-diffs.js';
 // Every API module imports from here instead of duplicating helpers.
 
 // ---- JSON responses --------------------------------------------------------
@@ -1712,8 +1713,35 @@ export async function cloudLogSave(env, projectId, prev, next, actor, entryType,
   const sourceLabel = ex.sourceLabel || null;
   const keyId = ex.keyId != null ? String(ex.keyId) : null;
   const changeSetId = ex.changeSetId || null;
-  const diffsKey = ex.diffsKey || null;
+  let diffsKey = ex.diffsKey || null;
   const now = new Date().toISOString();
+  // MCP-AGENT-FIRST 4.2: the inline list is the raw leaf form
+  // (`tasks[3].notes`), which cannot say WHICH record changed without the
+  // states. Write the enriched list (path / recordId / recordName / field)
+  // beside the entry so get_changes_since can answer exactly, and so an
+  // over-cap entry keeps its diffs even though diffs_json is null.
+  if (!diffsKey) {
+    try {
+      // The audit copy is uncapped: the inline list is capped at 500 for the
+      // UI, but get_changes_since must be able to page through every leaf.
+      const enriched = enrichDiffs(diffs, basePrev, next, diffs.length);
+      const list = Array.isArray(enriched) ? enriched : (enriched && enriched.diffs) || [];
+      const key =
+        'projects/' +
+        projectId +
+        '/changelog/' +
+        Date.now().toString(36) +
+        '-' +
+        randomIdSuffix(6) +
+        '-diffs.json';
+      await env.R2.put(key, JSON.stringify(list), {
+        httpMetadata: { contentType: 'application/json' }
+      });
+      diffsKey = key;
+    } catch (e) {
+      /* the entry still logs; only the enriched copy is lost */
+    }
+  }
   if (diffs.length > CLOUD_MAX_LEAF_DIFFS) {
     const snapKey =
       'projects/' +

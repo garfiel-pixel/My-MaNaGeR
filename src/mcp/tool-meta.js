@@ -91,6 +91,7 @@ export const TOOL_ANNOTATIONS = Object.freeze({
   get_meetings: ann('Read the meeting log', READ),
   get_table: ann('Read one project table', READ),
   get_schema: ann('Read the writable data model', READ),
+  get_changes_since: ann('Read the audit trail', READ),
   run_monte_carlo: ann('Run the schedule Monte Carlo', READ_IMPURE),
   validate_changes: ann('Dry-run a change set', READ),
   apply_changes: ann('Propose a change set', QUEUE),
@@ -309,6 +310,30 @@ export const OUTPUT_SCHEMAS = Object.freeze({
       tables: obj('Writable tables and sections by name')
     },
     ['limits', 'changeSet', 'errorCodes', 'tables']
+  ),
+  get_changes_since: schema(
+    {
+      projectId: str('Cloud project id'),
+      since: nullable('string', 'The since filter this call used'),
+      cursor: nullable('string', 'The cursor this call resumed from'),
+      limit: num('Entry limit applied'),
+      entryCount: num('Entries in this page'),
+      changeCount: num('Field changes in this page'),
+      moreInEntry: bool('True when the last entry was cut short'),
+      nextCursor: nullable('string', 'changeId:offset to resume, or null at the end'),
+      entries: arr('Audit entries')
+    },
+    [
+      'projectId',
+      'since',
+      'cursor',
+      'limit',
+      'entryCount',
+      'changeCount',
+      'moreInEntry',
+      'nextCursor',
+      'entries'
+    ]
   ),
   run_monte_carlo: schema(
     {

@@ -69,6 +69,7 @@ import {
   structuredRefusals
 } from './plan.js';
 import { MCP_ERROR_CODES } from './errors.js';
+import { buildOverlay, computeDependsOn, dependsOnIds } from './deps.js';
 import {
   describeSchema,
   LIST_PATHS,
@@ -2360,6 +2361,46 @@ export async function withdrawMcpProposal(env, projectId, auth, toolArgs, rpcId)
       }
     };
   }
+  // ADDENDUM A3: refuse to withdraw a proposal that another pending proposal
+  // depends on - withdrawing it would strand the dependent.
+  try {
+    const pend = await env.DB.prepare(
+      "SELECT id, status, ops_json FROM cloud_reviews WHERE project_id = ? AND status IN ('pending','accepting')"
+    )
+      .bind(projectId)
+      .all();
+    const dependents = ((pend && pend.results) || []).filter(function (r) {
+      if (String(r.id) === String(pid)) {
+        return false;
+      }
+      if (r.status !== 'pending' && r.status !== 'accepting') {
+        return false;
+      }
+      return dependsOnIds(r.ops_json).map(String).indexOf(String(pid)) > -1;
+    });
+    if (dependents.length) {
+      return {
+        jsonrpc: '2.0',
+        id: rpcId,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text:
+                'Proposal #' +
+                pid +
+                ' cannot be withdrawn: proposal #' +
+                dependents[0].id +
+                ' depends on it. Withdraw the dependent proposal first.'
+            }
+          ],
+          isError: true
+        }
+      };
+    }
+  } catch (e) {
+    /* best-effort: a storage error must not block a legitimate withdraw */
+  }
   // Resolve the v2 op list.
   let ops = [];
   try {
@@ -2727,7 +2768,33 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   // planProposal (src/mcp/plan.js), so this queue and validate_changes share
   // one answer. The plan materialises the accepted parts on a copy; nothing
   // here reaches live state.
-  const plan = await planProposal(toolArgs, state, auth, { env: env, projectId: projectId });
+  // ADDENDUM A3: validate against live state OVERLAID with this key's
+  // still-pending ops, so a proposal may build on one queued earlier in the
+  // same change set (a record the earlier proposal creates). Best-effort: a
+  // storage error falls back to the live state, never blocks a proposal.
+  let overlay = { state: state, createdBy: Object.create(null) };
+  try {
+    const pendRows = await env.DB.prepare(
+      "SELECT id, key_id, status, scope, ops_json FROM cloud_reviews WHERE project_id = ? AND status IN ('pending','accepting') ORDER BY id ASC"
+    )
+      .bind(projectId)
+      .all();
+    const keyId = auth.apiKeyId != null ? String(auth.apiKeyId) : null;
+    const sameKey = ((pendRows && pendRows.results) || []).filter(function (r) {
+      return (
+        String(r.key_id) === String(keyId) && (r.status === 'pending' || r.status === 'accepting')
+      );
+    });
+    if (sameKey.length) {
+      overlay = buildOverlay(state, sameKey);
+    }
+  } catch (e) {
+    /* overlay is best-effort; fall back to live state */
+  }
+  const plan = await planProposal(toolArgs, overlay.state, auth, {
+    env: env,
+    projectId: projectId
+  });
   if (plan.error) {
     return {
       jsonrpc: '2.0',
@@ -2825,12 +2892,19 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   // capped 500-leaf diffs_json above is the DISPLAY copy for the review UI.
   // Accept reads the full v2 ops and runs them through the pure applyOps
   // engine, so nothing an agent proposed is ever silently dropped.
+  const nonBudgetOps = plan.ops.filter(function (op) {
+    return op.op !== 'budget';
+  });
   const fullOps = {
     v: 2,
-    ops: plan.ops.filter(function (op) {
-      return op.op !== 'budget';
-    })
+    ops: nonBudgetOps
   };
+  // ADDENDUM A3: record which pending proposals this one builds on, so a
+  // single accept can refuse until they land and a withdraw cannot strand it.
+  const dependsOn = computeDependsOn(nonBudgetOps, overlay.createdBy, state);
+  if (dependsOn.length) {
+    fullOps.dependsOn = dependsOn;
+  }
   // MCP-AGENT-FIRST 2026-11-12 1.7: one idempotency key per call. An explicit
   // idempotencyKey is stable forever; otherwise the whole argument object is
   // hashed into a 10-minute bucket, and the previous bucket is checked too so

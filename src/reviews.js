@@ -28,6 +28,7 @@ import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
 import { buildBudgetProposal } from './lib/budget.js';
 import { applyLeafDiffs, normalizeProposalDiffs } from './cloud/proposal-diffs.js';
 import { applyOps } from './cloud/apply-ops.js';
+import { dependsOnIds } from './mcp/deps.js';
 import { fieldSpec, getList, getSection, isDeletable } from './mcp/model.js';
 
 // MCP-AGENT-FIRST 2026-11-12 3.1: ops_json stores v2 ops ({v:2, ops:[...]}).
@@ -932,6 +933,33 @@ async function acceptMcpV2(
       409
     );
   }
+  // ADDENDUM A3: refuse a SINGLE accept while a proposal this one depends on
+  // is still pending. Accept-all applies a change set in id order, so the
+  // dependency lands first and never reaches this gate.
+  const depIds = dependsOnIds(row.ops_json);
+  if (depIds.length) {
+    for (let di = 0; di < depIds.length; di++) {
+      const drow = await env.DB.prepare(
+        'SELECT id, status FROM cloud_reviews WHERE project_id = ? AND id = ?'
+      )
+        .bind(projectId, depIds[di])
+        .first();
+      if (drow && (drow.status === 'pending' || drow.status === 'accepting')) {
+        await releaseClaim(env, reviewId);
+        return json(
+          {
+            ok: false,
+            error: 'DEPENDS_ON_PENDING',
+            message:
+              'This proposal depends on proposal #' +
+              depIds[di] +
+              ', which is still pending. Accept the whole change set (Accept all) so dependencies apply in order.'
+          },
+          409
+        );
+      }
+    }
+  }
   let budgetChanges = [];
   try {
     const p = row.proposal_json ? JSON.parse(row.proposal_json) : null;
@@ -1171,7 +1199,7 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
   const rows =
     (
       await env.DB.prepare(
-        'SELECT * FROM cloud_reviews WHERE project_id = ? AND change_set_id = ? AND status = ?'
+        'SELECT * FROM cloud_reviews WHERE project_id = ? AND change_set_id = ? AND status = ? ORDER BY id ASC'
       )
         .bind(projectId, changeSetId, 'pending')
         .all()

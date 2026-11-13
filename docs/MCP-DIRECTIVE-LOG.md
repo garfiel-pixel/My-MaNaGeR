@@ -201,6 +201,25 @@ non-applied row, so the persisted `apply_report_json` is machine-branchable.
 published set is 23 long, every structured refusal carries a member, and every
 non-applied apply-report result carries a member.
 
+A3 detail (ADDENDUM A3 - cross-proposal dependencies): `src/mcp/deps.js` owns
+`buildOverlay(liveState, pendingRows)`, `computeDependsOn(ops, createdBy,
+liveState)` and `dependsOnIds(opsJson)`. When a key queues a proposal,
+`queueMcpProposal` loads that key's still-pending rows (pending/accepting) and
+validates against live state OVERLAID with their ops. The overlay applies ONLY
+the pending CREATE ops: a pending record must be resolvable so a later
+proposal can target it, but a pending SET must not be pre-applied or a re-sent
+identical set would look like a no-op and break the idempotent-retry contract
+(R08 a retry returns the first proposal; R08b a >10-minute resend queues a new
+row). `computeDependsOn` maps each op whose target record exists only because
+a pending proposal created it back to that proposal id, and `queueMcpProposal`
+stores it as `ops_json.dependsOn`. `acceptMcpV2` refuses a SINGLE accept while
+any dependency is still pending with HTTP 409 `DEPENDS_ON_PENDING`;
+`handleChangeSetAccept` selects pending rows `ORDER BY id ASC` so Accept-all
+applies dependencies first; `withdrawMcpProposal` refuses to withdraw a
+proposal another pending proposal depends on. The overlay and withdraw scans
+are best-effort: a storage error falls back safely and never blocks a
+legitimate operation.
+
 ---
 
 ## Phase 2 — one model contract
@@ -210,6 +229,7 @@ non-applied apply-report result carries a member.
 | 2.1 `src/mcp/model.js` | `src/mcp/model.js` (new), `src/mcp/server.js`, `test/mcp-model.test.mjs` (new) | PASS — 22/22 model tests (10 creator field-set comparisons, COLUMNS/process enums, aliases, derived set, dates, deletability); `npm test` 411/411; `qa-mcp-write-path` 20/20; `qa-appwide-mcp` 56/56; `qa-mcp-budget` 46/46; `qa-mcp-parity` 13/13; `mcp/qa-mcp` 52/52; `qa-engine-parity` 19/19; `qa-mcp-agent-first` 37/37 |
 | 2.2 one validator | `src/mcp/plan.js` (new), `src/mcp/server.js`, `src/mcp/budget-access.js` (new) | PASS — `planProposal` is the only validator; `queueMcpProposal` + `validate_changes` both call it; fuzz F1 (50 inputs) proves identical refusals; `qa-mcp-agent-first` 46/46 |
 | 2.2b Fixed error-code set (ADDENDUM A2) | `src/mcp/errors.js` (new), `src/mcp/plan.js`, `src/cloud/apply-ops.js`, `src/mcp/server.js`, `tools/qa-mcp-agent-first.cjs` | PASS — one frozen 23-code set (`MCP_ERROR_CODES`); `refusalCode()` classifies every `refused` string and `applyResultCode()` every non-applied apply-report entry, both guaranteed to return a member (fallback `REFUSED`/`CONFLICT`); `structuredRefusals` attaches `code`; `applyOps` attaches `code` to every `conflict`/`skipped_already` report row; `get_schema` publishes `errorCodes`; `qa-mcp-agent-first` 68/68 (AT23a/b/c) |
+| 2.2c Cross-proposal dependencies (ADDENDUM A3) | `src/mcp/deps.js` (new), `src/mcp/server.js`, `src/reviews.js`, `tools/qa-mcp-agent-first.cjs` | PASS — `buildOverlay` applies the same key's pending CREATE ops so a proposal may target a record an earlier pending proposal creates (pending SETs are deliberately NOT pre-applied, preserving the R08/R08b idempotent-retry contract); `computeDependsOn` records `dependsOn` in `ops_json`; a single accept whose dependency is still pending returns 409 `DEPENDS_ON_PENDING`; Accept-all applies the change set `ORDER BY id ASC`; withdrawing a depended-on proposal is refused; `qa-mcp-agent-first` 74/74 (AT24a-f) |
 | 2.3 `tempId` chains | `src/mcp/plan.js`, `src/mcp/server.js` | PASS — T1 (30 create chain, forward refs, unknown ref refused) 5/5; `qa-mcp-agent-first` 46/46 |
 | 2.4 read tools fixed | `src/mcp/server.js`, `test/mcp-evm.test.mjs` (new) | PASS — R09a–R09d acceptance; `qa-engine-parity` 19/19; `qa-mcp-parity` 16/16; `qa-mcp-budget` 46/46; EVM parity test 5/5 (get_budget.evm equals client `computeEVM` field-for-field, actualBasis + future-spend split, scope note) |
 | 2.5 `get_schema` | `src/mcp/server.js`, `test/mcp-schema.test.mjs` (new) | PASS — describes every list/section exactly as `describeSchema`; limits are the real constants; scope hides out-of-grant tables; registered in both catalogs; `qa-mcp-parity` 16/16; `qa-engine-parity` 19/19 |

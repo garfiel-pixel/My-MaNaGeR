@@ -543,6 +543,7 @@ function addReview(env, row) {
     handleReviewAccept: reviews.handleReviewAccept,
     handleChangeSetAccept: reviews.handleChangeSetAccept,
     handleChangeSetReject: reviews.handleChangeSetReject,
+    withdrawMcpProposal: server.withdrawMcpProposal,
     handleCloudSave: projects.handleCloudSave,
     hashOwnerCode: http.hashOwnerCode,
     cloudDecryptState: http.cloudDecryptState,
@@ -2121,6 +2122,152 @@ function addReview(env, row) {
           return typeof e.code === 'string' && codeSet.has(e.code);
         }),
       { accStatus: acc.status, entries: entries }
+    );
+  }
+
+  // =====================================================================
+  // AT24 (A3) — cross-proposal dependencies. A proposal is validated against
+  // live state OVERLAID with the same key's pending ops; when it targets a
+  // record a pending proposal creates, its ops_json records dependsOn; a
+  // single accept of a dependent is refused (DEPENDS_ON_PENDING); Accept-all
+  // applies in id order; withdrawing a depended-on proposal is refused.
+  // =====================================================================
+  section('AT24 — cross-proposal dependencies');
+  {
+    const KEY = { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' };
+    const env = await makeEnv({ mod });
+    const p1 = await mod.queueMcpProposal(
+      env,
+      PROJECT,
+      KEY,
+      { creates: [{ path: 'tasks', record: { name: 'Dep Task' } }] },
+      1,
+      env.__store.state
+    );
+    check(
+      'AT24a P1 create queued',
+      p1 && p1.result && p1.result.isError !== true,
+      p1 && p1.result && p1.result.content && p1.result.content[0].text
+    );
+    const p1Row = env.__store.reviews.find(function (r) {
+      return r.proposal_type === 'mcp' && r.status === 'pending';
+    });
+    const p1Env = p1Row ? JSON.parse(p1Row.ops_json) : null;
+    const createOp =
+      p1Env && p1Env.ops
+        ? p1Env.ops.find(function (o) {
+            return o.op === 'create';
+          })
+        : null;
+    const createdId = createOp && createOp.record ? createOp.record.id : null;
+    const p1Id = p1Row ? p1Row.id : null;
+
+    // P2 targets the record P1 creates - it exists ONLY in the overlay.
+    const p2 = await mod.queueMcpProposal(
+      env,
+      PROJECT,
+      KEY,
+      { diffs: [{ path: 'tasks', recordId: createdId, field: 'notes', after: 'depends' }] },
+      2,
+      env.__store.state
+    );
+    const p2Row = env.__store.reviews.find(function (r) {
+      return r.status === 'pending' && r.id !== p1Id;
+    });
+    const p2Env = p2Row ? JSON.parse(p2Row.ops_json) : null;
+    check(
+      'AT24b P2 validates against the overlaid state and queues',
+      p2 && p2.result && p2.result.isError !== true,
+      p2 && p2.result && p2.result.content && p2.result.content[0].text
+    );
+    check(
+      'AT24c P2 ops_json records dependsOn [P1]',
+      !!(
+        p2Env &&
+        Array.isArray(p2Env.dependsOn) &&
+        p2Env.dependsOn.map(String).indexOf(String(p1Id)) > -1
+      ),
+      { dependsOn: p2Env && p2Env.dependsOn, p1Id: p1Id }
+    );
+
+    // Single accept of the dependent while its dependency is pending -> 409.
+    const acc = await accept(env, p2Row.id);
+    check(
+      'AT24d single accept of a dependent proposal is refused (DEPENDS_ON_PENDING)',
+      acc.status === 409 && /depend/i.test(acc.text),
+      { status: acc.status, text: acc.text }
+    );
+
+    // Accept-all applies the whole chain in id order.
+    const cs = p1Row.change_set_id;
+    const req = new Request(
+      'http://localhost/api/cloud/projects/' + PROJECT + '/changesets/' + cs + '/accept',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+        body: '{}'
+      }
+    );
+    const res = await mod.handleChangeSetAccept(req, env, PROJECT, cs, undefined);
+    let data = null;
+    try {
+      data = await res.clone().json();
+    } catch (e) {
+      data = null;
+    }
+    const st = await stateOf(env);
+    const hasTask =
+      st &&
+      Array.isArray(st.tasks) &&
+      st.tasks.some(function (t) {
+        return String(t.id) === String(createdId) && t.notes === 'depends';
+      });
+    check(
+      'AT24e accept-all applies the dependency chain in id order',
+      res.status === 200 && !!(data && data.ok) && hasTask,
+      { status: res.status, hasTask: hasTask }
+    );
+
+    // Withdrawing a depended-on proposal is refused.
+    const envF = await makeEnv({ mod });
+    await mod.queueMcpProposal(
+      envF,
+      PROJECT,
+      KEY,
+      { creates: [{ path: 'tasks', record: { name: 'Dep Task F' } }] },
+      3,
+      envF.__store.state
+    );
+    const f1Row = envF.__store.reviews.find(function (r) {
+      return r.proposal_type === 'mcp' && r.status === 'pending';
+    });
+    const f1Env = f1Row ? JSON.parse(f1Row.ops_json) : null;
+    const fCreate =
+      f1Env && f1Env.ops
+        ? f1Env.ops.find(function (o) {
+            return o.op === 'create';
+          })
+        : null;
+    const fCreatedId = fCreate && fCreate.record ? fCreate.record.id : null;
+    await mod.queueMcpProposal(
+      envF,
+      PROJECT,
+      KEY,
+      { diffs: [{ path: 'tasks', recordId: fCreatedId, field: 'notes', after: 'dep' }] },
+      4,
+      envF.__store.state
+    );
+    const wd = await mod.withdrawMcpProposal(
+      envF,
+      PROJECT,
+      { apiKeyId: '1', role: 'api', scope: ALL_SECTIONS, label: 'Agent key' },
+      { proposalId: f1Row.id },
+      950
+    );
+    check(
+      'AT24f withdrawing a depended-on proposal is refused',
+      wd && wd.result && wd.result.isError === true && /depend/i.test(wd.result.content[0].text),
+      wd && wd.result && wd.result.content && wd.result.content[0].text
     );
   }
 

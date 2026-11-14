@@ -598,7 +598,7 @@ Branch `feat/mcp-phase6-auto-accept`, cut from `origin/main` at `7c357e2`.
 | 6.2 policy | `src/mcp/auto-accept.js` (new) | PASS — P6h–P6k: closed allowlist, string-only, per-record, whole-section and date ops ineligible, policy-off short-circuit |
 | 6.2 queue hook | `src/mcp/server.js`, `src/reviews.js` (`autoAcceptMcpProposal`) | PASS — P6a default off; P6b allowlisted `notes` applies through `acceptMcpV2`; P6c changelog actor `policy` / `auto-accept: low-risk`; P6d mixed queues entirely; P6e budget queues; P6f 51 ops queue; P6g creates queue |
 | 6.3 key admin UI | `js/mmgr-cloud.js`, `js/mmgr-app.js` | PASS — per-key "Allow low-risk auto-accept" / "Turn off auto-accept" with a confirm on the raising path; every rendered value passes through `esc()` |
-| 6.4 review UI | `js/cloud/review.js`, `css/src/30-panels.css` | PASS — accepted rows whose `decidedBy` starts `auto-accept` render the "Auto-applied" pill; CSS lives in the source layer, not the generated `css/mmgr.css` |
+| 6.4 review UI | `js/cloud/review.js`, `css/src/30-panels.css` | PASS — accepted rows whose `decidedBy` starts `auto-accept` render the "Auto-applied" pill; CSS lives in the source layer, not the generated `css/mmgr.css`; the label paints `--gold-text`, because the first CI run failed T4 `verify-gold` ARM 4 when it used the `--gold` fill token as text (3.45:1 on a light surface) |
 | 6.5 tests | `tools/qa-mcp-agent-first.cjs` | PASS — 154 / 154 (14 new Phase-6 checks); fake D1 gained a mutable key row and a shared SET-clause applier |
 
 Full battery after Phase 6: `npm test` 441 / 441; ESLint 0 errors; Prettier

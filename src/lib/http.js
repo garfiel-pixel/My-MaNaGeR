@@ -2319,7 +2319,7 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
   }
   const fp = await fingerprintOf(key);
   const row = await env.DB.prepare(
-    'SELECT k.id, k.key_fingerprint, k.key_salt, k.key_hash, k.label, k.scope, k.expires_at, k.budget_read, k.budget_write, p.deleted_at ' +
+    'SELECT k.id, k.key_fingerprint, k.key_salt, k.key_hash, k.label, k.scope, k.expires_at, k.budget_read, k.budget_write, k.auto_accept, p.deleted_at ' +
       'FROM cloud_api_keys k JOIN cloud_projects p ON p.project_id = k.project_id ' +
       'WHERE k.key_fingerprint = ? AND k.project_id = ? AND k.active = 1'
   )
@@ -2396,7 +2396,10 @@ export async function cloudAuthApiKey(request, env, projectId, apiKey) {
     // not carry budget_write cannot queue a budget proposal, even when its
     // section scope includes the budget section.
     budgetRead: row.budget_read === 1,
-    budgetWrite: row.budget_write === 1
+    budgetWrite: row.budget_write === 1,
+    // MCP-AGENT-FIRST 2026-11-12 6.1: the per-key auto-accept policy. Defaults
+    // to 'off'; only the owner can raise it, and only the queue reads it.
+    autoAccept: row.auto_accept === 'low-risk' ? 'low-risk' : 'off'
   };
 }
 

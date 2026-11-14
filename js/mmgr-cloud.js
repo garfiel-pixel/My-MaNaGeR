@@ -2469,6 +2469,25 @@ var MMGR = window.MMGR || {};
             '<span class="sr-hint" style="margin:0">' +
             esc(budgetTxt) +
             '</span>';
+          // MCP-AGENT-FIRST 2026-11-12 6.3: the auto-accept policy, stated in
+          // plain words and OFF unless the owner raised it. The mode is the
+          // server's closed set, never free text.
+          const autoTxt =
+            'Auto-accept: ' + (k.autoAccept === 'low-risk' ? 'low-risk note edits' : 'off');
+          const autoBtn = k.active
+            ? '<button class="btn btn-n btn-s" data-action="cloudApiKeyAutoAccept" data-id="' +
+              esc(String(k.id)) +
+              '" data-mode="' +
+              (k.autoAccept === 'low-risk' ? 'off' : 'low-risk') +
+              '">' +
+              (k.autoAccept === 'low-risk'
+                ? 'Turn off auto-accept'
+                : 'Allow low-risk auto-accept') +
+              '</button>' +
+              '<span class="sr-hint" style="margin:0">' +
+              esc(autoTxt) +
+              '</span>'
+            : '';
           return (
             '<div class="sr" style="font-size:.72rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
             '<span style="color:var(--gold)">' +
@@ -2495,6 +2514,7 @@ var MMGR = window.MMGR || {};
                 '">Revoke</button>'
               : '<span class="sr-hint" style="margin:0">revoked</span>') +
             budgetBtns +
+            autoBtn +
             '</div>'
           );
         })
@@ -2576,6 +2596,68 @@ var MMGR = window.MMGR || {};
           : data.budgetRead
             ? 'This key may read the budget. It cannot propose changes.'
             : 'This key has no budget access.',
+        'ok'
+      );
+      listApiKeys();
+    } catch (e) {
+      setStatus('Cloud is unavailable on this host (needs the Worker API).', 'err');
+    }
+  }
+
+  // MCP-AGENT-FIRST 2026-11-12 6.3: raise or lower the per-key auto-accept
+  // policy. Owner-only (the server enforces it; this is the same either-auth
+  // guard every key control uses). Turning it ON is a deliberate, confirmed
+  // act because it is the only path that skips the owner's click.
+  async function setApiKeyAutoAccept(id, mode) {
+    if (!id || (mode !== 'off' && mode !== 'low-risk')) {
+      return;
+    }
+    const cred = activeCredential();
+    if (!cred || (!cred.header && !_sessOwner)) {
+      setStatus('Owner access required to change key permissions.', 'warn');
+      return;
+    }
+    if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
+      setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn');
+      return;
+    }
+    if (
+      mode === 'low-risk' &&
+      !window.confirm(
+        'Allow this key to apply low-risk note edits without your review? Only note and risk-mitigation text can auto-apply, up to 50 changes at a time. Everything else still waits for you, and every auto-applied change is in the changelog and can be reverted.'
+      )
+    ) {
+      return;
+    }
+    setStatus('Updating the auto-accept policy\u2026', 'busy');
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (cred.header) {
+        headers[cred.header] = cred.code;
+      }
+      const res = await fetch(
+        '/api/cloud/projects/' + encodeURIComponent(pid()) + '/api-keys/' + encodeURIComponent(id),
+        {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: headers,
+          body: JSON.stringify({ autoAccept: mode })
+        }
+      );
+      const data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        setStatus(
+          (data && data.error) || 'Could not change the key (HTTP ' + res.status + ').',
+          'err'
+        );
+        return;
+      }
+      setStatus(
+        data.autoAccept === 'low-risk'
+          ? 'This key may auto-apply low-risk note edits. Every other change still waits for you.'
+          : 'This key waits for your review on every change.',
         'ok'
       );
       listApiKeys();
@@ -5036,6 +5118,7 @@ var MMGR = window.MMGR || {};
     revokeApiKey: revokeApiKey,
     apiKeyBudgetToggle: apiKeyBudgetToggle,
     setApiKeyBudget: setApiKeyBudget,
+    setApiKeyAutoAccept: setApiKeyAutoAccept,
     unlinkProject: unlinkProject,
     copyEditorCode: copyEditorCode,
     editorCodeDone: editorCodeDone,

@@ -130,7 +130,22 @@ async function makeEnv(opts) {
     changelog: [],
     state: state,
     reviewSeq: 500,
-    reviewStatus: o.reviewStatus || 'pending'
+    reviewStatus: o.reviewStatus || 'pending',
+    // MCP-AGENT-FIRST 6.x: the fake key row is mutable so the owner-gated
+    // auto-accept PATCH can be exercised without a real D1.
+    keyRow: {
+      id: 1,
+      key_fingerprint: fp,
+      key_salt: 's',
+      key_hash: 'h',
+      label: o.keyLabel || 'Agent key',
+      scope: JSON.stringify(scope),
+      expires_at: null,
+      budget_read: o.budgetRead === undefined ? 1 : o.budgetRead,
+      budget_write: o.budgetWrite === undefined ? 1 : o.budgetWrite,
+      auto_accept: o.autoAccept === 'low-risk' ? 'low-risk' : 'off',
+      deleted_at: null
+    }
   };
   let seq = 100;
   const ownerHash = await o.mod.hashOwnerCode(OWNER_CODE, OWNER_SALT);
@@ -193,6 +208,33 @@ async function makeEnv(opts) {
     });
   }
 
+  // Apply an `UPDATE ... SET a = ?, b = 'literal' ...` clause to a row, binding
+  // ? tokens to args in order. Shared by the reviews and api-keys writers so a
+  // new column does not need a new parser.
+  function applySetClause(sql, args, row) {
+    const setMatch = /set\s+([\s\S]*?)\s+where/i.exec(String(sql));
+    if (!setMatch) {
+      return;
+    }
+    const assigns = setMatch[1].match(/([a-z_]+)\s*=\s*(\?|null|'[^']*')/gi) || [];
+    let qi = 0;
+    assigns.forEach(function (m) {
+      const cm = /^([a-z_]+)\s*=\s*(\?|null|'[^']*')/i.exec(m);
+      if (!cm) {
+        return;
+      }
+      const col = cm[1].toLowerCase();
+      const tok = cm[2].toLowerCase();
+      if (tok === '?') {
+        row[col] = args[qi++];
+      } else if (tok === 'null') {
+        row[col] = null;
+      } else {
+        row[col] = cm[2].replace(/^'|'$/g, '');
+      }
+    });
+  }
+
   const db = {
     prepare(sql) {
       const low = String(sql).toLowerCase();
@@ -201,21 +243,18 @@ async function makeEnv(opts) {
           return {
             async first() {
               if (low.includes('from cloud_api_keys')) {
-                if (args[0] !== fp || (args[1] && args[1] !== PROJECT)) {
+                // The owner PATCH selects by numeric key id; the auth path
+                // selects by fingerprint. Keep both shapes working.
+                if (low.includes('key_fingerprint')) {
+                  if (args[0] !== fp || (args[1] && args[1] !== PROJECT)) {
+                    return null;
+                  }
+                  return Object.assign({}, store.keyRow);
+                }
+                if (args[0] != null && String(args[0]) !== String(store.keyRow.id)) {
                   return null;
                 }
-                return {
-                  id: 1,
-                  key_fingerprint: fp,
-                  key_salt: 's',
-                  key_hash: 'h',
-                  label: o.keyLabel || 'Agent key',
-                  scope: JSON.stringify(scope),
-                  expires_at: null,
-                  budget_read: o.budgetRead === undefined ? 1 : o.budgetRead,
-                  budget_write: o.budgetWrite === undefined ? 1 : o.budgetWrite,
-                  deleted_at: null
-                };
+                return Object.assign({}, store.keyRow);
               }
               if (low.includes('from cloud_projects')) {
                 return projectRow();
@@ -410,26 +449,11 @@ async function makeEnv(opts) {
                 // Apply the SET clause, binding ? tokens to args in order and
                 // honouring literal / NULL assignments. This is what lets a
                 // partial withdraw rewrite ops_json / ops_count / diffs_json.
-                const setMatch = /set\s+([\s\S]*?)\s+where/i.exec(String(sql));
-                if (setMatch) {
-                  const assigns = setMatch[1].match(/([a-z_]+)\s*=\s*(\?|null|'[^']*')/gi) || [];
-                  let qi = 0;
-                  assigns.forEach(function (m) {
-                    const cm = /^([a-z_]+)\s*=\s*(\?|null|'[^']*')/i.exec(m);
-                    if (!cm) {
-                      return;
-                    }
-                    const col = cm[1].toLowerCase();
-                    const tok = cm[2].toLowerCase();
-                    if (tok === '?') {
-                      row[col] = args[qi++];
-                    } else if (tok === 'null') {
-                      row[col] = null;
-                    } else {
-                      row[col] = cm[2].replace(/^'|'$/g, '');
-                    }
-                  });
-                }
+                applySetClause(sql, args, row);
+                return { meta: { changes: 1 } };
+              }
+              if (low.startsWith('update cloud_api_keys')) {
+                applySetClause(sql, args, store.keyRow);
                 return { meta: { changes: 1 } };
               }
               return { meta: { changes: 1 } };
@@ -564,10 +588,14 @@ function addReview(env, row) {
   const reportStore = await import('../src/mcp/report-store.js');
   const modelMod = await import('../src/mcp/model.js');
   const projects = await import('../src/cloud/projects.js');
+  const apiKeys = await import('../src/cloud/api-keys.js');
+  const autoAcceptPolicy = await import('../src/mcp/auto-accept.js');
   const mod = {
     handleMcpServer: server.handleMcpServer,
     queueMcpProposal: server.queueMcpProposal,
     handleReviewAccept: reviews.handleReviewAccept,
+    handleCloudApiKeyPatch: apiKeys.handleCloudApiKeyPatch,
+    autoAcceptEligible: autoAcceptPolicy.autoAcceptEligible,
     handleChangeSetAccept: reviews.handleChangeSetAccept,
     handleChangeSetReject: reviews.handleChangeSetReject,
     withdrawMcpProposal: server.withdrawMcpProposal,
@@ -3683,6 +3711,182 @@ function addReview(env, row) {
         /This key has 3 large change\(s\) pending or accepted today \(UTC\)/.test(t) &&
         /The limit is 10 per day and 10 per call/.test(t),
       { text: t.slice(0, 320) }
+    );
+  }
+
+  // =====================================================================
+  // PHASE 6 — optional auto-accept (off by default)
+  // =====================================================================
+  section('P6 — auto-accept policy');
+  {
+    // P6a: the default. A key minted before (or after) the migration waits.
+    const env = await makeEnv({ mod });
+    const q = await tool(env, 1001, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'Default off note' }]
+    });
+    const row = env.__store.reviews[0];
+    const st = await stateOf(env);
+    check(
+      'P6a default is off: a low-risk-shaped proposal stays pending',
+      !!row && row.status === 'pending' && st.tasks[0].notes !== 'Default off note',
+      { status: row && row.status, text: textOf(q).slice(0, 160) }
+    );
+  }
+  {
+    // P6b: low-risk on. An allowlisted notes set applies through the accept
+    // engine and is attributed to the policy, not to the owner.
+    const env = await makeEnv({ mod, autoAccept: 'low-risk' });
+    const q = await tool(env, 1002, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'Auto note' }]
+    });
+    const row = env.__store.reviews[0];
+    const st = await stateOf(env);
+    const entry = env.__store.changelog[env.__store.changelog.length - 1];
+    check(
+      'P6b low-risk applies an allowlisted notes set',
+      !!row &&
+        row.status === 'accepted' &&
+        st.tasks[0].notes === 'Auto note' &&
+        /Applied 1 field change\(s\) automatically/.test(textOf(q)),
+      { status: row && row.status, text: textOf(q).slice(0, 200) }
+    );
+    check(
+      'P6c the changelog records the policy actor, not the owner',
+      !!entry &&
+        entry.actor_type === 'policy' &&
+        entry.actor_label === 'auto-accept: low-risk' &&
+        row.decided_by === 'auto-accept: low-risk',
+      entry ? { type: entry.actor_type, label: entry.actor_label } : null
+    );
+  }
+  {
+    // P6d: a disallowed op in an otherwise low-risk proposal sends the WHOLE
+    // proposal to the queue - the notes change must not land.
+    const env = await makeEnv({ mod, autoAccept: 'low-risk' });
+    await tool(env, 1003, 'apply_changes', {
+      diffs: [
+        { path: 'tasks', recordId: 't1', field: 'notes', after: 'Mixed note' },
+        { path: 'tasks', recordId: 't1', field: 'status', after: 'inprogress' }
+      ]
+    });
+    const row = env.__store.reviews[0];
+    const st = await stateOf(env);
+    check(
+      'P6d a mixed proposal queues entirely',
+      !!row &&
+        row.status === 'pending' &&
+        st.tasks[0].notes !== 'Mixed note' &&
+        st.tasks[0].status === 'completed',
+      { status: row && row.status, notes: st.tasks[0].notes, taskStatus: st.tasks[0].status }
+    );
+  }
+  {
+    // P6e: budget never auto-applies, even with the policy on.
+    const env = await makeEnv({ mod, autoAccept: 'low-risk' });
+    await tool(env, 1004, 'apply_changes', {
+      budget: [{ kind: 'changeEnvelope', value: 650000 }]
+    });
+    const row = env.__store.reviews[0];
+    check(
+      'P6e budget never auto-applies',
+      !!row && row.status === 'pending',
+      row ? { status: row.status } : null
+    );
+  }
+  {
+    // P6f: more than 50 ops always queues, however low-risk the fields are.
+    const env = await makeEnv({ mod, autoAccept: 'low-risk' });
+    const diffs = [];
+    for (let i = 1; i <= 51; i++) {
+      diffs.push({ path: 'tasks', recordId: 't' + i, field: 'notes', after: 'bulk ' + i });
+    }
+    await tool(env, 1005, 'apply_changes', { diffs: diffs });
+    const row = env.__store.reviews[0];
+    const st = await stateOf(env);
+    check(
+      'P6f a 51-op proposal queues',
+      !!row && row.status === 'pending' && st.tasks[0].notes !== 'bulk 1',
+      { status: row && row.status }
+    );
+  }
+  {
+    // P6g: a create (or a delete) is never auto-applied, even on an allowed
+    // section.
+    const env = await makeEnv({ mod, autoAccept: 'low-risk' });
+    await tool(env, 1006, 'apply_changes', {
+      creates: [{ path: 'documents', record: { title: 'Auto doc' } }]
+    });
+    const row = env.__store.reviews[0];
+    check(
+      'P6g creates never auto-apply',
+      !!row && row.status === 'pending',
+      row ? { status: row.status } : null
+    );
+  }
+  {
+    // P6h: the policy predicate itself - the closed allowlist, the op cap and
+    // the string-only rule, with no database in the loop.
+    const on = { autoAccept: 'low-risk' };
+    const okOp = { op: 'set', path: 'risks', recordId: 'r2', field: 'mitigation', after: 'x' };
+    check(
+      'P6h an allowlisted risk mitigation set is eligible',
+      mod.autoAcceptEligible([okOp], on).eligible === true
+    );
+    check(
+      'P6i a date field is never eligible',
+      mod.autoAcceptEligible(
+        [{ op: 'set', path: 'tasks', recordId: 't1', field: 'endDate', after: '2026-12-01' }],
+        on
+      ).eligible === false
+    );
+    check(
+      'P6j a whole-section set (no record, no field) is never eligible',
+      mod.autoAcceptEligible([{ op: 'set', path: 'charter', field: null, after: {} }], on)
+        .eligible === false
+    );
+    check(
+      'P6k the policy off short-circuits everything',
+      mod.autoAcceptEligible([okOp], { autoAccept: 'off' }).eligible === false
+    );
+  }
+  {
+    // P6l: the owner-gated config route. Invalid values are refused before any
+    // write, and only the owner can reach it.
+    const env = await makeEnv({ mod });
+    const req = function (body, headers) {
+      return new Request('http://localhost/api/cloud/projects/' + PROJECT + '/api-keys/1', {
+        method: 'PATCH',
+        headers: Object.assign({ 'content-type': 'application/json' }, headers || {}),
+        body: JSON.stringify(body)
+      });
+    };
+    const bad = await mod.handleCloudApiKeyPatch(
+      req({ autoAccept: 'yes' }, { 'x-owner-code': OWNER_CODE }),
+      env,
+      PROJECT,
+      1
+    );
+    const badBody = await bad.json();
+    check(
+      'P6l an unknown autoAccept value is refused with 400',
+      bad.status === 400 && /autoAccept/.test(String(badBody.error || '')),
+      { status: bad.status, error: badBody.error }
+    );
+    const anon = await mod.handleCloudApiKeyPatch(req({ autoAccept: 'low-risk' }), env, PROJECT, 1);
+    check('P6m the config route is owner-only', anon.status === 403, { status: anon.status });
+    const good = await mod.handleCloudApiKeyPatch(
+      req({ autoAccept: 'low-risk' }, { 'x-owner-code': OWNER_CODE }),
+      env,
+      PROJECT,
+      1
+    );
+    const goodBody = await good.json();
+    check(
+      'P6n the owner can raise the policy, and the stored row follows',
+      good.status === 200 &&
+        goodBody.autoAccept === 'low-risk' &&
+        env.__store.keyRow.auto_accept === 'low-risk',
+      { status: good.status, body: goodBody }
     );
   }
 

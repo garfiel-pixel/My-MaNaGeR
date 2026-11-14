@@ -6650,6 +6650,14 @@ window.MMGR = MMGR;
         el && el.getAttribute('data-field'),
         (el && el.getAttribute('data-on')) === '1'
       ),
+    // MCP-AGENT-FIRST 2026-11-12 6.3: the per-key auto-accept policy. The
+    // mode is the server's closed set ('off' | 'low-risk').
+    cloudApiKeyAutoAccept: el =>
+      window.MMGR.Cloud &&
+      window.MMGR.Cloud.setApiKeyAutoAccept(
+        el && el.getAttribute('data-id'),
+        el && el.getAttribute('data-mode')
+      ),
     delBudgetLine: el => window.MMGR.Budget.delBudgetLine(parseInt(el.getAttribute('data-idx'))),
     updEnvelope: (el, e) => window.MMGR.Budget.updEnvelope(el.value, e && e.type),
     addStake: () => window.MMGR.Stakeholders.addStake(),

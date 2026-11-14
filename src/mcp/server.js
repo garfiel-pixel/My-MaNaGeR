@@ -72,6 +72,9 @@ import { MCP_ERROR_CODES } from './errors.js';
 import { isPrunedReport, MCP_REPORT_RETENTION_DAYS } from './report-store.js';
 import { changesSinceResult, CHANGES_MAX_ENTRIES } from './changes.js';
 import { buildOverlay, computeDependsOn, dependsOnIds } from './deps.js';
+import { autoAcceptEligible } from './auto-accept.js';
+import { autoAcceptMcpProposal, AUTO_ACCEPT_LABEL } from '../reviews.js';
+import { cloudPushRevChangedIfCopies } from '../cloud/projects.js';
 import {
   MCP_SERVER_VERSION,
   MCP_SERVER_INSTRUCTIONS,
@@ -3150,11 +3153,77 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       }
     };
   }
+  // MCP-AGENT-FIRST 2026-11-12 6.2: the ONE sanctioned path that applies
+  // without an owner click. The policy is per key and OFF unless the owner set
+  // it to 'low-risk'; the eligibility rule is pure (src/mcp/auto-accept.js)
+  // and all-or-nothing, so a mixed proposal queues in full. The apply itself
+  // runs through autoAcceptMcpProposal -> acceptMcpV2, the same engine an
+  // owner Accept uses, and records the policy actor on the changelog. Any
+  // refusal (conflict, stale, busy) leaves the row pending and this call
+  // falls through to the normal queued response.
+  let autoApplied = null;
+  const policy = autoAcceptEligible(fullOps.ops, auth);
+  if (policy.eligible && !dependsOn.length) {
+    const auto = await autoAcceptMcpProposal(
+      env,
+      projectId,
+      res.meta.last_row_id,
+      cloudPushRevChangedIfCopies
+    );
+    if (auto.ok) {
+      autoApplied = auto;
+    }
+  }
   // MCP-AGENT-FIRST 2026-11-12 1.8: the first block stays byte-compatible with
   // every existing assertion; the second block is machine-readable so an agent
   // can see exactly what was refused and why without parsing prose. The shape
   // is shared with validate_changes (structuredRefusals).
   const refusedStructured = structuredRefusals(allRefused);
+  if (autoApplied) {
+    const nApplied = autoApplied.body && autoApplied.body.applied ? autoApplied.body.applied : 0;
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text:
+              'Applied ' +
+              nApplied +
+              " field change(s) automatically under the owner's low-risk policy (proposal #" +
+              res.meta.last_row_id +
+              ').' +
+              (allRefused.length ? ' Refused: ' + allRefused.join('; ') + '.' : '') +
+              ' The change is in the changelog and can be reverted there.'
+          },
+          {
+            type: 'text',
+            text: JSON.stringify({
+              proposalId: res.meta.last_row_id,
+              changeSetId: changeSetId,
+              duplicate: false,
+              autoApplied: true,
+              approvedBy: { type: 'policy', label: AUTO_ACCEPT_LABEL },
+              applied: nApplied,
+              counts: {
+                diffs: diffs.length,
+                creates: creates.length,
+                sets: setsRaw.length,
+                deletes: 0,
+                budget: budgetCount
+              },
+              opsQueued: fullOps.ops.length,
+              refused: refusedStructured,
+              refusedText: allRefused,
+              warnings: warnings,
+              truncated: false
+            })
+          }
+        ]
+      }
+    };
+  }
   return {
     jsonrpc: '2.0',
     id,

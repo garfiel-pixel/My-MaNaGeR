@@ -3128,6 +3128,23 @@ body.sidebar-open .sb-close .ico {
   font-size: 0.76rem;
   line-height: 1.4;
 }
+/* MCP-AGENT-FIRST 2026-11-12 6.4: an accepted proposal that applied under the
+   owner's low-risk auto-accept policy. Same pill shape as the AI badge, in the
+   accent colour, so the card says "this one did not wait for you" without
+   adding a new colour vocabulary. */
+.rv-auto {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid rgba(var(--gold-rgb), 0.45);
+  background: rgba(var(--gold-rgb), 0.12);
+}
 .rv-groups {
   border-top: 1px solid var(--border);
 }

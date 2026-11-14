@@ -1209,6 +1209,73 @@ async function acceptMcpV2(
 }
 
 /* ============================================================
+   AUTO-ACCEPT (MCP-AGENT-FIRST 2026-11-12 6.2).
+   ------------------------------------------------------------
+   The queue calls this after inserting a proposal that the key's policy
+   allows. It claims the row exactly as an owner click would, then runs the
+   SAME acceptMcpV2 engine, so an auto-applied change is indistinguishable
+   from an owner-accepted one except for the actor recorded on the changelog:
+   type 'policy', label 'auto-accept: low-risk'. That actor is the audit trail
+   the directive asks for (the changelog stores approved-by as actor_type /
+   actor_label) and it is also what the review UI keys the badge off.
+
+   A refusal at any point (conflict, stale, busy, no ops) releases the claim
+   and leaves the row pending, so the owner sees it as a normal proposal. The
+   queue never treats a failed auto-apply as an error: it falls back to the
+   queued response.
+   ============================================================ */
+export const AUTO_ACCEPT_LABEL = 'auto-accept: low-risk';
+
+export async function autoAcceptMcpProposal(env, projectId, reviewId, pushRevChanged) {
+  const row = await env.DB.prepare('SELECT * FROM cloud_reviews WHERE id = ? AND project_id = ?')
+    .bind(reviewId, projectId)
+    .first();
+  if (!row || row.status !== 'pending') {
+    return { ok: false, skipped: 'not pending' };
+  }
+  const now = new Date().toISOString();
+  const claim = await env.DB.prepare(
+    "UPDATE cloud_reviews SET status = 'accepting', decided_at = ? WHERE id = ? AND project_id = ? AND status = 'pending'"
+  )
+    .bind(now, reviewId, projectId)
+    .run();
+  if (!claim.meta || !claim.meta.changes) {
+    return { ok: false, skipped: 'claim lost' };
+  }
+  let scope = [];
+  try {
+    const p = JSON.parse(row.scope);
+    if (Array.isArray(p)) {
+      scope = p;
+    }
+  } catch (e) {
+    scope = [];
+  }
+  const res = await acceptMcpV2(
+    env,
+    projectId,
+    reviewId,
+    row,
+    { note: null, edited: 0 },
+    'policy',
+    AUTO_ACCEPT_LABEL,
+    scope,
+    now,
+    pushRevChanged
+  );
+  let body = null;
+  try {
+    body = await res.json();
+  } catch (e) {
+    body = null;
+  }
+  if (!res.ok || !body || body.ok === false) {
+    return { ok: false, skipped: (body && body.error) || 'accept failed', status: res.status };
+  }
+  return { ok: true, status: res.status, body: body };
+}
+
+/* ============================================================
    CHANGE-SET ACCEPT / REJECT (MCP-AGENT-FIRST 2026-11-12 3.6).
    The owner (or, for a budget-only set, the named budget approver)
    decides a whole set in one click. The engine runs proposal by

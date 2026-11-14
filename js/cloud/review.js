@@ -190,6 +190,13 @@ var MMGR = window.MMGR || {};
         : '<span class="badge" style="color:var(--amber);border:1px solid rgba(var(--amber-rgb),.35);background:rgba(var(--amber-rgb),.12)">' +
           (p.status || 'pending') +
           '</span>';
+    // MCP-AGENT-FIRST 2026-11-12 6.4: the owner never saw this one before it
+    // applied, so the card says so in the head rather than burying it in the
+    // "Accepted ... by" line at the bottom.
+    const autoBadge =
+      p.status === 'accepted' && String(p.decidedBy || '').indexOf('auto-accept') === 0
+        ? '<span class="rv-auto">Auto-applied</span>'
+        : '';
     let actions = '';
     if (p.status === 'pending') {
       // H-6 (BUDGET-BOQ directive 2026-11-05): View is the front door -
@@ -262,6 +269,7 @@ var MMGR = window.MMGR || {};
       src +
       '</span>' +
       badge +
+      autoBadge +
       diffsToggle +
       '</div>' +
       '<div class="rv-meta">' +

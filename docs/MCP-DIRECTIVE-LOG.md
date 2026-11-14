@@ -586,6 +586,40 @@ queues no row.
 
 ---
 
+## Phase 6 — optional auto-accept (ships OFF)
+
+Branch `feat/mcp-phase6-auto-accept`, cut from `origin/main` at `7c357e2`.
+
+| Step | Files changed | Gate result |
+|---|---|---|
+| 6.1 migration | `migrations/0041_api_key_auto_accept.sql` (new) | PASS — additive `ALTER TABLE cloud_api_keys ADD COLUMN auto_accept TEXT NOT NULL DEFAULT 'off'`; every existing key reads back `off` |
+| 6.1 auth | `src/lib/http.js` (`cloudAuthApiKey`) | PASS — auth object carries `autoAccept: 'off' \| 'low-risk'`, defaulting to `off` for any other stored value |
+| 6.1 config route | `src/cloud/api-keys.js` (`handleCloudApiKeyList`, `handleCloudApiKeyPatch`) | PASS — P6l unknown value 400, P6m non-owner 403, P6n owner PATCH persists and echoes `low-risk` |
+| 6.2 policy | `src/mcp/auto-accept.js` (new) | PASS — P6h–P6k: closed allowlist, string-only, per-record, whole-section and date ops ineligible, policy-off short-circuit |
+| 6.2 queue hook | `src/mcp/server.js`, `src/reviews.js` (`autoAcceptMcpProposal`) | PASS — P6a default off; P6b allowlisted `notes` applies through `acceptMcpV2`; P6c changelog actor `policy` / `auto-accept: low-risk`; P6d mixed queues entirely; P6e budget queues; P6f 51 ops queue; P6g creates queue |
+| 6.3 key admin UI | `js/mmgr-cloud.js`, `js/mmgr-app.js` | PASS — per-key "Allow low-risk auto-accept" / "Turn off auto-accept" with a confirm on the raising path; every rendered value passes through `esc()` |
+| 6.4 review UI | `js/cloud/review.js`, `css/src/30-panels.css` | PASS — accepted rows whose `decidedBy` starts `auto-accept` render the "Auto-applied" pill; CSS lives in the source layer, not the generated `css/mmgr.css`; the label paints `--gold-text`, because the first CI run failed T4 `verify-gold` ARM 4 when it used the `--gold` fill token as text (3.45:1 on a light surface) |
+| 6.5 tests | `tools/qa-mcp-agent-first.cjs` | PASS — 154 / 154 (14 new Phase-6 checks); fake D1 gained a mutable key row and a shared SET-clause applier |
+
+Full battery after Phase 6: `npm test` 441 / 441; ESLint 0 errors; Prettier
+clean (only the known local `manifest.webmanifest` CRLF artifact, green in CI);
+test registry PASS; SW cache PASS; `qa-mcp-write-path` 20 / 20;
+`qa-mcp-budget` 46 / 46; `qa-mcp-parity` 16 / 16; `qa-appwide-mcp` 60 / 60;
+`qa-api-keys` all gates; `qa-approval` 31 / 31; `qa-changelog-diffs` all gates;
+`qa-engine-parity` 19 / 19; `mcp/qa-mcp` 52 / 52.
+
+The policy in one paragraph: a proposal auto-applies only when the key's
+`auto_accept` is `low-risk` AND every op is a `set` on a single record's
+free-text `notes` (tasks, meetings, documents; plus `mitigation`/`notes` on
+risks) AND there are at most 50 ops AND no dependency on a pending proposal.
+Anything else - a status, a date, a create, a delete, a budget op, a
+whole-section set, or one disallowed op mixed in - sends the entire proposal to
+the queue. The apply runs through `acceptMcpV2`, the same engine an owner
+Accept uses, with a conditional R2 write and the 3-attempt re-read; a refusal
+at any point releases the claim and leaves the row pending.
+
+---
+
 ## Deviations
 
 1. **R04's fake state needed a `spendLog` row.** The first run refused the
@@ -634,3 +668,26 @@ queues no row.
     607000 during the search-palette / proposal-UI / UI-IA waves — estimated,
     not measured. Raised the cap to 612000 with a comment; no file content
     changed, so this is a gate bookkeeping fix, not a CSS edit.
+11. **Three allowlist entries are inert.** Phase 6 names `notes` on resources,
+    stakeholders and commsEntries, but `src/mcp/model.js` models no `notes`
+    field on those three lists, so `planProposal` can never emit such an op.
+    The entries stay in `AUTO_ACCEPT_ALLOWLIST` (the directive's list is
+    intact) and `isFreeText` keeps them unreachable. Adding the field would be
+    a data-model change, which is outside this phase.
+12. **"approvedBy" is stored as the changelog actor.** `cloud_changelog` has
+    no `approvedBy` column; every accept already records who decided in
+    `actor_type` / `actor_label`. Auto-accept writes `policy` /
+    `auto-accept: low-risk` there and mirrors it into
+    `cloud_reviews.decided_by` (which is what the review UI keys the badge
+    off). The queue response's machine block carries
+    `approvedBy: {type:'policy', label:'auto-accept: low-risk'}` verbatim.
+13. **The app-wide surface always queues.** `handleAppwideMcp` builds its own
+    auth object (owner session or adopted member) with no API key, so
+    `autoAccept` is absent and the policy is off by construction. That matches
+    "per API key"; extending auto-accept to an owner session would be a
+    separate decision, not a silent inheritance.
+14. **`qa-engine-parity` B2 was stale before Phase 6.** It expected 16 tools
+    and the scoped catalog has had 17 since Phase 4 added `get_changes_since`;
+    the suite is EXTENDED (nightly), so the drift never blocked a push.
+    Re-baselined to 17 with an assertion on the tool; back to 19 / 19. No app
+    change.

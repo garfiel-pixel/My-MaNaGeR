@@ -1,0 +1,19 @@
+-- MCP-AGENT-FIRST 2026-11-12 6.1: optional auto-accept, per API key, OFF by
+-- default.
+--
+-- The queue is the safety boundary: nothing an agent proposes reaches live
+-- project state without an owner decision. The one sanctioned exception is
+-- this column. It is deliberately narrow and it ships OFF:
+--
+--   'off'      - every proposal waits for the owner (the default, and the
+--                behaviour every existing key keeps after this migration).
+--   'low-risk' - a proposal made ONLY of `set` ops on a small fixed list of
+--                free-text fields (notes, risk mitigation) may apply through
+--                the same accept engine the owner uses, up to 50 ops.
+--
+-- Never auto-applied, whatever this column says: any budget op, any status,
+-- deletes, creates, predecessors, dates, sets on object or scalar sections,
+-- any op with a conflict, and any proposal that mixes an allowed op with a
+-- disallowed one (it queues in full). Only the owner can change the value,
+-- through the existing owner-gated API-key route.
+ALTER TABLE cloud_api_keys ADD COLUMN auto_accept TEXT NOT NULL DEFAULT 'off';

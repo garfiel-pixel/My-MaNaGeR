@@ -165,7 +165,7 @@ export async function handleCloudApiKeyList(request, env, projectId) {
     return cloudForbidden();
   }
   const rows = await env.DB.prepare(
-    'SELECT id, label, scope, key_prefix, expires_at, active, created_at, last_used_at, budget_read, budget_write FROM cloud_api_keys WHERE project_id = ? ORDER BY id DESC'
+    'SELECT id, label, scope, key_prefix, expires_at, active, created_at, last_used_at, budget_read, budget_write, auto_accept FROM cloud_api_keys WHERE project_id = ? ORDER BY id DESC'
   )
     .bind(projectId)
     .all();
@@ -190,6 +190,7 @@ export async function handleCloudApiKeyList(request, env, projectId) {
       scope: scope,
       budgetRead: r.budget_read === 1,
       budgetWrite: r.budget_write === 1,
+      autoAccept: r.auto_accept === 'low-risk' ? 'low-risk' : 'off',
       prefix: r.key_prefix,
       expiresAt: r.expires_at,
       active: r.active === 1 && !expired,
@@ -233,7 +234,7 @@ export async function handleCloudApiKeyPatch(request, env, projectId, keyId) {
     return json({ ok: false, error: 'bad request' }, 400);
   }
   const row = await env.DB.prepare(
-    'SELECT id, scope, budget_read, budget_write FROM cloud_api_keys WHERE id = ? AND project_id = ? AND active = 1'
+    'SELECT id, scope, budget_read, budget_write, auto_accept FROM cloud_api_keys WHERE id = ? AND project_id = ? AND active = 1'
   )
     .bind(keyId, projectId)
     .first();
@@ -260,15 +261,26 @@ export async function handleCloudApiKeyPatch(request, env, projectId, keyId) {
       400
     );
   }
+  // MCP-AGENT-FIRST 2026-11-12 6.1: the auto-accept policy is a closed set,
+  // never a truthy coercion - an unknown string must not silently mean "on".
+  // Absent means "leave it as it is".
+  let nextAuto = row.auto_accept === 'low-risk' ? 'low-risk' : 'off';
+  if (read.body.autoAccept !== undefined) {
+    if (read.body.autoAccept !== 'off' && read.body.autoAccept !== 'low-risk') {
+      return json({ ok: false, error: "autoAccept must be 'off' or 'low-risk'" }, 400);
+    }
+    nextAuto = read.body.autoAccept;
+  }
   await env.DB.prepare(
-    'UPDATE cloud_api_keys SET budget_read = ?, budget_write = ? WHERE id = ? AND project_id = ?'
+    'UPDATE cloud_api_keys SET budget_read = ?, budget_write = ?, auto_accept = ? WHERE id = ? AND project_id = ?'
   )
-    .bind(nextRead, nextWrite, keyId, projectId)
+    .bind(nextRead, nextWrite, nextAuto, keyId, projectId)
     .run();
   return json({
     ok: true,
     keyId: Number(keyId),
     budgetRead: nextRead === 1,
-    budgetWrite: nextWrite === 1
+    budgetWrite: nextWrite === 1,
+    autoAccept: nextAuto
   });
 }

@@ -124,3 +124,44 @@ single constant (`window.MMGR_PANEL_COUNT` / `MMGR_MODULE_COUNT`).
 
 No "Request a demo", no sales-hungry CTA, no customer stories, no competitor names.
 The only CTAs are **Get Started** and **View Field Guide**.
+
+---
+
+## E. Post-audit fix — the plan control was invisible (owner report 2026-11-16)
+
+**Report.** A screenshot of the open launcher rail showed OVERVIEW / PROJECTS / CLOUD /
+ADMINISTRATE / TOOLS / CUSTOMIZE, then the account row "tester / Sign out" — and no
+Upgrade button. Third report of the same symptom (2026-11-06 ×2).
+
+**Why every gate stayed green.** The markup (`app.html` `.db-foot > #plan-wrap >
+#plan-badge`), the CSS (`.plan-badge`, `body.db-page .db-foot .plan-wrap`) and the script
+(`js/mmgr-billing-manage.js`) were all present and correct. Nothing measured whether the
+control is VISIBLE to the person looking at the page.
+
+**Root cause (measured, not guessed).** Two states reproduce the screenshot:
+
+1. **Ordering.** The module's first `loadPlan()` runs at `DOMContentLoaded`, while
+   `#rail-user` still holds the static "Sign in" button. With an expired cookie
+   `/api/billing/status` answers 403, so the badge was hidden. The session restore then
+   paints the stored profile into the rail — but a restore fires `mmgr:user-changed`
+   WITHOUT `mmgr:google-signed-in`, which was the only event the module listened for. So
+   the name appeared under a blank where the upgrade button belongs, and nothing re-ran.
+2. **Stale HTML.** A cached page (HTTP cache or service-worker copy) from before the
+   mount existed has no `#plan-wrap` at all; the script cannot reveal a node that is not
+   there.
+
+**Fix.**
+
+- `mmgr:user-changed` now reloads the plan as well, so the identity and the entitlement
+  always settle in either order.
+- A 403 hides the control only when the rail AGREES the visitor is signed out
+  (`railSignedIn()` reads `.db-user-name` / `.db-signout`). A visible name keeps the free
+  "Upgrade to Premium" badge, because pricing.html works without a session.
+- `ensureMount()` builds the rail mount when it is missing, so a stale page self-heals
+  instead of depending on the HTML version.
+
+**Gate.** `tools/qa-plan-badge.cjs` (33 checks, `browser-app` job). It measures the
+rendered control at 390/768/1280/1920 (in viewport, inside the footer, above the account
+row, uncovered, text unclipped), proves one click opens pricing.html, proves a signed-out
+visitor gets no badge, and pins both reproducing states (expired cookie, stale page).
+It failed P4b on its first run — that is how the ordering bug was found.

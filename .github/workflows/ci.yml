@@ -1150,6 +1150,14 @@ jobs:
         id: qa-team-tier
         run: node tools/qa-team-tier.cjs
 
+      # PLAN CONTROL ON SCREEN (owner report 2026-11-16, third time): the rail
+      # showed the account row and no Upgrade button while every static gate
+      # was green, so this one measures the rendered control at four widths
+      # plus the expired-cookie and stale-page states that produced it.
+      - name: "T4: The plan control is really on screen (qa-plan-badge)"
+        id: qa-plan-badge
+        run: node tools/qa-plan-badge.cjs
+
       # SIGN-IN NONCE (owner report 2026-11-01): the client must post the nonce
       # the CREDENTIAL carries, not the newest one it fetched - posting the
       # latter refused every real Google sign-in with "did not finish".

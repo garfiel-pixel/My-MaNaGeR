@@ -91,6 +91,53 @@
     badge.hidden = false;
   }
 
+  /* A returning browser can run this script against the PREVIOUS deploy's
+     HTML (HTTP cache or a service-worker copy). That markup had no plan mount
+     in the rail footer, which is how the owner twice saw an account row with
+     no Upgrade button. Build the mount when it is missing instead of trusting
+     the HTML version; idempotent, so the normal path is a single lookup. */
+  function ensureMount() {
+    if ($(BADGE)) {
+      return;
+    }
+    var user = $('rail-user');
+    if (!user || !user.parentNode) {
+      return;
+    }
+    var wrap = document.createElement('div');
+    wrap.className = 'plan-wrap';
+    wrap.id = 'plan-wrap';
+    wrap.innerHTML =
+      '<button type="button" class="plan-badge" id="plan-badge" aria-expanded="false" aria-controls="plan-pop">' +
+      '<svg class="ico" aria-hidden="true"><use id="plan-badge-ico" href="css/mmgr-icons.svg#i-sparkle"></use></svg>' +
+      '<span id="plan-badge-text">Upgrade to Premium</span>' +
+      '</button>' +
+      '<div class="plan-pop" id="plan-pop" role="group" aria-label="Your plan" hidden>' +
+      '<div class="plan-pop-h">Your plan</div>' +
+      '<div class="db-plan" id="plan-body" hidden></div>' +
+      '</div>';
+    user.parentNode.insertBefore(wrap, user);
+  }
+
+  /* The rail's account row renders the stored profile, so it can outlive the
+     session cookie. It is the client's answer to "is anyone signed in?". */
+  function railSignedIn() {
+    var user = $('rail-user');
+    return !!(user && user.querySelector('.db-user-name, .db-signout'));
+  }
+
+  /* The safe default whenever a paid plan cannot be confirmed: the free
+     "Upgrade to Premium" badge, which links to pricing.html and works for a
+     visitor with no session too. */
+  function showFree(plan) {
+    setBadge(false);
+    if (plan) {
+      plan.hidden = true;
+      plan.innerHTML = '';
+    }
+    closePop();
+  }
+
   function closePop() {
     var pop = $(POP);
     var badge = $(BADGE);
@@ -218,6 +265,7 @@
   var planState = null;
 
   async function loadPlan() {
+    ensureMount();
     var plan = $(PLAN);
     var badge = $(BADGE);
     if (!plan && !badge) {
@@ -232,42 +280,35 @@
          visitor is signed out, so the safe default is the free "Upgrade to
          Premium" badge - it links to pricing.html, which works everywhere.
          Only a definitive 403 (signed out) hides the badge. */
-      setBadge(false);
-      if (plan) {
-        plan.hidden = true;
-        plan.innerHTML = '';
-      }
-      closePop();
+      showFree(plan);
       return;
     }
-    /* 403 means the visitor is signed out - the ONLY case that must hide the
-       control (no session to manage, and pricing.html is irrelevant to them). */
+    /* 403 means the SERVER session is gone. Hiding the control is only right
+       when the page agrees the visitor is signed out: an expired cookie leaves
+       the stored profile (name + Sign out) in the rail, and blanking the
+       upgrade path under a visible name is exactly the "no upgrade button"
+       report the owner filed twice. Someone whose name is on screen can still
+       buy, so they keep the free badge. */
     if (res.status === 403) {
-      hidePlan();
+      if (railSignedIn()) {
+        showFree(plan);
+      } else {
+        hidePlan();
+      }
       return;
     }
     if (!res.ok) {
       /* Any other non-OK (404 on a static host, 500, etc.): we do not know the
          plan, but we must not erase the control. Default to the free Upgrade
          badge so the link is always reachable. */
-      setBadge(false);
-      if (plan) {
-        plan.hidden = true;
-        plan.innerHTML = '';
-      }
-      closePop();
+      showFree(plan);
       return;
     }
     var data = null;
     try {
       data = await res.json();
     } catch (e) {
-      setBadge(false);
-      if (plan) {
-        plan.hidden = true;
-        plan.innerHTML = '';
-      }
-      closePop();
+      showFree(plan);
       return;
     }
     /* OWNER 2026-11-06: a SIGNED-IN person always sees their plan bar. The
@@ -276,22 +317,12 @@
        a paid account gets the Premium badge + Manage subscription. */
     if (!data || !data.ok) {
       // Session answered but reports no plan: free account -> Upgrade badge.
-      setBadge(false);
-      if (plan) {
-        plan.hidden = true;
-        plan.innerHTML = '';
-      }
-      closePop();
+      showFree(plan);
       return;
     }
     if (!data.active) {
       // Free plan: the badge itself is the upgrade path (pricing.html).
-      setBadge(false);
-      if (plan) {
-        plan.hidden = true;
-        plan.innerHTML = '';
-      }
-      closePop();
+      showFree(plan);
       return;
     }
     setBadge(true);
@@ -418,6 +449,13 @@
      than leaving a stale control that can only answer 403. */
   document.addEventListener('mmgr:google-signed-in', loadPlan);
   document.addEventListener('mmgr:google-signed-out', hidePlan);
+  /* The identity reaches the rail through mmgr:user-changed, and a restored
+     session fires that WITHOUT mmgr:google-signed-in. Without this listener
+     the first loadPlan ran against the static "Sign in" row, read the 403 an
+     expired cookie earns, and hid the badge - then the restore painted the
+     name underneath it. That is the screenshot the owner filed: a signed-in
+     account row with no Upgrade button. */
+  document.addEventListener('mmgr:user-changed', loadPlan);
   /* A plan change made from the checkout path (upgrade on the same
      subscription) lands here, so the header updates without a reload. */
   document.addEventListener('mmgr:plan-changed', loadPlan);

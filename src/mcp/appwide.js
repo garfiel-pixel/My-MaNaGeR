@@ -668,7 +668,9 @@ async function createProject(env, accountSub, toolArgs, id) {
         text: JSON.stringify(
           {
             projectId: ins.projectId,
-            ownerCode: ins.ownerCode,
+            // MCP-FINAL 2026-11-16 F1.6: the owner code is a full-access
+            // credential and is NEVER returned by MCP. The owner sees it in the
+            // app; an agent does not need it.
             status: ins.status,
             syncMode: ins.syncMode
           },

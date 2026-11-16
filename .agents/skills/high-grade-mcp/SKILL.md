@@ -51,6 +51,12 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
    (`src/cloud/proposal-diffs.js`) must reject `__proto__`, `constructor` and
    `prototype` on every path write.
 6. **Budget lines cannot be deleted through MCP.**
+7. **No credential echo, no untrusted echo.** No MCP tool output may return an
+   owner code, session cookie, API key, or password hash. `create_project`
+   returns `projectId`, `status`, `syncMode` only - the owner code stays in the
+   app. Untrusted storage read on behalf of a client (e.g. the calculator
+   workspace blob in R2) is validated before use: a non-object or array payload
+   reads as empty, and its raw text is never passed through to MCP output.
 
 ## Architecture (reference: My MaNaGeR)
 

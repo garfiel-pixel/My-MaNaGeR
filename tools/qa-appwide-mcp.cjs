@@ -30,7 +30,7 @@
        M9  per-project mcp_enabled=0 is refused
        M10 view role blocks write tools
        M11 owner read path clears every gate (reaches the engine)
-       M12 create_project succeeds and returns an owner code
+       M12 create_project succeeds and never returns the owner code
        M13 list_projects returns the account's owned + adopted projects
 
    Run: node tools/qa-appwide-mcp.cjs
@@ -1020,11 +1020,19 @@ async function sessionCookie(env, sub) {
     createdJson = JSON.parse(createdText);
   } catch (e) {}
   check(
-    'create_project returns projectId + ownerCode',
+    'create_project returns projectId + status and NO ownerCode credential',
     createdJson &&
       createdJson.projectId === 'new-1' &&
-      /^[A-Za-z0-9-]+$/.test(createdJson.ownerCode),
+      !Object.prototype.hasOwnProperty.call(createdJson, 'ownerCode') &&
+      typeof createdJson.status === 'string',
     createdJson
+  );
+  // MCP-FINAL 2026-11-16 F1.6: the owner code is a full-access credential.
+  // Assert on the raw text too, so a nested/renamed echo cannot slip through.
+  check(
+    'create_project text never mentions the owner code',
+    createdText.length > 0 && createdText.toLowerCase().indexOf('ownercode') === -1,
+    createdText
   );
 
   section('APP-WIDE MCP M13 — list_projects returns owned + adopted');

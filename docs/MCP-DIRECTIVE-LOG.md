@@ -160,6 +160,21 @@ old derived test was rewritten to the fixed contract; F1.3a–c added. Gate:
 `npm run verify` green; `qa-mcp-agent-first` 166/166; `qa-mcp-live-e2e` 43/43
 (B4 browser accept still green under the hard reload).
 
+**F1.6 Credential and calc-workspace hygiene — PASS.** `create_project` on the
+app-wide surface no longer returns `ownerCode` (a full-access credential); the
+text output is `projectId`, `status`, `syncMode` only. `tools/qa-appwide-mcp.cjs`
+M12 was flipped from "returns an owner code" to the assertion that would have
+caught the leak: no `ownerCode` property and no `ownercode` substring in the raw
+text (61/61). The calculator workspace read path now treats `calc-ws/<sub>.json`
+as untrusted storage: a blob that is not a plain object (array, string, markup,
+malformed JSON) reads as `ws:null` and is never echoed. New
+`test/calc-workspace.test.mjs` drives the real handlers with a fake R2 and a
+locally minted HMAC cookie: malformed JSON, array, markup string → `ws:null`;
+object → intact; PUT array → 400 with nothing stored; PUT object → `savedAt`.
+The skill's non-negotiables gained rule 7 (no credential echo, no untrusted
+echo). Gate: `npm test` 452/452; `qa-appwide-mcp` 61/61;
+`qa-mcp-agent-first` 166/166; `qa-mcp-parity` 16/16.
+
 ---
 
 ## Phase 0 — baseline and reproduction

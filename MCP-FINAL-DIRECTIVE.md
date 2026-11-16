@@ -69,13 +69,19 @@ Line numbers are not given on purpose. Locate everything by symbol name.
 
 | Area | Status |
 |---|---|
-| Phase 1 (1.1–1.9): budget read and write gates, ops_json uncapped, real `before`, limit message, atomic accept and conditional R2 writes, idempotency, structured response, abuse limits | DONE (except the idempotency defect F1.1) |
+| Phase 1 (1.1–1.9): budget read and write gates, ops_json uncapped, real `before`, limit message, atomic accept and conditional R2 writes, idempotency, structured response, abuse limits | DONE (incl. F1.1 idempotency) |
 | Phase 2: model, one validator (`planProposal`), error codes, cross-proposal deps, tool annotations, `tempId`, read fixes, `get_schema`, `validate_changes` | DONE |
-| Phase 3: ops v2, change sets, withdraw, accept engine, change-set endpoints, D1/R2 recovery, owner UI grouping, report tools, deletes, report retention | DONE except 3.5 (see F1.2, F1.3) |
+| Phase 3: ops v2, change sets, withdraw, accept engine, change-set endpoints, D1/R2 recovery, owner UI grouping, report tools, deletes, report retention | DONE (incl. 3.5 via F1.2/F1.3) |
 | Phase 4: attribution, `get_changes_since` | DONE |
-| Phase 5: AT02–AT12, AT15, AT19, AT21–AT27 present; harness wired at `ci.yml` step `qa-mcp-agent-first` | PARTIAL: AT01, AT13 (named), AT14 (end to end), AT16, AT17, AT18, AT20 missing as named tests |
-| Phase 6: auto-accept | NOT STARTED (optional, F5) |
-| Tier-aware limits | NOT STARTED (F2) |
+| Phase 5: AT02–AT12, AT15, AT19, AT21–AT27 present; harness wired at `ci.yml` step `qa-mcp-agent-first` | DONE — AT01, AT13 (named), AT14a–e (end to end), AT16, AT17, AT18, AT20 added by F3 |
+| Phase 6: auto-accept | SHIPPED via PR #11 (opt-in low-risk auto-accept, OFF by default); directive F5 workstream not started — no `PHASE6-GO` token |
+| Tier-aware limits | DONE (F2) |
+
+**Status refreshed 2026-11-16** after PR #12 merged (`5b561ba`) and deployed live
+(Worker `21b35fe3`, MCP server 2.1.0). F0 baseline + green gates, F1.1–F1.7
+correctness, F2 tier-aware limits, F3 acceptance tests (incl. AT14e), and F4
+agent-facing release notes are all DONE and gated green. The authoritative
+running record is `docs/MCP-DIRECTIVE-LOG.md` ("Directive close-out" section).
 
 Defects found in review, each closed by a step below:
 - D1 Idempotency dedupes against rejected and withdrawn proposals, and nothing clears `import_key` on decide (the lookup selects by `import_key` alone, in `findDuplicateProposal`).

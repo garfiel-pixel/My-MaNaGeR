@@ -263,8 +263,20 @@ async function makeEnv(opts) {
                 return { status: 'active', tier: 'premium', plan: 'premium' };
               }
               if (low.includes('from cloud_reviews') && low.includes('import_key')) {
+                // MCP-FINAL 2026-11-16 F1.1: honour the status filter the real
+                // findDuplicateProposal now carries, so a rejected/withdrawn
+                // row is not treated as a duplicate.
+                const onlyLive = low.includes("status in ('pending','accepting','accepted')");
                 const r = store.reviews.find(function (x) {
-                  return x.import_key === args[0];
+                  if (x.import_key !== args[0]) {
+                    return false;
+                  }
+                  if (!onlyLive) {
+                    return true;
+                  }
+                  return (
+                    x.status === 'pending' || x.status === 'accepting' || x.status === 'accepted'
+                  );
                 });
                 return r ? Object.assign({}, r) : null;
               }
@@ -547,6 +559,48 @@ async function accept(env, reviewId, body) {
   };
 }
 
+// F1.1: owner rejects one proposal (single-reject path).
+async function reject(env, reviewId, note) {
+  const mod = env.__mod;
+  const req = new Request(
+    'http://localhost/api/cloud/projects/' + PROJECT + '/reviews/' + reviewId + '/reject',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+      body: JSON.stringify({ note: note || 'not wanted' })
+    }
+  );
+  const res = await mod.handleReviewReject(req, env, PROJECT, reviewId);
+  let data = null;
+  try {
+    data = await res.clone().json();
+  } catch (e) {
+    data = null;
+  }
+  return { status: res.status, data: data };
+}
+
+// F1.1: owner rejects a whole change set.
+async function changeSetReject(env, changeSetId) {
+  const mod = env.__mod;
+  const req = new Request(
+    'http://localhost/api/cloud/projects/' + PROJECT + '/changesets/' + changeSetId + '/reject',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+      body: JSON.stringify({ note: 'declined' })
+    }
+  );
+  const res = await mod.handleChangeSetReject(req, env, PROJECT, changeSetId);
+  let data = null;
+  try {
+    data = await res.clone().json();
+  } catch (e) {
+    data = null;
+  }
+  return { status: res.status, data: data };
+}
+
 async function stateOf(env) {
   const raw = await env.R2.get(R2_KEY);
   const text = await raw.text();
@@ -594,6 +648,7 @@ function addReview(env, row) {
     handleMcpServer: server.handleMcpServer,
     queueMcpProposal: server.queueMcpProposal,
     handleReviewAccept: reviews.handleReviewAccept,
+    handleReviewReject: reviews.handleReviewReject,
     handleCloudApiKeyPatch: apiKeys.handleCloudApiKeyPatch,
     autoAcceptEligible: autoAcceptPolicy.autoAcceptEligible,
     handleChangeSetAccept: reviews.handleChangeSetAccept,
@@ -1048,6 +1103,103 @@ function addReview(env, row) {
       'R08b a resend after 25 minutes queues a new row',
       env.__store.reviews.length === 2 && idC !== idA && !/duplicate/.test(textOf(c)),
       { rows: env.__store.reviews.length, idC, text: textOf(c).slice(0, 160) }
+    );
+  }
+
+  // =====================================================================
+  // F1.1 — idempotency dedupes only a STILL-LIVE proposal. A rejected or
+  // withdrawn row must not block an identical resubmit; an accepted row must
+  // still answer with the original id (it is a decision already taken, not a
+  // fresh request).
+  // =====================================================================
+  section('F1.1 — idempotency dedupes only a live proposal');
+  {
+    const args = { diffs: [{ path: 'tasks', recordId: 't7', field: 'notes', after: 'idem' }] };
+    const idOf = function (r) {
+      return Number((textOf(r).match(/proposal #(\d+)/) || [])[1] || 0);
+    };
+
+    // pending -> duplicate, same id
+    const e1 = await makeEnv({ mod });
+    const a1 = await tool(e1, 70, 'apply_changes', args);
+    const a2 = await tool(e1, 71, 'apply_changes', args);
+    check(
+      'F1.1a a resubmit while pending is a duplicate with the original id',
+      e1.__store.reviews.length === 1 &&
+        idOf(a1) === idOf(a2) &&
+        idOf(a1) > 0 &&
+        /duplicate: true/.test(textOf(a2)),
+      { rows: e1.__store.reviews.length, id1: idOf(a1), id2: idOf(a2) }
+    );
+
+    // after single reject -> fresh proposal
+    const e2 = await makeEnv({ mod });
+    const b1 = await tool(e2, 72, 'apply_changes', args);
+    const rj = await reject(e2, idOf(b1));
+    const b2 = await tool(e2, 73, 'apply_changes', args);
+    check(
+      'F1.1b a resubmit after REJECT queues a fresh proposal',
+      rj.status === 200 &&
+        e2.__store.reviews.length === 2 &&
+        idOf(b2) !== idOf(b1) &&
+        idOf(b2) > 0 &&
+        !/duplicate: true/.test(textOf(b2)),
+      { rejectStatus: rj.status, rows: e2.__store.reviews.length, id1: idOf(b1), id2: idOf(b2) }
+    );
+
+    // after whole withdraw -> fresh proposal
+    const e3 = await makeEnv({ mod });
+    const c1 = await tool(e3, 74, 'apply_changes', args);
+    await tool(e3, 75, 'withdraw_changes', { proposalId: idOf(c1) });
+    const c2 = await tool(e3, 76, 'apply_changes', args);
+    check(
+      'F1.1c a resubmit after WITHDRAW queues a fresh proposal',
+      e3.__store.reviews.length === 2 &&
+        idOf(c2) !== idOf(c1) &&
+        idOf(c2) > 0 &&
+        !/duplicate: true/.test(textOf(c2)),
+      { rows: e3.__store.reviews.length, id1: idOf(c1), id2: idOf(c2) }
+    );
+
+    // after change-set reject -> fresh proposal
+    const e4 = await makeEnv({ mod });
+    const d1 = await tool(e4, 77, 'apply_changes', args);
+    const cs = e4.__store.reviews[0].change_set_id;
+    const csr = await changeSetReject(e4, cs);
+    const d2 = await tool(e4, 78, 'apply_changes', args);
+    check(
+      'F1.1d a resubmit after CHANGE-SET REJECT queues a fresh proposal',
+      csr.status === 200 &&
+        e4.__store.reviews.length === 2 &&
+        idOf(d2) !== idOf(d1) &&
+        idOf(d2) > 0 &&
+        !/duplicate: true/.test(textOf(d2)),
+      {
+        csRejectStatus: csr.status,
+        rows: e4.__store.reviews.length,
+        id1: idOf(d1),
+        id2: idOf(d2)
+      }
+    );
+
+    // after accept -> still the original id (accepted is still "live")
+    const e5 = await makeEnv({ mod });
+    const f1 = await tool(e5, 79, 'apply_changes', args);
+    const acc = await accept(e5, idOf(f1));
+    const f2 = await tool(e5, 80, 'apply_changes', args);
+    check(
+      'F1.1e a resubmit after ACCEPT still returns the original proposal id',
+      acc.status === 200 &&
+        e5.__store.reviews.length === 1 &&
+        idOf(f2) === idOf(f1) &&
+        idOf(f1) > 0,
+      {
+        acceptStatus: acc.status,
+        rows: e5.__store.reviews.length,
+        id1: idOf(f1),
+        id2: idOf(f2),
+        text: textOf(f2).slice(0, 160)
+      }
     );
   }
 

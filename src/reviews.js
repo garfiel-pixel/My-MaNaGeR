@@ -660,8 +660,11 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
   const now = new Date().toISOString();
   // MCP-AGENT-FIRST 2026-11-12 1.6(a): the reject is conditional too, so it
   // cannot race an accept. The audit row is written only after the claim wins.
+  // MCP-FINAL 2026-11-16 F1.1: clear import_key in the SAME update so a
+  // rejected proposal can never block an identical resubmit (findDuplicate
+  // also filters on status; this is the durable half of the pair).
   const rejected = await env.DB.prepare(
-    "UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND status = 'pending'"
+    "UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, decision_note = ?, import_key = NULL WHERE id = ? AND status = 'pending'"
   )
     .bind('rejected', now, actorLabel, decision.note || null, reviewId)
     .run();
@@ -1856,8 +1859,10 @@ export async function handleChangeSetReject(request, env, projectId, changeSetId
   }
   const now = new Date().toISOString();
   for (let i = 0; i < rows.length; i++) {
+    // MCP-FINAL 2026-11-16 F1.1: change-set reject clears import_key too, so
+    // the whole rejected set is resubmittable.
     await env.DB.prepare(
-      "UPDATE cloud_reviews SET status = 'rejected', decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND project_id = ? AND status = 'pending'"
+      "UPDATE cloud_reviews SET status = 'rejected', decided_at = ?, decided_by = ?, decision_note = ?, import_key = NULL WHERE id = ? AND project_id = ? AND status = 'pending'"
     )
       .bind(now, actorLabel, decision.note || null, rows[i].id, projectId)
       .run();

@@ -2512,8 +2512,10 @@ export async function withdrawMcpProposal(env, projectId, auth, toolArgs, rpcId)
   });
   const nowWithdrawn = whole || remainingOps.length === 0;
   if (nowWithdrawn) {
+    // MCP-FINAL 2026-11-16 F1.1: a whole (or zero-remaining) withdraw clears
+    // import_key so the identical proposal can be queued again.
     await env.DB.prepare(
-      "UPDATE cloud_reviews SET status = 'withdrawn', decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND status IN ('pending','accepting')"
+      "UPDATE cloud_reviews SET status = 'withdrawn', decided_at = ?, decided_by = ?, decision_note = ?, import_key = NULL WHERE id = ? AND status IN ('pending','accepting')"
     )
       .bind(now, decidedBy, note, pid)
       .run();
@@ -2817,14 +2819,67 @@ async function mcpSha256Hex(text) {
     .join('');
 }
 
+// MCP-FINAL 2026-11-16 F1.1: the single duplicate answer, so the early
+// idempotency check and the UNIQUE-race catch return an identical shape.
+function mcpDuplicateResult(id, row, changeSetId, counts) {
+  const dupCount =
+    row.ops_count != null
+      ? Number(row.ops_count) || 0
+      : (function () {
+          try {
+            const d = row.diffs_json ? JSON.parse(row.diffs_json) : [];
+            return Array.isArray(d) ? d.length : 0;
+          } catch (e) {
+            return 0;
+          }
+        })();
+  return {
+    jsonrpc: '2.0',
+    id,
+    result: {
+      content: [
+        {
+          type: 'text',
+          text:
+            'Queued ' +
+            dupCount +
+            ' field change(s) for owner review (proposal #' +
+            row.id +
+            '). duplicate: true Nothing changes until the owner accepts it inside the project.'
+        },
+        {
+          type: 'text',
+          text: JSON.stringify({
+            proposalId: row.id,
+            changeSetId: changeSetId,
+            duplicate: true,
+            counts: counts,
+            opsQueued: dupCount,
+            refused: [],
+            refusedText: [],
+            warnings: [],
+            truncated: false
+          })
+        }
+      ]
+    }
+  };
+}
+
 async function findDuplicateProposal(env, keys) {
   for (let i = 0; i < keys.length; i++) {
     if (!keys[i]) {
       continue;
     }
     try {
+      // MCP-FINAL 2026-11-16 F1.1: only a still-live proposal can be a
+      // duplicate. A rejected or withdrawn row is a decision the agent is
+      // allowed to revisit, so it must never satisfy an identical resubmit;
+      // the decide paths clear import_key in the same UPDATE, and this status
+      // filter is the belt to that braces (covers a row decided before the
+      // clear landed).
       const row = await env.DB.prepare(
-        'SELECT id, ops_count, diffs_json FROM cloud_reviews WHERE import_key = ?'
+        "SELECT id, ops_count, diffs_json FROM cloud_reviews WHERE import_key = ? AND status IN ('pending','accepting','accepted')"
       )
         .bind(keys[i])
         .first();
@@ -2844,6 +2899,55 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   const precheck = validateProposalEnvelope(toolArgs, auth);
   if (precheck) {
     return { jsonrpc: '2.0', id, result: precheck };
+  }
+  // MCP-FINAL 2026-11-16 F1.1: idempotency is decided BEFORE planProposal. A
+  // retry of an already-ACCEPTED proposal finds nothing left to change against
+  // live state, so planProposal would answer "No changes" and the agent would
+  // never learn its change already landed. The import key is a pure hash of the
+  // args (plus the 10-minute bucket), so checking it first is safe: identical
+  // args cannot mean different work. A pending/accepting/accepted row answers
+  // with its original id; a rejected or withdrawn row no longer matches (its
+  // import_key was cleared in the decide UPDATE), so the same args queue fresh.
+  const now = new Date().toISOString();
+  const dateStamp = now.slice(0, 10).replace(/-/g, '');
+  const idemKeyId = auth.apiKeyId != null ? String(auth.apiKeyId) : 'owner';
+  const reqChangeSet =
+    typeof toolArgs.changeSetId === 'string' ? toolArgs.changeSetId.trim().slice(0, 64) : '';
+  const changeSetId = reqChangeSet || 'cs_' + dateStamp + '_' + idemKeyId;
+  const keyId = auth.apiKeyId != null ? String(auth.apiKeyId) : null;
+  const BUCKET_MS = 600000;
+  let importKey = null;
+  let prevImportKey = null;
+  const explicitIdem =
+    typeof toolArgs.idempotencyKey === 'string' ? toolArgs.idempotencyKey.trim().slice(0, 80) : '';
+  if (explicitIdem) {
+    importKey = 'mcp:' + projectId + ':' + idemKeyId + ':' + explicitIdem;
+  } else {
+    const hashArgs = Object.assign({}, toolArgs);
+    delete hashArgs.idempotencyKey;
+    const argHash = await mcpSha256Hex(mcpCanonicalJson(hashArgs));
+    const bucket = Math.floor(Date.now() / BUCKET_MS) * BUCKET_MS;
+    importKey =
+      'mcp:' + projectId + ':' + idemKeyId + ':' + argHash + ':' + new Date(bucket).toISOString();
+    prevImportKey =
+      'mcp:' +
+      projectId +
+      ':' +
+      idemKeyId +
+      ':' +
+      argHash +
+      ':' +
+      new Date(bucket - BUCKET_MS).toISOString();
+  }
+  const earlyDuplicate = await findDuplicateProposal(env, [importKey, prevImportKey]);
+  if (earlyDuplicate) {
+    return mcpDuplicateResult(id, earlyDuplicate, changeSetId, {
+      diffs: Array.isArray(toolArgs.diffs) ? toolArgs.diffs.length : 0,
+      creates: Array.isArray(toolArgs.creates) ? toolArgs.creates.length : 0,
+      sets: Array.isArray(toolArgs.sets) ? toolArgs.sets.length : 0,
+      deletes: 0,
+      budget: Array.isArray(toolArgs.budget) ? toolArgs.budget.length : 0
+    });
   }
   // MCP-AGENT-FIRST 2026-11-12 2.2: every validation rule lives in
   // planProposal (src/mcp/plan.js), so this queue and validate_changes share
@@ -2956,15 +3060,6 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       }
     };
   }
-  const now = new Date().toISOString();
-  // MCP-AGENT-FIRST 2026-11-12 3.2: group a key's same-day proposals into one
-  // change set so the owner can Accept all of them in a single R2 write.
-  const reqChangeSet =
-    typeof toolArgs.changeSetId === 'string' ? toolArgs.changeSetId.trim().slice(0, 64) : '';
-  const dateStamp = now.slice(0, 10).replace(/-/g, '');
-  const idemKeyIdForSet = auth.apiKeyId != null ? String(auth.apiKeyId) : 'owner';
-  const changeSetId = reqChangeSet || 'cs_' + dateStamp + '_' + idemKeyIdForSet;
-  const keyId = auth.apiKeyId != null ? String(auth.apiKeyId) : null;
   const rawLeaves = cloudDiffState(prev, merged.next) || [];
   const diffsJson = enrichDiffs(rawLeaves, prev, merged.next).diffs;
   // MCP-AGENT-FIRST 2026-11-12 3.1/3.2: ops_json is now v2 ops
@@ -2985,86 +3080,6 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   const dependsOn = computeDependsOn(nonBudgetOps, overlay.createdBy, state);
   if (dependsOn.length) {
     fullOps.dependsOn = dependsOn;
-  }
-  // MCP-AGENT-FIRST 2026-11-12 1.7: one idempotency key per call. An explicit
-  // idempotencyKey is stable forever; otherwise the whole argument object is
-  // hashed into a 10-minute bucket, and the previous bucket is checked too so
-  // a retry that straddles the boundary still hits.
-  const idemKeyId = auth.apiKeyId != null ? String(auth.apiKeyId) : 'owner';
-  const explicitIdem =
-    typeof toolArgs.idempotencyKey === 'string' ? toolArgs.idempotencyKey.trim().slice(0, 80) : '';
-  const BUCKET_MS = 600000;
-  let importKey = null;
-  let prevImportKey = null;
-  if (explicitIdem) {
-    importKey = 'mcp:' + projectId + ':' + idemKeyId + ':' + explicitIdem;
-  } else {
-    const hashArgs = Object.assign({}, toolArgs);
-    delete hashArgs.idempotencyKey;
-    const argHash = await mcpSha256Hex(mcpCanonicalJson(hashArgs));
-    const bucket = Math.floor(Date.now() / BUCKET_MS) * BUCKET_MS;
-    importKey =
-      'mcp:' + projectId + ':' + idemKeyId + ':' + argHash + ':' + new Date(bucket).toISOString();
-    prevImportKey =
-      'mcp:' +
-      projectId +
-      ':' +
-      idemKeyId +
-      ':' +
-      argHash +
-      ':' +
-      new Date(bucket - BUCKET_MS).toISOString();
-  }
-  const duplicate = await findDuplicateProposal(env, [importKey, prevImportKey]);
-  if (duplicate) {
-    const dupCount =
-      duplicate.ops_count != null
-        ? Number(duplicate.ops_count) || 0
-        : (function () {
-            try {
-              const d = duplicate.diffs_json ? JSON.parse(duplicate.diffs_json) : [];
-              return Array.isArray(d) ? d.length : 0;
-            } catch (e) {
-              return 0;
-            }
-          })();
-    return {
-      jsonrpc: '2.0',
-      id,
-      result: {
-        content: [
-          {
-            type: 'text',
-            text:
-              'Queued ' +
-              dupCount +
-              ' field change(s) for owner review (proposal #' +
-              duplicate.id +
-              '). duplicate: true Nothing changes until the owner accepts it inside the project.'
-          },
-          {
-            type: 'text',
-            text: JSON.stringify({
-              proposalId: duplicate.id,
-              changeSetId: changeSetId,
-              duplicate: true,
-              counts: {
-                diffs: diffs.length,
-                creates: creates.length,
-                sets: setsRaw.length,
-                deletes: 0,
-                budget: budgetCount
-              },
-              opsQueued: dupCount,
-              refused: [],
-              refusedText: [],
-              warnings: warnings,
-              truncated: false
-            })
-          }
-        ]
-      }
-    };
   }
   let res;
   const proposalJson = budgetBuilt.changes.length

@@ -746,6 +746,16 @@ function executeGetSchema(scope, args, tier) {
               appliesOn: 'owner accept',
               note: 'A proposal is one change set: the owner accepts or rejects all of it, and nothing applies automatically.'
             },
+            // F4: one fixed line per behavior change an agent that learned the
+            // first release needs to know. Read-only data for the client.
+            releaseNotes: [
+              'completedTasks and completion count work items only - phases are excluded.',
+              'get_risks returns both description and name for every risk.',
+              'openRisks now matches the risk register (same open/closed rule).',
+              'Derived schedule fields (critical, totalFloat, freeFloat, floatBaseline) are read-only and recomputed in the app after an accept.',
+              'Accepting a status change stamps statusSince, startedDate and completedDate on the task.',
+              "Limits depend on the project owner's plan (get_schema.limits carries the tier and the effective numbers)."
+            ],
             errorCodes: MCP_ERROR_CODES,
             tables: tables
           },

@@ -84,6 +84,18 @@ test('the schema limits follow the tier it is asked for', () => {
   assert.equal(est.maxDiffs, 100);
 });
 
+test('releaseNotes names each behavior change since the first release', () => {
+  const notes = schema(null, {}).body.releaseNotes;
+  assert.ok(Array.isArray(notes) && notes.length === 6, 'six notes');
+  const text = notes.join(' ');
+  assert.match(text, /completedTasks/);
+  assert.match(text, /get_risks/);
+  assert.match(text, /openRisks/);
+  assert.match(text, /read-only/);
+  assert.match(text, /statusSince/);
+  assert.match(text, /owner's plan/);
+});
+
 test('a key with only the Budget section sees only budget tables', () => {
   const { body } = schema(['bud'], {});
   assert.deepEqual(Object.keys(body.tables).sort(), ['budgetEnvelope', 'budgetLines', 'spendLog']);

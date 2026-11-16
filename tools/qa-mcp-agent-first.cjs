@@ -2831,7 +2831,7 @@ function addReview(env, row) {
   // AT26 (A5) — MCP polish. Every tool advertises machine-readable
   // annotations + an outputSchema, every successful call returns
   // structuredContent that equals the JSON block, the server announces
-  // version 2.0.0, and both surfaces warn that record text is data.
+  // version 2.1.0, and both surfaces warn that record text is data.
   // =====================================================================
   section('AT26 — MCP polish (annotations, outputSchema, version, injection warning)');
   {
@@ -2840,10 +2840,10 @@ function addReview(env, row) {
     const info = init && init.result && init.result.serverInfo;
     const instr = (init && init.result && init.result.instructions) || '';
     check(
-      'AT26a initialize reports serverInfo.version 2.0.0 and the record-text warning',
+      'AT26a initialize reports serverInfo.version 2.1.0 and the record-text warning',
       !!(
         info &&
-        info.version === '2.0.0' &&
+        info.version === '2.1.0' &&
         /record/i.test(instr) &&
         /not instructions/i.test(instr)
       ),
@@ -2985,7 +2985,7 @@ function addReview(env, row) {
       'AT26j the app-wide catalog carries the same annotations and outputSchemas',
       awTools.length >= 17 &&
         awBad.length === 0 &&
-        !!(appwide.APPWIDE_SERVER_INFO && appwide.APPWIDE_SERVER_INFO.version === '2.0.0'),
+        !!(appwide.APPWIDE_SERVER_INFO && appwide.APPWIDE_SERVER_INFO.version === '2.1.0'),
       {
         tools: awTools.length,
         bad: awBad.map(function (t) {

@@ -247,6 +247,16 @@ the strip never ran and survivors kept a dangling reference to a deleted task.
 The guard is gone and the skill gained rule 10. Gates: `qa-mcp-agent-first`
 185/185; `qa-mcp-parity` 17/17; `qa-mcp-live-e2e` 46/46; `npm test` 458/458.
 
+**F4 Agent-facing release notes — PASS.** `get_schema` now carries a fixed
+`releaseNotes` list, one sentence per behaviour change since the first release
+(completedTasks/completion count work items only; get_risks returns description
+and name; openRisks matches the register; derived schedule fields are read-only
+and recomputed in the app; status stamps are set on accept; limits depend on the
+owner's plan). `MCP_SERVER_VERSION` is now `2.1.0` and both surfaces report it
+from the shared constant. Gate: `test/mcp-schema.test.mjs` 8/8 (asserts the six
+notes and their subjects); `qa-mcp-agent-first` 185/185 (AT26a re-baselined to
+2.1.0); `qa-appwide-mcp` 62/62; `npm test` 459/459.
+
 ---
 
 ## Phase 0 — baseline and reproduction

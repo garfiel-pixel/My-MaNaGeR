@@ -388,7 +388,25 @@ function unauthorized(origin, message, invalidToken) {
 
 export async function handleAppwideMcp(request, env) {
   if (request.method !== 'POST') {
-    return json({ ok: false, error: 'MCP server requires POST' }, 405);
+    /* Streamable HTTP: this endpoint carries client requests only, so any other
+       method is 405 with Allow (RFC 9110 15.5.6). The body is JSON-RPC shaped
+       because that is what a client parses. Returning 404 here read as "there
+       is no MCP endpoint at this URL" to a connector that probes with GET. */
+    return new Response(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32000, message: 'This MCP endpoint accepts POST only.' }
+      }),
+      {
+        status: 405,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          allow: 'POST',
+          'cache-control': 'no-store'
+        }
+      }
+    );
   }
   const origin = new URL(request.url).origin;
   const authHeader = request.headers.get('Authorization') || '';

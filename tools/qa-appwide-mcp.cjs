@@ -394,6 +394,31 @@ async function sessionCookie(env, sub) {
   APPWIDE = appwide;
   const env0 = {};
 
+  section('MCP transport — the endpoint answers non-POST with 405, never 404');
+  {
+    // Live probe 2026-11-16: GET https://mymanagerworkspace.com/api/mcp answered
+    // 404 because the router matched POST only, so a connector that probes the
+    // URL for an SSE stream read it as "no MCP server here".
+    const envM = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
+    for (const m of ['GET', 'DELETE']) {
+      const res = await appwide.handleAppwideMcp(
+        new Request('http://localhost/api/mcp', { method: m }),
+        envM
+      );
+      const body = await res.json().catch(() => null);
+      check(
+        m + ' answers 405 with Allow: POST',
+        res.status === 405 && (res.headers.get('allow') || '').toUpperCase() === 'POST',
+        { status: res.status, allow: res.headers.get('allow') }
+      );
+      check(
+        m + ' body is a JSON-RPC error a client can parse',
+        !!body && body.jsonrpc === '2.0' && !!body.error && typeof body.error.message === 'string',
+        body
+      );
+    }
+  }
+
   section('OAUTH O1 — PKCE S256 challenge');
   const verifier = 'test-verifier-0123456789abcdef';
   const challenge = await oauth.pkceChallenge(verifier);

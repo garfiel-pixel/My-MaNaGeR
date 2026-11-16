@@ -913,3 +913,39 @@ at any point releases the claim and leaves the row pending.
     the suite is EXTENDED (nightly), so the drift never blocked a push.
     Re-baselined to 17 with an assertion on the tool; back to 19 / 19. No app
     change.
+
+---
+
+## Live surface check — deployed `/api/mcp` (2026-11-16)
+
+Second of the two required test paths (the first is the local wrangler battery).
+Probed `https://mymanagerworkspace.com` with plain HTTP; no owner credentials
+were used, so the run covers the discovery + refusal contract and stops at the
+consent page, which needs a signed-in human.
+
+| Probe | Result |
+|---|---|
+| `POST /api/mcp` without a token | 401 + `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource"`; body is JSON-RPC `-32001 "Connect with OAuth to use this MCP server."` |
+| `GET /.well-known/oauth-protected-resource` | `resource` = the endpoint, `authorization_servers` = the origin, `scopes_supported` `["account"]` |
+| `GET /.well-known/oauth-authorization-server` | issuer, authorize, token and registration endpoints; `S256` only; `token_endpoint_auth_methods_supported: ["none"]` |
+| `POST /api/oauth/register` (DCR) | 201 with an opaque `client_id`, the registered redirect URI echoed, `scope: account` |
+| `GET /api/oauth/authorize` without a session | 401 HTML "Sign in to My MaNaGeR first" — the documented behaviour (consent cannot know who is authorising) |
+| `POST /api/oauth/token` with a bogus code | 400 `invalid_grant` / "unknown or expired code" |
+| `POST /api/mcp` with a bogus bearer | 401, "The access token is invalid or expired. Reconnect the connector." |
+| `GET /api/mcp` | **404 — defect.** The router matched `POST` only, so every other method fell through to the asset handler. A connector that probes the URL for an SSE stream reads 404 as "no MCP server here". |
+
+**Fix (F6, transport conformance).** The path is routed for every method and
+`handleAppwideMcp` answers non-POST with `405` + `Allow: POST` and a JSON-RPC
+error body. `qa-appwide-mcp` gained four checks (GET and DELETE: status +
+`Allow`, JSON-RPC shape) — 62 → 66.
+
+**Same session, one harness re-baseline.** `qa-cloud-phase2` went red on
+P5.1c and P5.4b for a reason unrelated to the app: the general bucket is 30
+requests per minute **per code**, and every earlier phase reuses one project,
+so on a fast machine the bucket is already full when the rate-limit section
+runs. The section now creates its own throwaway project (D0), which is what
+"same-origin accepted" and "below the budget is not throttled" actually mean.
+92 → 93. The app is unchanged by that fix.
+
+Note: the deployed build predates F1–F4, so this run validates the previous
+release's contract, not the branch's new behaviour.

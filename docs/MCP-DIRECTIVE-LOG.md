@@ -37,6 +37,86 @@ No check may fall below these numbers.
 
 ---
 
+## F0 baseline — current tree (2026-11-16, MCP-FINAL-DIRECTIVE)
+
+Branch `feat/mcp-agent-first`, HEAD `c75de36`. This is the measured "scale
+upward from here" baseline the owner asked for — numbers re-run and seen in the
+current session, not carried over from the old export-era table above. The old
+table is the historical first-pass baseline; this section supersedes it for the
+merged `MCP-FINAL-DIRECTIVE.md` work. No gate may fall below these numbers.
+
+| Command | Result (measured 2026-11-16) |
+|---|---|
+| `npm run verify` | GREEN end to end — every sub-gate incl. `verify:skills`, `verify:css`, `verify:sizes`, `verify:registry`; final line `TEST REGISTRY PASS` |
+| `npm test` | 441 / 441 pass, 0 fail |
+| `node tools/verify-eslint.cjs` | pass (run inside `npm run verify`) |
+| `node tools/verify-prettier.cjs` | pass (run inside `npm run verify`) |
+| `node tools/verify-test-registry.cjs` | pass — 229 harnesses registered, every row declares where it runs, no stale entries |
+| `node tools/verify-sw-cache.cjs` | pass (run inside `npm run verify`) |
+| `node tools/qa-mcp-agent-first.cjs` | 158 / 158 (includes new AT25e no-false-success guard) |
+| `node tools/qa-mcp-live-e2e.cjs` | 43 / 43 (full OAuth discovery → DCR → PKCE → owner accept → cloud verify; project `e2e-mcp-afm1y2`) |
+
+Status of the current tree at this baseline (from the witnessed proposal #68
+failure and the audit of both MCP surfaces):
+
+- **No-false-success accept (witnessed core failure) — FIXED.** A zero-diff
+  accept on a proposal that was never decided (pre-claim `decided_at` null) is a
+  stale duplicate and now returns 409 stale with the remedy sentence, releasing
+  the claim and leaving the row pending. A decided row whose R2 write survived a
+  lost D1 status update still heals to accepted (AT25a–d). Implemented in
+  `src/reviews.js` `acceptMcpV2`; locked by AT25e in
+  `tools/qa-mcp-agent-first.cjs` and e2e B5, re-baselined C2. Durable guard added
+  to `.agents/skills/high-grade-mcp/SKILL.md`; `skills-lock.json` rehashed
+  (`high-grade-mcp=70c09421cc346c757e1e157e4b9781030b7d2c67129d5cc19217da236e687a55`).
+- **E2E harness self-throttling — FIXED.** `qa-mcp-live-e2e` now spawns wrangler
+  with test-only `RATE_LIMIT_FACTOR=50` (C4/C5 were 429ing against the shared
+  30/min bucket) and a stable test-only `GOOGLE_CLIENT_SECRET` (D4–D8 401/403
+  flake when an isolate reload invalidated the session cookie). Production uses
+  default factor 1 and its own secret; no app change.
+- **F0.1 wording gate — FIXED.** `tools/verify-assistant-wording.cjs` excludes
+  `.codebuddy` local agent worktrees from the scan.
+- **MCP client config.** `~/.codebuddy/mcp.json` now points at the deployed
+  app-wide endpoint `https://mymanagerworkspace.com/api/mcp` (two-way connector
+  test pending owner OAuth consent).
+- Uncommitted at baseline: `MCP-FINAL-DIRECTIVE.md` (new), the fixes above, and
+  one UI screenshot PNG. UI/plan-badge audit, F0.2/F0.3 and F1–F4 still open.
+
+---
+
+## F0 — Green baseline gates (F0.2 / F0.3, 2026-11-16)
+
+**F0.2 — registry.** `docs/CI-TEST-COVERAGE.md` exists and `verify-test-registry`
+is green (229 harnesses, every row declares where it runs, no stale entries).
+The `tools/qa-mcp-agent-first.cjs` row is ALREADY `CI` (wired in `ci.yml` as
+`qa-mcp-agent-first`), so no TRIAGE→CI flip was needed — D7's "missing from the
+export" was an export artefact, not a repo defect. `tools/qa-mcp-live-e2e.cjs`
+is `EXTENDED`. GATE: green (seen in the F0 baseline run).
+
+**F0.3 — defect-encoding R-tests.** Scan of every `section(...)` title for
+"does not / leaves / loses / without / unset / null" found exactly three that
+encoded a defect as correct behavior:
+
+| Test | Was asserting | Rewritten by |
+|---|---|---|
+| R12 "a completed status leaves the stamps unset" | `!completedDate && !statusSince` | **F1.2** (status side effects; implementation first, then this test) |
+| R13a "the entry exists but carries null diffs_json (snapshot only)" | diffs lost on an over-cap accept | **F0.3 now** |
+| R13b "the entry has no proposal_id / source_label attribution" | no attribution columns | **F0.3 now** |
+
+`R02` ("a row *without* stored diffs is refused") and `R04` ("budget diffs are
+refused *without* the write switch") are correct-behaviour tests — the word
+describes the setup, not a defect — so they were left alone.
+
+R13 rewrite: the Phase 4 implementation already writes the uncapped enriched
+diff list to R2 at `diffs_key` and stamps `proposal_id`, `source_type`,
+`source_label`, `key_id`, `change_set_id` (verified in `src/lib/http.js`
+`cloudLogSave` and `src/reviews.js` accept). The test now passes an `extra`
+attribution object and asserts the 41-leaf list is present in R2 through
+`diffs_key` and every attribution column is set. It passes (158/158) and, by
+construction, would fail on the pre-fix tree (`diffs_key` and the columns did
+not exist). GATE: R13a rewritten and green; the defect list is recorded here.
+
+---
+
 ## Phase 0 — baseline and reproduction
 
 | Step | Files | Gate |

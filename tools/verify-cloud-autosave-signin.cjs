@@ -457,7 +457,11 @@ function annotateFailure() {
         await CR.cloudReviewAccept(1); await sleep(300);
         const zeroWarn = toasts.some(t => /nothing left to apply/.test(t.msg) && t.kind.indexOf('warn') === 0);
         await CR.cloudReviewAccept(2); await sleep(300);
-        const realOk = toasts.some(t => /now in the cloud project/.test(t.msg) && t.kind.indexOf('ok') === 0);
+        // F1.5 (2026-11-16): a real accept now reports "N change applied,
+        // revision X" (optionally "and the workspace was reloaded") instead of
+        // the old "now in the cloud project". The contract is still an 'ok'
+        // toast that names how many ops landed; assert that, not the prose.
+        const realOk = toasts.some(t => /change applied/.test(t.msg) && t.kind.indexOf('ok') === 0);
         await CR.cloudReviewAccept(3); await sleep(300);
         const errShown = toasts.some(t => t.msg.indexOf('proposal is not pending') !== -1 && t.kind.indexOf('err') === 0);
         return { zeroWarn: zeroWarn, realOk: realOk, errShown: errShown, toastCount: toasts.length };

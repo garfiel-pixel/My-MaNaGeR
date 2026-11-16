@@ -60,18 +60,25 @@ const COLS = ['free', 'contractor', 'estimator', 'company', 'enterprise'];
 function pricingRows() {
   const html = readFileSync(join(ROOT, 'pricing.html'), 'utf8');
   const rows = {};
-  const re = /<tr><td>([^<]+)<\/td>((?:<td[^>]*>.*?<\/td>)+)<\/tr>/g;
+  // Two flat lazy matches (row -> cell) rather than a nested quantified
+  // group: the old `(?:<td>.*?</td>)+` backtracked exponentially (CodeQL
+  // "inefficient regular expression"). Decode entities FIRST and strip tags
+  // LAST, in a single pass, so a decoded `&lt;` can never reconstruct markup
+  // after sanitization (CodeQL "incomplete multi-character sanitization").
+  const rowRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/g;
+  const cellRe = /<td\b[^>]*>([\s\S]*?)<\/td>/g;
   let m;
-  while ((m = re.exec(html))) {
-    const label = m[1].trim();
-    const cells = [...m[2].matchAll(/<td[^>]*>(.*?)<\/td>/g)].map(c =>
+  while ((m = rowRe.exec(html))) {
+    const cells = [...m[1].matchAll(cellRe)].map(c =>
       c[1]
-        .replace(/<[^>]+>/g, '')
         .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/<[^>]*>/g, '')
         .trim()
     );
-    if (cells.length === 5) {
-      rows[label] = cells;
+    if (cells.length >= 1 && cells[0]) {
+      rows[cells[0]] = cells.slice(1);
     }
   }
   return rows;

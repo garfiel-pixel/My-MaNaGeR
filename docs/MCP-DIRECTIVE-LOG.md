@@ -1003,3 +1003,28 @@ Final phase status (all gated green on `feat/mcp-agent-first`):
 
 All work stayed on `feat/mcp-agent-first`; `main` untouched pending the
 PR-gated merge.
+
+
+### PR #12 CI repair — 2026-11-16
+
+First PR run: `static`, `browser-app`, `browser-calc`, all three CodeQL
+language analyses GREEN; three failures fixed on the branch (never force-push
+or merge a red run):
+
+1. **cloud-core / qa-mcp-write-path** — W5 expected the flat "at most 500
+   diffs" message. F2 made the cap tier-aware ("501 changes; the contractor
+   plan allows 250 per call"). Re-baselined to assert the count + tier + per
+   call, keeping the no-row assertion. 19/20 → 20/20.
+2. **cloud-auth / verify-cloud-autosave-signin** — C4b expected the old
+   "now in the cloud project" accept toast. F1.3/F1.5 changed a real accept to
+   "N change applied, revision X" (with an ok kind). Re-baselined to assert an
+   ok toast naming how many ops landed. 11/12 → 12/12. This harness had been
+   green only because its stale prose assertion matched old code - exactly the
+   unwired-harness drift class the registry gate is meant to surface.
+3. **CodeQL (2 high)** — both in `test/tier-limits.test.mjs`'s pricing parser:
+   an exponentially-backtracking row regex `(?:<td>.*?</td>)+`, and a decode-
+   after-strip that could reconstruct markup. Rewrote to two flat lazy matches
+   and decode-then-strip-last. Pricing parity 5/5 still green.
+
+No app behaviour changed by these three repairs. Local battery after: verify
+green, 459/459 unit, write-path 20, autosave-signin 12, tier-limits 5.

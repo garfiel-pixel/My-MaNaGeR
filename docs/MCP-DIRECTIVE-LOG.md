@@ -981,3 +981,25 @@ contractor cap of 10/day, so validate_changes hard-refuses with the tier +
 limit + upsell sentence (the rule applied as documented).
 
 Battery after the fix: verify green, agent-first 186, parity 17, plan-badge 33.
+
+
+### Directive close-out — 2026-11-16
+
+**F5 skipped: no PHASE6-GO.** The owner's messages contain no `PHASE6-GO`
+token, so optional auto-accept is not started. The advanced worktree
+`c75de36` (`e85fcb8`) still holds a separate implementation; adopting it is an
+owner baseline decision, not a reason to begin F5 here.
+
+Final phase status (all gated green on `feat/mcp-agent-first`):
+- F0 baseline + green gates — DONE
+- F1.1–F1.7 correctness (revision gates, accept shape/status, owner-code/no
+  untrusted echo, delete reference cleanup) — DONE
+- F2 tier-aware limits (one table, envelope/pending/daily/API-key/retention,
+  get_schema, pricing parity) — DONE
+- F3 acceptance tests AT01/13/14/16/17/18/20 + AT14e — DONE
+- F4 agent-facing release notes + server 2.1.0 — DONE
+- Manual 8 report tests — 16/16 local branch build
+- F5 auto-accept — SKIPPED (no token)
+
+All work stayed on `feat/mcp-agent-first`; `main` untouched pending the
+PR-gated merge.

@@ -4519,6 +4519,43 @@ function addReview(env, row) {
       budgetDelete.refused
     );
 
+    // AT14e: a delete-only call must still QUEUE. `submitted` is the map the
+    // queue guard reads; before the 2026-11-16 fix only diffs/creates/sets
+    // wrote to it, so a call carrying just a delete came back "Nothing to
+    // propose" and NO delete could be proposed through apply_changes at all.
+    // The section must carry a real diff (the record removed), otherwise
+    // cloudScopeMerge sees no change and the guard still fires.
+    const delOnly = await mod.planProposal(
+      { deletes: [{ path: 'tasks', recordId: 'free1' }] },
+      live14,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: env14, projectId: PROJECT, tier: 'contractor' }
+    );
+    const stillThere = ((delOnly.base && delOnly.base.tasks) || []).some(function (t) {
+      return String(t.id) === 'free1';
+    });
+    const removedFromSubmitted =
+      Array.isArray(delOnly.submitted.tasks) &&
+      !delOnly.submitted.tasks.some(function (t) {
+        return String(t.id) === 'free1';
+      });
+    check(
+      'AT14e a delete-only proposal queues with a real section diff',
+      removedFromSubmitted &&
+        stillThere &&
+        delOnly.ops.some(function (o) {
+          return o.op === 'delete' && o.recordId === 'free1';
+        }) &&
+        delOnly.refused.length === 0,
+      {
+        submittedIds: (delOnly.submitted.tasks || []).map(function (t) {
+          return t.id;
+        }),
+        ops: delOnly.ops,
+        refused: delOnly.refused
+      }
+    );
+
     // AT20: a legacy row whose stored list is exactly 500 is a truncated copy;
     // it is refused with the stated message. A normal legacy row still accepts.
     const env20 = await makeEnv({ mod });

@@ -1255,6 +1255,19 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
       continue;
     }
     deleteCount++;
+    /* A delete-only call used to queue NOTHING: `submitted` is the map the
+       queue guard reads, and only diffs/creates/sets ever wrote to it. The
+       owner's manual test 7 found it - propose the deletion of a phase with
+       children and the whole call came back "Nothing to propose." with no
+       reason. Store the list WITH the record removed so cloudScopeMerge sees a
+       real diff (a bare `base[path]` is equal to prev and the guard still
+       fires). The accept engine ignores this display copy and applies the v2
+       delete op, where the child/budget refusal rules run. Build from any
+       prior submitted value so several deletes on one path all land. */
+    const delSrc = Array.isArray(submitted[path]) ? submitted[path] : arr;
+    submitted[path] = delSrc.filter(function (r) {
+      return String(r.id) !== recordId;
+    });
     ops.push({ op: 'delete', path: path, recordId: recordId });
   }
   // MCP-AGENT-FIRST 2026-11-12 1.8: refused ops are reported, accepted ops

@@ -76,6 +76,13 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
     guard that only strips "when the record is not also being deleted" is
     always false-to-strip and leaves dangling predecessors - the schedule then
     references a record that no longer exists.
+11. **A delete-only call must queue.** `planProposal` writes the touched
+    section into `submitted` with the record REMOVED - not the unchanged base
+    list. `submitted` is the map the queue guard reads; if only diffs/creates/
+    sets populate it, a call carrying just a `deletes` op comes back "Nothing
+    to propose" and no delete can be proposed at all (AT14e, owner manual test
+    7). A bare `base[path]` is deep-equal to `prev`, so `cloudScopeMerge` still
+    sees no diff - the submitted array MUST differ from prev.
 
 ## Architecture (reference: My MaNaGeR)
 

@@ -949,3 +949,35 @@ runs. The section now creates its own throwaway project (D0), which is what
 
 Note: the deployed build predates F1–F4, so this run validates the previous
 release's contract, not the branch's new behaviour.
+
+
+### Manual test plan (owner's 8 report tests) — 16/16, 2026-11-16
+
+Ran the eight manual tests from the directive against the LOCAL branch build
+(`tmp/probe-manual8.cjs`, wrangler dev + fake R2/D1): all eight pass, expanded
+to 16 assertions. Test 1 (create_project) is the app-wide surface, already
+covered by qa-appwide-mcp M12 (projectId + status, no ownerCode).
+
+Tests 2-6 confirm the F1.4/F1.5 contract end to end: one status change queues
+and accepts with appliedCount 1 + a revision bump; 11 changes accept in one
+call; a current-revision save lands without moving other records; a stale save
+answers 409 stale_revision without overwriting; `done` is refused naming
+`completed`.
+
+**Test 7 found a real defect.** Proposing a delete of a phase with children
+came back "Nothing to propose" — no proposal at all. `planProposal` wrote the
+touched section into `submitted` only for diffs/creates/sets; a call with just
+a delete left `submitted` empty and `queueMcpProposal`'s guard refused it. The
+fix writes the section into `submitted` with the record REMOVED (not the
+unchanged base list — a deep-equal list gives cloudScopeMerge no diff, so the
+guard still fires). The accept engine ignores that display copy and applies the
+v2 delete op, where the "phase still has child tasks" refusal runs: accept
+answers 409 with the reason in `conflicts`, the phase survives. Added AT14e to
+qa-mcp-agent-first (185 → 186) and durable guard 11 to the high-grade-mcp
+skill (hash re-computed).
+
+Test 8 confirms the large-change rule: 12 large budget lines exceed the
+contractor cap of 10/day, so validate_changes hard-refuses with the tier +
+limit + upsell sentence (the rule applied as documented).
+
+Battery after the fix: verify green, agent-first 186, parity 17, plan-badge 33.

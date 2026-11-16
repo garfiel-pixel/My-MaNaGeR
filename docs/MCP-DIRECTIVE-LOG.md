@@ -1023,8 +1023,14 @@ or merge a red run):
    unwired-harness drift class the registry gate is meant to surface.
 3. **CodeQL (2 high)** — both in `test/tier-limits.test.mjs`'s pricing parser:
    an exponentially-backtracking row regex `(?:<td>.*?</td>)+`, and a decode-
-   after-strip that could reconstruct markup. Rewrote to two flat lazy matches
-   and decode-then-strip-last. Pricing parity 5/5 still green.
+   after-strip that could reconstruct markup. It took three passes to clear:
+   first replaced the backtracking regex + reordered decode-then-strip, then
+   dropped entity decoding, and finally removed the regex tag-strip entirely
+   (CodeQL flags ANY `replace(/<[^>]*>/,'')` as incomplete sanitization). Every
+   cell in pricing.html's comparison table is plain text/numbers — no nested
+   tags, no entities — so the regex capture group needs only `.trim()`. Final
+   parser: two flat lazy matches, `.trim()`, no replace/decode. CodeQL clean,
+   pricing parity 5/5 still green.
 
 No app behaviour changed by these three repairs. Local battery after: verify
 green, 459/459 unit, write-path 20, autosave-signin 12, tier-limits 5.

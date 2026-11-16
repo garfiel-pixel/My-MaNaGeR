@@ -62,21 +62,16 @@ function pricingRows() {
   const rows = {};
   // Two flat lazy matches (row -> cell) rather than a nested quantified
   // group: the old `(?:<td>.*?</td>)+` backtracked exponentially (CodeQL
-  // "inefficient regular expression"). Decode entities FIRST and strip tags
-  // LAST, in a single pass, so a decoded `&lt;` can never reconstruct markup
-  // after sanitization (CodeQL "incomplete multi-character sanitization").
+  // "inefficient regular expression"). This parser only reads the two numeric
+  // comparison rows, whose cells are plain text/numbers - no HTML entities.
+  // A single tag-strip pass avoids chained decode/strip replacements, which
+  // CodeQL flags as incomplete multi-character sanitization (a decoded `&lt;`
+  // could reconstruct markup after an earlier strip).
   const rowRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/g;
   const cellRe = /<td\b[^>]*>([\s\S]*?)<\/td>/g;
   let m;
   while ((m = rowRe.exec(html))) {
-    const cells = [...m[1].matchAll(cellRe)].map(c =>
-      c[1]
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/<[^>]*>/g, '')
-        .trim()
-    );
+    const cells = [...m[1].matchAll(cellRe)].map(c => c[1].replace(/<[^>]*>/g, '').trim());
     if (cells.length >= 1 && cells[0]) {
       rows[cells[0]] = cells.slice(1);
     }

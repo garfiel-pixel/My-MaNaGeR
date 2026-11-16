@@ -1374,21 +1374,27 @@ function addReview(env, row) {
   }
 
   // =====================================================================
-  // R12 — completing a task does not stamp completedDate/statusSince
+  // R12 — a completed status STAMPS completedDate and statusSince (F1.2).
+  // Pre-fix the server set only `status` and left the stamps blank; the old
+  // test asserted that defect as correct. The client stamps on a real status
+  // move (js/mmgr-kanban.js stampStatus), so the accept must too.
   // =====================================================================
-  section('R12 — a completed status leaves the stamps unset');
+  section('R12 — a completed status stamps completedDate and statusSince');
   {
     const env = await makeEnv({ mod });
-    const q = await tool(env, 90, 'apply_changes', {
+    await tool(env, 90, 'apply_changes', {
       diffs: [{ path: 'tasks', recordId: 't6', field: 'status', after: 'completed' }]
     });
     const a = await accept(env, env.__store.reviews[0].id);
     const st = await stateOf(env);
     const t = st.tasks[5];
     check(
-      'R12 accept sets status but neither completedDate nor statusSince',
-      a.status === 200 && t.status === 'completed' && !t.completedDate && !t.statusSince,
-      { status: a.status, completedDate: t.completedDate, statusSince: t.statusSince }
+      'R12 accept stamps statusSince and completedDate on a completed move',
+      a.status === 200 &&
+        t.status === 'completed' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(String(t.statusSince || '')) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(String(t.completedDate || '')),
+      { status: a.status, statusSince: t.statusSince, completedDate: t.completedDate }
     );
   }
 

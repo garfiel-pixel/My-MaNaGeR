@@ -377,3 +377,83 @@ test('touched tasks have their derived schedule fields nulled for recompute', ()
   // An untouched task keeps its derived values.
   assert.equal(r.next.tasks[1].critical, undefined);
 });
+
+// ---- F1.2: the accept stamps task status transitions like the client -------
+test('F1.2 a status change stamps statusSince + completedDate and clears leadTime', () => {
+  const st = base();
+  st.tasks[0].leadTime = true;
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't1',
+            field: 'status',
+            before: 'todo',
+            after: 'completed'
+          }
+        ]
+      }
+    ],
+    { model, today: '2026-11-16' }
+  );
+  assert.equal(r.hardFailure, null);
+  const t = r.next.tasks[0];
+  assert.equal(t.status, 'completed');
+  assert.equal(t.statusSince, '2026-11-16');
+  assert.equal(t.completedDate, '2026-11-16');
+  assert.equal(t.leadTime, false);
+});
+
+test('F1.2 a completed -> todo move clears completedDate and re-stamps statusSince', () => {
+  const st = base();
+  st.tasks[0].status = 'completed';
+  st.tasks[0].completedDate = '2026-11-01';
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't1',
+            field: 'status',
+            before: 'completed',
+            after: 'todo'
+          }
+        ]
+      }
+    ],
+    { model, today: '2026-11-16' }
+  );
+  const t = r.next.tasks[0];
+  assert.equal(t.status, 'todo');
+  assert.equal(t.completedDate, undefined);
+  assert.equal(t.statusSince, '2026-11-16');
+});
+
+test('F1.2 a non-status edit does not stamp the task', () => {
+  const st = base();
+  st.tasks[0].statusSince = '2026-11-02';
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [{ op: 'set', path: 'tasks', recordId: 't1', field: 'assignee', after: 'Sam' }]
+      }
+    ],
+    { model, today: '2026-11-16' }
+  );
+  assert.equal(r.next.tasks[0].statusSince, '2026-11-02');
+  assert.equal(r.next.tasks[0].completedDate, undefined);
+});

@@ -423,6 +423,13 @@ jobs:
         id: qa-mcp-agent-first
         run: node tools/qa-mcp-agent-first.cjs
 
+      # MCP-FINAL F1.2 (2026-11-16): the pure server port of the client's task
+      # side effects (stampStatus + working-day triad + phase roll-up) must
+      # match the real client function. Pure-Node (no Chrome, no wrangler).
+      - name: "T1: task-effects parity (F1.2)"
+        id: qa-task-effects-parity
+        run: node tools/qa-task-effects-parity.cjs
+
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
 

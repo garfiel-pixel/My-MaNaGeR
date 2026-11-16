@@ -43,6 +43,7 @@
 import { isDeletable, fieldSpec, getList, getSection, canonicalField } from '../mcp/model.js';
 import { PROTO_KEYS, isProtoKey, getPathValue, setPathValue } from './proposal-diffs.js';
 import { applyResultCode } from '../mcp/errors.js';
+import { applyTaskEffects } from '../domain/task-effects.js';
 
 // A predecessor cycle check ported verbatim from js/mmgr-schedule.js.
 function findCycles(tasks) {
@@ -562,6 +563,18 @@ export function applyOps(liveState, proposals, deps) {
         targeted[key] = { proposalId: proposal.id, opIndex: oi, done: true };
       }
     }
+  }
+
+  // ---- 3.45 STATUS + DATE SIDE EFFECTS (F1.2) ------------------------------
+  // Port the client's own task-update side effects before the derived-field
+  // marking below: a real status change stamps statusSince / startedDate /
+  // completedDate and clears leadTime; a date or duration edit recomputes the
+  // triad and rolls phases up. Without this an accepted status lands blank.
+  if (Array.isArray(work.tasks)) {
+    applyTaskEffects(work.tasks, snapshot.tasks, {
+      workWeek: liveState && liveState.workWeek,
+      today: deps && deps.today
+    });
   }
 
   // ---- 3.5 FALLBACK: null the derived schedule fields on touched tasks ----

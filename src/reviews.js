@@ -1107,6 +1107,39 @@ async function acceptMcpV2(
         409
       );
     }
+    // NO FALSE SUCCESS (2026-11-12 contract, e2e B5): every op skipped because
+    // the live value already equals its `after`, on a proposal that has NEVER
+    // been decided. That means another path (a different accept, or a save)
+    // landed the change, so this row is a stale duplicate. Reporting
+    // "accepted, N updates pulled" for it is exactly the false success the
+    // owner flagged in proposal #68. Refuse with the remedy sentence and leave
+    // the row pending. `row.decided_at` is the pre-claim value: the claim sets
+    // it BEFORE any R2 write, so a decided row whose R2 write survived a lost
+    // D1 status update is a recovery retry and must still heal to accepted
+    // (AT25). It therefore skips this gate and takes the normal write path.
+    const skippedOps = (applied.report || []).filter(function (r) {
+      return r.result === 'skipped_already' || r.result === 'superseded';
+    });
+    if (
+      appliedCount === 0 &&
+      skippedOps.length > 0 &&
+      applied.conflicts.length === 0 &&
+      !(effBudget && effBudget.length) &&
+      !row.decided_at
+    ) {
+      await releaseClaim(env, reviewId);
+      return json(
+        {
+          ok: false,
+          error: 'stale',
+          message:
+            'This proposal no longer matches the project. Refresh the project and review it again.',
+          stale: skippedOps,
+          problems: skippedOps.length
+        },
+        409
+      );
+    }
     next.updatedAt = now;
     let r2Payload = JSON.stringify(next);
     if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {

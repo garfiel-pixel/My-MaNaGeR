@@ -111,6 +111,17 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
   the earlier one (`superseded`), computed against the pre-state snapshot.
 - **Idempotency:** `cloud_reviews.import_key` is unique; identical arguments in
   the same 10-minute bucket return the same proposal id with `duplicate: true`.
+- **No false success on a zero-diff accept:** when every op resolves
+  `skipped_already`/`superseded` (live already equals `after`) on a proposal
+  whose pre-claim `decided_at` is still null, another path applied the change -
+  the row is a STALE DUPLICATE. `acceptMcpV2` (`src/reviews.js`) must refuse
+  `409 stale` with the "Refresh the project and review it again" sentence,
+  release the claim and leave the row pending (e2e B5, gate AT25e). Only a row
+  that was already decided (an earlier claim whose R2 write survived a lost D1
+  status update) may heal to accepted on an all-skipped retry (AT25a-d): the
+  claim stamps `decided_at` before any R2 write, so that stamp distinguishes a
+  recovery retry from a redundant duplicate. Never report "accepted, N updates
+  pulled" for a no-op accept.
 
 ## Tool catalog shape
 

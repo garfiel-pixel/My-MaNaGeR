@@ -200,7 +200,22 @@ async function startWrangler() {
       // be unlocked the production way (signature-verified webhook), never a
       // direct DB write.
       '--var',
-      'LEMONSQUEEZY_WEBHOOK_SECRET:' + E2E_LS_SECRET
+      'LEMONSQUEEZY_WEBHOOK_SECRET:' + E2E_LS_SECRET,
+      // C4/C5 (2026-11-13): this harness fires well over the 30/min general
+      // cloud bucket from one loopback IP across phases A+D+B+E+C. Without the
+      // test hook the final revoke/delete checks (C4, C5) trip a 429 and report
+      // a false failure - the exact "green count that does not test the
+      // contract" this pass is meant to catch. qa-approval.cjs sets the same
+      // hook; production is untouched (default factor 1).
+      '--var',
+      'RATE_LIMIT_FACTOR:50',
+      // D-phase session flake (2026-11-13): without GOOGLE_CLIENT_SECRET the
+      // Worker signs mmgr_session with a per-isolate random key. If wrangler
+      // reloads the isolate mid-run, the cookie minted in phase A no longer
+      // verifies and D4-D8 answer 401/403. A fixed test secret makes the HMAC
+      // key stable across reloads. Test-only binding; production sets its own.
+      '--var',
+      'GOOGLE_CLIENT_SECRET:qa-mcp-e2e-stable-session-secret'
     ],
     {
       cwd: ROOT,
@@ -1257,16 +1272,22 @@ async function main() {
       postStatus
     );
     const rl2 = await api('GET', '/api/cloud/projects/' + PID + '/reviews', undefined, ownerH(OC));
-    const a5Row = (rl2.data.proposals || []).find(p => String(p.keyId) === String(KEY_ID));
+    // B4 accepted ONE of the two same-key proposals; the OTHER (the B3b
+    // duplicate) is now refused as stale and correctly stays pending for the
+    // owner to review (2026-11-12 no-false-success contract, e2e B5). So the
+    // key can hold a mix of accepted + pending rows. Assert that at least one
+    // was decided by the browser UI, not that every row is accepted.
+    const a5Rows = (rl2.data.proposals || []).filter(p => String(p.keyId) === String(KEY_ID));
+    const a5Accepted = a5Rows.some(p => p.status === 'accepted');
     const cl = await api('GET', '/api/cloud/projects/' + PID + '/changelog', undefined, ownerH(OC));
     const entries = cl.data.entries || cl.data.log || [];
     const acc = entries.find(
       e => e.entryType === 'accepted' || e.type === 'accepted' || e.entry_type === 'accepted'
     );
     check(
-      'C2 the Phase-A proposal was decided by the browser owner UI (status accepted) + changelog carries the accepted entry',
-      a5Row && a5Row.status === 'accepted' && !!acc,
-      { a5Status: a5Row && a5Row.status, hasAccepted: !!acc }
+      'C2 a Phase-A proposal was decided by the browser owner UI (status accepted) + changelog carries the accepted entry',
+      a5Accepted && !!acc,
+      { a5Statuses: a5Rows.map(p => p.status), hasAccepted: !!acc }
     );
   }
 

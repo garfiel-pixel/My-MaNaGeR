@@ -1241,9 +1241,19 @@ function addReview(env, row) {
   }
 
   // =====================================================================
-  // R13 — a 40+ leaf accept writes a changelog entry with null diffs
+  // R13 — a 40+ leaf accept stores the FULL diff list through diffs_key and
+  // stamps attribution (Phase 4 fix; F0.3 re-baseline 2026-11-16).
+  //
+  // The pre-fix code wrote `diffs_json: null` for an over-cap accept and
+  // nothing else, so the change list was lost and the row carried no proposal
+  // or source columns. Phase 4 added `diffs_key` (the uncapped enriched list in
+  // R2) and the attribution columns. This test previously asserted the DEFECT
+  // as correct ("carries null diffs_json", "not yet attributed"); it now
+  // asserts the fixed behaviour. `diffs_json` stays null for an over-cap entry
+  // BY DESIGN - the list lives in diffs_key - so the assertion is that the list
+  // is present and complete, not that diffs_json is populated.
   // =====================================================================
-  section('R13 — a large accept loses the changelog diffs and the proposal');
+  section('R13 — a large accept keeps every diff (diffs_key) and its attribution');
   {
     const env = await makeEnv({ mod });
     const prev = await stateOf(env);
@@ -1257,18 +1267,49 @@ function addReview(env, row) {
       prev,
       next,
       { type: 'owner', label: 'Owner' },
-      'accepted'
+      'accepted',
+      {
+        proposalId: 'rev-68',
+        sourceType: 'agent',
+        sourceLabel: 'MCP AI',
+        keyId: 42,
+        changeSetId: 'cs-1'
+      }
     );
     const row = env.__store.changelog[0];
+    const diffsObj = row && row.diffs_key ? await env.R2.get(row.diffs_key) : null;
+    const diffsList = diffsObj ? JSON.parse(await diffsObj.text()) : null;
     check(
-      'R13a the entry exists but carries null diffs_json (snapshot only)',
-      !!entry && row && row.diffs_json === null && !!row.snapshot_key,
-      { entry, row: row && { diffs_json: row.diffs_json, snapshot_key: row.snapshot_key } }
+      'R13a the full 41-leaf diff list is stored through diffs_key, not dropped',
+      !!entry &&
+        row &&
+        row.diffs_json === null &&
+        !!row.snapshot_key &&
+        !!row.diffs_key &&
+        Array.isArray(diffsList) &&
+        diffsList.length === 41,
+      {
+        entry,
+        diffs_json: row && row.diffs_json,
+        diffs_key: row && row.diffs_key,
+        diffs_len: diffsList && diffsList.length
+      }
     );
     check(
-      'R13b the entry has no proposal_id / source_label attribution (not yet attributed)',
-      row && row.proposal_id == null && row.source_label == null,
-      { row }
+      'R13b the entry carries proposal_id / source_type / source_label / key_id / change_set_id',
+      row &&
+        String(row.proposal_id) === 'rev-68' &&
+        row.source_type === 'agent' &&
+        row.source_label === 'MCP AI' &&
+        String(row.key_id) === '42' &&
+        row.change_set_id === 'cs-1',
+      {
+        proposal_id: row && row.proposal_id,
+        source_type: row && row.source_type,
+        source_label: row && row.source_label,
+        key_id: row && row.key_id,
+        change_set_id: row && row.change_set_id
+      }
     );
   }
 
@@ -2446,6 +2487,78 @@ function addReview(env, row) {
         retryStatus: retrySet.status,
         retryOk: retryData && retryData.ok
       }
+    );
+  }
+
+  // =====================================================================
+  // AT25e — NO FALSE SUCCESS (2026-11-12 contract, e2e B5). A proposal whose
+  // ops are ALL already satisfied in R2 but that has NEVER been decided is a
+  // stale duplicate: its effect landed through another path. Accepting it must
+  // be refused (409 stale) with the remedy sentence and leave the row pending
+  // for review - never report "accepted, N updates pulled" for a no-op. A
+  // DECIDED row (decided_at stamped by an earlier claim whose R2 write survived
+  // a lost D1 status update) is a recovery retry and still heals (AT25a-d).
+  // =====================================================================
+  section('AT25e — stale duplicate accept refuses, no false success');
+  {
+    const env = await makeEnv({ mod });
+    // A real accept lands the change in R2 and marks THIS row decided.
+    const realId = addReview(env, {
+      key_id: 'k-AT25e',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't6',
+            field: 'status',
+            before: 'todo',
+            beforeAbsent: false,
+            after: 'inprogress',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const first = await accept(env, realId);
+    check(
+      'AT25e-a the real change applies',
+      first.status === 200 && !!(first.data && first.data.applied >= 1),
+      first.data && { status: first.status, applied: first.data.applied }
+    );
+
+    // A DIFFERENT, never-decided proposal wants the same end value, which is
+    // now live -> every op resolves skipped_already (a zero-diff accept).
+    const dupId = addReview(env, {
+      key_id: 'k-AT25e',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [{ op: 'set', path: 'tasks', recordId: 't6', field: 'status', after: 'inprogress' }]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const dup = await accept(env, dupId);
+    check(
+      'AT25e-b a stale duplicate accept is refused 409 stale',
+      dup.status === 409 && !!(dup.data && dup.data.error === 'stale'),
+      { status: dup.status, data: dup.data && { error: dup.data.error, message: dup.data.message } }
+    );
+    check(
+      'AT25e-c the refusal carries the actionable remedy sentence',
+      /no longer matches|Refresh the project/i.test(dup.text),
+      dup.text
+    );
+    const dupRow = env.__store.reviews.find(function (r) {
+      return r.id === dupId;
+    });
+    check(
+      'AT25e-d the stale row stays pending for review (claim released), no false success',
+      !!dupRow && dupRow.status === 'pending',
+      dupRow && dupRow.status
     );
   }
 

@@ -470,6 +470,9 @@ var MMGR = window.MMGR || {};
   // the bond for retry on failure.
   async function resyncNow(opts) {
     const force = !!(opts && opts.force);
+    // F1.3: after an accept, REPLACE the workspace with the cloud snapshot
+    // instead of merging it, so the accepted change is always what shows.
+    const replace = !!(opts && opts.replace);
     const b = getBond();
     if (!b && !force) {
       setStatus('No cloud bond stored for this project.', 'warn');
@@ -513,11 +516,19 @@ var MMGR = window.MMGR || {};
         );
         return;
       }
-      // Per-field merge through the state layer (newest-wins per field),
-      // NOT a whole-file overwrite - side-by-side edits reconcile.
-      const report = ns.State.mergeExternal(data.state);
+      // After an accept: REPLACE the workspace with the authoritative cloud
+      // state. Otherwise: per-field merge (newest-wins) so side-by-side edits
+      // reconcile.
+      const report = replace
+        ? ns.State.replaceExternal(data.state)
+        : ns.State.mergeExternal(data.state);
       if (!report) {
-        setStatus('Cloud snapshot could not be merged - it is not a valid project file.', 'err');
+        setStatus(
+          replace
+            ? 'Cloud snapshot could not be loaded - it is not a valid project file.'
+            : 'Cloud snapshot could not be merged - it is not a valid project file.',
+          'err'
+        );
         return;
       }
       setLastSeen(data.savedAt || '');
@@ -528,17 +539,21 @@ var MMGR = window.MMGR || {};
       if (ns.Render && ns.Render.renderAll) {
         ns.Render.renderAll();
       }
-      setStatus(
-        'Re-synced ' +
-          report.adopted +
-          ' update' +
-          (report.adopted === 1 ? '' : 's') +
-          ' from the cloud copy' +
-          (report.adopted ? '' : ' - already up to date') +
-          '.',
-        'ok'
-      );
-      return { ok: true, adopted: report.adopted };
+      if (replace) {
+        setStatus('Reloaded the accepted state from the cloud copy.', 'ok');
+      } else {
+        setStatus(
+          'Re-synced ' +
+            report.adopted +
+            ' update' +
+            (report.adopted === 1 ? '' : 's') +
+            ' from the cloud copy' +
+            (report.adopted ? '' : ' - already up to date') +
+            '.',
+          'ok'
+        );
+      }
+      return { ok: true, adopted: report.adopted, replaced: replace };
     } catch (e) {
       var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
       setStatus(
@@ -5167,6 +5182,11 @@ var MMGR = window.MMGR || {};
     // without a full page reload.
     cloudPullMerge: function () {
       return resyncNow({ force: true });
+    },
+    // F1.3: after an owner accept, reload the FULL cloud state (replace, not
+    // merge) and re-render, so the accepted change is always what shows.
+    cloudReloadAfterAccept: function () {
+      return resyncNow({ force: true, replace: true });
     },
     cloudBondLater: bondLater,
     cloudBroadcast: cloudBroadcast,

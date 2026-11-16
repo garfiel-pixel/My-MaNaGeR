@@ -117,6 +117,51 @@ not exist). GATE: R13a rewritten and green; the defect list is recorded here.
 
 ---
 
+## F1 — Correctness fixes (2026-11-16)
+
+**F1.1 Idempotency (D1) — PASS.** `findDuplicateProposal` now matches only
+`pending`/`accepting`/`accepted` rows; single reject, change-set reject and a
+whole/zero-remaining withdraw all clear `import_key = NULL` in the same UPDATE
+(a partial withdraw that keeps ops leaves it). The idempotency check is hoisted
+ABOVE `planProposal` and the early-returns, so a resubmit of an already-accepted
+proposal returns its original id instead of "No changes" (an accepted row finds
+nothing left to diff, so the old ordering hid the decision). New tests F1.1a–e:
+pending → duplicate; reject / withdraw / change-set-reject → fresh; accept →
+same id. Gate: `qa-mcp-agent-first` 163/163; `qa-mcp-write-path` 20/20;
+`qa-appwide-mcp` 60/60; `qa-mcp-parity` 16/16; `qa-mcp-budget` 46/46;
+`qa-changelog-diffs` green.
+
+**F1.2 Task status side effects (D2) — PASS.** New pure module
+`src/domain/task-effects.js` ports the client's `stampStatus` (statusSince /
+startedDate / completedDate, leadTime cleared on a real move), the working-day
+start/duration/end triad and `rollupPhases`, in UTC (the client uses local
+dates; the Worker has only UTC, recorded as the known nuance — the app
+re-stamps on the next real move). `applyOps` calls `applyTaskEffects` before the
+derived-field marking. R12 rewritten to assert the stamps ARE set. New harness
+`tools/qa-task-effects-parity.cjs` extracts the REAL `stampStatus` from
+`js/mmgr-kanban.js` and compares it to the port across 10 transitions, plus 12
+triad/roll-up fixtures — 24/24. `apply-ops.test.mjs` +3 stamp cases. Wired into
+`ci.yml` static job; registry 230 harnesses. Gate: `npm test` 444/444.
+
+**F1.3 Staleness scope (D3, D4) + reload-after-accept — PASS.** Model marks
+schedule-input fields (`isPhase`, `status`, `startDate`, `endDate`, `duration`,
+`predecessors`, `milestone`, `parentName`, `leadTime`, `recurring`,
+`weatherSensitive`). The accept nulls `critical`/`totalFloat`/`freeFloat`/
+`floatBaseline` on EVERY task only when an applied op is a task create/delete, a
+schedule-input write, or a project-deadline change; any other edit nulls nothing.
+The `derived` text string is never written and any leftover is deleted on every
+accept; `get_tasks` reports it at READ time when a non-phase task has null
+`critical` and `totalFloat`. **Core witnessed fix:** the accept handlers in
+`js/cloud/review.js` now call `Cloud.cloudReloadAfterAccept()` (new
+`State.replaceExternal` + `resyncNow({replace:true})`): a full `/load` REPLACE of
+the in-memory state and `renderAll()`, not the old per-field `cloudPullMerge`,
+and the status line reports "N applied, revision X" only after the reload. The
+old derived test was rewritten to the fixed contract; F1.3a–c added. Gate:
+`npm run verify` green; `qa-mcp-agent-first` 166/166; `qa-mcp-live-e2e` 43/43
+(B4 browser accept still green under the hard reload).
+
+---
+
 ## Phase 0 — baseline and reproduction
 
 | Step | Files | Gate |

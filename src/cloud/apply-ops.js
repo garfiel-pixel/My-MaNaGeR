@@ -291,7 +291,6 @@ export function applyOps(liveState, proposals, deps) {
   const conflicts = [];
   const derivedTouched = {};
   const targeted = Object.create(null);
-  const touchedTasks = Object.create(null);
 
   // Precompute the global last op index per target key, so a later op
   // supersedes any earlier op on the same (path, recordId, field) across all
@@ -321,12 +320,6 @@ export function applyOps(liveState, proposals, deps) {
     report.push(entry);
     if (result === 'conflict') {
       conflicts.push(entry);
-    }
-  }
-
-  function touchTask(id) {
-    if (id) {
-      touchedTasks[String(id)] = true;
     }
   }
 
@@ -399,7 +392,6 @@ export function applyOps(liveState, proposals, deps) {
           }
         }
         arr.push(clone(op.record));
-        touchTask(id);
         recordResult(entry, 'applied');
         targeted[key] = { proposalId: proposal.id, opIndex: oi, done: true };
         continue;
@@ -496,9 +488,6 @@ export function applyOps(liveState, proposals, deps) {
         }
         entry.before = live;
         rec[op.field] = op.afterAbsent ? undefined : op.after;
-        if (op.path === 'tasks') {
-          touchTask(op.recordId);
-        }
         recordResult(entry, 'applied');
         targeted[key] = { proposalId: proposal.id, opIndex: oi, done: true };
       } else {
@@ -577,12 +566,34 @@ export function applyOps(liveState, proposals, deps) {
     });
   }
 
-  // ---- 3.5 FALLBACK: null the derived schedule fields on touched tasks ----
-  const touchedIds = Object.keys(touchedTasks);
+  // ---- 3.5 DERIVED SCHEDULE FIELDS (F1.3) ---------------------------------
+  // Float and criticality are GLOBAL: a schedule-input edit (dates, duration,
+  // deps, status, phase, parent, lead-time, weather), a task create/delete, or
+  // a project-deadline change invalidates them on EVERY task. Any other edit
+  // (notes, assignee, ...) leaves them untouched. The old code nulled only the
+  // touched tasks (stale float on the rest) and for EVERY edit (needless
+  // recompute), and stamped a `derived` string that persisted forever.
+  let scheduleAffecting = false;
+  report.forEach(function (r) {
+    if (r.result !== 'applied') {
+      return;
+    }
+    if (r.path === 'tasks') {
+      if (r.field == null) {
+        scheduleAffecting = true; // a create or a delete
+        return;
+      }
+      const sp = model.fieldSpec('tasks', r.field);
+      if (sp && sp.scheduleInput) {
+        scheduleAffecting = true;
+      }
+    } else if (r.path === 'projectDeadline') {
+      scheduleAffecting = true;
+    }
+  });
   const derivedChanges = [];
-  if (touchedIds.length && Array.isArray(work.tasks)) {
-    touchedIds.forEach(id => {
-      const t = work.tasks.find(x => String(x.id) === String(id));
+  if (scheduleAffecting && Array.isArray(work.tasks)) {
+    work.tasks.forEach(t => {
       if (!t) {
         return;
       }
@@ -595,8 +606,15 @@ export function applyOps(liveState, proposals, deps) {
         });
         t[f] = null;
       });
-      t.derived = 'pending recompute (opens in the app)';
       derivedTouched[t.id] = true;
+    });
+  }
+  // Cleanup: a `derived` string written by the first pass must never persist.
+  if (Array.isArray(work.tasks)) {
+    work.tasks.forEach(t => {
+      if (t && typeof t.derived === 'string') {
+        delete t.derived;
+      }
     });
   }
 

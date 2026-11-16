@@ -1544,7 +1544,13 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
           completedDate: t.completedDate || null,
           statusSince: t.statusSince || null,
           leadTime: !!t.leadTime,
-          confidence: t.confidence || null
+          confidence: t.confidence || null,
+          // F1.3: a non-phase task whose derived schedule fields are both null
+          // needs a recompute in the app. Reported at READ time, never stored.
+          derived:
+            !t.isPhase && t.critical == null && t.totalFloat == null
+              ? 'pending recompute (opens in the app)'
+              : null
         };
       });
       const all = [
@@ -1570,7 +1576,8 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
         'completedDate',
         'statusSince',
         'leadTime',
-        'confidence'
+        'confidence',
+        'derived'
       ];
       const asked =
         args && Array.isArray(args.fields)

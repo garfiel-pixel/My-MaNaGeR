@@ -1472,6 +1472,66 @@ function addReview(env, row) {
   }
 
   // =====================================================================
+  // F1.3 — derived schedule fields: only a schedule edit nulls them, on
+  // EVERY task; the `derived` string is never stored; get_tasks reports it
+  // at read time.
+  // =====================================================================
+  section('F1.3 — derived schedule fields are global, read-time, never stored');
+  {
+    // A non-schedule edit (notes) nulls nothing.
+    const e1 = await makeEnv({ mod });
+    await tool(e1, 95, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't7', field: 'notes', after: 'no sched change' }]
+    });
+    const a1 = await accept(e1, e1.__store.reviews[0].id);
+    const st1 = await stateOf(e1);
+    check(
+      'F1.3a a notes edit nulls no derived fields and stores no derived string',
+      a1.status === 200 &&
+        a1.data &&
+        Array.isArray(a1.data.derivedChanges) &&
+        a1.data.derivedChanges.length === 0 &&
+        (st1.tasks || []).every(t => typeof t.derived !== 'string'),
+      { derived: a1.data && a1.data.derivedChanges && a1.data.derivedChanges.length }
+    );
+
+    // A task create (schedule-affecting) nulls derived on EVERY task, stores
+    // no `derived` string, and get_tasks reports the hint at READ time.
+    const e2 = await makeEnv({ mod });
+    const beforeCount = (await stateOf(e2)).tasks.length;
+    await tool(e2, 96, 'apply_changes', {
+      creates: [{ path: 'tasks', record: { name: 'F1.3 new task', status: 'todo' } }]
+    });
+    const a2 = await accept(e2, e2.__store.reviews[0].id);
+    const st2 = await stateOf(e2);
+    const workItems = (st2.tasks || []).filter(t => !t.isPhase);
+    check(
+      'F1.3b a task create nulls derived on every task and stores no derived string',
+      a2.status === 200 &&
+        a2.data &&
+        a2.data.derivedChanges.length >= beforeCount &&
+        workItems.length > 0 &&
+        workItems.every(t => t.critical === null && t.totalFloat === null) &&
+        (st2.tasks || []).every(t => typeof t.derived !== 'string'),
+      { derived: a2.data && a2.data.derivedChanges && a2.data.derivedChanges.length, beforeCount }
+    );
+    const gt = await tool(e2, 97, 'get_tasks', {});
+    let gtBody = null;
+    try {
+      gtBody = JSON.parse(textOf(gt));
+    } catch (e) {
+      gtBody = null;
+    }
+    check(
+      'F1.3c get_tasks reports derived at read time for a null-derived work item',
+      gtBody &&
+        Array.isArray(gtBody.tasks) &&
+        gtBody.tasks.some(t => !t.isPhase && t.derived === 'pending recompute (opens in the app)'),
+      { sample: gtBody && gtBody.tasks && gtBody.tasks.slice(0, 2) }
+    );
+  }
+
+  // =====================================================================
   // R14 — get_changes_since is part of the catalog (Phase 4.2 RE-BASELINE:
   // the Phase 0 defect was a missing tool; the fix is the tool plus its
   // paging contract, so this test now proves PRESENCE and the schema).

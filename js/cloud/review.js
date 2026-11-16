@@ -545,26 +545,30 @@ var MMGR = window.MMGR || {};
         return;
       }
       renderChangeSetResult(cs, data);
-      setStatus('Accepted - refreshing this project\u2026', 'busy');
+      // F1.3: reload the FULL cloud state (replace, not merge) so the accepted
+      // changes are what the workspace shows, then say what landed.
+      setStatus('Accepted - reloading this project\u2026', 'busy');
+      let reload = null;
       try {
-        if (C.cloudPullMerge) {
-          await C.cloudPullMerge();
-        }
+        reload = C.cloudReloadAfterAccept ? await C.cloudReloadAfterAccept() : null;
       } catch (e) {
-        /* pull-merge is best-effort; the summary above already reports counts */
+        reload = null;
       }
+      const conflictN = Array.isArray(data.conflicts)
+        ? data.conflicts.length
+        : Number(data.conflicts) || 0;
+      const revTxt = data.revision != null ? ', revision ' + data.revision : '';
       setStatus(
-        'Accepted ' +
+        'Accepted - ' +
           (data.applied || 0) +
           ' change' +
           ((data.applied || 0) === 1 ? '' : 's') +
-          (data.conflicts
-            ? '; ' +
-              data.conflicts +
-              ' conflict' +
-              (data.conflicts === 1 ? '' : 's') +
-              ' kept the live value'
+          ' applied' +
+          revTxt +
+          (conflictN
+            ? '; ' + conflictN + ' conflict' + (conflictN === 1 ? '' : 's') + ' kept the live value'
             : '') +
+          (reload && reload.ok ? ' (workspace reloaded)' : '') +
           '.',
         'ok'
       );
@@ -757,25 +761,23 @@ var MMGR = window.MMGR || {};
         cloudReviewList();
         return;
       }
-      // OWNER 2026-11-12: accepting must SHOW the change. Pull the cloud
-      // snapshot into the open workspace (per-field merge, no reload) and say
-      // how many updates landed.
-      setStatus('Accepted - refreshing this project\u2026', 'busy');
-      let pull = null;
+      // F1.3: reload the FULL cloud state (replace, not merge) so the accepted
+      // change is what the workspace shows - never claim "accepted" before the
+      // new state is on screen. Show "N applied, revision X".
+      setStatus('Accepted - reloading this project\u2026', 'busy');
+      let reload = null;
       try {
-        pull = C.cloudPullMerge ? await C.cloudPullMerge() : null;
+        reload = C.cloudReloadAfterAccept ? await C.cloudReloadAfterAccept() : null;
       } catch (e) {
-        pull = null;
+        reload = null;
       }
+      const revTxt = data.revision != null ? ', revision ' + data.revision : '';
       setStatus(
-        'Accepted - the change is now in the cloud project' +
-          (pull && pull.ok && pull.adopted
-            ? ' and ' +
-              pull.adopted +
-              ' update' +
-              (pull.adopted === 1 ? '' : 's') +
-              ' were pulled into this workspace'
-            : '') +
+        'Accepted - ' +
+          (data.applied || 1) +
+          ' change applied' +
+          revTxt +
+          (reload && reload.ok ? ' and the workspace was reloaded' : '') +
           '.',
         'ok'
       );

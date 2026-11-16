@@ -204,6 +204,30 @@ reads the count, not the array. Gate: `qa-mcp-agent-first` 169/169 with F1.5a-c
 (applied list + count + arrays, numeric revision, status poll matches);
 `qa-mcp-live-e2e` 43/43 (E6/E7 re-baselined to `appliedCount`).
 
+**F2 Tier-aware limits — PASS.** `src/mcp/tier-limits.js` holds the one frozen
+table (free/estimator/contractor/company/enterprise: active keys, pending per
+key, daily ops per key, ops per call, large budget changes per day, report
+retention days) plus `limitsFor` (unknown paid tier -> contractor, empty ->
+free) and `perCallCap`. Wired: the envelope caps the TOTAL across arrays at
+`maxOpsPerCall` and each array at `min(ceiling, maxOpsPerCall)`; the pending and
+daily caps read the row; the large-budget daily cap reads the row; the API-key
+creation cap reads the owner's tier once; `pruneDecidedReports` scans from the
+shortest window (30 days) and applies each project's own window before pruning.
+The tier is the one the handler already resolved (`mcpTier` in `server.js`,
+`tier` in `appwide.js`) and is passed through `executeTool` -> `get_schema`,
+`queueMcpProposal`, `validateChangesProposal`, `planProposal` - no second query.
+`get_schema.limits` now reports `tier`, `maxOpsPerCall`, the effective array
+caps, `maxActiveApiKeys` and `reportRetentionDays`. Refusals name the tier, the
+limit, the usage and the incoming count, and add the one-line upsell for
+estimator/contractor/company only. `pricing.html` gained "Active API keys" and
+"Agent changes per day (per key)" rows. The single table is where an enterprise
+override hook would go (out of scope). Gates: `qa-mcp-agent-first` 178/178
+(AT28a-i: matrix, unknown tier, free refused before a limit, per-call total,
+pending/daily per tier, tier change mid-session, counter not reset, no tier
+query in planning); `qa-appwide-mcp` 62/62 (a company plan raises the app-wide
+cap to 500); `qa-api-keys` all green; `npm test` 458/458; `npm run verify`
+green; `qa-mcp-live-e2e` 43/43.
+
 ---
 
 ## Phase 0 — baseline and reproduction

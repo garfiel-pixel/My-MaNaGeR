@@ -16,21 +16,25 @@ import {
   MCP_MAX_DIFFS,
   MCP_MAX_CREATES,
   MCP_MAX_SETS,
-  MCP_WRITE_BUDGET_MS,
-  MCP_MAX_PENDING_PER_KEY,
-  MCP_MAX_DAILY_OPS_PER_KEY
+  MCP_WRITE_BUDGET_MS
 } from '../src/mcp/plan.js';
-import {
-  BUDGET_PROPOSAL_LIMIT,
-  BUDGET_LARGE_ABS,
-  BUDGET_LARGE_PER_DAY,
-  BUDGET_LINE_FIELDS
-} from '../src/lib/budget.js';
+import { limitsFor, perCallCap } from '../src/mcp/tier-limits.js';
+import { BUDGET_PROPOSAL_LIMIT, BUDGET_LARGE_ABS, BUDGET_LINE_FIELDS } from '../src/lib/budget.js';
 
 const state = { schemaVersion: 19, projectId: 'p-schema', tasks: [], budgetLines: [] };
 
-function schema(scope, args) {
-  const res = executeTool('get_schema', state, 'p-schema', 'test', scope, args || {}, null, state);
+function schema(scope, args, tier) {
+  const res = executeTool(
+    'get_schema',
+    state,
+    'p-schema',
+    'test',
+    scope,
+    args || {},
+    null,
+    state,
+    tier
+  );
   return { res, body: res.isError ? null : JSON.parse(res.content[0].text) };
 }
 
@@ -42,12 +46,17 @@ test('every list and section is described exactly as the model says', () => {
   });
 });
 
-test('the limits are the real constants', () => {
+test('the limits are the effective limits for the owner tier', () => {
   const { body } = schema(null, {});
+  // No tier given reads as the paid default (contractor); production always
+  // passes the project owner's real tier.
+  const l = limitsFor('contractor');
   assert.deepEqual(body.limits, {
-    maxDiffs: MCP_MAX_DIFFS,
-    maxCreates: MCP_MAX_CREATES,
-    maxSets: MCP_MAX_SETS,
+    tier: 'contractor',
+    maxDiffs: perCallCap(MCP_MAX_DIFFS, l),
+    maxCreates: perCallCap(MCP_MAX_CREATES, l),
+    maxSets: perCallCap(MCP_MAX_SETS, l),
+    maxOpsPerCall: l.maxOpsPerCall,
     writeBudgetMs: MCP_WRITE_BUDGET_MS,
     stringMax: STRING_MAX,
     shortMax: SHORT_MAX,
@@ -55,12 +64,24 @@ test('the limits are the real constants', () => {
     tempIdMax: 40,
     budgetProposalLimit: BUDGET_PROPOSAL_LIMIT,
     largeChangeAbs: BUDGET_LARGE_ABS,
-    largeChangePerDay: BUDGET_LARGE_PER_DAY,
+    largeChangePerDay: l.largeBudgetPerDay,
     budgetLineFields: BUDGET_LINE_FIELDS,
-    maxPendingPerKey: MCP_MAX_PENDING_PER_KEY,
-    maxDailyOpsPerKey: MCP_MAX_DAILY_OPS_PER_KEY
+    maxPendingPerKey: l.pendingPerKey,
+    maxDailyOpsPerKey: l.dailyOpsPerKey,
+    maxActiveApiKeys: l.activeApiKeys,
+    reportRetentionDays: l.reportRetentionDays
   });
   assert.equal(body.changeSet.atomic, true);
+});
+
+test('the schema limits follow the tier it is asked for', () => {
+  const ent = schema(null, {}, 'enterprise').body.limits;
+  assert.equal(ent.tier, 'enterprise');
+  assert.equal(ent.maxPendingPerKey, 100);
+  assert.equal(ent.maxDailyOpsPerKey, 10000);
+  const est = schema(null, {}, 'estimator').body.limits;
+  assert.equal(est.tier, 'estimator');
+  assert.equal(est.maxDiffs, 100);
 });
 
 test('a key with only the Budget section sees only budget tables', () => {

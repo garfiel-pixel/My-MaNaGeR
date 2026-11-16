@@ -57,11 +57,11 @@ import { structuredLog } from '../lib/observe.js';
 import {
   BUDGET_PROPOSAL_LIMIT,
   BUDGET_LARGE_ABS,
-  BUDGET_LARGE_PER_DAY,
   BUDGET_LINE_FIELDS,
   parseISO,
   buildBudgetProposal
 } from '../lib/budget.js';
+import { limitsFor, perCallCap } from './tier-limits.js';
 import {
   planProposal,
   validateProposalEnvelope,
@@ -93,14 +93,7 @@ import {
   getSection,
   isDeletable
 } from './model.js';
-import {
-  MCP_MAX_DIFFS,
-  MCP_MAX_CREATES,
-  MCP_MAX_SETS,
-  MCP_WRITE_BUDGET_MS,
-  MCP_MAX_PENDING_PER_KEY,
-  MCP_MAX_DAILY_OPS_PER_KEY
-} from './plan.js';
+import { MCP_MAX_DIFFS, MCP_MAX_CREATES, MCP_MAX_SETS, MCP_WRITE_BUDGET_MS } from './plan.js';
 import {
   budgetReadAllowed,
   budgetWriteAllowed,
@@ -679,7 +672,10 @@ function executeGetTable(state, scope, args, auth) {
 // MCP-AGENT-FIRST 2026-11-12 2.5: the writable model, straight from
 // src/mcp/model.js - the same table the planner validates against, so the
 // schema an agent reads cannot drift from what apply_changes accepts.
-function executeGetSchema(scope, args) {
+function executeGetSchema(scope, args, tier) {
+  // F2.4: the schema reports the EFFECTIVE limits for this owner's tier plus
+  // the tier name, so an agent plans to the plan it is actually on.
+  const limits = limitsFor(tier === undefined ? 'contractor' : tier);
   const scopeAllowed = function (sec) {
     return sectionAllowed(scope, sec);
   };
@@ -726,9 +722,11 @@ function executeGetSchema(scope, args) {
         text: JSON.stringify(
           {
             limits: {
-              maxDiffs: MCP_MAX_DIFFS,
-              maxCreates: MCP_MAX_CREATES,
-              maxSets: MCP_MAX_SETS,
+              tier: limits.tier,
+              maxDiffs: perCallCap(MCP_MAX_DIFFS, limits),
+              maxCreates: perCallCap(MCP_MAX_CREATES, limits),
+              maxSets: perCallCap(MCP_MAX_SETS, limits),
+              maxOpsPerCall: limits.maxOpsPerCall,
               writeBudgetMs: MCP_WRITE_BUDGET_MS,
               stringMax: STRING_MAX,
               shortMax: SHORT_MAX,
@@ -736,10 +734,12 @@ function executeGetSchema(scope, args) {
               tempIdMax: 40,
               budgetProposalLimit: BUDGET_PROPOSAL_LIMIT,
               largeChangeAbs: BUDGET_LARGE_ABS,
-              largeChangePerDay: BUDGET_LARGE_PER_DAY,
+              largeChangePerDay: limits.largeBudgetPerDay,
               budgetLineFields: BUDGET_LINE_FIELDS,
-              maxPendingPerKey: MCP_MAX_PENDING_PER_KEY,
-              maxDailyOpsPerKey: MCP_MAX_DAILY_OPS_PER_KEY
+              maxPendingPerKey: limits.pendingPerKey,
+              maxDailyOpsPerKey: limits.dailyOpsPerKey,
+              maxActiveApiKeys: limits.activeApiKeys,
+              reportRetentionDays: limits.reportRetentionDays
             },
             changeSet: {
               atomic: true,
@@ -1447,7 +1447,7 @@ function weeklySummary(state, weekISO, taskSource) {
   };
 }
 
-export function executeTool(name, state, projectId, label, scope, args, auth, fullState) {
+export function executeTool(name, state, projectId, label, scope, args, auth, fullState, tier) {
   if (!state) {
     return {
       content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }],
@@ -1959,7 +1959,7 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
     case 'get_table':
       return executeGetTable(state, scope, args, auth);
     case 'get_schema':
-      return executeGetSchema(scope, args);
+      return executeGetSchema(scope, args, tier);
     case 'run_monte_carlo':
       return executeMonteCarlo(state, scope, args);
     case 'apply_changes':
@@ -2739,7 +2739,7 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // This is what makes apply_changes {} a fast structured error instead of
     // a 1102.
     if (toolName === 'apply_changes') {
-      const precheck = validateProposalEnvelope(toolArgs, auth);
+      const precheck = validateProposalEnvelope(toolArgs, auth, mcpTier);
       if (precheck) {
         return { jsonrpc: '2.0', id, result: precheck };
       }
@@ -2759,7 +2759,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
       auth.role === 'api' ? auth.scope : null,
       toolArgs,
       auth,
-      state
+      state,
+      mcpTier
     );
 
     // Handle apply_changes - queue a pending review proposal (API-KEY-AUDIT
@@ -2770,13 +2771,13 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // inside the project, and only the accept applies the change.
     if (result.pendingValidate) {
       // 2.6: the dry run shares planProposal and writes nothing.
-      return await validateChangesProposal(env, projectId, auth, toolArgs, id, state);
+      return await validateChangesProposal(env, projectId, auth, toolArgs, id, state, mcpTier);
     }
 
     if (result.pendingApply) {
       // APP-WIDE MCP (Wave 1): the proposal-queue engine is now a shared,
       // exported function so the per-project and app-wide servers cannot drift.
-      return await queueMcpProposal(env, projectId, auth, toolArgs, id, state);
+      return await queueMcpProposal(env, projectId, auth, toolArgs, id, state, mcpTier);
     }
 
     return { jsonrpc: '2.0', id, result };
@@ -2915,8 +2916,8 @@ async function findDuplicateProposal(env, keys) {
   return null;
 }
 
-export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state) {
-  const precheck = validateProposalEnvelope(toolArgs, auth);
+export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state, tier) {
+  const precheck = validateProposalEnvelope(toolArgs, auth, tier);
   if (precheck) {
     return { jsonrpc: '2.0', id, result: precheck };
   }
@@ -2998,7 +2999,8 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   }
   const plan = await planProposal(toolArgs, overlay.state, auth, {
     env: env,
-    projectId: projectId
+    projectId: projectId,
+    tier: tier
   });
   if (plan.error) {
     return {

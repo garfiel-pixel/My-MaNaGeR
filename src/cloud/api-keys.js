@@ -21,8 +21,9 @@ import {
   CLOUD_CODE_ALPHABET as CLOUD_KEY_ALPHABET
 } from '../lib/http.js';
 import { trackEvent } from '../lib/observe.js';
+import { ownerTier } from './team.js';
+import { limitsFor, upsellFor } from '../mcp/tier-limits.js';
 
-const CLOUD_MAX_API_KEYS = 10;
 const API_KEY_PREFIX_LEN = 8;
 // OWNER 2026-09-15: keys now read as standard API keys, not license codes.
 // An external AI that sees 'sk-mmgr-' + 4 groups of 6 base32 chars instantly
@@ -42,12 +43,25 @@ export async function handleCloudApiKeyCreate(request, env, projectId) {
   )
     .bind(projectId)
     .first();
-  if (activeRows && Number(activeRows.n) >= CLOUD_MAX_API_KEYS) {
+  // F2.2: the active-key cap follows the project OWNER's plan, read once here.
+  const ownerRow = await env.DB.prepare(
+    'SELECT google_sub FROM cloud_projects WHERE project_id = ?'
+  )
+    .bind(projectId)
+    .first();
+  const tier = await ownerTier(env, (ownerRow && ownerRow.google_sub) || '');
+  const keyLimits = limitsFor(tier);
+  if (activeRows && Number(activeRows.n) >= keyLimits.activeApiKeys) {
     return json(
       {
         ok: false,
         error:
-          'too many active API keys (max ' + CLOUD_MAX_API_KEYS + ') - revoke unused keys first'
+          'too many active API keys for the ' +
+          keyLimits.tier +
+          ' plan (max ' +
+          keyLimits.activeApiKeys +
+          ') - revoke unused keys first.' +
+          upsellFor(keyLimits.tier)
       },
       400
     );

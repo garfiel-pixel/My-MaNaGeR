@@ -64,6 +64,13 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
    full state and retries; an accept response reports
    `{revision, applied[], appliedCount, blocked[], refused[]}` and
    `get_proposal_status` reports the same count and revision later.
+9. **Every limit follows the project owner's tier.** `src/mcp/tier-limits.js`
+   is the only table: pending cap, daily ops, per-call cap (total across
+   arrays, each array also bounded by its ceiling), large budget changes per
+   day, active API keys and report retention. Never hardcode a cap in a handler
+   or message; pass the tier the handler already resolved. An unknown paid tier
+   reads as contractor, an empty tier as free. `pricing.html` publishes two of
+   the columns and `test/tier-limits.test.mjs` fails if either side drifts.
 
 ## Architecture (reference: My MaNaGeR)
 

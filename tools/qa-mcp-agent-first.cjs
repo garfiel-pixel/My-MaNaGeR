@@ -644,6 +644,8 @@ function addReview(env, row) {
   const projects = await import('../src/cloud/projects.js');
   const apiKeys = await import('../src/cloud/api-keys.js');
   const autoAcceptPolicy = await import('../src/mcp/auto-accept.js');
+  const planMod = await import('../src/mcp/plan.js');
+  const tierLimits = await import('../src/mcp/tier-limits.js');
   const mod = {
     handleMcpServer: server.handleMcpServer,
     queueMcpProposal: server.queueMcpProposal,
@@ -661,6 +663,9 @@ function addReview(env, row) {
     storeApplyReport: reportStore.storeApplyReport,
     summarizeApplyReport: reportStore.summarizeApplyReport,
     pruneDecidedReports: reportStore.pruneDecidedReports,
+    planProposal: planMod.planProposal,
+    validateProposalEnvelope: planMod.validateProposalEnvelope,
+    limitsFor: tierLimits.limitsFor,
     model: modelMod
   };
 
@@ -997,7 +1002,7 @@ function addReview(env, row) {
       'R06 the message names the 24 incoming, 0 used and the 10 limit',
       /This call has 24 large budget change\(s\)/.test(t) &&
         /This key has 0 large change\(s\) pending or accepted today \(UTC\)/.test(t) &&
-        /The limit is 10 per day and 10 per call/.test(t) &&
+        /The contractor plan allows 10 per day/.test(t) &&
         env.__store.reviews.length === 0,
       { text: t.slice(0, 300), rows: env.__store.reviews.length }
     );
@@ -2251,9 +2256,9 @@ function addReview(env, row) {
 
   // AT22 (A1): per-API-key-per-project abuse limits refuse the whole call.
   {
-    // 22a: pending-proposal cap (50). Seed 50 pending rows for this key.
+    // 22a: pending-proposal cap (25 on the contractor row). Seed 25 rows.
     const env = await makeEnv({ mod });
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 25; i++) {
       env.__store.reviews.push({
         id: 9000 + i,
         project_id: PROJECT,
@@ -2277,22 +2282,23 @@ function addReview(env, row) {
       env.__store.state
     );
     check(
-      'AT22a pending cap (50) refuses the whole call',
+      'AT22a pending cap (25 on contractor) refuses the whole call',
       capRes &&
         capRes.result &&
         capRes.result.isError === true &&
-        /50 pending/.test(capRes.result.content[0].text),
+        /25 pending/.test(capRes.result.content[0].text) &&
+        /contractor plan allows 25/.test(capRes.result.content[0].text),
       capRes && capRes.result && capRes.result.content && capRes.result.content[0].text
     );
 
-    // 22b: daily op limit (2000). Seed an accepted-today row summing 2000 ops.
+    // 22b: daily op limit (1000 on contractor). Seed a 1000-op accepted row.
     const env2 = await makeEnv({ mod });
     env2.__store.reviews.push({
       id: 9500,
       project_id: PROJECT,
       key_id: '1',
       status: 'accepted',
-      ops_count: 2000,
+      ops_count: 1000,
       proposed_at: new Date().toISOString(),
       import_key: 'seed-big',
       ops_json: JSON.stringify({ v: 2, ops: [] }),
@@ -2309,17 +2315,18 @@ function addReview(env, row) {
       env2.__store.state
     );
     check(
-      'AT22b daily op limit (2000) refuses the whole call',
+      'AT22b daily op limit (1000 on contractor) refuses the whole call',
       dayRes &&
         dayRes.result &&
         dayRes.result.isError === true &&
-        /today/.test(dayRes.result.content[0].text),
+        /today/.test(dayRes.result.content[0].text) &&
+        /contractor plan allows 1000/.test(dayRes.result.content[0].text),
       dayRes && dayRes.result && dayRes.result.content && dayRes.result.content[0].text
     );
 
-    // 22c: a rejected row frees its pending slot, so a 50th is allowed.
+    // 22c: a rejected row frees its pending slot, so a 25th is allowed.
     const env3 = await makeEnv({ mod });
-    for (let i = 0; i < 49; i++) {
+    for (let i = 0; i < 24; i++) {
       env3.__store.reviews.push({
         id: 9600 + i,
         project_id: PROJECT,
@@ -2356,7 +2363,7 @@ function addReview(env, row) {
       env3.__store.state
     );
     check(
-      'AT22c a rejected row frees its pending slot so the 50th is allowed',
+      'AT22c a rejected row frees its pending slot so the 25th is allowed',
       okRes && okRes.result && okRes.result.isError !== true,
       okRes && okRes.result && okRes.result.content && okRes.result.content[0].text
     );
@@ -4080,8 +4087,270 @@ function addReview(env, row) {
       'AT09a the message names 8 incoming, 3 used (rejected 5 excluded) and the 10 limit',
       /This call has 8 large budget change\(s\)/.test(t) &&
         /This key has 3 large change\(s\) pending or accepted today \(UTC\)/.test(t) &&
-        /The limit is 10 per day and 10 per call/.test(t),
+        /The contractor plan allows 10 per day/.test(t),
       { text: t.slice(0, 320) }
+    );
+  }
+
+  // =====================================================================
+  // AT28 (F2) — tier-aware limits: one table, every cap follows the owner
+  // =====================================================================
+  section('AT28 — tier-aware limits');
+  {
+    const matrix = ['free', 'estimator', 'contractor', 'company', 'enterprise'].map(function (t) {
+      const l = mod.limitsFor(t);
+      return [
+        l.activeApiKeys,
+        l.pendingPerKey,
+        l.dailyOpsPerKey,
+        l.maxOpsPerCall,
+        l.largeBudgetPerDay,
+        l.reportRetentionDays
+      ].join('/');
+    });
+    check(
+      'AT28a the five tier rows match the published matrix',
+      JSON.stringify(matrix) ===
+        JSON.stringify([
+          '2/0/0/0/0/30',
+          '2/10/300/100/5/30',
+          '5/25/1000/250/10/60',
+          '10/50/3000/500/20/90',
+          '25/100/10000/500/50/180'
+        ]),
+      matrix
+    );
+    check(
+      'AT28b an unknown paid tier uses the contractor row, never free',
+      mod.limitsFor('premium').tier === 'contractor' &&
+        mod.limitsFor('legacy_pro').tier === 'contractor' &&
+        mod.limitsFor('').tier === 'free',
+      ['premium', mod.limitsFor('premium').tier, mod.limitsFor('').tier]
+    );
+
+    // 28c: free is refused by the envelope itself, before any limit is read.
+    const freePre = mod.validateProposalEnvelope(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      { scope: ALL_SECTIONS, label: 'Agent key' },
+      'free'
+    );
+    check(
+      'AT28c the free tier is refused before a limit is read',
+      !!(freePre && freePre.isError && /free plan/.test(freePre.content[0].text)),
+      freePre && freePre.content && freePre.content[0].text
+    );
+
+    // 28d: per-call caps bound the TOTAL across arrays, at the cap and one over.
+    const perCall = {
+      estimator: 100,
+      contractor: 250,
+      company: 500,
+      enterprise: 500
+    };
+    let perCallOk = true;
+    let perCallDetail = null;
+    for (const t of Object.keys(perCall)) {
+      const cap = perCall[t];
+      const half = Math.floor(cap / 2);
+      const atCap = {
+        diffs: Array.from({ length: half }, function (_, i) {
+          return { path: 'tasks', recordId: 't1', field: 'notes', after: 'n' + i };
+        }),
+        creates: Array.from({ length: cap - half }, function (_, i) {
+          return { path: 'tasks', record: { name: 'T' + i } };
+        })
+      };
+      const over = {
+        diffs: atCap.diffs,
+        creates: atCap.creates.concat([{ path: 'tasks', record: { name: 'one more' } }])
+      };
+      const pass = mod.validateProposalEnvelope(atCap, { scope: ALL_SECTIONS }, t);
+      const refuse = mod.validateProposalEnvelope(over, { scope: ALL_SECTIONS }, t);
+      const ok =
+        pass === null &&
+        !!refuse &&
+        refuse.isError &&
+        new RegExp(String(cap + 1) + ' changes').test(refuse.content[0].text) &&
+        refuse.content[0].text.indexOf(t) > -1;
+      if (!ok) {
+        perCallOk = false;
+        perCallDetail = { tier: t, cap: cap, pass: pass, refuse: refuse && refuse.content[0].text };
+        break;
+      }
+    }
+    check('AT28d the per-call cap bounds the total across arrays', perCallOk, perCallDetail);
+
+    // 28e/28f: the pending cap and the daily ops cap, per tier.
+    const capCases = [
+      { tier: 'estimator', pending: 10, ops: 300 },
+      { tier: 'contractor', pending: 25, ops: 1000 },
+      { tier: 'company', pending: 50, ops: 3000 },
+      { tier: 'enterprise', pending: 100, ops: 10000 }
+    ];
+    let pendOk = true;
+    let pendDetail = null;
+    for (const c of capCases) {
+      const e = await makeEnv({ mod });
+      for (let i = 0; i < c.pending; i++) {
+        e.__store.reviews.push({
+          id: 40000 + i,
+          project_id: PROJECT,
+          key_id: '1',
+          status: 'pending',
+          ops_count: 1,
+          proposed_at: new Date().toISOString(),
+          import_key: 'p' + c.tier + i,
+          ops_json: JSON.stringify({ v: 2, ops: [] }),
+          diffs_json: '[]',
+          proposal_type: 'mcp',
+          source_type: 'api'
+        });
+      }
+      const plan = await mod.planProposal(
+        { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+        e.__store.state,
+        { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+        { env: e, projectId: PROJECT, tier: c.tier }
+      );
+      const ok =
+        !!plan.error &&
+        new RegExp(c.tier + ' plan allows ' + c.pending).test(plan.error.text) &&
+        new RegExp(c.pending + ' pending').test(plan.error.text);
+      if (!ok) {
+        pendOk = false;
+        pendDetail = { tier: c.tier, error: plan.error };
+        break;
+      }
+    }
+    check('AT28e the pending cap names the tier, the limit and the usage', pendOk, pendDetail);
+
+    let opsOk = true;
+    let opsDetail = null;
+    for (const c of capCases) {
+      const e = await makeEnv({ mod });
+      e.__store.reviews.push({
+        id: 41000,
+        project_id: PROJECT,
+        key_id: '1',
+        status: 'accepted',
+        ops_count: c.ops,
+        proposed_at: new Date().toISOString(),
+        import_key: 'ops' + c.tier,
+        ops_json: JSON.stringify({ v: 2, ops: [] }),
+        diffs_json: '[]',
+        proposal_type: 'mcp',
+        source_type: 'api'
+      });
+      const plan = await mod.planProposal(
+        { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+        e.__store.state,
+        { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+        { env: e, projectId: PROJECT, tier: c.tier }
+      );
+      const ok =
+        !!plan.error &&
+        new RegExp(c.tier + ' plan allows ' + c.ops).test(plan.error.text) &&
+        /already used/.test(plan.error.text);
+      if (!ok) {
+        opsOk = false;
+        opsDetail = { tier: c.tier, error: plan.error };
+        break;
+      }
+    }
+    check('AT28f the daily ops cap names the tier, the limit and the usage', opsOk, opsDetail);
+
+    // 28g: a tier change between two calls applies the NEW caps to the second
+    // call, and the daily counter is not reset by the change.
+    const e7 = await makeEnv({ mod });
+    for (let i = 0; i < 12; i++) {
+      e7.__store.reviews.push({
+        id: 42000 + i,
+        project_id: PROJECT,
+        key_id: '1',
+        status: 'pending',
+        ops_count: 1,
+        proposed_at: new Date().toISOString(),
+        import_key: 'g' + i,
+        ops_json: JSON.stringify({ v: 2, ops: [] }),
+        diffs_json: '[]',
+        proposal_type: 'mcp',
+        source_type: 'api'
+      });
+    }
+    const gContractor = await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e7.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e7, projectId: PROJECT, tier: 'contractor' }
+    );
+    const gEstimator = await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e7.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e7, projectId: PROJECT, tier: 'estimator' }
+    );
+    check(
+      'AT28g a tier change applies the new caps to the very next call',
+      !gContractor.error &&
+        !!gEstimator.error &&
+        /estimator plan allows 10/.test(gEstimator.error.text),
+      { contractor: gContractor.error, estimator: gEstimator.error }
+    );
+
+    const e8 = await makeEnv({ mod });
+    e8.__store.reviews.push({
+      id: 43000,
+      project_id: PROJECT,
+      key_id: '1',
+      status: 'accepted',
+      ops_count: 500,
+      proposed_at: new Date().toISOString(),
+      import_key: 'g-ops',
+      ops_json: JSON.stringify({ v: 2, ops: [] }),
+      diffs_json: '[]',
+      proposal_type: 'mcp',
+      source_type: 'api'
+    });
+    const dayContractor = await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e8.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e8, projectId: PROJECT, tier: 'contractor' }
+    );
+    const dayEstimator = await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e8.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e8, projectId: PROJECT, tier: 'estimator' }
+    );
+    check(
+      'AT28h the daily ops counter does not reset on a tier change',
+      !dayContractor.error &&
+        !!dayEstimator.error &&
+        /estimator plan allows 300/.test(dayEstimator.error.text),
+      { contractor: dayContractor.error, estimator: dayEstimator.error }
+    );
+
+    // 28i: the planner never queries the tier itself - the handler passes it.
+    const e9 = await makeEnv({ mod });
+    let tierQueries = 0;
+    const origPrepare = e9.DB.prepare.bind(e9.DB);
+    e9.DB.prepare = function (sql) {
+      if (/from cloud_subscriptions/i.test(String(sql))) {
+        tierQueries++;
+      }
+      return origPrepare(sql);
+    };
+    await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e9.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e9, projectId: PROJECT, tier: 'company' }
+    );
+    check(
+      'AT28i a planning call performs no tier query of its own',
+      tierQueries === 0,
+      tierQueries
     );
   }
 

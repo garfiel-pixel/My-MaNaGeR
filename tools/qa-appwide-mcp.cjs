@@ -1230,12 +1230,53 @@ async function sessionCookie(env, sub) {
     bearerW
   );
   check(
-    'more than 500 diffs is refused with a cap message',
+    'more than the plan per-call cap is refused with a cap message',
     wCap &&
       wCap.result &&
       wCap.result.isError === true &&
-      /at most 500 diffs/.test(wCap.result.content[0].text),
+      /per call/.test(wCap.result.content[0].text) &&
+      /contractor/.test(wCap.result.content[0].text),
     wCap
+  );
+
+  // F2: the app-wide surface applies the CONNECTING account's tier to the same
+  // per-call cap, so the same 501-change call is refused at a different number
+  // on a company plan than on contractor.
+  const envCompany = makeEnv({
+    config: { account_sub: 'sub-abc', enabled: 1, policy: 'allow_all', tool_subset: null },
+    subscription: { owner_sub: 'sub-abc', status: 'active', tier: 'company' },
+    projects: [
+      {
+        project_id: 'p1',
+        google_sub: 'sub-abc',
+        owner_email: null,
+        mcp_enabled: 1,
+        owner_code_hash: 'h',
+        owner_code_salt: 's',
+        latest_r2_key: 'projects/p1/latest.json'
+      }
+    ],
+    adoptions: [],
+    states: { p1: wState }
+  });
+  const bearerCompany = await tok(envCompany, 'sub-abc');
+  const wCapCompany = await mcpCall(
+    envCompany,
+    {
+      jsonrpc: '2.0',
+      id: 231,
+      method: 'tools/call',
+      params: { name: 'apply_changes', arguments: { projectId: 'p1', diffs: tooMany } }
+    },
+    bearerCompany
+  );
+  check(
+    'a company plan raises the app-wide per-call cap to 500',
+    wCapCompany &&
+      wCapCompany.result &&
+      wCapCompany.result.isError === true &&
+      /company plan allows 500/.test(wCapCompany.result.content[0].text),
+    wCapCompany && wCapCompany.result && wCapCompany.result.content[0].text
   );
 
   section('APP-WIDE MCP W4 — view role cannot propose writes');

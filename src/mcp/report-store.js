@@ -22,6 +22,8 @@
       decide them.
    ============================================================ */
 
+import { limitsFor } from './tier-limits.js';
+
 export const MCP_REPORT_MAX_ENTRIES = 500;
 export const MCP_REPORT_RETENTION_DAYS = 90;
 
@@ -95,9 +97,42 @@ export function isPrunedReport(report) {
 }
 
 // Daily sweep. Returns what it did so the cron log can prove it ran.
+// F2.2: retention follows the PROJECT OWNER's plan (30/30/60/90/180 days).
+// The scan reads from the shortest window (30 days) and applies each row's
+// own project's window before pruning it, so a company project keeps its
+// detail for 90 days while a free project loses it at 30.
 export async function pruneDecidedReports(env, nowMs) {
   const now = typeof nowMs === 'number' ? nowMs : Date.now();
-  const cutoff = new Date(now - MCP_REPORT_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const minDays = 30;
+  const cutoff = new Date(now - minDays * 24 * 60 * 60 * 1000).toISOString();
+  const retentionByProject = new Map();
+  const retentionFor = async function (projectId) {
+    if (!projectId) {
+      return minDays;
+    }
+    if (retentionByProject.has(projectId)) {
+      return retentionByProject.get(projectId);
+    }
+    let days = minDays;
+    try {
+      const row = await env.DB.prepare(
+        'SELECT p.google_sub AS owner_sub, s.status AS sub_status, s.tier AS tier, s.plan AS plan FROM cloud_projects p LEFT JOIN cloud_subscriptions s ON s.owner_sub = p.google_sub WHERE p.project_id = ?'
+      )
+        .bind(projectId)
+        .first();
+      const active =
+        row &&
+        row.sub_status === 'active' &&
+        (!row.current_period_end || String(row.current_period_end) > new Date(now).toISOString());
+      if (active) {
+        days = limitsFor(row.tier || row.plan || 'contractor').reportRetentionDays;
+      }
+    } catch (e) {
+      days = minDays;
+    }
+    retentionByProject.set(projectId, days);
+    return days;
+  };
   let cursor = 0;
   let scanned = 0;
   let opsCleared = 0;
@@ -106,7 +141,7 @@ export async function pruneDecidedReports(env, nowMs) {
     const rows =
       (
         await env.DB.prepare(
-          'SELECT id, status, decided_at, ops_json, apply_report_json FROM cloud_reviews WHERE id > ? AND decided_at IS NOT NULL AND decided_at < ? ORDER BY id ASC LIMIT ' +
+          'SELECT id, project_id, status, decided_at, ops_json, apply_report_json FROM cloud_reviews WHERE id > ? AND decided_at IS NOT NULL AND decided_at < ? ORDER BY id ASC LIMIT ' +
             PRUNE_BATCH
         )
           .bind(cursor, cutoff)
@@ -122,10 +157,12 @@ export async function pruneDecidedReports(env, nowMs) {
         cursor = rowId;
       }
       scanned++;
+      const days = await retentionFor(row.project_id);
+      const rowCutoff = new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
       // The SELECT already narrows on D1. These two guards keep a mock store
       // (or a stale read) from pruning a row that is not old enough or not
       // decided yet - retention is never worth a data loss.
-      if (!row.decided_at || String(row.decided_at) >= cutoff) {
+      if (!row.decided_at || String(row.decided_at) >= rowCutoff) {
         continue;
       }
       if (DECIDED.indexOf(row.status) === -1) {

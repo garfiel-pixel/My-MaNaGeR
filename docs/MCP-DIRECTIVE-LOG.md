@@ -175,6 +175,35 @@ The skill's non-negotiables gained rule 7 (no credential echo, no untrusted
 echo). Gate: `npm test` 452/452; `qa-appwide-mcp` 61/61;
 `qa-mcp-agent-first` 166/166; `qa-mcp-parity` 16/16.
 
+**F1.4 Revisions and whole-state save — PASS.** `nextRevision` / `stateRevision`
+in `src/lib/http.js`; every write point stamps `state.revision` (owner save,
+save-proposal accept, MCP v2 accept, change-set accept). `handleCloudSave`
+reads `baseRevision` from the body: when the server is ahead it answers `409
+{ok:false, error:'stale', code:'stale_revision', revision}` and writes nothing.
+A body without `baseRevision` (an older client) keeps the replay path, now
+hardened: `created_at >= base` (an accept in the same millisecond is no longer
+missed), server-side deletes replay as deletes (a stale snapshot cannot
+resurrect a record), a leaf already at its server value is not touched, and the
+window is 500 changelog rows. Client: both the manual save and the auto-save
+send `baseRevision` from the local state, and on `stale_revision` reload the
+full cloud state (`resyncNow({force,replace})`) then retry once. `State`
+carries `revision` through `replaceExternal` / `mergeExternal`. Gate:
+`qa-cloud-phase2` 92/92 with six new checks - P2.4d revision 1 on the first
+save, P2.4e revision 2 on the next, P2.4f stale base -> 409 with the live
+revision, P2.5c3-6 accept interleaved with a stale save (409, then a fresh save
+keeps the accepted change).
+
+**F1.5 Accept result shape — PASS.** MCP single accept and change-set accept
+return `{ok, revision, applied[], appliedCount, blocked[], refused[]}` (plus
+the existing metadata; `skipped`, `conflicts`, `derivedChanges`, `changelog`
+unchanged). The stored apply report carries `revision`, so
+`get_proposal_status` answers `appliedCount` and `revision` long after the
+accept. The client reads both shapes (`appliedCountOf`) and appends the first
+three refusals with their reasons to the result line. The auto-accept sentence
+reads the count, not the array. Gate: `qa-mcp-agent-first` 169/169 with F1.5a-c
+(applied list + count + arrays, numeric revision, status poll matches);
+`qa-mcp-live-e2e` 43/43 (E6/E7 re-baselined to `appliedCount`).
+
 ---
 
 ## Phase 0 — baseline and reproduction

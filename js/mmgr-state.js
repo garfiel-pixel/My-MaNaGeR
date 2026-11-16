@@ -1617,6 +1617,13 @@ var MMGR = window.MMGR || {};
           report.push({ field: k, side: 'local', reason: 'local-equal-or-newer' });
         }
       });
+      // F1.4: the cloud revision is server-authoritative. Carry it even when
+      // the merge adopts no field, so the next save quotes the base it was
+      // actually built from instead of sending no base at all.
+      const incRev = Number(incoming.revision);
+      if (Number.isFinite(incRev) && incRev >= 0) {
+        _state.revision = incRev;
+      }
       if (adopted > 0) {
         _state.updatedAt = new Date().toISOString();
         // CRITICAL: align the save-fingerprint with the POST-merge state so
@@ -1669,6 +1676,13 @@ var MMGR = window.MMGR || {};
       _state.fieldTs =
         incoming.fieldTs && typeof incoming.fieldTs === 'object' ? incoming.fieldTs : {};
       _state.updatedAt = incoming.updatedAt || new Date().toISOString();
+      // F1.4: carry the cloud revision so the next save quotes its base.
+      const incRev = Number(incoming.revision);
+      if (Number.isFinite(incRev) && incRev >= 0) {
+        _state.revision = incRev;
+      } else {
+        delete _state.revision;
+      }
       _fieldJsonCache = {};
       FIELD_KEYS.forEach(function (k) {
         if (_state[k] !== undefined) {

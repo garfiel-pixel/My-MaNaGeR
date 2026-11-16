@@ -21,7 +21,9 @@ import {
   cloudAuthEditor,
   cloudAuthAdoption,
   readJsonBody,
-  readCloudBody
+  readCloudBody,
+  nextRevision,
+  stateRevision
 } from './lib/http.js';
 import { structuredLog } from './lib/observe.js';
 import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
@@ -485,6 +487,7 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         break;
       }
       merged.next.updatedAt = now;
+      merged.next.revision = nextRevision(prev);
       // Encrypt state blob on accept (same envelope as handleCloudSave)
       let r2Payload = JSON.stringify(merged.next);
       if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
@@ -539,6 +542,7 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
       }
       resp.savedAt = now;
+      resp.revision = stateRevision(nextUsed);
     }
   } else if (row.proposal_type === 'mcp') {
     // MCP-AGENT-FIRST 2026-11-12 3.1/3.4: a v2 row (ops_json is {v:2, ops})
@@ -851,6 +855,7 @@ async function acceptMcpLegacy(
       break;
     }
     merged.next.updatedAt = now;
+    merged.next.revision = nextRevision(prev);
     let r2Payload = JSON.stringify(merged.next);
     if (projRowM && projRowM.owner_code_hash && projRowM.owner_code_salt) {
       try {
@@ -1144,6 +1149,7 @@ async function acceptMcpV2(
       );
     }
     next.updatedAt = now;
+    next.revision = nextRevision(prev);
     let r2Payload = JSON.stringify(next);
     if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
       try {
@@ -1200,7 +1206,8 @@ async function acceptMcpV2(
     derivedUsed,
     (reportUsed || []).filter(function (r) {
       return r.result === 'conflict';
-    })
+    }),
+    { revision: nextUsed ? stateRevision(nextUsed) : null }
   );
   await env.DB.prepare(
     'UPDATE cloud_reviews SET apply_report_json = ?, status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ?, decision_note = ?, decision_edited = ? WHERE id = ?'
@@ -1219,16 +1226,28 @@ async function acceptMcpV2(
   if (pushRevChanged) {
     await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
   }
+  // MCP-FINAL 2026-11-16 F1.5: the accept result names what landed and what
+  // did not. `applied` is the detailed list (one entry per applied op), with
+  // `appliedCount` kept as the number older clients read.
+  const report = reportUsed || [];
+  const appliedList = report.filter(function (r) {
+    return r.result === 'applied';
+  });
+  const refusedList = report.filter(function (r) {
+    return r.result === 'conflict';
+  });
   const resp = {
     ok: true,
     reviewId: reviewId,
     status: 'accepted',
     decidedAt: now,
     savedAt: now,
-    applied: (reportUsed || []).filter(function (r) {
-      return r.result === 'applied';
-    }).length,
-    skipped: (reportUsed || []).filter(function (r) {
+    revision: nextUsed ? stateRevision(nextUsed) : null,
+    applied: appliedList,
+    appliedCount: appliedList.length,
+    blocked: [],
+    refused: refusedList,
+    skipped: report.filter(function (r) {
       return r.result === 'skipped_already' || r.result === 'superseded';
     }).length,
     conflicts: appliedUsed ? appliedUsed.conflicts : [],
@@ -1639,6 +1658,7 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
       );
     }
     next.updatedAt = now;
+    next.revision = nextRevision(prev);
     let r2Payload = JSON.stringify(next);
     if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
       try {
@@ -1685,7 +1705,8 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
       lp.derivedChanges,
       (lp.report || []).filter(function (r) {
         return r.result === 'conflict';
-      })
+      }),
+      { revision: nextUsed ? stateRevision(nextUsed) : null }
     );
     let entry = null;
     try {
@@ -1773,21 +1794,29 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
       derivedChanges.push(dc);
     });
   });
+  // F1.5: same result shape as a single accept - `applied` is the detailed
+  // list, `appliedCount` the number, `refused` names each conflict with its
+  // reason, and `revision` is the state version the set landed in.
+  const appliedList = [];
+  perProposal.forEach(function (lp) {
+    (lp.report || []).forEach(function (r) {
+      if (r.result === 'applied') {
+        appliedList.push(r);
+      }
+    });
+  });
   const resp = {
     ok: true,
     changeSetId: changeSetId,
     status: 'accepted',
     decidedAt: now,
     savedAt: now,
+    revision: nextUsed ? stateRevision(nextUsed) : null,
     proposals: perProposal.length,
-    applied: perProposal.reduce(function (acc, lp) {
-      return (
-        acc +
-        (lp.report || []).filter(function (r) {
-          return r.result === 'applied';
-        }).length
-      );
-    }, 0),
+    applied: appliedList,
+    appliedCount: appliedList.length,
+    blocked: [],
+    refused: conflictList,
     skipped: perProposal.reduce(function (acc, lp) {
       return (
         acc +

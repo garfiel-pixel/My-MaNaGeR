@@ -66,7 +66,7 @@ export function summarizeApplyReport(report) {
 
 // The blob written to cloud_reviews.apply_report_json. Versioned so a later
 // reader can tell a v1 row from the pre-A6 `{report, derivedChanges}` shape.
-export function storeApplyReport(report, derivedChanges, conflicts) {
+export function storeApplyReport(report, derivedChanges, conflicts, meta) {
   const all = Array.isArray(report) ? report : [];
   const kept = all.slice(0, MCP_REPORT_MAX_ENTRIES);
   const conflictRows = Array.isArray(conflicts)
@@ -74,6 +74,7 @@ export function storeApplyReport(report, derivedChanges, conflicts) {
     : all.filter(function (r) {
         return r && r.result === 'conflict';
       });
+  const m = meta && typeof meta === 'object' ? meta : {};
   return JSON.stringify({
     v: 1,
     summary: summarizeApplyReport(all),
@@ -81,7 +82,10 @@ export function storeApplyReport(report, derivedChanges, conflicts) {
     truncated: all.length > kept.length,
     storedCount: kept.length,
     derivedChanges: Array.isArray(derivedChanges) ? derivedChanges : [],
-    conflicts: conflictRows
+    conflicts: conflictRows,
+    // F1.5: the state revision this proposal landed in, so
+    // get_proposal_status can answer with it long after the accept response.
+    revision: Number.isFinite(Number(m.revision)) ? Number(m.revision) : null
   });
 }
 

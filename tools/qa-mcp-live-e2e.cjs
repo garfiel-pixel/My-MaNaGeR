@@ -1160,7 +1160,7 @@ async function main() {
     e21Accept.status === 200 &&
       e21AccBody.ok === true &&
       e21AccBody.proposals === 9 &&
-      e21AccBody.applied >= 1,
+      e21AccBody.appliedCount >= 1,
     e21AccBody
   );
   // The colliding t1 (P1 completed vs P2 blocked) is resolved by last-op-wins,
@@ -1168,10 +1168,10 @@ async function main() {
   // conflicts only when a real staleness/enum conflict occurs).
   check(
     'E7 AT21 the accept summary reports the proposal + applied counts',
-    e21AccBody.proposals === 9 && e21AccBody.applied >= 1,
+    e21AccBody.proposals === 9 && e21AccBody.appliedCount >= 1,
     {
       proposals: e21AccBody.proposals,
-      applied: e21AccBody.applied,
+      appliedCount: e21AccBody.appliedCount,
       conflicts: e21AccBody.conflicts,
       skipped: e21AccBody.skipped
     }

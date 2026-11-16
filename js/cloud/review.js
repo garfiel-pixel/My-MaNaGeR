@@ -53,6 +53,49 @@ var MMGR = window.MMGR || {};
     }
     return String(v);
   }
+  // F1.5: the accept result names what landed (`applied` is now the detailed
+  // list) and what did not (`refused`). Older servers answered with a number,
+  // so read both shapes here and never show "undefined changes".
+  function appliedCountOf(data) {
+    if (!data) {
+      return 0;
+    }
+    if (typeof data.applied === 'number') {
+      return data.applied;
+    }
+    if (Array.isArray(data.applied)) {
+      return data.applied.length;
+    }
+    return Number(data.appliedCount) || 0;
+  }
+  function refusedCountOf(data) {
+    if (!data) {
+      return 0;
+    }
+    if (Array.isArray(data.refused)) {
+      return data.refused.length;
+    }
+    return Number(data.conflicts) || 0;
+  }
+  function refusalNote(data) {
+    const list = data && Array.isArray(data.refused) ? data.refused : [];
+    if (!list.length) {
+      return '';
+    }
+    const first = list
+      .slice(0, 3)
+      .map(function (r) {
+        const name = r.recordName || r.recordId || r.path || 'a record';
+        return name + (r.reason ? ' (' + r.reason + ')' : '');
+      })
+      .join('; ');
+    return (
+      ' Not applied: ' +
+      first +
+      (list.length > 3 ? ' and ' + (list.length - 3) + ' more' : '') +
+      '.'
+    );
+  }
   // One group per record (or per scalar key): the owner asked to see WHICH
   // task changes, how many of its fields move, and which screens those fields
   // reach - not a flat list of "tasks[0].status".
@@ -337,9 +380,9 @@ var MMGR = window.MMGR || {};
     if (!group) {
       return;
     }
-    const applied = data.applied || 0;
+    const applied = appliedCountOf(data);
     const skipped = data.skipped || 0;
-    const conflicts = data.conflicts || 0;
+    const conflicts = refusedCountOf(data);
     const conflictRows = (data.conflictList || [])
       .map(function (c) {
         const name = c.recordName || c.recordId || c.path || '';
@@ -557,17 +600,19 @@ var MMGR = window.MMGR || {};
       const conflictN = Array.isArray(data.conflicts)
         ? data.conflicts.length
         : Number(data.conflicts) || 0;
+      const appliedN = appliedCountOf(data);
       const revTxt = data.revision != null ? ', revision ' + data.revision : '';
       setStatus(
         'Accepted - ' +
-          (data.applied || 0) +
+          appliedN +
           ' change' +
-          ((data.applied || 0) === 1 ? '' : 's') +
+          (appliedN === 1 ? '' : 's') +
           ' applied' +
           revTxt +
           (conflictN
             ? '; ' + conflictN + ' conflict' + (conflictN === 1 ? '' : 's') + ' kept the live value'
             : '') +
+          refusalNote(data) +
           (reload && reload.ok ? ' (workspace reloaded)' : '') +
           '.',
         'ok'
@@ -774,9 +819,10 @@ var MMGR = window.MMGR || {};
       const revTxt = data.revision != null ? ', revision ' + data.revision : '';
       setStatus(
         'Accepted - ' +
-          (data.applied || 1) +
+          (appliedCountOf(data) || 1) +
           ' change applied' +
           revTxt +
+          refusalNote(data) +
           (reload && reload.ok ? ' and the workspace was reloaded' : '') +
           '.',
         'ok'

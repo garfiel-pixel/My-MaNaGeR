@@ -2637,8 +2637,8 @@ function addReview(env, row) {
     );
     check(
       'AT25b the healing retry reports the op as skipped, not applied',
-      !!(retry.data && retry.data.skipped >= 1 && retry.data.applied === 0),
-      retry.data && { skipped: retry.data.skipped, applied: retry.data.applied }
+      !!(retry.data && retry.data.skipped >= 1 && retry.data.appliedCount === 0),
+      retry.data && { skipped: retry.data.skipped, appliedCount: retry.data.appliedCount }
     );
     const rowAfter = env.__store.reviews.find(function (r) {
       return r.id === id;
@@ -2744,8 +2744,8 @@ function addReview(env, row) {
     const first = await accept(env, realId);
     check(
       'AT25e-a the real change applies',
-      first.status === 200 && !!(first.data && first.data.applied >= 1),
-      first.data && { status: first.status, applied: first.data.applied }
+      first.status === 200 && !!(first.data && first.data.appliedCount >= 1),
+      first.data && { status: first.status, appliedCount: first.data.appliedCount }
     );
 
     // A DIFFERENT, never-decided proposal wants the same end value, which is
@@ -2777,6 +2777,46 @@ function addReview(env, row) {
       'AT25e-d the stale row stays pending for review (claim released), no false success',
       !!dupRow && dupRow.status === 'pending',
       dupRow && dupRow.status
+    );
+
+    // F1.5 (MCP-FINAL 2026-11-16): the accept result names what landed
+    // (`applied` is the detailed list), how many (appliedCount), what did not
+    // (blocked / refused) and the state revision it landed in. A poll of
+    // get_proposal_status reports the same count and revision later.
+    check(
+      'F1.5a accept returns a detailed applied list plus appliedCount',
+      !!(
+        first.data &&
+        Array.isArray(first.data.applied) &&
+        first.data.applied.length === first.data.appliedCount &&
+        first.data.appliedCount === 1 &&
+        Array.isArray(first.data.blocked) &&
+        Array.isArray(first.data.refused)
+      ),
+      first.data && {
+        applied: first.data.applied,
+        appliedCount: first.data.appliedCount,
+        blocked: first.data.blocked,
+        refused: first.data.refused
+      }
+    );
+    check(
+      'F1.5b accept returns a numeric revision',
+      !!(first.data && Number.isFinite(Number(first.data.revision))),
+      first.data && first.data.revision
+    );
+    const statusAfter = await tool(env, 971, 'get_proposal_status', { proposalId: realId });
+    const statusJson = jsonOf(statusAfter);
+    const statusRow = statusJson && statusJson.proposals && statusJson.proposals[0];
+    check(
+      'F1.5c get_proposal_status reports appliedCount and the landed revision',
+      !!(
+        statusRow &&
+        statusRow.appliedCount === 1 &&
+        Number.isFinite(Number(statusRow.revision)) &&
+        statusRow.revision === first.data.revision
+      ),
+      statusRow && { appliedCount: statusRow.appliedCount, revision: statusRow.revision }
     );
   }
 

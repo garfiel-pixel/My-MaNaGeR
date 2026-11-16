@@ -57,6 +57,13 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
    app. Untrusted storage read on behalf of a client (e.g. the calculator
    workspace blob in R2) is validated before use: a non-object or array payload
    reads as empty, and its raw text is never passed through to MCP output.
+8. **Revision-gated whole-state writes.** Every save and every accept bumps the
+   state's numeric `revision` (`nextRevision` in `src/lib/http.js`). A save that
+   quotes a `baseRevision` behind the server's is refused `409
+   {code:'stale_revision', revision}` - never merged over. The app reloads the
+   full state and retries; an accept response reports
+   `{revision, applied[], appliedCount, blocked[], refused[]}` and
+   `get_proposal_status` reports the same count and revision later.
 
 ## Architecture (reference: My MaNaGeR)
 

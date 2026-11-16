@@ -1274,6 +1274,20 @@ export async function cloudReadState(env, key, ownerCodeHash, ownerCodeSalt) {
   return parsed;
 }
 
+// MCP-FINAL 2026-11-16 F1.4: every whole-state write carries a monotonically
+// increasing numeric `revision`. A client save quotes the revision it was based
+// on; when the server is already ahead the save is refused 409 so a stale tab
+// cannot overwrite an accepted proposal. A pre-revision blob reads as 0.
+export function nextRevision(state) {
+  const n = state ? Number(state.revision) : 0;
+  return (Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0) + 1;
+}
+
+export function stateRevision(state) {
+  const n = state ? Number(state.revision) : 0;
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+}
+
 // MCP-AGENT-FIRST 2026-11-12 1.6(b): one shared read-with-etag / conditional
 // write pair for projects/<id>/latest.json. Every writer (owner save, accept,
 // revert) uses it, so a concurrent write is a detected conflict instead of a

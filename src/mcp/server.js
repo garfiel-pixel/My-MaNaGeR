@@ -2046,6 +2046,11 @@ export async function proposalStatusResult(env, projectId, auth, args, rpcId) {
     // as accepted-with-conflicts so the agent knows not everything it proposed
     // landed.
     let reportHasConflict = false;
+    // F1.5: the stored report also carries how many ops landed and the state
+    // revision they landed in, so an agent can poll a proposal long after the
+    // accept response and still learn both.
+    let appliedCount = null;
+    let landedRevision = null;
     if (r.status === 'accepted') {
       try {
         const rep = r.apply_report_json ? JSON.parse(r.apply_report_json) : null;
@@ -2053,6 +2058,12 @@ export async function proposalStatusResult(env, projectId, auth, args, rpcId) {
         reportHasConflict = rows.some(function (x) {
           return x && x.result === 'conflict';
         });
+        if (rep && rep.summary && Number.isFinite(Number(rep.summary.applied))) {
+          appliedCount = Number(rep.summary.applied);
+        }
+        if (rep && Number.isFinite(Number(rep.revision))) {
+          landedRevision = Number(rep.revision);
+        }
       } catch (e) {
         reportHasConflict = false;
       }
@@ -2074,6 +2085,8 @@ export async function proposalStatusResult(env, projectId, auth, args, rpcId) {
       summary: proposal && proposal.summary ? proposal.summary : diffCount + ' field change(s)',
       changeCount:
         proposal && Array.isArray(proposal.changes) ? proposal.changes.length : diffCount,
+      appliedCount: appliedCount,
+      revision: landedRevision,
       changes: proposal && Array.isArray(proposal.changes) ? proposal.changes : null,
       proposedAt: r.proposed_at || null,
       decidedAt: r.decided_at || null,
@@ -3202,7 +3215,15 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   // is shared with validate_changes (structuredRefusals).
   const refusedStructured = structuredRefusals(allRefused);
   if (autoApplied) {
-    const nApplied = autoApplied.body && autoApplied.body.applied ? autoApplied.body.applied : 0;
+    // F1.5: `applied` is the detailed list now; the count lives in
+    // appliedCount. Read both so the sentence never prints an object.
+    const ab = autoApplied.body || {};
+    const nApplied =
+      typeof ab.applied === 'number'
+        ? ab.applied
+        : Array.isArray(ab.applied)
+          ? ab.applied.length
+          : Number(ab.appliedCount) || 0;
     return {
       jsonrpc: '2.0',
       id,

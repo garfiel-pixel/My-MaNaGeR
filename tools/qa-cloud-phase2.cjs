@@ -945,6 +945,38 @@ function baseState(pid, name) {
       save1.text
     );
 
+    // F1.4 (MCP-FINAL 2026-11-16): every write advances a numeric revision.
+    // A save quotes the revision it was based on; a stale base is a 409, not a
+    // silent overwrite of whatever landed in between.
+    check(
+      'P2.4d first save returns revision 1',
+      save1.body && save1.body.revision === 1,
+      save1.body && save1.body.revision
+    );
+    const saveRev2 = await api('/api/cloud/projects/' + PID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({ state: state1, baseRevision: 1 })
+    });
+    check(
+      'P2.4e a save on the current revision succeeds and returns revision 2',
+      saveRev2.status === 200 && saveRev2.body && saveRev2.body.revision === 2,
+      saveRev2.text
+    );
+    const saveStale = await api('/api/cloud/projects/' + PID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({ state: state1, baseRevision: 1 })
+    });
+    check(
+      'P2.4f a save from a stale revision is refused 409 with the live revision',
+      saveStale.status === 409 &&
+        saveStale.body &&
+        saveStale.body.code === 'stale_revision' &&
+        saveStale.body.revision === 2,
+      saveStale.text
+    );
+
     // A7: editor load — role + scope + state
     const edLoad = await api('/api/cloud/projects/' + PID + '/load', {
       method: 'POST',
@@ -1054,6 +1086,57 @@ function baseState(pid, name) {
         accRes.body.status === 'accepted' &&
         accRes.body.applied.indexOf('wbs') !== -1,
       accRes.text
+    );
+    // F1.4 (MCP-FINAL 2026-11-16): an accept interleaved with a stale save.
+    // The accept advances the revision; a save quoting the pre-accept revision
+    // is refused, and a save on the fresh revision keeps BOTH changes.
+    const revBeforeAccept = blobPre && Number(blobPre.revision);
+    check(
+      'P2.5c3 the pre-accept load carries the numeric revision',
+      Number.isFinite(revBeforeAccept) && revBeforeAccept >= 2,
+      revBeforeAccept
+    );
+    const interleavedStale = await api('/api/cloud/projects/' + PID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({ state: state1, baseRevision: revBeforeAccept })
+    });
+    check(
+      'P2.5c4 a save on the pre-accept revision is refused 409 (no overwrite)',
+      interleavedStale.status === 409 &&
+        interleavedStale.body &&
+        interleavedStale.body.code === 'stale_revision' &&
+        interleavedStale.body.revision > revBeforeAccept,
+      interleavedStale.text
+    );
+    const freshLoad = await api('/api/cloud/projects/' + PID + '/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({})
+    });
+    const freshState = freshLoad.body && freshLoad.body.state;
+    const freshSave = await api('/api/cloud/projects/' + PID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({
+        state: freshState,
+        baseRevision: freshState && freshState.revision
+      })
+    });
+    check(
+      'P2.5c5 a save on the fresh revision succeeds',
+      freshSave.status === 200 && freshSave.body && freshSave.body.ok === true,
+      freshSave.text
+    );
+    const afterInterleave = await api('/api/cloud/projects/' + PID + '/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({})
+    });
+    check(
+      'P2.5c6 the accepted change survives the interleaved save',
+      !!(afterInterleave.body && afterInterleave.body.state.tasks[0].name === 'Edited again (WBS)'),
+      afterInterleave.body && afterInterleave.body.state && afterInterleave.body.state.tasks
     );
     const ownerLoad1b = await api('/api/cloud/projects/' + PID + '/load', {
       method: 'POST',

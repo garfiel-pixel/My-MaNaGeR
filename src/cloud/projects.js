@@ -18,6 +18,7 @@ import {
   cloudClampToWriteScope,
   cloudDiffState,
   cloudPathSet,
+  cloudPathGet,
   cloudLogSave,
   cloudPathDelete,
   cloudTouchOwner,
@@ -46,7 +47,9 @@ import {
   CLOUD_ORPHAN_WARN_MS,
   sendOrphanWarningEmail,
   cloudAuthApiKey,
-  cloudScopeState
+  cloudScopeState,
+  nextRevision,
+  stateRevision
 } from '../lib/http.js';
 import { billingConfigured, billingFreeCap, subscriptionActive } from '../billing.js';
 import { enrichDiffs } from './proposal-diffs.js';
@@ -458,8 +461,10 @@ async function replayServerChanges(env, projectId, sinceIso, target) {
     return 0;
   }
   try {
+    // `>=` not `>`: an accept that lands in the same millisecond as the
+    // client's base must still be replayed, or the save erases it.
     const rows = await env.DB.prepare(
-      'SELECT diffs_json FROM cloud_changelog WHERE project_id = ? AND created_at > ? ORDER BY id ASC LIMIT 200'
+      'SELECT diffs_json FROM cloud_changelog WHERE project_id = ? AND created_at >= ? ORDER BY id ASC LIMIT 500'
     )
       .bind(projectId, sinceIso)
       .all();
@@ -475,7 +480,19 @@ async function replayServerChanges(env, projectId, sinceIso, target) {
         return;
       }
       (Array.isArray(list) ? list : []).forEach(function (d) {
-        if (!d || !d.path || d.afterAbsent) {
+        if (!d || !d.path) {
+          return;
+        }
+        // A server-side delete must not be resurrected by a stale client
+        // snapshot, and a leaf already at its server value is not touched.
+        if (d.afterAbsent) {
+          if (cloudPathDelete(target, d.path)) {
+            applied++;
+          }
+          return;
+        }
+        const live = cloudPathGet(target, d.path);
+        if (JSON.stringify(live) === JSON.stringify(d.after)) {
           return;
         }
         if (cloudPathSet(target, d.path, d.after)) {
@@ -680,6 +697,15 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
     if (authRow && authRow.deleted_at) {
       return cloudProjectDeleted();
     }
+    // MCP-FINAL 2026-11-16 F1.4: a save quotes the revision it was based on.
+    // Absent (an older client) keeps the replay path below; present and behind
+    // means another writer (an accept, another device) has moved the project,
+    // so the save is refused and the app reloads before retrying.
+    const baseRevisionRaw = read.body.baseRevision;
+    const baseRevision =
+      baseRevisionRaw === undefined || baseRevisionRaw === null || baseRevisionRaw === ''
+        ? null
+        : Number(baseRevisionRaw);
     // MCP-AGENT-FIRST 2026-11-12 1.6(b): read with the etag and write only if
     // the blob still matches. A concurrent accept or save is a detected
     // conflict; re-run the merge once on the fresh state, then answer busy.
@@ -698,6 +724,24 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
         basePrev = readPrev.state;
       }
       prev = readPrev.state;
+      if (baseRevision !== null && Number.isFinite(baseRevision)) {
+        const serverRev = stateRevision(prev);
+        if (serverRev > baseRevision) {
+          return json(
+            {
+              ok: false,
+              error: 'stale',
+              code: 'stale_revision',
+              revision: serverRev,
+              message:
+                'This project changed elsewhere (now revision ' +
+                serverRev +
+                '). Reload to pick up the new version, then save again.'
+            },
+            409
+          );
+        }
+      }
       next = JSON.parse(JSON.stringify(read.body.state));
       stripStateSecrets(next);
       // Rebase onto anything the server accepted after the client's base.
@@ -724,6 +768,9 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
         next = cloudClampToWriteScope(next, prev, teamAuth.writeScope);
       }
       next.updatedAt = now;
+      // MCP-FINAL 2026-11-16 F1.4: every write advances the revision, so a
+      // client can tell whether the state it is about to save over is current.
+      next.revision = nextRevision(prev);
       // Encrypt state blob before R2 storage (server-side envelope encryption,
       // AES-256-GCM, key from owner_code_hash + owner_code_salt).
       let r2Payload = JSON.stringify(next);
@@ -778,6 +825,7 @@ export async function handleCloudSave(request, env, projectId, cloudPushRevChang
       savedAt: now,
       key: key,
       actor: actor.type,
+      revision: next.revision,
       previousUpdatedAt: (prev && prev.updatedAt) || null
     };
     if (entry) {

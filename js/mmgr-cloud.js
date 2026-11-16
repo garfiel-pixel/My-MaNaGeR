@@ -1311,22 +1311,46 @@ var MMGR = window.MMGR || {};
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
-      const sendSave = function () {
+      const sendSave = function (s) {
         return fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
           method: 'POST',
           credentials: 'same-origin',
           headers: headers,
           body: JSON.stringify({
-            state: state,
+            state: s,
             syncMode: getSyncMode(),
-            baseUpdatedAt: state.updatedAt || null
+            baseUpdatedAt: s.updatedAt || null,
+            // F1.4: the revision this save is based on. The server refuses
+            // 409 when it is behind, instead of silently overwriting an accept.
+            baseRevision: typeof s.revision === 'number' ? s.revision : null
           })
         });
       };
-      let res = await sendSave();
+      let res = await sendSave(state);
       let data = await res.json().catch(function () {
         return {};
       });
+      // F1.4: the project moved on (an accept or another device). Reload the
+      // full cloud state first, then retry once against the fresh base.
+      if (
+        res.status === 409 &&
+        data &&
+        (data.code === 'stale_revision' || data.error === 'stale')
+      ) {
+        let reload = null;
+        try {
+          reload = await resyncNow({ force: true, replace: true });
+        } catch (e) {
+          reload = null;
+        }
+        if (reload && reload.ok) {
+          const fresh = readProjectState() || state;
+          res = await sendSave(fresh);
+          data = await res.json().catch(function () {
+            return {};
+          });
+        }
+      }
       // MCP-AGENT-FIRST 2026-11-12 1.6(b): 409 busy means an accept (or another
       // device) wrote between our read and our write. The server re-merged once;
       // retry the save once with the same local state before reporting failure.
@@ -1334,7 +1358,7 @@ var MMGR = window.MMGR || {};
         await new Promise(function (r) {
           setTimeout(r, 600);
         });
-        res = await sendSave();
+        res = await sendSave(state);
         data = await res.json().catch(function () {
           return {};
         });
@@ -1502,25 +1526,54 @@ var MMGR = window.MMGR || {};
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
-      const body = JSON.stringify({
-        state: state,
-        syncMode: getSyncMode(),
-        baseUpdatedAt: state.updatedAt || null
-      });
+      const buildBody = function (s) {
+        return JSON.stringify({
+          state: s,
+          syncMode: getSyncMode(),
+          baseUpdatedAt: s.updatedAt || null,
+          baseRevision: typeof s.revision === 'number' ? s.revision : null
+        });
+      };
+      let body = buildBody(state);
       // keepalive:true lets a pagehide flush survive tab close, but keepalive
       // requests are size-capped (~64 KiB), so only use it for small states;
       // large states rely on the idle debounce (which normally already fired).
       const useKeepalive = !!(opts && opts.keepalive) && body.length < 48000;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: headers,
-        body: body,
-        keepalive: useKeepalive
-      });
-      const data = await res.json().catch(function () {
+      const sendBody = function (b) {
+        return fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers,
+          body: b,
+          keepalive: useKeepalive
+        });
+      };
+      let res = await sendBody(body);
+      let data = await res.json().catch(function () {
         return {};
       });
+      // F1.4: another writer moved the project. Reload the full state, then
+      // retry once against the fresh revision. A background save must never
+      // overwrite an accepted proposal.
+      if (
+        res.status === 409 &&
+        data &&
+        (data.code === 'stale_revision' || data.error === 'stale')
+      ) {
+        let reload = null;
+        try {
+          reload = await resyncNow({ force: true, replace: true });
+        } catch (e) {
+          reload = null;
+        }
+        if (reload && reload.ok) {
+          body = buildBody(readProjectState() || state);
+          res = await sendBody(body);
+          data = await res.json().catch(function () {
+            return {};
+          });
+        }
+      }
       if (!res.ok || !data.ok) {
         if (res.status === 403) {
           if (cred.header === 'X-Owner-Code') {

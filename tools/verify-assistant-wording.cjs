@@ -124,7 +124,14 @@ const offenders = [];
   fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
     const full = path.join(dir, e.name);
     const rel = path.relative(ROOT, full).split(path.sep).join('/');
-    if (/^(node_modules|dist|tmp|_archive|docs|\.git|\.agents|tools)$/.test(rel.split('/')[0])) {
+    // MCP-FINAL 2026-11-13 F0.1: .codebuddy holds local agent worktrees (scratch,
+    // gitignored, never served). Their copies of tools/qa-populate.cjs quote the
+    // banned phrase while asserting it is GONE; exclude them like tools/.
+    if (
+      /^(node_modules|dist|tmp|_archive|docs|\.git|\.agents|\.codebuddy|tools)$/.test(
+        rel.split('/')[0]
+      )
+    ) {
       return;
     }
     if (e.isDirectory()) {

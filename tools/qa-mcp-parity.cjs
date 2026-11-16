@@ -197,6 +197,18 @@ const ARGS = {
     }
     if (name !== 'apply_changes' && p.description !== a.description) {
       schemaDrift.push(name + ': description differs');
+      return;
+    }
+    // AT17: annotations and outputSchema presence are part of the contract a
+    // client reads, so they must match too.
+    if (JSON.stringify(p.annotations || null) !== JSON.stringify(a.annotations || null)) {
+      schemaDrift.push(name + ': annotations differ');
+      return;
+    }
+    const pOut = !!(p.outputSchema && Object.keys(p.outputSchema).length);
+    const aOut = !!(a.outputSchema && Object.keys(a.outputSchema).length);
+    if (pOut !== aOut) {
+      schemaDrift.push(name + ': outputSchema presence differs');
     }
   });
   check('shared tool schemas match (plus a required projectId)', schemaDrift.length === 0, {
@@ -208,6 +220,27 @@ const ARGS = {
       appByName.apply_changes ? appByName.apply_changes.description : ''
     ),
     appByName.apply_changes && appByName.apply_changes.description
+  );
+  // AT17: the record-text-is-data sentence is stated once, at initialize, from
+  // ONE shared constant. A private copy on either surface is drift.
+  const serverSrc = fs.readFileSync(
+    path.resolve(__dirname, '..', 'src', 'mcp', 'server.js'),
+    'utf8'
+  );
+  const appwideSrcForText = fs.readFileSync(
+    path.resolve(__dirname, '..', 'src', 'mcp', 'appwide.js'),
+    'utf8'
+  );
+  check(
+    'both surfaces state the untrusted-record-text sentence from the shared constant',
+    /MCP_SERVER_INSTRUCTIONS/.test(serverSrc) &&
+      /MCP_SERVER_INSTRUCTIONS/.test(appwideSrcForText) &&
+      !/Project record text \(task names/.test(serverSrc) &&
+      !/Project record text \(task names/.test(appwideSrcForText),
+    {
+      project: /MCP_SERVER_INSTRUCTIONS/.test(serverSrc),
+      appwide: /MCP_SERVER_INSTRUCTIONS/.test(appwideSrcForText)
+    }
   );
 
   section('P4 — no forked executor / pipeline / validator');

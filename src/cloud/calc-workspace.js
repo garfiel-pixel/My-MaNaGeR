@@ -28,7 +28,10 @@ export async function handleCalcWorkspaceGet(request, env) {
   } catch (e) {
     parsed = null;
   }
-  if (!parsed || typeof parsed !== 'object') {
+  // MCP-FINAL 2026-11-16 F1.6: calc-ws is untrusted storage. A blob that is
+  // not a plain object (array, string, number, HTML) is discarded, never
+  // echoed back to a client.
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return json({ ok: true, plan: 'free', ws: null });
   }
   return json({ ok: true, plan: 'free', ws: parsed });

@@ -115,13 +115,25 @@ function field(type, opts) {
   if (o.numeric) {
     spec.numeric = true;
   }
+  // MCP-FINAL 2026-11-16 F1.3: a schedule INPUT is a field the schedule engine
+  // reads (start/end/duration/deps/status/phase/parent/lead-time/weather). An
+  // accept that writes one of these invalidates the derived float/critical
+  // fields on EVERY task, not just the touched one - they are global.
+  if (o.scheduleInput) {
+    spec.scheduleInput = true;
+  }
   return spec;
 }
 
 // A phase's dates are rolled up from its children (Schedule.rollupPhases),
 // so they are derived only while isPhase is true.
 function phaseDate(defaultValue) {
-  return field('string', { date: true, default: defaultValue, derivedWhen: 'isPhase' });
+  return field('string', {
+    date: true,
+    default: defaultValue,
+    derivedWhen: 'isPhase',
+    scheduleInput: true
+  });
 }
 
 export const MODEL = {
@@ -136,22 +148,22 @@ export const MODEL = {
         name: field('string', { max: SHORT_MAX, default: 'New Task' }),
         level: field('number', { default: 0 }),
         indent: field('number', { default: 0 }),
-        isPhase: field('boolean', { default: false }),
-        status: field('string', { enum: TASK_STATUSES, default: 'todo' }),
+        isPhase: field('boolean', { default: false, scheduleInput: true }),
+        status: field('string', { enum: TASK_STATUSES, default: 'todo', scheduleInput: true }),
         startDate: phaseDate(''),
         endDate: phaseDate(''),
-        duration: field('string', { max: 20, default: '', numeric: true }),
+        duration: field('string', { max: 20, default: '', numeric: true, scheduleInput: true }),
         assignee: field('string', { max: SHORT_MAX, default: '' }),
         // Schedule engine writes: js/mmgr-schedule.js markCritical / applyPlan.
         critical: field('boolean', { derived: true, default: false }),
-        leadTime: field('boolean', { default: false }),
-        recurring: field('boolean', { default: false }),
+        leadTime: field('boolean', { default: false, scheduleInput: true }),
+        recurring: field('boolean', { default: false, scheduleInput: true }),
         // js/mmgr-schedule.js checkWeatherExposure / applyPlan.
         weatherExposed: field('boolean', { derived: true, default: false }),
         confidence: field('string', { enum: CONFIDENCE, default: 'high' }),
-        predecessors: field('array', { of: 'string', default: [] }),
+        predecessors: field('array', { of: 'string', default: [], scheduleInput: true }),
         notes: field('string', { default: '' }),
-        weatherSensitive: field('boolean', { default: false }),
+        weatherSensitive: field('boolean', { default: false, scheduleInput: true }),
         // createTask stamps the creation date, the board slot and the
         // status stamp; the app then owns them.
         createdDate: field('string', { date: true, derived: true, default: '' }),
@@ -168,9 +180,9 @@ export const MODEL = {
         floatBaseline: field('number', { derived: true }),
         _schedPad: field('number', { derived: true }),
         // Present after the v4 state migration; not written by createTask.
-        milestone: field('boolean'),
+        milestone: field('boolean', { scheduleInput: true }),
         confidenceLevel: field('string', { enum: CONFIDENCE }),
-        parentName: field('string', { max: SHORT_MAX }),
+        parentName: field('string', { max: SHORT_MAX, scheduleInput: true }),
         cycleId: field('string', { max: ID_MAX }),
         moduleId: field('string', { max: ID_MAX }),
         // js/mmgr-tasks.js tglLeadTime.

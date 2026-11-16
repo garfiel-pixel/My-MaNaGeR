@@ -388,7 +388,25 @@ function unauthorized(origin, message, invalidToken) {
 
 export async function handleAppwideMcp(request, env) {
   if (request.method !== 'POST') {
-    return json({ ok: false, error: 'MCP server requires POST' }, 405);
+    /* Streamable HTTP: this endpoint carries client requests only, so any other
+       method is 405 with Allow (RFC 9110 15.5.6). The body is JSON-RPC shaped
+       because that is what a client parses. Returning 404 here read as "there
+       is no MCP endpoint at this URL" to a connector that probes with GET. */
+    return new Response(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32000, message: 'This MCP endpoint accepts POST only.' }
+      }),
+      {
+        status: 405,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          allow: 'POST',
+          'cache-control': 'no-store'
+        }
+      }
+    );
   }
   const origin = new URL(request.url).origin;
   const authHeader = request.headers.get('Authorization') || '';
@@ -541,7 +559,7 @@ export async function handleAppwideMcp(request, env) {
     // apply_changes envelope BEFORE loading the snapshot. Same shared
     // validator as the project endpoint, so refusal text cannot drift.
     if (toolName === 'apply_changes') {
-      const precheck = validateProposalEnvelope(toolArgs, auth);
+      const precheck = validateProposalEnvelope(toolArgs, auth, tier);
       if (precheck) {
         return rpcResult(id, precheck);
       }
@@ -565,17 +583,18 @@ export async function handleAppwideMcp(request, env) {
         auth.role === 'api' ? auth.scope : null,
         toolArgs,
         auth,
-        state
+        state,
+        tier
       );
       if (result.pendingValidate) {
-        const dry = await validateChangesProposal(env, projectId, auth, toolArgs, id, state);
+        const dry = await validateChangesProposal(env, projectId, auth, toolArgs, id, state, tier);
         return json(dry, 200);
       }
       if (result.pendingApply) {
         // queueMcpProposal returns a JSON-RPC envelope object; the router
         // expects a Response from this handler, so wrap it here (the project
         // endpoint wraps it in handleMcpServer - same envelope either way).
-        const proposal = await queueMcpProposal(env, projectId, auth, toolArgs, id, state);
+        const proposal = await queueMcpProposal(env, projectId, auth, toolArgs, id, state, tier);
         return json(proposal, 200);
       }
       return rpcResult(id, result);
@@ -618,7 +637,8 @@ export async function handleAppwideMcp(request, env) {
       auth.role === 'api' ? auth.scope : null,
       toolArgs,
       auth,
-      state
+      state,
+      tier
     );
     return rpcResult(id, result);
   }
@@ -668,7 +688,9 @@ async function createProject(env, accountSub, toolArgs, id) {
         text: JSON.stringify(
           {
             projectId: ins.projectId,
-            ownerCode: ins.ownerCode,
+            // MCP-FINAL 2026-11-16 F1.6: the owner code is a full-access
+            // credential and is NEVER returned by MCP. The owner sees it in the
+            // app; an agent does not need it.
             status: ins.status,
             syncMode: ins.syncMode
           },

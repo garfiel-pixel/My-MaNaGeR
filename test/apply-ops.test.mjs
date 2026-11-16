@@ -355,10 +355,14 @@ test('a bad enum left in state is a hard failure', () => {
   assert.ok(r.hardFailure && r.hardFailure.code === 'bad_enum');
 });
 
-test('touched tasks have their derived schedule fields nulled for recompute', () => {
+// F1.3: float/criticality are global, so only a schedule-affecting edit nulls
+// them - and then on EVERY task. A non-schedule edit nulls nothing, and no
+// task ever keeps a `derived` string (the first pass wrote one that persisted).
+test('F1.3 a non-schedule edit (assignee) nulls nothing and leaves no derived string', () => {
   const st = base();
   st.tasks[0].critical = true;
   st.tasks[0].totalFloat = 5;
+  st.tasks[0].derived = 'pending recompute (opens in the app)';
   const r = applyOps(
     st,
     [
@@ -370,10 +374,139 @@ test('touched tasks have their derived schedule fields nulled for recompute', ()
     ],
     { model }
   );
+  assert.equal(r.next.tasks[0].critical, true);
+  assert.equal(r.next.tasks[0].totalFloat, 5);
+  assert.equal(r.next.tasks[0].derived, undefined);
+  assert.equal(r.derivedChanges.length, 0);
+});
+
+test('F1.3 a schedule-input edit (predecessors) nulls the derived fields on EVERY task', () => {
+  const st = base();
+  st.tasks[0].critical = true;
+  st.tasks[0].totalFloat = 5;
+  st.tasks[1].critical = false;
+  st.tasks[1].totalFloat = 3;
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't2',
+            field: 'predecessors',
+            before: ['t1'],
+            after: []
+          }
+        ]
+      }
+    ],
+    { model }
+  );
+  // Both work items lose their stale float; the phase (t3) too - it is a task.
   assert.equal(r.next.tasks[0].critical, null);
-  assert.equal(r.next.tasks[0].totalFloat, null);
-  assert.equal(r.next.tasks[0].derived, 'pending recompute (opens in the app)');
-  assert.ok(r.derivedChanges.find(c => c.id === 't1' && c.field === 'critical'));
-  // An untouched task keeps its derived values.
-  assert.equal(r.next.tasks[1].critical, undefined);
+  assert.equal(r.next.tasks[1].totalFloat, null);
+  assert.ok(r.derivedChanges.find(c => c.id === 't2' && c.field === 'critical'));
+  assert.equal(r.next.tasks[0].derived, undefined);
+});
+
+test('F1.3 a task create nulls the derived fields on every task', () => {
+  const st = base();
+  st.tasks[0].critical = true;
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [{ op: 'create', path: 'tasks', record: { id: 't9', name: 'New', status: 'todo' } }]
+      }
+    ],
+    { model }
+  );
+  assert.equal(r.next.tasks[0].critical, null);
+  assert.ok(r.derivedChanges.length > 0);
+});
+
+// ---- F1.2: the accept stamps task status transitions like the client -------
+test('F1.2 a status change stamps statusSince + completedDate and clears leadTime', () => {
+  const st = base();
+  st.tasks[0].leadTime = true;
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't1',
+            field: 'status',
+            before: 'todo',
+            after: 'completed'
+          }
+        ]
+      }
+    ],
+    { model, today: '2026-11-16' }
+  );
+  assert.equal(r.hardFailure, null);
+  const t = r.next.tasks[0];
+  assert.equal(t.status, 'completed');
+  assert.equal(t.statusSince, '2026-11-16');
+  assert.equal(t.completedDate, '2026-11-16');
+  assert.equal(t.leadTime, false);
+});
+
+test('F1.2 a completed -> todo move clears completedDate and re-stamps statusSince', () => {
+  const st = base();
+  st.tasks[0].status = 'completed';
+  st.tasks[0].completedDate = '2026-11-01';
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't1',
+            field: 'status',
+            before: 'completed',
+            after: 'todo'
+          }
+        ]
+      }
+    ],
+    { model, today: '2026-11-16' }
+  );
+  const t = r.next.tasks[0];
+  assert.equal(t.status, 'todo');
+  assert.equal(t.completedDate, undefined);
+  assert.equal(t.statusSince, '2026-11-16');
+});
+
+test('F1.2 a non-status edit does not stamp the task', () => {
+  const st = base();
+  st.tasks[0].statusSince = '2026-11-02';
+  const r = applyOps(
+    st,
+    [
+      {
+        id: 10,
+        scope: ['wbs'],
+        ops: [{ op: 'set', path: 'tasks', recordId: 't1', field: 'assignee', after: 'Sam' }]
+      }
+    ],
+    { model, today: '2026-11-16' }
+  );
+  assert.equal(r.next.tasks[0].statusSince, '2026-11-02');
+  assert.equal(r.next.tasks[0].completedDate, undefined);
 });

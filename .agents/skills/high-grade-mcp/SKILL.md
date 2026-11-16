@@ -51,6 +51,38 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
    (`src/cloud/proposal-diffs.js`) must reject `__proto__`, `constructor` and
    `prototype` on every path write.
 6. **Budget lines cannot be deleted through MCP.**
+7. **No credential echo, no untrusted echo.** No MCP tool output may return an
+   owner code, session cookie, API key, or password hash. `create_project`
+   returns `projectId`, `status`, `syncMode` only - the owner code stays in the
+   app. Untrusted storage read on behalf of a client (e.g. the calculator
+   workspace blob in R2) is validated before use: a non-object or array payload
+   reads as empty, and its raw text is never passed through to MCP output.
+8. **Revision-gated whole-state writes.** Every save and every accept bumps the
+   state's numeric `revision` (`nextRevision` in `src/lib/http.js`). A save that
+   quotes a `baseRevision` behind the server's is refused `409
+   {code:'stale_revision', revision}` - never merged over. The app reloads the
+   full state and retries; an accept response reports
+   `{revision, applied[], appliedCount, blocked[], refused[]}` and
+   `get_proposal_status` reports the same count and revision later.
+9. **Every limit follows the project owner's tier.** `src/mcp/tier-limits.js`
+   is the only table: pending cap, daily ops, per-call cap (total across
+   arrays, each array also bounded by its ceiling), large budget changes per
+   day, active API keys and report retention. Never hardcode a cap in a handler
+   or message; pass the tier the handler already resolved. An unknown paid tier
+   reads as contractor, an empty tier as free. `pricing.html` publishes two of
+   the columns and `test/tier-limits.test.mjs` fails if either side drifts.
+10. **A delete cleans every reference to the deleted id.** In `applyOps`, a
+    task delete strips the id from EVERY survivor's `predecessors` (AT14c). A
+    guard that only strips "when the record is not also being deleted" is
+    always false-to-strip and leaves dangling predecessors - the schedule then
+    references a record that no longer exists.
+11. **A delete-only call must queue.** `planProposal` writes the touched
+    section into `submitted` with the record REMOVED - not the unchanged base
+    list. `submitted` is the map the queue guard reads; if only diffs/creates/
+    sets populate it, a call carrying just a `deletes` op comes back "Nothing
+    to propose" and no delete can be proposed at all (AT14e, owner manual test
+    7). A bare `base[path]` is deep-equal to `prev`, so `cloudScopeMerge` still
+    sees no diff - the submitted array MUST differ from prev.
 
 ## Architecture (reference: My MaNaGeR)
 
@@ -111,6 +143,17 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
   the earlier one (`superseded`), computed against the pre-state snapshot.
 - **Idempotency:** `cloud_reviews.import_key` is unique; identical arguments in
   the same 10-minute bucket return the same proposal id with `duplicate: true`.
+- **No false success on a zero-diff accept:** when every op resolves
+  `skipped_already`/`superseded` (live already equals `after`) on a proposal
+  whose pre-claim `decided_at` is still null, another path applied the change -
+  the row is a STALE DUPLICATE. `acceptMcpV2` (`src/reviews.js`) must refuse
+  `409 stale` with the "Refresh the project and review it again" sentence,
+  release the claim and leave the row pending (e2e B5, gate AT25e). Only a row
+  that was already decided (an earlier claim whose R2 write survived a lost D1
+  status update) may heal to accepted on an all-skipped retry (AT25a-d): the
+  claim stamps `decided_at` before any R2 write, so that stamp distinguishes a
+  recovery retry from a redundant duplicate. Never report "accepted, N updates
+  pulled" for a no-op accept.
 
 ## Tool catalog shape
 

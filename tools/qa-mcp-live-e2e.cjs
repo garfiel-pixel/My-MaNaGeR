@@ -200,7 +200,22 @@ async function startWrangler() {
       // be unlocked the production way (signature-verified webhook), never a
       // direct DB write.
       '--var',
-      'LEMONSQUEEZY_WEBHOOK_SECRET:' + E2E_LS_SECRET
+      'LEMONSQUEEZY_WEBHOOK_SECRET:' + E2E_LS_SECRET,
+      // C4/C5 (2026-11-13): this harness fires well over the 30/min general
+      // cloud bucket from one loopback IP across phases A+D+B+E+C. Without the
+      // test hook the final revoke/delete checks (C4, C5) trip a 429 and report
+      // a false failure - the exact "green count that does not test the
+      // contract" this pass is meant to catch. qa-approval.cjs sets the same
+      // hook; production is untouched (default factor 1).
+      '--var',
+      'RATE_LIMIT_FACTOR:50',
+      // D-phase session flake (2026-11-13): without GOOGLE_CLIENT_SECRET the
+      // Worker signs mmgr_session with a per-isolate random key. If wrangler
+      // reloads the isolate mid-run, the cookie minted in phase A no longer
+      // verifies and D4-D8 answer 401/403. A fixed test secret makes the HMAC
+      // key stable across reloads. Test-only binding; production sets its own.
+      '--var',
+      'GOOGLE_CLIENT_SECRET:qa-mcp-e2e-stable-session-secret'
     ],
     {
       cwd: ROOT,
@@ -896,6 +911,99 @@ async function main() {
         b5 && b5.warned && b5.acceptLeft === 1,
         b5
       );
+
+      // AT16 (F3) — XSS sweep. A hostile string is proposed through MCP into
+      // every text-bearing list the key can write, accepted, then rendered
+      // through every module view, the review panel, the export path and the
+      // print view. Nothing may execute, and the markup must appear as text.
+      const PAY = '"><img src=x onerror="window.__pwn=1">';
+      const xssProp = await mcp(
+        OC,
+        'tools/call',
+        {
+          name: 'apply_changes',
+          arguments: {
+            creates: [
+              { path: 'tasks', record: { name: 'XSS ' + PAY, notes: PAY } },
+              { path: 'risks', record: { name: 'XSS ' + PAY, description: PAY } },
+              { path: 'issues', record: { name: 'XSS ' + PAY, description: PAY } },
+              { path: 'changes', record: { name: 'XSS ' + PAY, description: PAY } }
+            ]
+          }
+        },
+        771
+      );
+      const xssText =
+        xssProp && xssProp.result && xssProp.result.content ? xssProp.result.content[0].text : '';
+      const xssList = await api(
+        'GET',
+        '/api/cloud/projects/' + PID + '/reviews',
+        undefined,
+        ownerH(OC)
+      );
+      const xssPending =
+        (xssList.data && (xssList.data.proposals || xssList.data.reviews || [])) || [];
+      const xssRow = xssPending.filter(function (r) {
+        return r.status === 'pending';
+      })[0];
+      let xssAccept = null;
+      if (xssRow) {
+        xssAccept = await api(
+          'POST',
+          '/api/cloud/projects/' + PID + '/reviews/' + xssRow.id + '/accept',
+          {},
+          ownerH(OC)
+        );
+      }
+      check(
+        'AT16a the hostile payload is queued and accepted',
+        !!xssRow && xssAccept && xssAccept.status === 200 && xssAccept.data.ok === true,
+        { queued: xssText.slice(0, 160), accept: xssAccept && xssAccept.data }
+      );
+
+      await send('Page.navigate', { url: BASE + '/project.html?id=' + PID });
+      await sleep(2500);
+      const xssRun = await ev(`(async function(){
+        try {
+          window.__pwn = undefined;
+          if (window.MMGR && window.MMGR.Render && window.MMGR.Render.renderAll) {
+            window.MMGR.Render.renderAll();
+          }
+          await new Promise(r => setTimeout(r, 400));
+          // Every module tab the page exposes.
+          const tabs = Array.from(document.querySelectorAll('[data-tab], [data-view], nav [role="tab"]'));
+          for (const t of tabs) {
+            try { t.click(); } catch (e) {}
+            await new Promise(r => setTimeout(r, 120));
+          }
+          // The review panel and the print view.
+          try { if (window.MMGR && window.MMGR.CloudReview) await window.MMGR.CloudReview.cloudReviewList(); } catch (e) {}
+          await new Promise(r => setTimeout(r, 300));
+          try { if (window.MMGR && window.MMGR.Print && window.MMGR.Print.printProject) window.MMGR.Print.printProject(); } catch (e) {}
+          await new Promise(r => setTimeout(r, 300));
+          const state = window.MMGR && window.MMGR.State && window.MMGR.State.get ? window.MMGR.State.get() : null;
+          const stored = !!state && Array.isArray(state.tasks) && state.tasks.some(function (t) {
+            return typeof t.name === 'string' && t.name.indexOf('<img src=x') !== -1;
+          });
+          return {
+            pwn: window.__pwn,
+            imgs: document.querySelectorAll('img[src="x"]').length,
+            stored: stored,
+            tabs: tabs.length,
+            textHasMarkup: (document.body.textContent || '').indexOf('<img src=x') !== -1
+          };
+        } catch (e) { return { threw: String(e && e.message || e) }; }
+      })()`);
+      check(
+        'AT16b no payload executes in any view, panel, export or print path',
+        !!xssRun && xssRun.pwn === undefined && xssRun.imgs === 0,
+        xssRun
+      );
+      check(
+        'AT16c the payload renders as literal text, never as markup',
+        !!xssRun && xssRun.imgs === 0 && xssRun.textHasMarkup === true,
+        xssRun
+      );
     } catch (e) {
       check('BROWSER PHASE', false, String((e && e.stack) || e));
     } finally {
@@ -1145,7 +1253,7 @@ async function main() {
     e21Accept.status === 200 &&
       e21AccBody.ok === true &&
       e21AccBody.proposals === 9 &&
-      e21AccBody.applied >= 1,
+      e21AccBody.appliedCount >= 1,
     e21AccBody
   );
   // The colliding t1 (P1 completed vs P2 blocked) is resolved by last-op-wins,
@@ -1153,10 +1261,10 @@ async function main() {
   // conflicts only when a real staleness/enum conflict occurs).
   check(
     'E7 AT21 the accept summary reports the proposal + applied counts',
-    e21AccBody.proposals === 9 && e21AccBody.applied >= 1,
+    e21AccBody.proposals === 9 && e21AccBody.appliedCount >= 1,
     {
       proposals: e21AccBody.proposals,
-      applied: e21AccBody.applied,
+      appliedCount: e21AccBody.appliedCount,
       conflicts: e21AccBody.conflicts,
       skipped: e21AccBody.skipped
     }
@@ -1257,16 +1365,22 @@ async function main() {
       postStatus
     );
     const rl2 = await api('GET', '/api/cloud/projects/' + PID + '/reviews', undefined, ownerH(OC));
-    const a5Row = (rl2.data.proposals || []).find(p => String(p.keyId) === String(KEY_ID));
+    // B4 accepted ONE of the two same-key proposals; the OTHER (the B3b
+    // duplicate) is now refused as stale and correctly stays pending for the
+    // owner to review (2026-11-12 no-false-success contract, e2e B5). So the
+    // key can hold a mix of accepted + pending rows. Assert that at least one
+    // was decided by the browser UI, not that every row is accepted.
+    const a5Rows = (rl2.data.proposals || []).filter(p => String(p.keyId) === String(KEY_ID));
+    const a5Accepted = a5Rows.some(p => p.status === 'accepted');
     const cl = await api('GET', '/api/cloud/projects/' + PID + '/changelog', undefined, ownerH(OC));
     const entries = cl.data.entries || cl.data.log || [];
     const acc = entries.find(
       e => e.entryType === 'accepted' || e.type === 'accepted' || e.entry_type === 'accepted'
     );
     check(
-      'C2 the Phase-A proposal was decided by the browser owner UI (status accepted) + changelog carries the accepted entry',
-      a5Row && a5Row.status === 'accepted' && !!acc,
-      { a5Status: a5Row && a5Row.status, hasAccepted: !!acc }
+      'C2 a Phase-A proposal was decided by the browser owner UI (status accepted) + changelog carries the accepted entry',
+      a5Accepted && !!acc,
+      { a5Statuses: a5Rows.map(p => p.status), hasAccepted: !!acc }
     );
   }
 

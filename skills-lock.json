@@ -35,7 +35,7 @@
       "source": "./local",
       "sourceType": "local",
       "skillPath": ".agents/skills/high-grade-mcp/SKILL.md",
-      "computedHash": "15b315553dc6b68072a23a3007028819d5a70af2aac6b0823fdee9d4be8ca407"
+      "computedHash": "de5f050f63e2a055fa5247b01034abf4a86d2727618fd181b125fda77aa50cd9"
     },
     "human-audit": {
       "source": "./local",
@@ -141,7 +141,7 @@
       "source": "./local",
       "sourceType": "local",
       "skillPath": ".agents/skills/universal-ui-architect/SKILL.md",
-      "computedHash": "de02a424342376830e494978ad5bbec7ae0699c412825e2d272e1035940bd38a"
+      "computedHash": "fbb6e9e1b5e969d1d90dec693c15a42cbd21b93b8f5b38ea3af3d8ecdb5c9075"
     },
     "web-perf": {
       "source": "cloudflare/skills",

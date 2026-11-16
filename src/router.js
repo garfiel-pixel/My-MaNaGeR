@@ -391,7 +391,11 @@ export async function routeApi(request, env, url) {
       }
       return handleOauthRegister(request, env);
     }
-    if ((path === '/api/mcp' || path === '/api/mcp/') && request.method === 'POST') {
+    /* The path is routed for every method so the handler can answer 405 with
+       Allow. Matching POST only sent GET/DELETE to the asset fallback, which
+       answered 404 - a client probing the URL for an SSE stream read that as
+       "no MCP server here" instead of "this one is POST-only". */
+    if (path === '/api/mcp' || path === '/api/mcp/') {
       const r = await rl(request, 'general', env);
       if (r) {
         return mcpRateLimitedResponse(r);

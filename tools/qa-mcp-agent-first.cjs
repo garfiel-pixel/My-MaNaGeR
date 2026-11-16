@@ -263,8 +263,20 @@ async function makeEnv(opts) {
                 return { status: 'active', tier: 'premium', plan: 'premium' };
               }
               if (low.includes('from cloud_reviews') && low.includes('import_key')) {
+                // MCP-FINAL 2026-11-16 F1.1: honour the status filter the real
+                // findDuplicateProposal now carries, so a rejected/withdrawn
+                // row is not treated as a duplicate.
+                const onlyLive = low.includes("status in ('pending','accepting','accepted')");
                 const r = store.reviews.find(function (x) {
-                  return x.import_key === args[0];
+                  if (x.import_key !== args[0]) {
+                    return false;
+                  }
+                  if (!onlyLive) {
+                    return true;
+                  }
+                  return (
+                    x.status === 'pending' || x.status === 'accepting' || x.status === 'accepted'
+                  );
                 });
                 return r ? Object.assign({}, r) : null;
               }
@@ -547,6 +559,48 @@ async function accept(env, reviewId, body) {
   };
 }
 
+// F1.1: owner rejects one proposal (single-reject path).
+async function reject(env, reviewId, note) {
+  const mod = env.__mod;
+  const req = new Request(
+    'http://localhost/api/cloud/projects/' + PROJECT + '/reviews/' + reviewId + '/reject',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+      body: JSON.stringify({ note: note || 'not wanted' })
+    }
+  );
+  const res = await mod.handleReviewReject(req, env, PROJECT, reviewId);
+  let data = null;
+  try {
+    data = await res.clone().json();
+  } catch (e) {
+    data = null;
+  }
+  return { status: res.status, data: data };
+}
+
+// F1.1: owner rejects a whole change set.
+async function changeSetReject(env, changeSetId) {
+  const mod = env.__mod;
+  const req = new Request(
+    'http://localhost/api/cloud/projects/' + PROJECT + '/changesets/' + changeSetId + '/reject',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+      body: JSON.stringify({ note: 'declined' })
+    }
+  );
+  const res = await mod.handleChangeSetReject(req, env, PROJECT, changeSetId);
+  let data = null;
+  try {
+    data = await res.clone().json();
+  } catch (e) {
+    data = null;
+  }
+  return { status: res.status, data: data };
+}
+
 async function stateOf(env) {
   const raw = await env.R2.get(R2_KEY);
   const text = await raw.text();
@@ -590,10 +644,13 @@ function addReview(env, row) {
   const projects = await import('../src/cloud/projects.js');
   const apiKeys = await import('../src/cloud/api-keys.js');
   const autoAcceptPolicy = await import('../src/mcp/auto-accept.js');
+  const planMod = await import('../src/mcp/plan.js');
+  const tierLimits = await import('../src/mcp/tier-limits.js');
   const mod = {
     handleMcpServer: server.handleMcpServer,
     queueMcpProposal: server.queueMcpProposal,
     handleReviewAccept: reviews.handleReviewAccept,
+    handleReviewReject: reviews.handleReviewReject,
     handleCloudApiKeyPatch: apiKeys.handleCloudApiKeyPatch,
     autoAcceptEligible: autoAcceptPolicy.autoAcceptEligible,
     handleChangeSetAccept: reviews.handleChangeSetAccept,
@@ -606,6 +663,9 @@ function addReview(env, row) {
     storeApplyReport: reportStore.storeApplyReport,
     summarizeApplyReport: reportStore.summarizeApplyReport,
     pruneDecidedReports: reportStore.pruneDecidedReports,
+    planProposal: planMod.planProposal,
+    validateProposalEnvelope: planMod.validateProposalEnvelope,
+    limitsFor: tierLimits.limitsFor,
     model: modelMod
   };
 
@@ -942,7 +1002,7 @@ function addReview(env, row) {
       'R06 the message names the 24 incoming, 0 used and the 10 limit',
       /This call has 24 large budget change\(s\)/.test(t) &&
         /This key has 0 large change\(s\) pending or accepted today \(UTC\)/.test(t) &&
-        /The limit is 10 per day and 10 per call/.test(t) &&
+        /The contractor plan allows 10 per day/.test(t) &&
         env.__store.reviews.length === 0,
       { text: t.slice(0, 300), rows: env.__store.reviews.length }
     );
@@ -974,7 +1034,7 @@ function addReview(env, row) {
   // =====================================================================
   // R07b — a UI save and an accept must not lose each other
   // =====================================================================
-  section('R07b — a UI save and an accept keep both changes');
+  section('AT13 (R07b) — a UI save and an accept keep both changes');
   {
     const env = await makeEnv({ mod });
     await tool(env, 41, 'apply_changes', {
@@ -1002,12 +1062,12 @@ function addReview(env, row) {
         return null;
       });
     const st = await stateOf(env);
-    check('R07b the UI save lands', saveRes.status === 200 && !!(saveData && saveData.ok), {
+    check('AT13 the UI save lands', saveRes.status === 200 && !!(saveData && saveData.ok), {
       status: saveRes.status,
       data: saveData
     });
     check(
-      'R07b both the saved field and the accepted field survive',
+      'AT13 both the saved field and the accepted field survive',
       st.tasks[5].notes === 'from agent' && st.tasks[7].name === 'From UI',
       {
         notes: st.tasks[5].notes,
@@ -1048,6 +1108,103 @@ function addReview(env, row) {
       'R08b a resend after 25 minutes queues a new row',
       env.__store.reviews.length === 2 && idC !== idA && !/duplicate/.test(textOf(c)),
       { rows: env.__store.reviews.length, idC, text: textOf(c).slice(0, 160) }
+    );
+  }
+
+  // =====================================================================
+  // F1.1 — idempotency dedupes only a STILL-LIVE proposal. A rejected or
+  // withdrawn row must not block an identical resubmit; an accepted row must
+  // still answer with the original id (it is a decision already taken, not a
+  // fresh request).
+  // =====================================================================
+  section('F1.1 — idempotency dedupes only a live proposal');
+  {
+    const args = { diffs: [{ path: 'tasks', recordId: 't7', field: 'notes', after: 'idem' }] };
+    const idOf = function (r) {
+      return Number((textOf(r).match(/proposal #(\d+)/) || [])[1] || 0);
+    };
+
+    // pending -> duplicate, same id
+    const e1 = await makeEnv({ mod });
+    const a1 = await tool(e1, 70, 'apply_changes', args);
+    const a2 = await tool(e1, 71, 'apply_changes', args);
+    check(
+      'F1.1a a resubmit while pending is a duplicate with the original id',
+      e1.__store.reviews.length === 1 &&
+        idOf(a1) === idOf(a2) &&
+        idOf(a1) > 0 &&
+        /duplicate: true/.test(textOf(a2)),
+      { rows: e1.__store.reviews.length, id1: idOf(a1), id2: idOf(a2) }
+    );
+
+    // after single reject -> fresh proposal
+    const e2 = await makeEnv({ mod });
+    const b1 = await tool(e2, 72, 'apply_changes', args);
+    const rj = await reject(e2, idOf(b1));
+    const b2 = await tool(e2, 73, 'apply_changes', args);
+    check(
+      'F1.1b a resubmit after REJECT queues a fresh proposal',
+      rj.status === 200 &&
+        e2.__store.reviews.length === 2 &&
+        idOf(b2) !== idOf(b1) &&
+        idOf(b2) > 0 &&
+        !/duplicate: true/.test(textOf(b2)),
+      { rejectStatus: rj.status, rows: e2.__store.reviews.length, id1: idOf(b1), id2: idOf(b2) }
+    );
+
+    // after whole withdraw -> fresh proposal
+    const e3 = await makeEnv({ mod });
+    const c1 = await tool(e3, 74, 'apply_changes', args);
+    await tool(e3, 75, 'withdraw_changes', { proposalId: idOf(c1) });
+    const c2 = await tool(e3, 76, 'apply_changes', args);
+    check(
+      'F1.1c a resubmit after WITHDRAW queues a fresh proposal',
+      e3.__store.reviews.length === 2 &&
+        idOf(c2) !== idOf(c1) &&
+        idOf(c2) > 0 &&
+        !/duplicate: true/.test(textOf(c2)),
+      { rows: e3.__store.reviews.length, id1: idOf(c1), id2: idOf(c2) }
+    );
+
+    // after change-set reject -> fresh proposal
+    const e4 = await makeEnv({ mod });
+    const d1 = await tool(e4, 77, 'apply_changes', args);
+    const cs = e4.__store.reviews[0].change_set_id;
+    const csr = await changeSetReject(e4, cs);
+    const d2 = await tool(e4, 78, 'apply_changes', args);
+    check(
+      'F1.1d a resubmit after CHANGE-SET REJECT queues a fresh proposal',
+      csr.status === 200 &&
+        e4.__store.reviews.length === 2 &&
+        idOf(d2) !== idOf(d1) &&
+        idOf(d2) > 0 &&
+        !/duplicate: true/.test(textOf(d2)),
+      {
+        csRejectStatus: csr.status,
+        rows: e4.__store.reviews.length,
+        id1: idOf(d1),
+        id2: idOf(d2)
+      }
+    );
+
+    // after accept -> still the original id (accepted is still "live")
+    const e5 = await makeEnv({ mod });
+    const f1 = await tool(e5, 79, 'apply_changes', args);
+    const acc = await accept(e5, idOf(f1));
+    const f2 = await tool(e5, 80, 'apply_changes', args);
+    check(
+      'F1.1e a resubmit after ACCEPT still returns the original proposal id',
+      acc.status === 200 &&
+        e5.__store.reviews.length === 1 &&
+        idOf(f2) === idOf(f1) &&
+        idOf(f1) > 0,
+      {
+        acceptStatus: acc.status,
+        rows: e5.__store.reviews.length,
+        id1: idOf(f1),
+        id2: idOf(f2),
+        text: textOf(f2).slice(0, 160)
+      }
     );
   }
 
@@ -1222,28 +1379,44 @@ function addReview(env, row) {
   }
 
   // =====================================================================
-  // R12 — completing a task does not stamp completedDate/statusSince
+  // R12 — a completed status STAMPS completedDate and statusSince (F1.2).
+  // Pre-fix the server set only `status` and left the stamps blank; the old
+  // test asserted that defect as correct. The client stamps on a real status
+  // move (js/mmgr-kanban.js stampStatus), so the accept must too.
   // =====================================================================
-  section('R12 — a completed status leaves the stamps unset');
+  section('R12 — a completed status stamps completedDate and statusSince');
   {
     const env = await makeEnv({ mod });
-    const q = await tool(env, 90, 'apply_changes', {
+    await tool(env, 90, 'apply_changes', {
       diffs: [{ path: 'tasks', recordId: 't6', field: 'status', after: 'completed' }]
     });
     const a = await accept(env, env.__store.reviews[0].id);
     const st = await stateOf(env);
     const t = st.tasks[5];
     check(
-      'R12 accept sets status but neither completedDate nor statusSince',
-      a.status === 200 && t.status === 'completed' && !t.completedDate && !t.statusSince,
-      { status: a.status, completedDate: t.completedDate, statusSince: t.statusSince }
+      'R12 accept stamps statusSince and completedDate on a completed move',
+      a.status === 200 &&
+        t.status === 'completed' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(String(t.statusSince || '')) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(String(t.completedDate || '')),
+      { status: a.status, statusSince: t.statusSince, completedDate: t.completedDate }
     );
   }
 
   // =====================================================================
-  // R13 — a 40+ leaf accept writes a changelog entry with null diffs
+  // R13 — a 40+ leaf accept stores the FULL diff list through diffs_key and
+  // stamps attribution (Phase 4 fix; F0.3 re-baseline 2026-11-16).
+  //
+  // The pre-fix code wrote `diffs_json: null` for an over-cap accept and
+  // nothing else, so the change list was lost and the row carried no proposal
+  // or source columns. Phase 4 added `diffs_key` (the uncapped enriched list in
+  // R2) and the attribution columns. This test previously asserted the DEFECT
+  // as correct ("carries null diffs_json", "not yet attributed"); it now
+  // asserts the fixed behaviour. `diffs_json` stays null for an over-cap entry
+  // BY DESIGN - the list lives in diffs_key - so the assertion is that the list
+  // is present and complete, not that diffs_json is populated.
   // =====================================================================
-  section('R13 — a large accept loses the changelog diffs and the proposal');
+  section('R13 — a large accept keeps every diff (diffs_key) and its attribution');
   {
     const env = await makeEnv({ mod });
     const prev = await stateOf(env);
@@ -1257,18 +1430,109 @@ function addReview(env, row) {
       prev,
       next,
       { type: 'owner', label: 'Owner' },
-      'accepted'
+      'accepted',
+      {
+        proposalId: 'rev-68',
+        sourceType: 'agent',
+        sourceLabel: 'MCP AI',
+        keyId: 42,
+        changeSetId: 'cs-1'
+      }
     );
     const row = env.__store.changelog[0];
+    const diffsObj = row && row.diffs_key ? await env.R2.get(row.diffs_key) : null;
+    const diffsList = diffsObj ? JSON.parse(await diffsObj.text()) : null;
     check(
-      'R13a the entry exists but carries null diffs_json (snapshot only)',
-      !!entry && row && row.diffs_json === null && !!row.snapshot_key,
-      { entry, row: row && { diffs_json: row.diffs_json, snapshot_key: row.snapshot_key } }
+      'R13a the full 41-leaf diff list is stored through diffs_key, not dropped',
+      !!entry &&
+        row &&
+        row.diffs_json === null &&
+        !!row.snapshot_key &&
+        !!row.diffs_key &&
+        Array.isArray(diffsList) &&
+        diffsList.length === 41,
+      {
+        entry,
+        diffs_json: row && row.diffs_json,
+        diffs_key: row && row.diffs_key,
+        diffs_len: diffsList && diffsList.length
+      }
     );
     check(
-      'R13b the entry has no proposal_id / source_label attribution (not yet attributed)',
-      row && row.proposal_id == null && row.source_label == null,
-      { row }
+      'R13b the entry carries proposal_id / source_type / source_label / key_id / change_set_id',
+      row &&
+        String(row.proposal_id) === 'rev-68' &&
+        row.source_type === 'agent' &&
+        row.source_label === 'MCP AI' &&
+        String(row.key_id) === '42' &&
+        row.change_set_id === 'cs-1',
+      {
+        proposal_id: row && row.proposal_id,
+        source_type: row && row.source_type,
+        source_label: row && row.source_label,
+        key_id: row && row.key_id,
+        change_set_id: row && row.change_set_id
+      }
+    );
+  }
+
+  // =====================================================================
+  // F1.3 — derived schedule fields: only a schedule edit nulls them, on
+  // EVERY task; the `derived` string is never stored; get_tasks reports it
+  // at read time.
+  // =====================================================================
+  section('F1.3 — derived schedule fields are global, read-time, never stored');
+  {
+    // A non-schedule edit (notes) nulls nothing.
+    const e1 = await makeEnv({ mod });
+    await tool(e1, 95, 'apply_changes', {
+      diffs: [{ path: 'tasks', recordId: 't7', field: 'notes', after: 'no sched change' }]
+    });
+    const a1 = await accept(e1, e1.__store.reviews[0].id);
+    const st1 = await stateOf(e1);
+    check(
+      'F1.3a a notes edit nulls no derived fields and stores no derived string',
+      a1.status === 200 &&
+        a1.data &&
+        Array.isArray(a1.data.derivedChanges) &&
+        a1.data.derivedChanges.length === 0 &&
+        (st1.tasks || []).every(t => typeof t.derived !== 'string'),
+      { derived: a1.data && a1.data.derivedChanges && a1.data.derivedChanges.length }
+    );
+
+    // A task create (schedule-affecting) nulls derived on EVERY task, stores
+    // no `derived` string, and get_tasks reports the hint at READ time.
+    const e2 = await makeEnv({ mod });
+    const beforeCount = (await stateOf(e2)).tasks.length;
+    await tool(e2, 96, 'apply_changes', {
+      creates: [{ path: 'tasks', record: { name: 'F1.3 new task', status: 'todo' } }]
+    });
+    const a2 = await accept(e2, e2.__store.reviews[0].id);
+    const st2 = await stateOf(e2);
+    const workItems = (st2.tasks || []).filter(t => !t.isPhase);
+    check(
+      'F1.3b a task create nulls derived on every task and stores no derived string',
+      a2.status === 200 &&
+        a2.data &&
+        a2.data.derivedChanges.length >= beforeCount &&
+        workItems.length > 0 &&
+        workItems.every(t => t.critical === null && t.totalFloat === null) &&
+        (st2.tasks || []).every(t => typeof t.derived !== 'string'),
+      { derived: a2.data && a2.data.derivedChanges && a2.data.derivedChanges.length, beforeCount }
+    );
+    const gt = await tool(e2, 97, 'get_tasks', {});
+    let gtBody = null;
+    try {
+      gtBody = JSON.parse(textOf(gt));
+    } catch (e) {
+      gtBody = null;
+    }
+    check(
+      'F1.3c get_tasks reports derived at read time for a null-derived work item',
+      gtBody &&
+        Array.isArray(gtBody.tasks) &&
+        gtBody.tasks.some(t => !t.isPhase && t.derived === 'pending recompute (opens in the app)'),
+      { sample: gtBody && gtBody.tasks && gtBody.tasks.slice(0, 2) }
     );
   }
 
@@ -1465,7 +1729,7 @@ function addReview(env, row) {
       }
     }
     check(
-      'F1 50 generated inputs produce identical refusals from both tools',
+      'AT18 50 generated inputs produce identical refusals from both tools',
       mismatches.length === 0,
       mismatches.slice(0, 2)
     );
@@ -1992,9 +2256,9 @@ function addReview(env, row) {
 
   // AT22 (A1): per-API-key-per-project abuse limits refuse the whole call.
   {
-    // 22a: pending-proposal cap (50). Seed 50 pending rows for this key.
+    // 22a: pending-proposal cap (25 on the contractor row). Seed 25 rows.
     const env = await makeEnv({ mod });
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 25; i++) {
       env.__store.reviews.push({
         id: 9000 + i,
         project_id: PROJECT,
@@ -2018,22 +2282,23 @@ function addReview(env, row) {
       env.__store.state
     );
     check(
-      'AT22a pending cap (50) refuses the whole call',
+      'AT22a pending cap (25 on contractor) refuses the whole call',
       capRes &&
         capRes.result &&
         capRes.result.isError === true &&
-        /50 pending/.test(capRes.result.content[0].text),
+        /25 pending/.test(capRes.result.content[0].text) &&
+        /contractor plan allows 25/.test(capRes.result.content[0].text),
       capRes && capRes.result && capRes.result.content && capRes.result.content[0].text
     );
 
-    // 22b: daily op limit (2000). Seed an accepted-today row summing 2000 ops.
+    // 22b: daily op limit (1000 on contractor). Seed a 1000-op accepted row.
     const env2 = await makeEnv({ mod });
     env2.__store.reviews.push({
       id: 9500,
       project_id: PROJECT,
       key_id: '1',
       status: 'accepted',
-      ops_count: 2000,
+      ops_count: 1000,
       proposed_at: new Date().toISOString(),
       import_key: 'seed-big',
       ops_json: JSON.stringify({ v: 2, ops: [] }),
@@ -2050,17 +2315,18 @@ function addReview(env, row) {
       env2.__store.state
     );
     check(
-      'AT22b daily op limit (2000) refuses the whole call',
+      'AT22b daily op limit (1000 on contractor) refuses the whole call',
       dayRes &&
         dayRes.result &&
         dayRes.result.isError === true &&
-        /today/.test(dayRes.result.content[0].text),
+        /today/.test(dayRes.result.content[0].text) &&
+        /contractor plan allows 1000/.test(dayRes.result.content[0].text),
       dayRes && dayRes.result && dayRes.result.content && dayRes.result.content[0].text
     );
 
-    // 22c: a rejected row frees its pending slot, so a 50th is allowed.
+    // 22c: a rejected row frees its pending slot, so a 25th is allowed.
     const env3 = await makeEnv({ mod });
-    for (let i = 0; i < 49; i++) {
+    for (let i = 0; i < 24; i++) {
       env3.__store.reviews.push({
         id: 9600 + i,
         project_id: PROJECT,
@@ -2097,7 +2363,7 @@ function addReview(env, row) {
       env3.__store.state
     );
     check(
-      'AT22c a rejected row frees its pending slot so the 50th is allowed',
+      'AT22c a rejected row frees its pending slot so the 25th is allowed',
       okRes && okRes.result && okRes.result.isError !== true,
       okRes && okRes.result && okRes.result.content && okRes.result.content[0].text
     );
@@ -2378,8 +2644,8 @@ function addReview(env, row) {
     );
     check(
       'AT25b the healing retry reports the op as skipped, not applied',
-      !!(retry.data && retry.data.skipped >= 1 && retry.data.applied === 0),
-      retry.data && { skipped: retry.data.skipped, applied: retry.data.applied }
+      !!(retry.data && retry.data.skipped >= 1 && retry.data.appliedCount === 0),
+      retry.data && { skipped: retry.data.skipped, appliedCount: retry.data.appliedCount }
     );
     const rowAfter = env.__store.reviews.find(function (r) {
       return r.id === id;
@@ -2450,10 +2716,122 @@ function addReview(env, row) {
   }
 
   // =====================================================================
+  // AT25e — NO FALSE SUCCESS (2026-11-12 contract, e2e B5). A proposal whose
+  // ops are ALL already satisfied in R2 but that has NEVER been decided is a
+  // stale duplicate: its effect landed through another path. Accepting it must
+  // be refused (409 stale) with the remedy sentence and leave the row pending
+  // for review - never report "accepted, N updates pulled" for a no-op. A
+  // DECIDED row (decided_at stamped by an earlier claim whose R2 write survived
+  // a lost D1 status update) is a recovery retry and still heals (AT25a-d).
+  // =====================================================================
+  section('AT25e — stale duplicate accept refuses, no false success');
+  {
+    const env = await makeEnv({ mod });
+    // A real accept lands the change in R2 and marks THIS row decided.
+    const realId = addReview(env, {
+      key_id: 'k-AT25e',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't6',
+            field: 'status',
+            before: 'todo',
+            beforeAbsent: false,
+            after: 'inprogress',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const first = await accept(env, realId);
+    check(
+      'AT25e-a the real change applies',
+      first.status === 200 && !!(first.data && first.data.appliedCount >= 1),
+      first.data && { status: first.status, appliedCount: first.data.appliedCount }
+    );
+
+    // A DIFFERENT, never-decided proposal wants the same end value, which is
+    // now live -> every op resolves skipped_already (a zero-diff accept).
+    const dupId = addReview(env, {
+      key_id: 'k-AT25e',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [{ op: 'set', path: 'tasks', recordId: 't6', field: 'status', after: 'inprogress' }]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const dup = await accept(env, dupId);
+    check(
+      'AT25e-b a stale duplicate accept is refused 409 stale',
+      dup.status === 409 && !!(dup.data && dup.data.error === 'stale'),
+      { status: dup.status, data: dup.data && { error: dup.data.error, message: dup.data.message } }
+    );
+    check(
+      'AT25e-c the refusal carries the actionable remedy sentence',
+      /no longer matches|Refresh the project/i.test(dup.text),
+      dup.text
+    );
+    const dupRow = env.__store.reviews.find(function (r) {
+      return r.id === dupId;
+    });
+    check(
+      'AT25e-d the stale row stays pending for review (claim released), no false success',
+      !!dupRow && dupRow.status === 'pending',
+      dupRow && dupRow.status
+    );
+
+    // F1.5 (MCP-FINAL 2026-11-16): the accept result names what landed
+    // (`applied` is the detailed list), how many (appliedCount), what did not
+    // (blocked / refused) and the state revision it landed in. A poll of
+    // get_proposal_status reports the same count and revision later.
+    check(
+      'F1.5a accept returns a detailed applied list plus appliedCount',
+      !!(
+        first.data &&
+        Array.isArray(first.data.applied) &&
+        first.data.applied.length === first.data.appliedCount &&
+        first.data.appliedCount === 1 &&
+        Array.isArray(first.data.blocked) &&
+        Array.isArray(first.data.refused)
+      ),
+      first.data && {
+        applied: first.data.applied,
+        appliedCount: first.data.appliedCount,
+        blocked: first.data.blocked,
+        refused: first.data.refused
+      }
+    );
+    check(
+      'F1.5b accept returns a numeric revision',
+      !!(first.data && Number.isFinite(Number(first.data.revision))),
+      first.data && first.data.revision
+    );
+    const statusAfter = await tool(env, 971, 'get_proposal_status', { proposalId: realId });
+    const statusJson = jsonOf(statusAfter);
+    const statusRow = statusJson && statusJson.proposals && statusJson.proposals[0];
+    check(
+      'F1.5c get_proposal_status reports appliedCount and the landed revision',
+      !!(
+        statusRow &&
+        statusRow.appliedCount === 1 &&
+        Number.isFinite(Number(statusRow.revision)) &&
+        statusRow.revision === first.data.revision
+      ),
+      statusRow && { appliedCount: statusRow.appliedCount, revision: statusRow.revision }
+    );
+  }
+
+  // =====================================================================
   // AT26 (A5) — MCP polish. Every tool advertises machine-readable
   // annotations + an outputSchema, every successful call returns
   // structuredContent that equals the JSON block, the server announces
-  // version 2.0.0, and both surfaces warn that record text is data.
+  // version 2.1.0, and both surfaces warn that record text is data.
   // =====================================================================
   section('AT26 — MCP polish (annotations, outputSchema, version, injection warning)');
   {
@@ -2462,10 +2840,10 @@ function addReview(env, row) {
     const info = init && init.result && init.result.serverInfo;
     const instr = (init && init.result && init.result.instructions) || '';
     check(
-      'AT26a initialize reports serverInfo.version 2.0.0 and the record-text warning',
+      'AT26a initialize reports serverInfo.version 2.1.0 and the record-text warning',
       !!(
         info &&
-        info.version === '2.0.0' &&
+        info.version === '2.1.0' &&
         /record/i.test(instr) &&
         /not instructions/i.test(instr)
       ),
@@ -2607,7 +2985,7 @@ function addReview(env, row) {
       'AT26j the app-wide catalog carries the same annotations and outputSchemas',
       awTools.length >= 17 &&
         awBad.length === 0 &&
-        !!(appwide.APPWIDE_SERVER_INFO && appwide.APPWIDE_SERVER_INFO.version === '2.0.0'),
+        !!(appwide.APPWIDE_SERVER_INFO && appwide.APPWIDE_SERVER_INFO.version === '2.1.0'),
       {
         tools: awTools.length,
         bad: awBad.map(function (t) {
@@ -3709,8 +4087,524 @@ function addReview(env, row) {
       'AT09a the message names 8 incoming, 3 used (rejected 5 excluded) and the 10 limit',
       /This call has 8 large budget change\(s\)/.test(t) &&
         /This key has 3 large change\(s\) pending or accepted today \(UTC\)/.test(t) &&
-        /The limit is 10 per day and 10 per call/.test(t),
+        /The contractor plan allows 10 per day/.test(t),
       { text: t.slice(0, 320) }
+    );
+  }
+
+  // =====================================================================
+  // AT28 (F2) — tier-aware limits: one table, every cap follows the owner
+  // =====================================================================
+  section('AT28 — tier-aware limits');
+  {
+    const matrix = ['free', 'estimator', 'contractor', 'company', 'enterprise'].map(function (t) {
+      const l = mod.limitsFor(t);
+      return [
+        l.activeApiKeys,
+        l.pendingPerKey,
+        l.dailyOpsPerKey,
+        l.maxOpsPerCall,
+        l.largeBudgetPerDay,
+        l.reportRetentionDays
+      ].join('/');
+    });
+    check(
+      'AT28a the five tier rows match the published matrix',
+      JSON.stringify(matrix) ===
+        JSON.stringify([
+          '2/0/0/0/0/30',
+          '2/10/300/100/5/30',
+          '5/25/1000/250/10/60',
+          '10/50/3000/500/20/90',
+          '25/100/10000/500/50/180'
+        ]),
+      matrix
+    );
+    check(
+      'AT28b an unknown paid tier uses the contractor row, never free',
+      mod.limitsFor('premium').tier === 'contractor' &&
+        mod.limitsFor('legacy_pro').tier === 'contractor' &&
+        mod.limitsFor('').tier === 'free',
+      ['premium', mod.limitsFor('premium').tier, mod.limitsFor('').tier]
+    );
+
+    // 28c: free is refused by the envelope itself, before any limit is read.
+    const freePre = mod.validateProposalEnvelope(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      { scope: ALL_SECTIONS, label: 'Agent key' },
+      'free'
+    );
+    check(
+      'AT28c the free tier is refused before a limit is read',
+      !!(freePre && freePre.isError && /free plan/.test(freePre.content[0].text)),
+      freePre && freePre.content && freePre.content[0].text
+    );
+
+    // 28d: per-call caps bound the TOTAL across arrays, at the cap and one over.
+    const perCall = {
+      estimator: 100,
+      contractor: 250,
+      company: 500,
+      enterprise: 500
+    };
+    let perCallOk = true;
+    let perCallDetail = null;
+    for (const t of Object.keys(perCall)) {
+      const cap = perCall[t];
+      const half = Math.floor(cap / 2);
+      const atCap = {
+        diffs: Array.from({ length: half }, function (_, i) {
+          return { path: 'tasks', recordId: 't1', field: 'notes', after: 'n' + i };
+        }),
+        creates: Array.from({ length: cap - half }, function (_, i) {
+          return { path: 'tasks', record: { name: 'T' + i } };
+        })
+      };
+      const over = {
+        diffs: atCap.diffs,
+        creates: atCap.creates.concat([{ path: 'tasks', record: { name: 'one more' } }])
+      };
+      const pass = mod.validateProposalEnvelope(atCap, { scope: ALL_SECTIONS }, t);
+      const refuse = mod.validateProposalEnvelope(over, { scope: ALL_SECTIONS }, t);
+      const ok =
+        pass === null &&
+        !!refuse &&
+        refuse.isError &&
+        new RegExp(String(cap + 1) + ' changes').test(refuse.content[0].text) &&
+        refuse.content[0].text.indexOf(t) > -1;
+      if (!ok) {
+        perCallOk = false;
+        perCallDetail = { tier: t, cap: cap, pass: pass, refuse: refuse && refuse.content[0].text };
+        break;
+      }
+    }
+    check('AT28d the per-call cap bounds the total across arrays', perCallOk, perCallDetail);
+
+    // 28e/28f: the pending cap and the daily ops cap, per tier.
+    const capCases = [
+      { tier: 'estimator', pending: 10, ops: 300 },
+      { tier: 'contractor', pending: 25, ops: 1000 },
+      { tier: 'company', pending: 50, ops: 3000 },
+      { tier: 'enterprise', pending: 100, ops: 10000 }
+    ];
+    let pendOk = true;
+    let pendDetail = null;
+    for (const c of capCases) {
+      const e = await makeEnv({ mod });
+      for (let i = 0; i < c.pending; i++) {
+        e.__store.reviews.push({
+          id: 40000 + i,
+          project_id: PROJECT,
+          key_id: '1',
+          status: 'pending',
+          ops_count: 1,
+          proposed_at: new Date().toISOString(),
+          import_key: 'p' + c.tier + i,
+          ops_json: JSON.stringify({ v: 2, ops: [] }),
+          diffs_json: '[]',
+          proposal_type: 'mcp',
+          source_type: 'api'
+        });
+      }
+      const plan = await mod.planProposal(
+        { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+        e.__store.state,
+        { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+        { env: e, projectId: PROJECT, tier: c.tier }
+      );
+      const ok =
+        !!plan.error &&
+        new RegExp(c.tier + ' plan allows ' + c.pending).test(plan.error.text) &&
+        new RegExp(c.pending + ' pending').test(plan.error.text);
+      if (!ok) {
+        pendOk = false;
+        pendDetail = { tier: c.tier, error: plan.error };
+        break;
+      }
+    }
+    check('AT28e the pending cap names the tier, the limit and the usage', pendOk, pendDetail);
+
+    let opsOk = true;
+    let opsDetail = null;
+    for (const c of capCases) {
+      const e = await makeEnv({ mod });
+      e.__store.reviews.push({
+        id: 41000,
+        project_id: PROJECT,
+        key_id: '1',
+        status: 'accepted',
+        ops_count: c.ops,
+        proposed_at: new Date().toISOString(),
+        import_key: 'ops' + c.tier,
+        ops_json: JSON.stringify({ v: 2, ops: [] }),
+        diffs_json: '[]',
+        proposal_type: 'mcp',
+        source_type: 'api'
+      });
+      const plan = await mod.planProposal(
+        { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+        e.__store.state,
+        { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+        { env: e, projectId: PROJECT, tier: c.tier }
+      );
+      const ok =
+        !!plan.error &&
+        new RegExp(c.tier + ' plan allows ' + c.ops).test(plan.error.text) &&
+        /already used/.test(plan.error.text);
+      if (!ok) {
+        opsOk = false;
+        opsDetail = { tier: c.tier, error: plan.error };
+        break;
+      }
+    }
+    check('AT28f the daily ops cap names the tier, the limit and the usage', opsOk, opsDetail);
+
+    // 28g: a tier change between two calls applies the NEW caps to the second
+    // call, and the daily counter is not reset by the change.
+    const e7 = await makeEnv({ mod });
+    for (let i = 0; i < 12; i++) {
+      e7.__store.reviews.push({
+        id: 42000 + i,
+        project_id: PROJECT,
+        key_id: '1',
+        status: 'pending',
+        ops_count: 1,
+        proposed_at: new Date().toISOString(),
+        import_key: 'g' + i,
+        ops_json: JSON.stringify({ v: 2, ops: [] }),
+        diffs_json: '[]',
+        proposal_type: 'mcp',
+        source_type: 'api'
+      });
+    }
+    const gContractor = await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e7.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e7, projectId: PROJECT, tier: 'contractor' }
+    );
+    const gEstimator = await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e7.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e7, projectId: PROJECT, tier: 'estimator' }
+    );
+    check(
+      'AT28g a tier change applies the new caps to the very next call',
+      !gContractor.error &&
+        !!gEstimator.error &&
+        /estimator plan allows 10/.test(gEstimator.error.text),
+      { contractor: gContractor.error, estimator: gEstimator.error }
+    );
+
+    const e8 = await makeEnv({ mod });
+    e8.__store.reviews.push({
+      id: 43000,
+      project_id: PROJECT,
+      key_id: '1',
+      status: 'accepted',
+      ops_count: 500,
+      proposed_at: new Date().toISOString(),
+      import_key: 'g-ops',
+      ops_json: JSON.stringify({ v: 2, ops: [] }),
+      diffs_json: '[]',
+      proposal_type: 'mcp',
+      source_type: 'api'
+    });
+    const dayContractor = await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e8.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e8, projectId: PROJECT, tier: 'contractor' }
+    );
+    const dayEstimator = await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e8.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e8, projectId: PROJECT, tier: 'estimator' }
+    );
+    check(
+      'AT28h the daily ops counter does not reset on a tier change',
+      !dayContractor.error &&
+        !!dayEstimator.error &&
+        /estimator plan allows 300/.test(dayEstimator.error.text),
+      { contractor: dayContractor.error, estimator: dayEstimator.error }
+    );
+
+    // 28i: the planner never queries the tier itself - the handler passes it.
+    const e9 = await makeEnv({ mod });
+    let tierQueries = 0;
+    const origPrepare = e9.DB.prepare.bind(e9.DB);
+    e9.DB.prepare = function (sql) {
+      if (/from cloud_subscriptions/i.test(String(sql))) {
+        tierQueries++;
+      }
+      return origPrepare(sql);
+    };
+    await mod.planProposal(
+      { diffs: [{ path: 'tasks', recordId: 't1', field: 'notes', after: 'x' }] },
+      e9.__store.state,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: e9, projectId: PROJECT, tier: 'company' }
+    );
+    check(
+      'AT28i a planning call performs no tier query of its own',
+      tierQueries === 0,
+      tierQueries
+    );
+  }
+
+  // =====================================================================
+  // F3 — remaining acceptance tests (AT01, AT14, AT20)
+  // =====================================================================
+  section('F3 — acceptance: change-set union, delete rules, legacy rows');
+  {
+    // AT01: two proposals on the same table, one change set, Accept all.
+    // The result is the union - both fields are present, neither wins.
+    const env01 = await makeEnv({ mod });
+    const CS01 = 'cs-AT01';
+    addReview(env01, {
+      change_set_id: CS01,
+      key_id: 'k-AT01',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't2',
+            field: 'name',
+            before: 'Task 2',
+            beforeAbsent: false,
+            after: 'Renamed by A',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    addReview(env01, {
+      change_set_id: CS01,
+      key_id: 'k-AT01',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't2',
+            field: 'notes',
+            before: '',
+            beforeAbsent: false,
+            after: 'note from B',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const req01 = new Request(
+      'http://localhost/api/cloud/projects/' + PROJECT + '/changesets/' + CS01 + '/accept',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+        body: '{}'
+      }
+    );
+    const res01 = await mod.handleChangeSetAccept(req01, env01, PROJECT, CS01, undefined);
+    const body01 = await res01.json();
+    const st01 = await stateOf(env01);
+    const t2 = (st01.tasks || []).find(function (t) {
+      return t.id === 't2';
+    });
+    check(
+      'AT01 Accept all on two same-table proposals applies the union',
+      res01.status === 200 &&
+        body01.ok === true &&
+        body01.appliedCount === 2 &&
+        !!t2 &&
+        t2.name === 'Renamed by A' &&
+        t2.notes === 'note from B',
+      { status: res01.status, appliedCount: body01.appliedCount, t2: t2 }
+    );
+
+    // AT14: the delete rules through the accept endpoint.
+    const env14 = await makeEnv({ mod });
+    const live14 = JSON.parse(JSON.stringify(env14.__store.state));
+    live14.tasks.push({
+      id: 'ph1',
+      name: 'Phase One',
+      isPhase: true,
+      status: 'todo',
+      predecessors: []
+    });
+    live14.tasks.push({
+      id: 'c1',
+      name: 'Child',
+      parentName: 'Phase One',
+      status: 'todo',
+      predecessors: [],
+      isPhase: false
+    });
+    live14.tasks.push({ id: 'ref1', name: 'Referenced', status: 'todo', predecessors: [] });
+    live14.tasks.push({ id: 'free1', name: 'Free', status: 'todo', predecessors: [] });
+    live14.tasks.push({
+      id: 'dep1',
+      name: 'Dependent',
+      status: 'todo',
+      predecessors: ['free1']
+    });
+    live14.budgetLines[0].taskId = 'ref1';
+    await env14.R2.put(R2_KEY, JSON.stringify(live14));
+    env14.__store.state = live14;
+    const id14 = addReview(env14, {
+      key_id: 'k-AT14',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          { op: 'delete', path: 'tasks', recordId: 'ph1' },
+          { op: 'delete', path: 'tasks', recordId: 'ref1' },
+          { op: 'delete', path: 'tasks', recordId: 'free1' }
+        ]
+      }),
+      ops_count: 3,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const acc14 = await accept(env14, id14);
+    const rep14 = (acc14.data && acc14.data.refused) || [];
+    const byRec = function (id) {
+      return rep14.find(function (r) {
+        return String(r.recordId) === id;
+      });
+    };
+    check(
+      'AT14a a phase with children is refused at accept',
+      !!(byRec('ph1') && /phase still has child tasks/.test(byRec('ph1').reason)),
+      byRec('ph1')
+    );
+    check(
+      'AT14b a task referenced by a budget line is refused at accept',
+      !!(byRec('ref1') && /budget line references/.test(byRec('ref1').reason)),
+      byRec('ref1')
+    );
+    const st14 = await stateOf(env14);
+    const ids14 = (st14.tasks || []).map(function (t) {
+      return t.id;
+    });
+    const dep14 = (st14.tasks || []).find(function (t) {
+      return t.id === 'dep1';
+    });
+    check(
+      'AT14c an unreferenced task is deleted and survivors lose it from predecessors',
+      ids14.indexOf('free1') === -1 &&
+        ids14.indexOf('ph1') !== -1 &&
+        ids14.indexOf('ref1') !== -1 &&
+        !!dep14 &&
+        dep14.predecessors.indexOf('free1') === -1,
+      { ids: ids14, predecessors: dep14 && dep14.predecessors }
+    );
+    const budgetDelete = await mod.planProposal(
+      { deletes: [{ path: 'budgetLines', recordId: 'b1' }] },
+      live14,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: env14, projectId: PROJECT, tier: 'contractor' }
+    );
+    check(
+      'AT14d budget lines cannot be deleted through MCP',
+      budgetDelete.refused.some(function (r) {
+        return /not deletable through MCP/.test(r);
+      }),
+      budgetDelete.refused
+    );
+
+    // AT14e: a delete-only call must still QUEUE. `submitted` is the map the
+    // queue guard reads; before the 2026-11-16 fix only diffs/creates/sets
+    // wrote to it, so a call carrying just a delete came back "Nothing to
+    // propose" and NO delete could be proposed through apply_changes at all.
+    // The section must carry a real diff (the record removed), otherwise
+    // cloudScopeMerge sees no change and the guard still fires.
+    const delOnly = await mod.planProposal(
+      { deletes: [{ path: 'tasks', recordId: 'free1' }] },
+      live14,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: env14, projectId: PROJECT, tier: 'contractor' }
+    );
+    const stillThere = ((delOnly.base && delOnly.base.tasks) || []).some(function (t) {
+      return String(t.id) === 'free1';
+    });
+    const removedFromSubmitted =
+      Array.isArray(delOnly.submitted.tasks) &&
+      !delOnly.submitted.tasks.some(function (t) {
+        return String(t.id) === 'free1';
+      });
+    check(
+      'AT14e a delete-only proposal queues with a real section diff',
+      removedFromSubmitted &&
+        stillThere &&
+        delOnly.ops.some(function (o) {
+          return o.op === 'delete' && o.recordId === 'free1';
+        }) &&
+        delOnly.refused.length === 0,
+      {
+        submittedIds: (delOnly.submitted.tasks || []).map(function (t) {
+          return t.id;
+        }),
+        ops: delOnly.ops,
+        refused: delOnly.refused
+      }
+    );
+
+    // AT20: a legacy row whose stored list is exactly 500 is a truncated copy;
+    // it is refused with the stated message. A normal legacy row still accepts.
+    const env20 = await makeEnv({ mod });
+    const truncDiffs = [];
+    for (let i = 0; i < 500; i++) {
+      truncDiffs.push({
+        path: 'tasks',
+        recordId: 't3',
+        field: 'notes',
+        before: '',
+        after: 'x' + i
+      });
+    }
+    const truncId = addReview(env20, {
+      key_id: 'k-AT20',
+      ops_json: null,
+      diffs_json: JSON.stringify(truncDiffs),
+      ops_count: 500,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const accTrunc = await accept(env20, truncId);
+    check(
+      'AT20a a truncated legacy row is refused with the stated message',
+      accTrunc.status === 409 &&
+        !!(accTrunc.data && accTrunc.data.error === 'truncated') &&
+        /truncated when it was queued/.test(accTrunc.text),
+      { status: accTrunc.status, data: accTrunc.data, text: accTrunc.text }
+    );
+    const legacyId = addReview(env20, {
+      key_id: 'k-AT20',
+      ops_json: null,
+      diffs_json: JSON.stringify([
+        { path: 'tasks', recordId: 't4', field: 'notes', before: '', after: 'legacy note' }
+      ]),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const accLegacy = await accept(env20, legacyId);
+    const st20 = await stateOf(env20);
+    const t4 = (st20.tasks || []).find(function (t) {
+      return t.id === 't4';
+    });
+    check(
+      'AT20b a normal legacy row still accepts',
+      accLegacy.status === 200 &&
+        !!(accLegacy.data && accLegacy.data.ok === true) &&
+        !!t4 &&
+        t4.notes === 'legacy note',
+      { status: accLegacy.status, notes: t4 && t4.notes }
     );
   }
 

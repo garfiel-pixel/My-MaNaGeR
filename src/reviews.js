@@ -21,7 +21,9 @@ import {
   cloudAuthEditor,
   cloudAuthAdoption,
   readJsonBody,
-  readCloudBody
+  readCloudBody,
+  nextRevision,
+  stateRevision
 } from './lib/http.js';
 import { structuredLog } from './lib/observe.js';
 import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
@@ -485,6 +487,7 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         break;
       }
       merged.next.updatedAt = now;
+      merged.next.revision = nextRevision(prev);
       // Encrypt state blob on accept (same envelope as handleCloudSave)
       let r2Payload = JSON.stringify(merged.next);
       if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
@@ -539,6 +542,7 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
         await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
       }
       resp.savedAt = now;
+      resp.revision = stateRevision(nextUsed);
     }
   } else if (row.proposal_type === 'mcp') {
     // MCP-AGENT-FIRST 2026-11-12 3.1/3.4: a v2 row (ops_json is {v:2, ops})
@@ -660,8 +664,11 @@ export async function handleReviewReject(request, env, projectId, reviewId) {
   const now = new Date().toISOString();
   // MCP-AGENT-FIRST 2026-11-12 1.6(a): the reject is conditional too, so it
   // cannot race an accept. The audit row is written only after the claim wins.
+  // MCP-FINAL 2026-11-16 F1.1: clear import_key in the SAME update so a
+  // rejected proposal can never block an identical resubmit (findDuplicate
+  // also filters on status; this is the durable half of the pair).
   const rejected = await env.DB.prepare(
-    "UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND status = 'pending'"
+    "UPDATE cloud_reviews SET status = ?, decided_at = ?, decided_by = ?, decision_note = ?, import_key = NULL WHERE id = ? AND status = 'pending'"
   )
     .bind('rejected', now, actorLabel, decision.note || null, reviewId)
     .run();
@@ -848,6 +855,7 @@ async function acceptMcpLegacy(
       break;
     }
     merged.next.updatedAt = now;
+    merged.next.revision = nextRevision(prev);
     let r2Payload = JSON.stringify(merged.next);
     if (projRowM && projRowM.owner_code_hash && projRowM.owner_code_salt) {
       try {
@@ -1107,7 +1115,41 @@ async function acceptMcpV2(
         409
       );
     }
+    // NO FALSE SUCCESS (2026-11-12 contract, e2e B5): every op skipped because
+    // the live value already equals its `after`, on a proposal that has NEVER
+    // been decided. That means another path (a different accept, or a save)
+    // landed the change, so this row is a stale duplicate. Reporting
+    // "accepted, N updates pulled" for it is exactly the false success the
+    // owner flagged in proposal #68. Refuse with the remedy sentence and leave
+    // the row pending. `row.decided_at` is the pre-claim value: the claim sets
+    // it BEFORE any R2 write, so a decided row whose R2 write survived a lost
+    // D1 status update is a recovery retry and must still heal to accepted
+    // (AT25). It therefore skips this gate and takes the normal write path.
+    const skippedOps = (applied.report || []).filter(function (r) {
+      return r.result === 'skipped_already' || r.result === 'superseded';
+    });
+    if (
+      appliedCount === 0 &&
+      skippedOps.length > 0 &&
+      applied.conflicts.length === 0 &&
+      !(effBudget && effBudget.length) &&
+      !row.decided_at
+    ) {
+      await releaseClaim(env, reviewId);
+      return json(
+        {
+          ok: false,
+          error: 'stale',
+          message:
+            'This proposal no longer matches the project. Refresh the project and review it again.',
+          stale: skippedOps,
+          problems: skippedOps.length
+        },
+        409
+      );
+    }
     next.updatedAt = now;
+    next.revision = nextRevision(prev);
     let r2Payload = JSON.stringify(next);
     if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
       try {
@@ -1164,7 +1206,8 @@ async function acceptMcpV2(
     derivedUsed,
     (reportUsed || []).filter(function (r) {
       return r.result === 'conflict';
-    })
+    }),
+    { revision: nextUsed ? stateRevision(nextUsed) : null }
   );
   await env.DB.prepare(
     'UPDATE cloud_reviews SET apply_report_json = ?, status = ?, decided_at = ?, decided_by = ?, accepted_entry_id = ?, decision_note = ?, decision_edited = ? WHERE id = ?'
@@ -1183,16 +1226,28 @@ async function acceptMcpV2(
   if (pushRevChanged) {
     await pushRevChanged(env, projectId, now, { type: actorType, label: actorLabel });
   }
+  // MCP-FINAL 2026-11-16 F1.5: the accept result names what landed and what
+  // did not. `applied` is the detailed list (one entry per applied op), with
+  // `appliedCount` kept as the number older clients read.
+  const report = reportUsed || [];
+  const appliedList = report.filter(function (r) {
+    return r.result === 'applied';
+  });
+  const refusedList = report.filter(function (r) {
+    return r.result === 'conflict';
+  });
   const resp = {
     ok: true,
     reviewId: reviewId,
     status: 'accepted',
     decidedAt: now,
     savedAt: now,
-    applied: (reportUsed || []).filter(function (r) {
-      return r.result === 'applied';
-    }).length,
-    skipped: (reportUsed || []).filter(function (r) {
+    revision: nextUsed ? stateRevision(nextUsed) : null,
+    applied: appliedList,
+    appliedCount: appliedList.length,
+    blocked: [],
+    refused: refusedList,
+    skipped: report.filter(function (r) {
       return r.result === 'skipped_already' || r.result === 'superseded';
     }).length,
     conflicts: appliedUsed ? appliedUsed.conflicts : [],
@@ -1603,6 +1658,7 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
       );
     }
     next.updatedAt = now;
+    next.revision = nextRevision(prev);
     let r2Payload = JSON.stringify(next);
     if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
       try {
@@ -1649,7 +1705,8 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
       lp.derivedChanges,
       (lp.report || []).filter(function (r) {
         return r.result === 'conflict';
-      })
+      }),
+      { revision: nextUsed ? stateRevision(nextUsed) : null }
     );
     let entry = null;
     try {
@@ -1737,21 +1794,29 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
       derivedChanges.push(dc);
     });
   });
+  // F1.5: same result shape as a single accept - `applied` is the detailed
+  // list, `appliedCount` the number, `refused` names each conflict with its
+  // reason, and `revision` is the state version the set landed in.
+  const appliedList = [];
+  perProposal.forEach(function (lp) {
+    (lp.report || []).forEach(function (r) {
+      if (r.result === 'applied') {
+        appliedList.push(r);
+      }
+    });
+  });
   const resp = {
     ok: true,
     changeSetId: changeSetId,
     status: 'accepted',
     decidedAt: now,
     savedAt: now,
+    revision: nextUsed ? stateRevision(nextUsed) : null,
     proposals: perProposal.length,
-    applied: perProposal.reduce(function (acc, lp) {
-      return (
-        acc +
-        (lp.report || []).filter(function (r) {
-          return r.result === 'applied';
-        }).length
-      );
-    }, 0),
+    applied: appliedList,
+    appliedCount: appliedList.length,
+    blocked: [],
+    refused: conflictList,
     skipped: perProposal.reduce(function (acc, lp) {
       return (
         acc +
@@ -1823,8 +1888,10 @@ export async function handleChangeSetReject(request, env, projectId, changeSetId
   }
   const now = new Date().toISOString();
   for (let i = 0; i < rows.length; i++) {
+    // MCP-FINAL 2026-11-16 F1.1: change-set reject clears import_key too, so
+    // the whole rejected set is resubmittable.
     await env.DB.prepare(
-      "UPDATE cloud_reviews SET status = 'rejected', decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND project_id = ? AND status = 'pending'"
+      "UPDATE cloud_reviews SET status = 'rejected', decided_at = ?, decided_by = ?, decision_note = ?, import_key = NULL WHERE id = ? AND project_id = ? AND status = 'pending'"
     )
       .bind(now, actorLabel, decision.note || null, rows[i].id, projectId)
       .run();

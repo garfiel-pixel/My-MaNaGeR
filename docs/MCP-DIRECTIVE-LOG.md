@@ -37,6 +37,228 @@ No check may fall below these numbers.
 
 ---
 
+## F0 baseline — current tree (2026-11-16, MCP-FINAL-DIRECTIVE)
+
+Branch `feat/mcp-agent-first`, HEAD `c75de36`. This is the measured "scale
+upward from here" baseline the owner asked for — numbers re-run and seen in the
+current session, not carried over from the old export-era table above. The old
+table is the historical first-pass baseline; this section supersedes it for the
+merged `MCP-FINAL-DIRECTIVE.md` work. No gate may fall below these numbers.
+
+| Command | Result (measured 2026-11-16) |
+|---|---|
+| `npm run verify` | GREEN end to end — every sub-gate incl. `verify:skills`, `verify:css`, `verify:sizes`, `verify:registry`; final line `TEST REGISTRY PASS` |
+| `npm test` | 441 / 441 pass, 0 fail |
+| `node tools/verify-eslint.cjs` | pass (run inside `npm run verify`) |
+| `node tools/verify-prettier.cjs` | pass (run inside `npm run verify`) |
+| `node tools/verify-test-registry.cjs` | pass — 229 harnesses registered, every row declares where it runs, no stale entries |
+| `node tools/verify-sw-cache.cjs` | pass (run inside `npm run verify`) |
+| `node tools/qa-mcp-agent-first.cjs` | 158 / 158 (includes new AT25e no-false-success guard) |
+| `node tools/qa-mcp-live-e2e.cjs` | 43 / 43 (full OAuth discovery → DCR → PKCE → owner accept → cloud verify; project `e2e-mcp-afm1y2`) |
+
+Status of the current tree at this baseline (from the witnessed proposal #68
+failure and the audit of both MCP surfaces):
+
+- **No-false-success accept (witnessed core failure) — FIXED.** A zero-diff
+  accept on a proposal that was never decided (pre-claim `decided_at` null) is a
+  stale duplicate and now returns 409 stale with the remedy sentence, releasing
+  the claim and leaving the row pending. A decided row whose R2 write survived a
+  lost D1 status update still heals to accepted (AT25a–d). Implemented in
+  `src/reviews.js` `acceptMcpV2`; locked by AT25e in
+  `tools/qa-mcp-agent-first.cjs` and e2e B5, re-baselined C2. Durable guard added
+  to `.agents/skills/high-grade-mcp/SKILL.md`; `skills-lock.json` rehashed
+  (`high-grade-mcp=70c09421cc346c757e1e157e4b9781030b7d2c67129d5cc19217da236e687a55`).
+- **E2E harness self-throttling — FIXED.** `qa-mcp-live-e2e` now spawns wrangler
+  with test-only `RATE_LIMIT_FACTOR=50` (C4/C5 were 429ing against the shared
+  30/min bucket) and a stable test-only `GOOGLE_CLIENT_SECRET` (D4–D8 401/403
+  flake when an isolate reload invalidated the session cookie). Production uses
+  default factor 1 and its own secret; no app change.
+- **F0.1 wording gate — FIXED.** `tools/verify-assistant-wording.cjs` excludes
+  `.codebuddy` local agent worktrees from the scan.
+- **MCP client config.** `~/.codebuddy/mcp.json` now points at the deployed
+  app-wide endpoint `https://mymanagerworkspace.com/api/mcp` (two-way connector
+  test pending owner OAuth consent).
+- Uncommitted at baseline: `MCP-FINAL-DIRECTIVE.md` (new), the fixes above, and
+  one UI screenshot PNG. UI/plan-badge audit, F0.2/F0.3 and F1–F4 still open.
+
+---
+
+## F0 — Green baseline gates (F0.2 / F0.3, 2026-11-16)
+
+**F0.2 — registry.** `docs/CI-TEST-COVERAGE.md` exists and `verify-test-registry`
+is green (229 harnesses, every row declares where it runs, no stale entries).
+The `tools/qa-mcp-agent-first.cjs` row is ALREADY `CI` (wired in `ci.yml` as
+`qa-mcp-agent-first`), so no TRIAGE→CI flip was needed — D7's "missing from the
+export" was an export artefact, not a repo defect. `tools/qa-mcp-live-e2e.cjs`
+is `EXTENDED`. GATE: green (seen in the F0 baseline run).
+
+**F0.3 — defect-encoding R-tests.** Scan of every `section(...)` title for
+"does not / leaves / loses / without / unset / null" found exactly three that
+encoded a defect as correct behavior:
+
+| Test | Was asserting | Rewritten by |
+|---|---|---|
+| R12 "a completed status leaves the stamps unset" | `!completedDate && !statusSince` | **F1.2** (status side effects; implementation first, then this test) |
+| R13a "the entry exists but carries null diffs_json (snapshot only)" | diffs lost on an over-cap accept | **F0.3 now** |
+| R13b "the entry has no proposal_id / source_label attribution" | no attribution columns | **F0.3 now** |
+
+`R02` ("a row *without* stored diffs is refused") and `R04` ("budget diffs are
+refused *without* the write switch") are correct-behaviour tests — the word
+describes the setup, not a defect — so they were left alone.
+
+R13 rewrite: the Phase 4 implementation already writes the uncapped enriched
+diff list to R2 at `diffs_key` and stamps `proposal_id`, `source_type`,
+`source_label`, `key_id`, `change_set_id` (verified in `src/lib/http.js`
+`cloudLogSave` and `src/reviews.js` accept). The test now passes an `extra`
+attribution object and asserts the 41-leaf list is present in R2 through
+`diffs_key` and every attribution column is set. It passes (158/158) and, by
+construction, would fail on the pre-fix tree (`diffs_key` and the columns did
+not exist). GATE: R13a rewritten and green; the defect list is recorded here.
+
+---
+
+## F1 — Correctness fixes (2026-11-16)
+
+**F1.1 Idempotency (D1) — PASS.** `findDuplicateProposal` now matches only
+`pending`/`accepting`/`accepted` rows; single reject, change-set reject and a
+whole/zero-remaining withdraw all clear `import_key = NULL` in the same UPDATE
+(a partial withdraw that keeps ops leaves it). The idempotency check is hoisted
+ABOVE `planProposal` and the early-returns, so a resubmit of an already-accepted
+proposal returns its original id instead of "No changes" (an accepted row finds
+nothing left to diff, so the old ordering hid the decision). New tests F1.1a–e:
+pending → duplicate; reject / withdraw / change-set-reject → fresh; accept →
+same id. Gate: `qa-mcp-agent-first` 163/163; `qa-mcp-write-path` 20/20;
+`qa-appwide-mcp` 60/60; `qa-mcp-parity` 16/16; `qa-mcp-budget` 46/46;
+`qa-changelog-diffs` green.
+
+**F1.2 Task status side effects (D2) — PASS.** New pure module
+`src/domain/task-effects.js` ports the client's `stampStatus` (statusSince /
+startedDate / completedDate, leadTime cleared on a real move), the working-day
+start/duration/end triad and `rollupPhases`, in UTC (the client uses local
+dates; the Worker has only UTC, recorded as the known nuance — the app
+re-stamps on the next real move). `applyOps` calls `applyTaskEffects` before the
+derived-field marking. R12 rewritten to assert the stamps ARE set. New harness
+`tools/qa-task-effects-parity.cjs` extracts the REAL `stampStatus` from
+`js/mmgr-kanban.js` and compares it to the port across 10 transitions, plus 12
+triad/roll-up fixtures — 24/24. `apply-ops.test.mjs` +3 stamp cases. Wired into
+`ci.yml` static job; registry 230 harnesses. Gate: `npm test` 444/444.
+
+**F1.3 Staleness scope (D3, D4) + reload-after-accept — PASS.** Model marks
+schedule-input fields (`isPhase`, `status`, `startDate`, `endDate`, `duration`,
+`predecessors`, `milestone`, `parentName`, `leadTime`, `recurring`,
+`weatherSensitive`). The accept nulls `critical`/`totalFloat`/`freeFloat`/
+`floatBaseline` on EVERY task only when an applied op is a task create/delete, a
+schedule-input write, or a project-deadline change; any other edit nulls nothing.
+The `derived` text string is never written and any leftover is deleted on every
+accept; `get_tasks` reports it at READ time when a non-phase task has null
+`critical` and `totalFloat`. **Core witnessed fix:** the accept handlers in
+`js/cloud/review.js` now call `Cloud.cloudReloadAfterAccept()` (new
+`State.replaceExternal` + `resyncNow({replace:true})`): a full `/load` REPLACE of
+the in-memory state and `renderAll()`, not the old per-field `cloudPullMerge`,
+and the status line reports "N applied, revision X" only after the reload. The
+old derived test was rewritten to the fixed contract; F1.3a–c added. Gate:
+`npm run verify` green; `qa-mcp-agent-first` 166/166; `qa-mcp-live-e2e` 43/43
+(B4 browser accept still green under the hard reload).
+
+**F1.6 Credential and calc-workspace hygiene — PASS.** `create_project` on the
+app-wide surface no longer returns `ownerCode` (a full-access credential); the
+text output is `projectId`, `status`, `syncMode` only. `tools/qa-appwide-mcp.cjs`
+M12 was flipped from "returns an owner code" to the assertion that would have
+caught the leak: no `ownerCode` property and no `ownercode` substring in the raw
+text (61/61). The calculator workspace read path now treats `calc-ws/<sub>.json`
+as untrusted storage: a blob that is not a plain object (array, string, markup,
+malformed JSON) reads as `ws:null` and is never echoed. New
+`test/calc-workspace.test.mjs` drives the real handlers with a fake R2 and a
+locally minted HMAC cookie: malformed JSON, array, markup string → `ws:null`;
+object → intact; PUT array → 400 with nothing stored; PUT object → `savedAt`.
+The skill's non-negotiables gained rule 7 (no credential echo, no untrusted
+echo). Gate: `npm test` 452/452; `qa-appwide-mcp` 61/61;
+`qa-mcp-agent-first` 166/166; `qa-mcp-parity` 16/16.
+
+**F1.4 Revisions and whole-state save — PASS.** `nextRevision` / `stateRevision`
+in `src/lib/http.js`; every write point stamps `state.revision` (owner save,
+save-proposal accept, MCP v2 accept, change-set accept). `handleCloudSave`
+reads `baseRevision` from the body: when the server is ahead it answers `409
+{ok:false, error:'stale', code:'stale_revision', revision}` and writes nothing.
+A body without `baseRevision` (an older client) keeps the replay path, now
+hardened: `created_at >= base` (an accept in the same millisecond is no longer
+missed), server-side deletes replay as deletes (a stale snapshot cannot
+resurrect a record), a leaf already at its server value is not touched, and the
+window is 500 changelog rows. Client: both the manual save and the auto-save
+send `baseRevision` from the local state, and on `stale_revision` reload the
+full cloud state (`resyncNow({force,replace})`) then retry once. `State`
+carries `revision` through `replaceExternal` / `mergeExternal`. Gate:
+`qa-cloud-phase2` 92/92 with six new checks - P2.4d revision 1 on the first
+save, P2.4e revision 2 on the next, P2.4f stale base -> 409 with the live
+revision, P2.5c3-6 accept interleaved with a stale save (409, then a fresh save
+keeps the accepted change).
+
+**F1.5 Accept result shape — PASS.** MCP single accept and change-set accept
+return `{ok, revision, applied[], appliedCount, blocked[], refused[]}` (plus
+the existing metadata; `skipped`, `conflicts`, `derivedChanges`, `changelog`
+unchanged). The stored apply report carries `revision`, so
+`get_proposal_status` answers `appliedCount` and `revision` long after the
+accept. The client reads both shapes (`appliedCountOf`) and appends the first
+three refusals with their reasons to the result line. The auto-accept sentence
+reads the count, not the array. Gate: `qa-mcp-agent-first` 169/169 with F1.5a-c
+(applied list + count + arrays, numeric revision, status poll matches);
+`qa-mcp-live-e2e` 43/43 (E6/E7 re-baselined to `appliedCount`).
+
+**F2 Tier-aware limits — PASS.** `src/mcp/tier-limits.js` holds the one frozen
+table (free/estimator/contractor/company/enterprise: active keys, pending per
+key, daily ops per key, ops per call, large budget changes per day, report
+retention days) plus `limitsFor` (unknown paid tier -> contractor, empty ->
+free) and `perCallCap`. Wired: the envelope caps the TOTAL across arrays at
+`maxOpsPerCall` and each array at `min(ceiling, maxOpsPerCall)`; the pending and
+daily caps read the row; the large-budget daily cap reads the row; the API-key
+creation cap reads the owner's tier once; `pruneDecidedReports` scans from the
+shortest window (30 days) and applies each project's own window before pruning.
+The tier is the one the handler already resolved (`mcpTier` in `server.js`,
+`tier` in `appwide.js`) and is passed through `executeTool` -> `get_schema`,
+`queueMcpProposal`, `validateChangesProposal`, `planProposal` - no second query.
+`get_schema.limits` now reports `tier`, `maxOpsPerCall`, the effective array
+caps, `maxActiveApiKeys` and `reportRetentionDays`. Refusals name the tier, the
+limit, the usage and the incoming count, and add the one-line upsell for
+estimator/contractor/company only. `pricing.html` gained "Active API keys" and
+"Agent changes per day (per key)" rows. The single table is where an enterprise
+override hook would go (out of scope). Gates: `qa-mcp-agent-first` 178/178
+(AT28a-i: matrix, unknown tier, free refused before a limit, per-call total,
+pending/daily per tier, tier change mid-session, counter not reset, no tier
+query in planning); `qa-appwide-mcp` 62/62 (a company plan raises the app-wide
+cap to 500); `qa-api-keys` all green; `npm test` 458/458; `npm run verify`
+green; `qa-mcp-live-e2e` 43/43.
+
+**F3 Remaining acceptance tests — PASS.** AT01 (two same-table proposals in one
+change set, Accept all -> the union is live), AT13 (R07b renamed: a UI save
+racing an accept keeps both), AT14a-d (through the accept endpoint: a phase with
+children refused, a task referenced by a budget line refused, an unreferenced
+task deleted with survivors' `predecessors` cleaned, budget lines not deletable
+through MCP), AT16a-c (browser XSS sweep: the hostile string proposed into
+tasks/risks/issues/changes, accepted, rendered through every module tab, the
+review panel, the export path and the print view - `window.__pwn` undefined, no
+`img[src=x]` element, payload present as literal text), AT17 (tools/list parity
+extended to annotations and outputSchema presence, plus the shared
+record-text-is-data sentence), AT18 (the 50-input validate/apply refusal parity
+test now carries its id), AT20a-b (a legacy row truncated at 500 refused with
+the stated message; a normal legacy row still accepts). **Defect found and
+fixed by AT14c:** `applyOps` guarded the predecessor strip with an
+`alsoDeleting` flag that was always true (the record IS in the delete ops), so
+the strip never ran and survivors kept a dangling reference to a deleted task.
+The guard is gone and the skill gained rule 10. Gates: `qa-mcp-agent-first`
+185/185; `qa-mcp-parity` 17/17; `qa-mcp-live-e2e` 46/46; `npm test` 458/458.
+
+**F4 Agent-facing release notes — PASS.** `get_schema` now carries a fixed
+`releaseNotes` list, one sentence per behaviour change since the first release
+(completedTasks/completion count work items only; get_risks returns description
+and name; openRisks matches the register; derived schedule fields are read-only
+and recomputed in the app; status stamps are set on accept; limits depend on the
+owner's plan). `MCP_SERVER_VERSION` is now `2.1.0` and both surfaces report it
+from the shared constant. Gate: `test/mcp-schema.test.mjs` 8/8 (asserts the six
+notes and their subjects); `qa-mcp-agent-first` 185/185 (AT26a re-baselined to
+2.1.0); `qa-appwide-mcp` 62/62; `npm test` 459/459.
+
+---
+
 ## Phase 0 — baseline and reproduction
 
 | Step | Files | Gate |
@@ -691,3 +913,124 @@ at any point releases the claim and leaves the row pending.
     the suite is EXTENDED (nightly), so the drift never blocked a push.
     Re-baselined to 17 with an assertion on the tool; back to 19 / 19. No app
     change.
+
+---
+
+## Live surface check — deployed `/api/mcp` (2026-11-16)
+
+Second of the two required test paths (the first is the local wrangler battery).
+Probed `https://mymanagerworkspace.com` with plain HTTP; no owner credentials
+were used, so the run covers the discovery + refusal contract and stops at the
+consent page, which needs a signed-in human.
+
+| Probe | Result |
+|---|---|
+| `POST /api/mcp` without a token | 401 + `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource"`; body is JSON-RPC `-32001 "Connect with OAuth to use this MCP server."` |
+| `GET /.well-known/oauth-protected-resource` | `resource` = the endpoint, `authorization_servers` = the origin, `scopes_supported` `["account"]` |
+| `GET /.well-known/oauth-authorization-server` | issuer, authorize, token and registration endpoints; `S256` only; `token_endpoint_auth_methods_supported: ["none"]` |
+| `POST /api/oauth/register` (DCR) | 201 with an opaque `client_id`, the registered redirect URI echoed, `scope: account` |
+| `GET /api/oauth/authorize` without a session | 401 HTML "Sign in to My MaNaGeR first" — the documented behaviour (consent cannot know who is authorising) |
+| `POST /api/oauth/token` with a bogus code | 400 `invalid_grant` / "unknown or expired code" |
+| `POST /api/mcp` with a bogus bearer | 401, "The access token is invalid or expired. Reconnect the connector." |
+| `GET /api/mcp` | **404 — defect.** The router matched `POST` only, so every other method fell through to the asset handler. A connector that probes the URL for an SSE stream reads 404 as "no MCP server here". |
+
+**Fix (F6, transport conformance).** The path is routed for every method and
+`handleAppwideMcp` answers non-POST with `405` + `Allow: POST` and a JSON-RPC
+error body. `qa-appwide-mcp` gained four checks (GET and DELETE: status +
+`Allow`, JSON-RPC shape) — 62 → 66.
+
+**Same session, one harness re-baseline.** `qa-cloud-phase2` went red on
+P5.1c and P5.4b for a reason unrelated to the app: the general bucket is 30
+requests per minute **per code**, and every earlier phase reuses one project,
+so on a fast machine the bucket is already full when the rate-limit section
+runs. The section now creates its own throwaway project (D0), which is what
+"same-origin accepted" and "below the budget is not throttled" actually mean.
+92 → 93. The app is unchanged by that fix.
+
+Note: the deployed build predates F1–F4, so this run validates the previous
+release's contract, not the branch's new behaviour.
+
+
+### Manual test plan (owner's 8 report tests) — 16/16, 2026-11-16
+
+Ran the eight manual tests from the directive against the LOCAL branch build
+(`tmp/probe-manual8.cjs`, wrangler dev + fake R2/D1): all eight pass, expanded
+to 16 assertions. Test 1 (create_project) is the app-wide surface, already
+covered by qa-appwide-mcp M12 (projectId + status, no ownerCode).
+
+Tests 2-6 confirm the F1.4/F1.5 contract end to end: one status change queues
+and accepts with appliedCount 1 + a revision bump; 11 changes accept in one
+call; a current-revision save lands without moving other records; a stale save
+answers 409 stale_revision without overwriting; `done` is refused naming
+`completed`.
+
+**Test 7 found a real defect.** Proposing a delete of a phase with children
+came back "Nothing to propose" — no proposal at all. `planProposal` wrote the
+touched section into `submitted` only for diffs/creates/sets; a call with just
+a delete left `submitted` empty and `queueMcpProposal`'s guard refused it. The
+fix writes the section into `submitted` with the record REMOVED (not the
+unchanged base list — a deep-equal list gives cloudScopeMerge no diff, so the
+guard still fires). The accept engine ignores that display copy and applies the
+v2 delete op, where the "phase still has child tasks" refusal runs: accept
+answers 409 with the reason in `conflicts`, the phase survives. Added AT14e to
+qa-mcp-agent-first (185 → 186) and durable guard 11 to the high-grade-mcp
+skill (hash re-computed).
+
+Test 8 confirms the large-change rule: 12 large budget lines exceed the
+contractor cap of 10/day, so validate_changes hard-refuses with the tier +
+limit + upsell sentence (the rule applied as documented).
+
+Battery after the fix: verify green, agent-first 186, parity 17, plan-badge 33.
+
+
+### Directive close-out — 2026-11-16
+
+**F5 skipped: no PHASE6-GO.** The owner's messages contain no `PHASE6-GO`
+token, so optional auto-accept is not started. The advanced worktree
+`c75de36` (`e85fcb8`) still holds a separate implementation; adopting it is an
+owner baseline decision, not a reason to begin F5 here.
+
+Final phase status (all gated green on `feat/mcp-agent-first`):
+- F0 baseline + green gates — DONE
+- F1.1–F1.7 correctness (revision gates, accept shape/status, owner-code/no
+  untrusted echo, delete reference cleanup) — DONE
+- F2 tier-aware limits (one table, envelope/pending/daily/API-key/retention,
+  get_schema, pricing parity) — DONE
+- F3 acceptance tests AT01/13/14/16/17/18/20 + AT14e — DONE
+- F4 agent-facing release notes + server 2.1.0 — DONE
+- Manual 8 report tests — 16/16 local branch build
+- F5 auto-accept — SKIPPED (no token)
+
+All work stayed on `feat/mcp-agent-first`; `main` untouched pending the
+PR-gated merge.
+
+
+### PR #12 CI repair — 2026-11-16
+
+First PR run: `static`, `browser-app`, `browser-calc`, all three CodeQL
+language analyses GREEN; three failures fixed on the branch (never force-push
+or merge a red run):
+
+1. **cloud-core / qa-mcp-write-path** — W5 expected the flat "at most 500
+   diffs" message. F2 made the cap tier-aware ("501 changes; the contractor
+   plan allows 250 per call"). Re-baselined to assert the count + tier + per
+   call, keeping the no-row assertion. 19/20 → 20/20.
+2. **cloud-auth / verify-cloud-autosave-signin** — C4b expected the old
+   "now in the cloud project" accept toast. F1.3/F1.5 changed a real accept to
+   "N change applied, revision X" (with an ok kind). Re-baselined to assert an
+   ok toast naming how many ops landed. 11/12 → 12/12. This harness had been
+   green only because its stale prose assertion matched old code - exactly the
+   unwired-harness drift class the registry gate is meant to surface.
+3. **CodeQL (2 high)** — both in `test/tier-limits.test.mjs`'s pricing parser:
+   an exponentially-backtracking row regex `(?:<td>.*?</td>)+`, and a decode-
+   after-strip that could reconstruct markup. It took three passes to clear:
+   first replaced the backtracking regex + reordered decode-then-strip, then
+   dropped entity decoding, and finally removed the regex tag-strip entirely
+   (CodeQL flags ANY `replace(/<[^>]*>/,'')` as incomplete sanitization). Every
+   cell in pricing.html's comparison table is plain text/numbers — no nested
+   tags, no entities — so the regex capture group needs only `.trim()`. Final
+   parser: two flat lazy matches, `.trim()`, no replace/decode. CodeQL clean,
+   pricing parity 5/5 still green.
+
+No app behaviour changed by these three repairs. Local battery after: verify
+green, 459/459 unit, write-path 20, autosave-signin 12, tier-limits 5.

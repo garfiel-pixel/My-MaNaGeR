@@ -277,9 +277,15 @@ function textOf(res) {
     d501.push({ path: 'tasks', recordId: 't' + i, field: 'status', after: 'completed' });
   }
   const w5 = await tool(env, 5, 'apply_changes', { diffs: d501 });
+  // F2 made this cap tier-aware: the contractor key now allows 250 ops per
+  // call (was a flat 500). The message names the owner's tier + limit + upsell.
   check(
-    '501 diffs is refused with the cap message',
-    w5 && w5.result && w5.result.isError === true && /at most 500 diffs/.test(textOf(w5)),
+    '501 diffs is refused with the tier-aware cap message',
+    w5 &&
+      w5.result &&
+      w5.result.isError === true &&
+      /501 changes/.test(textOf(w5)) &&
+      /contractor plan allows \d+ per call/.test(textOf(w5)),
     w5
   );
   check('the cap refusal queued NO row', env.__store.cloud_reviews.length === 3, {

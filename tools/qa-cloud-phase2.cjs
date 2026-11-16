@@ -945,6 +945,38 @@ function baseState(pid, name) {
       save1.text
     );
 
+    // F1.4 (MCP-FINAL 2026-11-16): every write advances a numeric revision.
+    // A save quotes the revision it was based on; a stale base is a 409, not a
+    // silent overwrite of whatever landed in between.
+    check(
+      'P2.4d first save returns revision 1',
+      save1.body && save1.body.revision === 1,
+      save1.body && save1.body.revision
+    );
+    const saveRev2 = await api('/api/cloud/projects/' + PID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({ state: state1, baseRevision: 1 })
+    });
+    check(
+      'P2.4e a save on the current revision succeeds and returns revision 2',
+      saveRev2.status === 200 && saveRev2.body && saveRev2.body.revision === 2,
+      saveRev2.text
+    );
+    const saveStale = await api('/api/cloud/projects/' + PID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({ state: state1, baseRevision: 1 })
+    });
+    check(
+      'P2.4f a save from a stale revision is refused 409 with the live revision',
+      saveStale.status === 409 &&
+        saveStale.body &&
+        saveStale.body.code === 'stale_revision' &&
+        saveStale.body.revision === 2,
+      saveStale.text
+    );
+
     // A7: editor load — role + scope + state
     const edLoad = await api('/api/cloud/projects/' + PID + '/load', {
       method: 'POST',
@@ -1054,6 +1086,57 @@ function baseState(pid, name) {
         accRes.body.status === 'accepted' &&
         accRes.body.applied.indexOf('wbs') !== -1,
       accRes.text
+    );
+    // F1.4 (MCP-FINAL 2026-11-16): an accept interleaved with a stale save.
+    // The accept advances the revision; a save quoting the pre-accept revision
+    // is refused, and a save on the fresh revision keeps BOTH changes.
+    const revBeforeAccept = blobPre && Number(blobPre.revision);
+    check(
+      'P2.5c3 the pre-accept load carries the numeric revision',
+      Number.isFinite(revBeforeAccept) && revBeforeAccept >= 2,
+      revBeforeAccept
+    );
+    const interleavedStale = await api('/api/cloud/projects/' + PID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({ state: state1, baseRevision: revBeforeAccept })
+    });
+    check(
+      'P2.5c4 a save on the pre-accept revision is refused 409 (no overwrite)',
+      interleavedStale.status === 409 &&
+        interleavedStale.body &&
+        interleavedStale.body.code === 'stale_revision' &&
+        interleavedStale.body.revision > revBeforeAccept,
+      interleavedStale.text
+    );
+    const freshLoad = await api('/api/cloud/projects/' + PID + '/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({})
+    });
+    const freshState = freshLoad.body && freshLoad.body.state;
+    const freshSave = await api('/api/cloud/projects/' + PID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({
+        state: freshState,
+        baseRevision: freshState && freshState.revision
+      })
+    });
+    check(
+      'P2.5c5 a save on the fresh revision succeeds',
+      freshSave.status === 200 && freshSave.body && freshSave.body.ok === true,
+      freshSave.text
+    );
+    const afterInterleave = await api('/api/cloud/projects/' + PID + '/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Owner-Code': OC },
+      body: JSON.stringify({})
+    });
+    check(
+      'P2.5c6 the accepted change survives the interleaved save',
+      !!(afterInterleave.body && afterInterleave.body.state.tasks[0].name === 'Edited again (WBS)'),
+      afterInterleave.body && afterInterleave.body.state && afterInterleave.body.state.tasks
     );
     const ownerLoad1b = await api('/api/cloud/projects/' + PID + '/load', {
       method: 'POST',
@@ -1624,10 +1707,26 @@ function baseState(pid, name) {
     // PHASE D — 2026-08-10 gap-audit hardening (CORS, editor cap, unlink,
     // rate limiting). Added as PERMANENT gate coverage for the audit fixes.
     // ==================================================================
+    // The general bucket is 30 requests per minute PER CODE, and the phases
+    // above reuse PID heavily. On a fast machine the bucket is already full
+    // by the time these checks run, so P5.1c and P5.4b measured the suite's
+    // own traffic instead of the property they name (both went red on
+    // 2026-11-16 while the app was correct). A throwaway project gives this
+    // section an empty bucket - which is what "same-origin accepted" and
+    // "below the budget is not throttled" actually mean.
+    const PIRD = 'qa-rl-' + Date.now().toString(36);
+    const createRL = await api('/api/cloud/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: PIRD, name: 'Rate limit' })
+    });
+    const OCR = createRL.body ? createRL.body.ownerCode : '';
+    check('D0 fresh project for the rate-limit checks', !!OCR, createRL.status);
+
     // D1: CORS — a cross-origin request must be rejected with the explicit
     // message and NO Access-Control-Allow-Origin header ever emitted.
-    const corsRes = await fetch(BASE + '/api/cloud/projects/' + PID + '/meta', {
-      headers: { Origin: 'https://evil.example', 'X-Owner-Code': OC }
+    const corsRes = await fetch(BASE + '/api/cloud/projects/' + PIRD + '/meta', {
+      headers: { Origin: 'https://evil.example', 'X-Owner-Code': OCR }
     });
     let corsBody = null;
     try {
@@ -1645,8 +1744,8 @@ function baseState(pid, name) {
       corsRes.headers.get('Access-Control-Allow-Origin') === null,
       corsRes.headers.get('Access-Control-Allow-Origin')
     );
-    const corsSame = await api('/api/cloud/projects/' + PID + '/meta', {
-      headers: { Origin: BASE, 'X-Owner-Code': OC }
+    const corsSame = await api('/api/cloud/projects/' + PIRD + '/meta', {
+      headers: { Origin: BASE, 'X-Owner-Code': OCR }
     });
     check(
       'P5.1c same-origin Origin accepted',
@@ -1755,8 +1854,8 @@ function baseState(pid, name) {
     let sawOk = false;
     let hasRetryAfter = false;
     for (let i = 1; i <= 140; i++) {
-      const r = await fetch(BASE + '/api/cloud/projects/' + PID + '/meta', {
-        headers: { 'X-Owner-Code': OC }
+      const r = await fetch(BASE + '/api/cloud/projects/' + PIRD + '/meta', {
+        headers: { 'X-Owner-Code': OCR }
       });
       if (r.status === 200) {
         sawOk = true;

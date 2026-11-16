@@ -19,9 +19,10 @@
    disagree.
    ============================================================ */
 
-// The MCP server's own version. 2.0.0 marks the agent-first contract: v2 ops,
+// The MCP server's own version. 2.0.0 marked the agent-first contract; 2.1.0
+// adds tier-aware limits and the releaseNotes block. v2 ops,
 // change sets, cross-proposal dependencies, fixed error codes and typed output.
-export const MCP_SERVER_VERSION = '2.0.0';
+export const MCP_SERVER_VERSION = '2.1.0';
 
 // Record text is attacker-reachable (an agent can be told to paste a task name
 // or a supplier reference written by someone else), so the server says once,

@@ -489,6 +489,7 @@ Nothing ships until every ⛔ below is checked. This is the doctrine's enforceme
 - ⛔ 6.2 — Every glass surface has a `prefers-reduced-transparency` fallback.
 - ⛔ 8.1 — Every animation degrades under `prefers-reduced-motion`.
 - ⛔ 11 — All eleven states in the Complete-States table designed and implemented, per component.
+- ⛔ 15 — Every persistent control measured on screen in a real browser at four widths, and hidden only on a definite signed-out answer (§15).
 
 If any item is unchecked, the correct status is **blocked**, not "shipped with a follow-up ticket." Follow-up tickets for accessibility and reliability gates are how debt becomes permanent.
 
@@ -582,3 +583,43 @@ This project uses a warm gold/amber brand palette with the following key tokens:
 6. Every component ships ALL 11 states (empty, loading, error, success, disabled, focus, dark mode, reduced motion, reduced transparency)
 7. Field guide entry must ship with every new feature in the SAME change
 8. No emoji on served pages — SVG icons only (sprite symbols or inline SVG)
+
+---
+
+## 15. Presence Is Not Visibility ⛔ HARD GATE
+
+A control that exists in the markup is not a control the person can see. Every
+persistent action (plan/upgrade, account, save, sign-out) must be proven on
+screen, not inferred from the source.
+
+**The failure this exists for (My MaNaGeR, 2026-11-16, third report).** The
+launcher's "Upgrade to Premium" badge had correct markup, correct CSS and a
+correct script. The owner photographed the open rail showing the account row
+"tester / Sign out" with no badge. Every static gate was green because none of
+them asked whether the element was visible. The cause was ordering plus cache:
+the first fetch ran before the identity reached the rail and read a 403, so the
+badge was hidden; the restore then painted the name underneath it and no event
+re-ran the check. A stale cached page had no mount at all.
+
+**Rules.**
+
+1. **Measure the rendered control in a browser**, at 390 / 768 / 1280 / 1920:
+   `getBoundingClientRect()` inside the viewport, inside its container, not
+   covered (`elementFromPoint` at its centre returns the control), text
+   unclipped (`scrollWidth <= clientWidth`), and a real click reaching its
+   destination. A `querySelector` hit is not evidence.
+2. **Never hide a control because one fetch failed.** Distinguish "the server
+   says signed out" from "I could not ask". A 403 hides only when the page's own
+   account row agrees nobody is signed in; a network error, 404, 429 or 500
+   keeps the free/CTA state so the path stays reachable.
+3. **A control may not depend on the HTML version.** A returning browser can run
+   the new script against the previous deploy's markup (HTTP cache or a
+   service-worker copy). Build the mount when it is missing; make the routine
+   idempotent so the normal path is one lookup.
+4. **Bind to every event that can change the answer.** If identity arrives via
+   `mmgr:user-changed` and restore does not fire the sign-in event, listening
+   only for the sign-in event leaves the control stale. List every producer
+   before choosing the listener.
+5. **The gate stays.** One harness per persistent control, registered in
+   `docs/CI-TEST-COVERAGE.md` and wired into CI, asserting the states above —
+   including the two that produced the report (expired cookie, stale page).

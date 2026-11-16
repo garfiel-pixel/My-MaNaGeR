@@ -423,6 +423,13 @@ jobs:
         id: qa-mcp-agent-first
         run: node tools/qa-mcp-agent-first.cjs
 
+      # MCP-FINAL F1.2 (2026-11-16): the pure server port of the client's task
+      # side effects (stampStatus + working-day triad + phase roll-up) must
+      # match the real client function. Pure-Node (no Chrome, no wrangler).
+      - name: "T1: task-effects parity (F1.2)"
+        id: qa-task-effects-parity
+        run: node tools/qa-task-effects-parity.cjs
+
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
 
@@ -1142,6 +1149,14 @@ jobs:
       - name: "T4: The workspace adopts the plan the server reports (qa-team-tier)"
         id: qa-team-tier
         run: node tools/qa-team-tier.cjs
+
+      # PLAN CONTROL ON SCREEN (owner report 2026-11-16, third time): the rail
+      # showed the account row and no Upgrade button while every static gate
+      # was green, so this one measures the rendered control at four widths
+      # plus the expired-cookie and stale-page states that produced it.
+      - name: "T4: The plan control is really on screen (qa-plan-badge)"
+        id: qa-plan-badge
+        run: node tools/qa-plan-badge.cjs
 
       # SIGN-IN NONCE (owner report 2026-11-01): the client must post the nonce
       # the CREDENTIAL carries, not the newest one it fetched - posting the

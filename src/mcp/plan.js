@@ -19,12 +19,7 @@
 
 import { CLOUD_SECTIONS, CLOUD_KEY_TO_SECTION } from '../lib/http.js';
 import { setPathValue, getPathValue, valuesEqual } from '../cloud/proposal-diffs.js';
-import {
-  BUDGET_PROPOSAL_LIMIT,
-  BUDGET_LARGE_PER_DAY,
-  BUDGET_LINE_FIELDS,
-  buildBudgetProposal
-} from '../lib/budget.js';
+import { BUDGET_PROPOSAL_LIMIT, BUDGET_LINE_FIELDS, buildBudgetProposal } from '../lib/budget.js';
 import {
   MODEL,
   createDefaults,
@@ -39,6 +34,7 @@ import {
 } from './model.js';
 import { budgetWriteAllowed, BUDGET_WRITE_REFUSAL } from './budget-access.js';
 import { refusalCode } from './errors.js';
+import { limitsFor, perCallCap, upsellFor } from './tier-limits.js';
 
 // MCP-AGENT-FIRST addendum A1 (2026-11-13): per API key per project abuse
 // limits. A key may hold at most MCP_MAX_PENDING_PER_KEY proposals in status
@@ -66,7 +62,22 @@ export const MCP_MAX_DELETES = 200;
 // 1/30/200-diff proposal finishes far inside this budget.
 export const MCP_WRITE_BUDGET_MS = 4000;
 
-export function validateProposalEnvelope(toolArgs, auth) {
+export function validateProposalEnvelope(toolArgs, auth, tier) {
+  // F2: every cap follows the PROJECT OWNER's tier. A caller that does not
+  // resolve a tier (a direct unit-harness call) gets the paid default; the two
+  // servers always pass the real one.
+  const limits = limitsFor(tier === undefined ? 'contractor' : tier);
+  if (!limits.mcp) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: 'MCP is not included on the free plan. The project owner needs a paid plan before an agent can propose changes.'
+        }
+      ],
+      isError: true
+    };
+  }
   const a = toolArgs || {};
   const diffs = Array.isArray(a.diffs) ? a.diffs : [];
   const creates = Array.isArray(a.creates) ? a.creates : [];
@@ -90,57 +101,96 @@ export function validateProposalEnvelope(toolArgs, auth) {
       isError: true
     };
   }
-  if (deletesRaw.length > MCP_MAX_DELETES) {
+  // F2.1/F2.2: the tier's per-call cap bounds the TOTAL across arrays, and each
+  // array is additionally bounded by its own ceiling.
+  const total =
+    diffs.length + creates.length + setsRaw.length + deletesRaw.length + budgetRaw.length;
+  if (total > limits.maxOpsPerCall) {
     return {
       content: [
         {
           type: 'text',
           text:
-            'A proposal can carry at most ' +
-            MCP_MAX_DELETES +
-            ' deletes. Split this into smaller proposals.'
+            'This call carries ' +
+            total +
+            ' changes; the ' +
+            limits.tier +
+            ' plan allows ' +
+            limits.maxOpsPerCall +
+            ' per call. Split this into smaller proposals.' +
+            upsellFor(limits.tier)
         }
       ],
       isError: true
     };
   }
-  if (diffs.length > MCP_MAX_DIFFS) {
+  const maxDiffs = perCallCap(MCP_MAX_DIFFS, limits);
+  const maxCreates = perCallCap(MCP_MAX_CREATES, limits);
+  const maxSets = perCallCap(MCP_MAX_SETS, limits);
+  const maxDeletes = perCallCap(MCP_MAX_DELETES, limits);
+  if (deletesRaw.length > maxDeletes) {
     return {
       content: [
         {
           type: 'text',
           text:
             'A proposal can carry at most ' +
-            MCP_MAX_DIFFS +
-            ' diffs. Split this into smaller proposals.'
+            maxDeletes +
+            ' deletes on the ' +
+            limits.tier +
+            ' plan. Split this into smaller proposals.' +
+            upsellFor(limits.tier)
         }
       ],
       isError: true
     };
   }
-  if (creates.length > MCP_MAX_CREATES) {
+  if (diffs.length > maxDiffs) {
     return {
       content: [
         {
           type: 'text',
           text:
             'A proposal can carry at most ' +
-            MCP_MAX_CREATES +
-            ' creates. Split this into smaller proposals.'
+            maxDiffs +
+            ' diffs on the ' +
+            limits.tier +
+            ' plan. Split this into smaller proposals.' +
+            upsellFor(limits.tier)
         }
       ],
       isError: true
     };
   }
-  if (setsRaw.length > MCP_MAX_SETS) {
+  if (creates.length > maxCreates) {
     return {
       content: [
         {
           type: 'text',
           text:
             'A proposal can carry at most ' +
-            MCP_MAX_SETS +
-            ' sets. Split this into smaller proposals.'
+            maxCreates +
+            ' creates on the ' +
+            limits.tier +
+            ' plan. Split this into smaller proposals.' +
+            upsellFor(limits.tier)
+        }
+      ],
+      isError: true
+    };
+  }
+  if (setsRaw.length > maxSets) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text:
+            'A proposal can carry at most ' +
+            maxSets +
+            ' sets on the ' +
+            limits.tier +
+            ' plan. Split this into smaller proposals.' +
+            upsellFor(limits.tier)
         }
       ],
       isError: true
@@ -442,7 +492,7 @@ function mapTempIds(list, tempIds) {
 // pending/accepting nor accepted), so it frees its slot and its daily ops.
 // key_id uses the null-safe `IS` operator so owner-session rows (key_id NULL)
 // are scoped to the owner and do not collide with keyed rows.
-async function checkAbuseLimits(env, projectId, apiKeyId, incomingOps) {
+async function checkAbuseLimits(env, projectId, apiKeyId, incomingOps, limits) {
   const key = apiKeyId != null ? String(apiKeyId) : null;
   const dayStart = new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z';
   try {
@@ -458,30 +508,36 @@ async function checkAbuseLimits(env, projectId, apiKeyId, incomingOps) {
       .bind(projectId, key, dayStart)
       .first();
     const dayOps = (day && Number(day.total)) || 0;
-    if (pendingCount >= MCP_MAX_PENDING_PER_KEY) {
+    if (pendingCount >= limits.pendingPerKey) {
       return {
         code: 'RATE_PENDING_CAP',
         text:
           'This key already has ' +
           pendingCount +
-          ' pending proposal(s) on this project (limit ' +
-          MCP_MAX_PENDING_PER_KEY +
-          '). Accept or withdraw some before queuing more.'
+          ' pending proposal(s) on this project (the ' +
+          limits.tier +
+          ' plan allows ' +
+          limits.pendingPerKey +
+          '; this call would add 1). Accept or withdraw some before queuing more.' +
+          upsellFor(limits.tier)
       };
     }
-    if (dayOps + incomingOps > MCP_MAX_DAILY_OPS_PER_KEY) {
+    if (dayOps + incomingOps > limits.dailyOpsPerKey) {
       return {
         code: 'RATE_DAILY_OPS',
         text:
           'This call would push today’s ops for this key to ' +
           (dayOps + incomingOps) +
-          ' (limit ' +
-          MCP_MAX_DAILY_OPS_PER_KEY +
-          ', ' +
+          ' (the ' +
+          limits.tier +
+          ' plan allows ' +
+          limits.dailyOpsPerKey +
+          '; ' +
           dayOps +
           ' already used, ' +
           incomingOps +
-          ' incoming). Split the work or wait for the UTC day to roll over.'
+          ' incoming). Split the work or wait for the UTC day to roll over.' +
+          upsellFor(limits.tier)
       };
     }
   } catch (e) {
@@ -497,6 +553,9 @@ async function checkAbuseLimits(env, projectId, apiKeyId, incomingOps) {
 export async function planProposal(toolArgs, liveState, auth, deps) {
   const a = toolArgs || {};
   const d = deps || {};
+  // F2: every limit follows the project owner's tier. A caller that resolves
+  // no tier (a direct unit-harness call) gets the paid default.
+  const limits = limitsFor(d.tier === undefined ? 'contractor' : d.tier);
   const diffs = Array.isArray(a.diffs) ? a.diffs : [];
   const creates = Array.isArray(a.creates) ? a.creates : [];
   const setsRaw = Array.isArray(a.sets) ? a.sets : [];
@@ -509,7 +568,7 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
   // (matching how the daily cap is summed from ops_count).
   const incomingOps = diffs.length + creates.length + setsRaw.length + deletesRaw.length;
   if (d && d.env && d.env.DB) {
-    const capErr = await checkAbuseLimits(d.env, d.projectId, auth.apiKeyId, incomingOps);
+    const capErr = await checkAbuseLimits(d.env, d.projectId, auth.apiKeyId, incomingOps, limits);
     if (capErr) {
       return {
         error: { text: capErr.text, code: capErr.code },
@@ -1135,7 +1194,8 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
         } catch (e) {
           usedLarge = 0;
         }
-        if (usedLarge + newLarge > BUDGET_LARGE_PER_DAY) {
+        const largeLimit = limits.largeBudgetPerDay;
+        if (usedLarge + newLarge > largeLimit) {
           return {
             error: {
               text:
@@ -1143,13 +1203,14 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
                 newLarge +
                 ' large budget change(s). This key has ' +
                 usedLarge +
-                ' large change(s) pending or accepted today (UTC). The limit is ' +
-                BUDGET_LARGE_PER_DAY +
-                ' per day and ' +
-                BUDGET_LARGE_PER_DAY +
-                ' per call. Split into calls of at most ' +
-                BUDGET_LARGE_PER_DAY +
-                ' large changes, or ask the owner to decide pending ones.'
+                ' large change(s) pending or accepted today (UTC). The ' +
+                limits.tier +
+                ' plan allows ' +
+                largeLimit +
+                ' per day. Split into calls of at most ' +
+                largeLimit +
+                ' large changes, or ask the owner to decide pending ones.' +
+                upsellFor(limits.tier)
             },
             ops: ops,
             refused: refused,
@@ -1194,6 +1255,19 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
       continue;
     }
     deleteCount++;
+    /* A delete-only call used to queue NOTHING: `submitted` is the map the
+       queue guard reads, and only diffs/creates/sets ever wrote to it. The
+       owner's manual test 7 found it - propose the deletion of a phase with
+       children and the whole call came back "Nothing to propose." with no
+       reason. Store the list WITH the record removed so cloudScopeMerge sees a
+       real diff (a bare `base[path]` is equal to prev and the guard still
+       fires). The accept engine ignores this display copy and applies the v2
+       delete op, where the child/budget refusal rules run. Build from any
+       prior submitted value so several deletes on one path all land. */
+    const delSrc = Array.isArray(submitted[path]) ? submitted[path] : arr;
+    submitted[path] = delSrc.filter(function (r) {
+      return String(r.id) !== recordId;
+    });
     ops.push({ op: 'delete', path: path, recordId: recordId });
   }
   // MCP-AGENT-FIRST 2026-11-12 1.8: refused ops are reported, accepted ops
@@ -1246,12 +1320,16 @@ export function structuredRefusals(list) {
 // MCP-AGENT-FIRST 2026-11-12 2.6: the dry run. Same input as apply_changes,
 // same permission checks and the same planProposal, but nothing is queued.
 // Returns {ok, refused, warnings, wouldCreateOps, counts, largeChanges}.
-export async function validateChangesProposal(env, projectId, auth, toolArgs, id, state) {
-  const precheck = validateProposalEnvelope(toolArgs, auth);
+export async function validateChangesProposal(env, projectId, auth, toolArgs, id, state, tier) {
+  const precheck = validateProposalEnvelope(toolArgs, auth, tier);
   if (precheck) {
     return { jsonrpc: '2.0', id, result: precheck };
   }
-  const plan = await planProposal(toolArgs, state, auth, { env: env, projectId: projectId });
+  const plan = await planProposal(toolArgs, state, auth, {
+    env: env,
+    projectId: projectId,
+    tier: tier
+  });
   if (plan.error) {
     return {
       jsonrpc: '2.0',
@@ -1272,7 +1350,7 @@ export async function validateChangesProposal(env, projectId, auth, toolArgs, id
     largeChanges: {
       incoming: large,
       used: plan.usedLarge,
-      limit: BUDGET_LARGE_PER_DAY
+      limit: limitsFor(tier === undefined ? 'contractor' : tier).largeBudgetPerDay
     }
   };
   return {

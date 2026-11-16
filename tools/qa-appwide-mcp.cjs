@@ -30,7 +30,7 @@
        M9  per-project mcp_enabled=0 is refused
        M10 view role blocks write tools
        M11 owner read path clears every gate (reaches the engine)
-       M12 create_project succeeds and returns an owner code
+       M12 create_project succeeds and never returns the owner code
        M13 list_projects returns the account's owned + adopted projects
 
    Run: node tools/qa-appwide-mcp.cjs
@@ -393,6 +393,31 @@ async function sessionCookie(env, sub) {
   OAUTH = oauth;
   APPWIDE = appwide;
   const env0 = {};
+
+  section('MCP transport — the endpoint answers non-POST with 405, never 404');
+  {
+    // Live probe 2026-11-16: GET https://mymanagerworkspace.com/api/mcp answered
+    // 404 because the router matched POST only, so a connector that probes the
+    // URL for an SSE stream read it as "no MCP server here".
+    const envM = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
+    for (const m of ['GET', 'DELETE']) {
+      const res = await appwide.handleAppwideMcp(
+        new Request('http://localhost/api/mcp', { method: m }),
+        envM
+      );
+      const body = await res.json().catch(() => null);
+      check(
+        m + ' answers 405 with Allow: POST',
+        res.status === 405 && (res.headers.get('allow') || '').toUpperCase() === 'POST',
+        { status: res.status, allow: res.headers.get('allow') }
+      );
+      check(
+        m + ' body is a JSON-RPC error a client can parse',
+        !!body && body.jsonrpc === '2.0' && !!body.error && typeof body.error.message === 'string',
+        body
+      );
+    }
+  }
 
   section('OAUTH O1 — PKCE S256 challenge');
   const verifier = 'test-verifier-0123456789abcdef';
@@ -1020,11 +1045,19 @@ async function sessionCookie(env, sub) {
     createdJson = JSON.parse(createdText);
   } catch (e) {}
   check(
-    'create_project returns projectId + ownerCode',
+    'create_project returns projectId + status and NO ownerCode credential',
     createdJson &&
       createdJson.projectId === 'new-1' &&
-      /^[A-Za-z0-9-]+$/.test(createdJson.ownerCode),
+      !Object.prototype.hasOwnProperty.call(createdJson, 'ownerCode') &&
+      typeof createdJson.status === 'string',
     createdJson
+  );
+  // MCP-FINAL 2026-11-16 F1.6: the owner code is a full-access credential.
+  // Assert on the raw text too, so a nested/renamed echo cannot slip through.
+  check(
+    'create_project text never mentions the owner code',
+    createdText.length > 0 && createdText.toLowerCase().indexOf('ownercode') === -1,
+    createdText
   );
 
   section('APP-WIDE MCP M13 — list_projects returns owned + adopted');
@@ -1222,12 +1255,53 @@ async function sessionCookie(env, sub) {
     bearerW
   );
   check(
-    'more than 500 diffs is refused with a cap message',
+    'more than the plan per-call cap is refused with a cap message',
     wCap &&
       wCap.result &&
       wCap.result.isError === true &&
-      /at most 500 diffs/.test(wCap.result.content[0].text),
+      /per call/.test(wCap.result.content[0].text) &&
+      /contractor/.test(wCap.result.content[0].text),
     wCap
+  );
+
+  // F2: the app-wide surface applies the CONNECTING account's tier to the same
+  // per-call cap, so the same 501-change call is refused at a different number
+  // on a company plan than on contractor.
+  const envCompany = makeEnv({
+    config: { account_sub: 'sub-abc', enabled: 1, policy: 'allow_all', tool_subset: null },
+    subscription: { owner_sub: 'sub-abc', status: 'active', tier: 'company' },
+    projects: [
+      {
+        project_id: 'p1',
+        google_sub: 'sub-abc',
+        owner_email: null,
+        mcp_enabled: 1,
+        owner_code_hash: 'h',
+        owner_code_salt: 's',
+        latest_r2_key: 'projects/p1/latest.json'
+      }
+    ],
+    adoptions: [],
+    states: { p1: wState }
+  });
+  const bearerCompany = await tok(envCompany, 'sub-abc');
+  const wCapCompany = await mcpCall(
+    envCompany,
+    {
+      jsonrpc: '2.0',
+      id: 231,
+      method: 'tools/call',
+      params: { name: 'apply_changes', arguments: { projectId: 'p1', diffs: tooMany } }
+    },
+    bearerCompany
+  );
+  check(
+    'a company plan raises the app-wide per-call cap to 500',
+    wCapCompany &&
+      wCapCompany.result &&
+      wCapCompany.result.isError === true &&
+      /company plan allows 500/.test(wCapCompany.result.content[0].text),
+    wCapCompany && wCapCompany.result && wCapCompany.result.content[0].text
   );
 
   section('APP-WIDE MCP W4 — view role cannot propose writes');

@@ -57,11 +57,11 @@ import { structuredLog } from '../lib/observe.js';
 import {
   BUDGET_PROPOSAL_LIMIT,
   BUDGET_LARGE_ABS,
-  BUDGET_LARGE_PER_DAY,
   BUDGET_LINE_FIELDS,
   parseISO,
   buildBudgetProposal
 } from '../lib/budget.js';
+import { limitsFor, perCallCap } from './tier-limits.js';
 import {
   planProposal,
   validateProposalEnvelope,
@@ -93,14 +93,7 @@ import {
   getSection,
   isDeletable
 } from './model.js';
-import {
-  MCP_MAX_DIFFS,
-  MCP_MAX_CREATES,
-  MCP_MAX_SETS,
-  MCP_WRITE_BUDGET_MS,
-  MCP_MAX_PENDING_PER_KEY,
-  MCP_MAX_DAILY_OPS_PER_KEY
-} from './plan.js';
+import { MCP_MAX_DIFFS, MCP_MAX_CREATES, MCP_MAX_SETS, MCP_WRITE_BUDGET_MS } from './plan.js';
 import {
   budgetReadAllowed,
   budgetWriteAllowed,
@@ -679,7 +672,10 @@ function executeGetTable(state, scope, args, auth) {
 // MCP-AGENT-FIRST 2026-11-12 2.5: the writable model, straight from
 // src/mcp/model.js - the same table the planner validates against, so the
 // schema an agent reads cannot drift from what apply_changes accepts.
-function executeGetSchema(scope, args) {
+function executeGetSchema(scope, args, tier) {
+  // F2.4: the schema reports the EFFECTIVE limits for this owner's tier plus
+  // the tier name, so an agent plans to the plan it is actually on.
+  const limits = limitsFor(tier === undefined ? 'contractor' : tier);
   const scopeAllowed = function (sec) {
     return sectionAllowed(scope, sec);
   };
@@ -726,9 +722,11 @@ function executeGetSchema(scope, args) {
         text: JSON.stringify(
           {
             limits: {
-              maxDiffs: MCP_MAX_DIFFS,
-              maxCreates: MCP_MAX_CREATES,
-              maxSets: MCP_MAX_SETS,
+              tier: limits.tier,
+              maxDiffs: perCallCap(MCP_MAX_DIFFS, limits),
+              maxCreates: perCallCap(MCP_MAX_CREATES, limits),
+              maxSets: perCallCap(MCP_MAX_SETS, limits),
+              maxOpsPerCall: limits.maxOpsPerCall,
               writeBudgetMs: MCP_WRITE_BUDGET_MS,
               stringMax: STRING_MAX,
               shortMax: SHORT_MAX,
@@ -736,16 +734,28 @@ function executeGetSchema(scope, args) {
               tempIdMax: 40,
               budgetProposalLimit: BUDGET_PROPOSAL_LIMIT,
               largeChangeAbs: BUDGET_LARGE_ABS,
-              largeChangePerDay: BUDGET_LARGE_PER_DAY,
+              largeChangePerDay: limits.largeBudgetPerDay,
               budgetLineFields: BUDGET_LINE_FIELDS,
-              maxPendingPerKey: MCP_MAX_PENDING_PER_KEY,
-              maxDailyOpsPerKey: MCP_MAX_DAILY_OPS_PER_KEY
+              maxPendingPerKey: limits.pendingPerKey,
+              maxDailyOpsPerKey: limits.dailyOpsPerKey,
+              maxActiveApiKeys: limits.activeApiKeys,
+              reportRetentionDays: limits.reportRetentionDays
             },
             changeSet: {
               atomic: true,
               appliesOn: 'owner accept',
               note: 'A proposal is one change set: the owner accepts or rejects all of it, and nothing applies automatically.'
             },
+            // F4: one fixed line per behavior change an agent that learned the
+            // first release needs to know. Read-only data for the client.
+            releaseNotes: [
+              'completedTasks and completion count work items only - phases are excluded.',
+              'get_risks returns both description and name for every risk.',
+              'openRisks now matches the risk register (same open/closed rule).',
+              'Derived schedule fields (critical, totalFloat, freeFloat, floatBaseline) are read-only and recomputed in the app after an accept.',
+              'Accepting a status change stamps statusSince, startedDate and completedDate on the task.',
+              "Limits depend on the project owner's plan (get_schema.limits carries the tier and the effective numbers)."
+            ],
             errorCodes: MCP_ERROR_CODES,
             tables: tables
           },
@@ -1447,7 +1457,7 @@ function weeklySummary(state, weekISO, taskSource) {
   };
 }
 
-export function executeTool(name, state, projectId, label, scope, args, auth, fullState) {
+export function executeTool(name, state, projectId, label, scope, args, auth, fullState, tier) {
   if (!state) {
     return {
       content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }],
@@ -1544,7 +1554,13 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
           completedDate: t.completedDate || null,
           statusSince: t.statusSince || null,
           leadTime: !!t.leadTime,
-          confidence: t.confidence || null
+          confidence: t.confidence || null,
+          // F1.3: a non-phase task whose derived schedule fields are both null
+          // needs a recompute in the app. Reported at READ time, never stored.
+          derived:
+            !t.isPhase && t.critical == null && t.totalFloat == null
+              ? 'pending recompute (opens in the app)'
+              : null
         };
       });
       const all = [
@@ -1570,7 +1586,8 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
         'completedDate',
         'statusSince',
         'leadTime',
-        'confidence'
+        'confidence',
+        'derived'
       ];
       const asked =
         args && Array.isArray(args.fields)
@@ -1952,7 +1969,7 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
     case 'get_table':
       return executeGetTable(state, scope, args, auth);
     case 'get_schema':
-      return executeGetSchema(scope, args);
+      return executeGetSchema(scope, args, tier);
     case 'run_monte_carlo':
       return executeMonteCarlo(state, scope, args);
     case 'apply_changes':
@@ -2039,6 +2056,11 @@ export async function proposalStatusResult(env, projectId, auth, args, rpcId) {
     // as accepted-with-conflicts so the agent knows not everything it proposed
     // landed.
     let reportHasConflict = false;
+    // F1.5: the stored report also carries how many ops landed and the state
+    // revision they landed in, so an agent can poll a proposal long after the
+    // accept response and still learn both.
+    let appliedCount = null;
+    let landedRevision = null;
     if (r.status === 'accepted') {
       try {
         const rep = r.apply_report_json ? JSON.parse(r.apply_report_json) : null;
@@ -2046,6 +2068,12 @@ export async function proposalStatusResult(env, projectId, auth, args, rpcId) {
         reportHasConflict = rows.some(function (x) {
           return x && x.result === 'conflict';
         });
+        if (rep && rep.summary && Number.isFinite(Number(rep.summary.applied))) {
+          appliedCount = Number(rep.summary.applied);
+        }
+        if (rep && Number.isFinite(Number(rep.revision))) {
+          landedRevision = Number(rep.revision);
+        }
       } catch (e) {
         reportHasConflict = false;
       }
@@ -2067,6 +2095,8 @@ export async function proposalStatusResult(env, projectId, auth, args, rpcId) {
       summary: proposal && proposal.summary ? proposal.summary : diffCount + ' field change(s)',
       changeCount:
         proposal && Array.isArray(proposal.changes) ? proposal.changes.length : diffCount,
+      appliedCount: appliedCount,
+      revision: landedRevision,
       changes: proposal && Array.isArray(proposal.changes) ? proposal.changes : null,
       proposedAt: r.proposed_at || null,
       decidedAt: r.decided_at || null,
@@ -2512,8 +2542,10 @@ export async function withdrawMcpProposal(env, projectId, auth, toolArgs, rpcId)
   });
   const nowWithdrawn = whole || remainingOps.length === 0;
   if (nowWithdrawn) {
+    // MCP-FINAL 2026-11-16 F1.1: a whole (or zero-remaining) withdraw clears
+    // import_key so the identical proposal can be queued again.
     await env.DB.prepare(
-      "UPDATE cloud_reviews SET status = 'withdrawn', decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ? AND status IN ('pending','accepting')"
+      "UPDATE cloud_reviews SET status = 'withdrawn', decided_at = ?, decided_by = ?, decision_note = ?, import_key = NULL WHERE id = ? AND status IN ('pending','accepting')"
     )
       .bind(now, decidedBy, note, pid)
       .run();
@@ -2717,7 +2749,7 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // This is what makes apply_changes {} a fast structured error instead of
     // a 1102.
     if (toolName === 'apply_changes') {
-      const precheck = validateProposalEnvelope(toolArgs, auth);
+      const precheck = validateProposalEnvelope(toolArgs, auth, mcpTier);
       if (precheck) {
         return { jsonrpc: '2.0', id, result: precheck };
       }
@@ -2737,7 +2769,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
       auth.role === 'api' ? auth.scope : null,
       toolArgs,
       auth,
-      state
+      state,
+      mcpTier
     );
 
     // Handle apply_changes - queue a pending review proposal (API-KEY-AUDIT
@@ -2748,13 +2781,13 @@ async function handleMcpRequest(body, projectId, env, auth) {
     // inside the project, and only the accept applies the change.
     if (result.pendingValidate) {
       // 2.6: the dry run shares planProposal and writes nothing.
-      return await validateChangesProposal(env, projectId, auth, toolArgs, id, state);
+      return await validateChangesProposal(env, projectId, auth, toolArgs, id, state, mcpTier);
     }
 
     if (result.pendingApply) {
       // APP-WIDE MCP (Wave 1): the proposal-queue engine is now a shared,
       // exported function so the per-project and app-wide servers cannot drift.
-      return await queueMcpProposal(env, projectId, auth, toolArgs, id, state);
+      return await queueMcpProposal(env, projectId, auth, toolArgs, id, state, mcpTier);
     }
 
     return { jsonrpc: '2.0', id, result };
@@ -2817,14 +2850,67 @@ async function mcpSha256Hex(text) {
     .join('');
 }
 
+// MCP-FINAL 2026-11-16 F1.1: the single duplicate answer, so the early
+// idempotency check and the UNIQUE-race catch return an identical shape.
+function mcpDuplicateResult(id, row, changeSetId, counts) {
+  const dupCount =
+    row.ops_count != null
+      ? Number(row.ops_count) || 0
+      : (function () {
+          try {
+            const d = row.diffs_json ? JSON.parse(row.diffs_json) : [];
+            return Array.isArray(d) ? d.length : 0;
+          } catch (e) {
+            return 0;
+          }
+        })();
+  return {
+    jsonrpc: '2.0',
+    id,
+    result: {
+      content: [
+        {
+          type: 'text',
+          text:
+            'Queued ' +
+            dupCount +
+            ' field change(s) for owner review (proposal #' +
+            row.id +
+            '). duplicate: true Nothing changes until the owner accepts it inside the project.'
+        },
+        {
+          type: 'text',
+          text: JSON.stringify({
+            proposalId: row.id,
+            changeSetId: changeSetId,
+            duplicate: true,
+            counts: counts,
+            opsQueued: dupCount,
+            refused: [],
+            refusedText: [],
+            warnings: [],
+            truncated: false
+          })
+        }
+      ]
+    }
+  };
+}
+
 async function findDuplicateProposal(env, keys) {
   for (let i = 0; i < keys.length; i++) {
     if (!keys[i]) {
       continue;
     }
     try {
+      // MCP-FINAL 2026-11-16 F1.1: only a still-live proposal can be a
+      // duplicate. A rejected or withdrawn row is a decision the agent is
+      // allowed to revisit, so it must never satisfy an identical resubmit;
+      // the decide paths clear import_key in the same UPDATE, and this status
+      // filter is the belt to that braces (covers a row decided before the
+      // clear landed).
       const row = await env.DB.prepare(
-        'SELECT id, ops_count, diffs_json FROM cloud_reviews WHERE import_key = ?'
+        "SELECT id, ops_count, diffs_json FROM cloud_reviews WHERE import_key = ? AND status IN ('pending','accepting','accepted')"
       )
         .bind(keys[i])
         .first();
@@ -2840,10 +2926,59 @@ async function findDuplicateProposal(env, keys) {
   return null;
 }
 
-export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state) {
-  const precheck = validateProposalEnvelope(toolArgs, auth);
+export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state, tier) {
+  const precheck = validateProposalEnvelope(toolArgs, auth, tier);
   if (precheck) {
     return { jsonrpc: '2.0', id, result: precheck };
+  }
+  // MCP-FINAL 2026-11-16 F1.1: idempotency is decided BEFORE planProposal. A
+  // retry of an already-ACCEPTED proposal finds nothing left to change against
+  // live state, so planProposal would answer "No changes" and the agent would
+  // never learn its change already landed. The import key is a pure hash of the
+  // args (plus the 10-minute bucket), so checking it first is safe: identical
+  // args cannot mean different work. A pending/accepting/accepted row answers
+  // with its original id; a rejected or withdrawn row no longer matches (its
+  // import_key was cleared in the decide UPDATE), so the same args queue fresh.
+  const now = new Date().toISOString();
+  const dateStamp = now.slice(0, 10).replace(/-/g, '');
+  const idemKeyId = auth.apiKeyId != null ? String(auth.apiKeyId) : 'owner';
+  const reqChangeSet =
+    typeof toolArgs.changeSetId === 'string' ? toolArgs.changeSetId.trim().slice(0, 64) : '';
+  const changeSetId = reqChangeSet || 'cs_' + dateStamp + '_' + idemKeyId;
+  const keyId = auth.apiKeyId != null ? String(auth.apiKeyId) : null;
+  const BUCKET_MS = 600000;
+  let importKey = null;
+  let prevImportKey = null;
+  const explicitIdem =
+    typeof toolArgs.idempotencyKey === 'string' ? toolArgs.idempotencyKey.trim().slice(0, 80) : '';
+  if (explicitIdem) {
+    importKey = 'mcp:' + projectId + ':' + idemKeyId + ':' + explicitIdem;
+  } else {
+    const hashArgs = Object.assign({}, toolArgs);
+    delete hashArgs.idempotencyKey;
+    const argHash = await mcpSha256Hex(mcpCanonicalJson(hashArgs));
+    const bucket = Math.floor(Date.now() / BUCKET_MS) * BUCKET_MS;
+    importKey =
+      'mcp:' + projectId + ':' + idemKeyId + ':' + argHash + ':' + new Date(bucket).toISOString();
+    prevImportKey =
+      'mcp:' +
+      projectId +
+      ':' +
+      idemKeyId +
+      ':' +
+      argHash +
+      ':' +
+      new Date(bucket - BUCKET_MS).toISOString();
+  }
+  const earlyDuplicate = await findDuplicateProposal(env, [importKey, prevImportKey]);
+  if (earlyDuplicate) {
+    return mcpDuplicateResult(id, earlyDuplicate, changeSetId, {
+      diffs: Array.isArray(toolArgs.diffs) ? toolArgs.diffs.length : 0,
+      creates: Array.isArray(toolArgs.creates) ? toolArgs.creates.length : 0,
+      sets: Array.isArray(toolArgs.sets) ? toolArgs.sets.length : 0,
+      deletes: 0,
+      budget: Array.isArray(toolArgs.budget) ? toolArgs.budget.length : 0
+    });
   }
   // MCP-AGENT-FIRST 2026-11-12 2.2: every validation rule lives in
   // planProposal (src/mcp/plan.js), so this queue and validate_changes share
@@ -2874,7 +3009,8 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   }
   const plan = await planProposal(toolArgs, overlay.state, auth, {
     env: env,
-    projectId: projectId
+    projectId: projectId,
+    tier: tier
   });
   if (plan.error) {
     return {
@@ -2956,15 +3092,6 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
       }
     };
   }
-  const now = new Date().toISOString();
-  // MCP-AGENT-FIRST 2026-11-12 3.2: group a key's same-day proposals into one
-  // change set so the owner can Accept all of them in a single R2 write.
-  const reqChangeSet =
-    typeof toolArgs.changeSetId === 'string' ? toolArgs.changeSetId.trim().slice(0, 64) : '';
-  const dateStamp = now.slice(0, 10).replace(/-/g, '');
-  const idemKeyIdForSet = auth.apiKeyId != null ? String(auth.apiKeyId) : 'owner';
-  const changeSetId = reqChangeSet || 'cs_' + dateStamp + '_' + idemKeyIdForSet;
-  const keyId = auth.apiKeyId != null ? String(auth.apiKeyId) : null;
   const rawLeaves = cloudDiffState(prev, merged.next) || [];
   const diffsJson = enrichDiffs(rawLeaves, prev, merged.next).diffs;
   // MCP-AGENT-FIRST 2026-11-12 3.1/3.2: ops_json is now v2 ops
@@ -2985,86 +3112,6 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   const dependsOn = computeDependsOn(nonBudgetOps, overlay.createdBy, state);
   if (dependsOn.length) {
     fullOps.dependsOn = dependsOn;
-  }
-  // MCP-AGENT-FIRST 2026-11-12 1.7: one idempotency key per call. An explicit
-  // idempotencyKey is stable forever; otherwise the whole argument object is
-  // hashed into a 10-minute bucket, and the previous bucket is checked too so
-  // a retry that straddles the boundary still hits.
-  const idemKeyId = auth.apiKeyId != null ? String(auth.apiKeyId) : 'owner';
-  const explicitIdem =
-    typeof toolArgs.idempotencyKey === 'string' ? toolArgs.idempotencyKey.trim().slice(0, 80) : '';
-  const BUCKET_MS = 600000;
-  let importKey = null;
-  let prevImportKey = null;
-  if (explicitIdem) {
-    importKey = 'mcp:' + projectId + ':' + idemKeyId + ':' + explicitIdem;
-  } else {
-    const hashArgs = Object.assign({}, toolArgs);
-    delete hashArgs.idempotencyKey;
-    const argHash = await mcpSha256Hex(mcpCanonicalJson(hashArgs));
-    const bucket = Math.floor(Date.now() / BUCKET_MS) * BUCKET_MS;
-    importKey =
-      'mcp:' + projectId + ':' + idemKeyId + ':' + argHash + ':' + new Date(bucket).toISOString();
-    prevImportKey =
-      'mcp:' +
-      projectId +
-      ':' +
-      idemKeyId +
-      ':' +
-      argHash +
-      ':' +
-      new Date(bucket - BUCKET_MS).toISOString();
-  }
-  const duplicate = await findDuplicateProposal(env, [importKey, prevImportKey]);
-  if (duplicate) {
-    const dupCount =
-      duplicate.ops_count != null
-        ? Number(duplicate.ops_count) || 0
-        : (function () {
-            try {
-              const d = duplicate.diffs_json ? JSON.parse(duplicate.diffs_json) : [];
-              return Array.isArray(d) ? d.length : 0;
-            } catch (e) {
-              return 0;
-            }
-          })();
-    return {
-      jsonrpc: '2.0',
-      id,
-      result: {
-        content: [
-          {
-            type: 'text',
-            text:
-              'Queued ' +
-              dupCount +
-              ' field change(s) for owner review (proposal #' +
-              duplicate.id +
-              '). duplicate: true Nothing changes until the owner accepts it inside the project.'
-          },
-          {
-            type: 'text',
-            text: JSON.stringify({
-              proposalId: duplicate.id,
-              changeSetId: changeSetId,
-              duplicate: true,
-              counts: {
-                diffs: diffs.length,
-                creates: creates.length,
-                sets: setsRaw.length,
-                deletes: 0,
-                budget: budgetCount
-              },
-              opsQueued: dupCount,
-              refused: [],
-              refusedText: [],
-              warnings: warnings,
-              truncated: false
-            })
-          }
-        ]
-      }
-    };
   }
   let res;
   const proposalJson = budgetBuilt.changes.length
@@ -3180,7 +3227,15 @@ export async function queueMcpProposal(env, projectId, auth, toolArgs, id, state
   // is shared with validate_changes (structuredRefusals).
   const refusedStructured = structuredRefusals(allRefused);
   if (autoApplied) {
-    const nApplied = autoApplied.body && autoApplied.body.applied ? autoApplied.body.applied : 0;
+    // F1.5: `applied` is the detailed list now; the count lives in
+    // appliedCount. Read both so the sentence never prints an object.
+    const ab = autoApplied.body || {};
+    const nApplied =
+      typeof ab.applied === 'number'
+        ? ab.applied
+        : Array.isArray(ab.applied)
+          ? ab.applied.length
+          : Number(ab.appliedCount) || 0;
     return {
       jsonrpc: '2.0',
       id,

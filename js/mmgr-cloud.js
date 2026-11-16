@@ -470,6 +470,9 @@ var MMGR = window.MMGR || {};
   // the bond for retry on failure.
   async function resyncNow(opts) {
     const force = !!(opts && opts.force);
+    // F1.3: after an accept, REPLACE the workspace with the cloud snapshot
+    // instead of merging it, so the accepted change is always what shows.
+    const replace = !!(opts && opts.replace);
     const b = getBond();
     if (!b && !force) {
       setStatus('No cloud bond stored for this project.', 'warn');
@@ -513,11 +516,19 @@ var MMGR = window.MMGR || {};
         );
         return;
       }
-      // Per-field merge through the state layer (newest-wins per field),
-      // NOT a whole-file overwrite - side-by-side edits reconcile.
-      const report = ns.State.mergeExternal(data.state);
+      // After an accept: REPLACE the workspace with the authoritative cloud
+      // state. Otherwise: per-field merge (newest-wins) so side-by-side edits
+      // reconcile.
+      const report = replace
+        ? ns.State.replaceExternal(data.state)
+        : ns.State.mergeExternal(data.state);
       if (!report) {
-        setStatus('Cloud snapshot could not be merged - it is not a valid project file.', 'err');
+        setStatus(
+          replace
+            ? 'Cloud snapshot could not be loaded - it is not a valid project file.'
+            : 'Cloud snapshot could not be merged - it is not a valid project file.',
+          'err'
+        );
         return;
       }
       setLastSeen(data.savedAt || '');
@@ -528,17 +539,21 @@ var MMGR = window.MMGR || {};
       if (ns.Render && ns.Render.renderAll) {
         ns.Render.renderAll();
       }
-      setStatus(
-        'Re-synced ' +
-          report.adopted +
-          ' update' +
-          (report.adopted === 1 ? '' : 's') +
-          ' from the cloud copy' +
-          (report.adopted ? '' : ' - already up to date') +
-          '.',
-        'ok'
-      );
-      return { ok: true, adopted: report.adopted };
+      if (replace) {
+        setStatus('Reloaded the accepted state from the cloud copy.', 'ok');
+      } else {
+        setStatus(
+          'Re-synced ' +
+            report.adopted +
+            ' update' +
+            (report.adopted === 1 ? '' : 's') +
+            ' from the cloud copy' +
+            (report.adopted ? '' : ' - already up to date') +
+            '.',
+          'ok'
+        );
+      }
+      return { ok: true, adopted: report.adopted, replaced: replace };
     } catch (e) {
       var _detail = (e && (e.message || e.name || String(e))) || 'unknown';
       setStatus(
@@ -1296,22 +1311,46 @@ var MMGR = window.MMGR || {};
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
-      const sendSave = function () {
+      const sendSave = function (s) {
         return fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
           method: 'POST',
           credentials: 'same-origin',
           headers: headers,
           body: JSON.stringify({
-            state: state,
+            state: s,
             syncMode: getSyncMode(),
-            baseUpdatedAt: state.updatedAt || null
+            baseUpdatedAt: s.updatedAt || null,
+            // F1.4: the revision this save is based on. The server refuses
+            // 409 when it is behind, instead of silently overwriting an accept.
+            baseRevision: typeof s.revision === 'number' ? s.revision : null
           })
         });
       };
-      let res = await sendSave();
+      let res = await sendSave(state);
       let data = await res.json().catch(function () {
         return {};
       });
+      // F1.4: the project moved on (an accept or another device). Reload the
+      // full cloud state first, then retry once against the fresh base.
+      if (
+        res.status === 409 &&
+        data &&
+        (data.code === 'stale_revision' || data.error === 'stale')
+      ) {
+        let reload = null;
+        try {
+          reload = await resyncNow({ force: true, replace: true });
+        } catch (e) {
+          reload = null;
+        }
+        if (reload && reload.ok) {
+          const fresh = readProjectState() || state;
+          res = await sendSave(fresh);
+          data = await res.json().catch(function () {
+            return {};
+          });
+        }
+      }
       // MCP-AGENT-FIRST 2026-11-12 1.6(b): 409 busy means an accept (or another
       // device) wrote between our read and our write. The server re-merged once;
       // retry the save once with the same local state before reporting failure.
@@ -1319,7 +1358,7 @@ var MMGR = window.MMGR || {};
         await new Promise(function (r) {
           setTimeout(r, 600);
         });
-        res = await sendSave();
+        res = await sendSave(state);
         data = await res.json().catch(function () {
           return {};
         });
@@ -1487,25 +1526,54 @@ var MMGR = window.MMGR || {};
       if (cred.header) {
         headers[cred.header] = cred.code;
       }
-      const body = JSON.stringify({
-        state: state,
-        syncMode: getSyncMode(),
-        baseUpdatedAt: state.updatedAt || null
-      });
+      const buildBody = function (s) {
+        return JSON.stringify({
+          state: s,
+          syncMode: getSyncMode(),
+          baseUpdatedAt: s.updatedAt || null,
+          baseRevision: typeof s.revision === 'number' ? s.revision : null
+        });
+      };
+      let body = buildBody(state);
       // keepalive:true lets a pagehide flush survive tab close, but keepalive
       // requests are size-capped (~64 KiB), so only use it for small states;
       // large states rely on the idle debounce (which normally already fired).
       const useKeepalive = !!(opts && opts.keepalive) && body.length < 48000;
-      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: headers,
-        body: body,
-        keepalive: useKeepalive
-      });
-      const data = await res.json().catch(function () {
+      const sendBody = function (b) {
+        return fetch('/api/cloud/projects/' + encodeURIComponent(pid()) + '/save', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers,
+          body: b,
+          keepalive: useKeepalive
+        });
+      };
+      let res = await sendBody(body);
+      let data = await res.json().catch(function () {
         return {};
       });
+      // F1.4: another writer moved the project. Reload the full state, then
+      // retry once against the fresh revision. A background save must never
+      // overwrite an accepted proposal.
+      if (
+        res.status === 409 &&
+        data &&
+        (data.code === 'stale_revision' || data.error === 'stale')
+      ) {
+        let reload = null;
+        try {
+          reload = await resyncNow({ force: true, replace: true });
+        } catch (e) {
+          reload = null;
+        }
+        if (reload && reload.ok) {
+          body = buildBody(readProjectState() || state);
+          res = await sendBody(body);
+          data = await res.json().catch(function () {
+            return {};
+          });
+        }
+      }
       if (!res.ok || !data.ok) {
         if (res.status === 403) {
           if (cred.header === 'X-Owner-Code') {
@@ -5167,6 +5235,11 @@ var MMGR = window.MMGR || {};
     // without a full page reload.
     cloudPullMerge: function () {
       return resyncNow({ force: true });
+    },
+    // F1.3: after an owner accept, reload the FULL cloud state (replace, not
+    // merge) and re-render, so the accepted change is always what shows.
+    cloudReloadAfterAccept: function () {
+      return resyncNow({ force: true, replace: true });
     },
     cloudBondLater: bondLater,
     cloudBroadcast: cloudBroadcast,

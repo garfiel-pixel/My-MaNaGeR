@@ -1617,6 +1617,13 @@ var MMGR = window.MMGR || {};
           report.push({ field: k, side: 'local', reason: 'local-equal-or-newer' });
         }
       });
+      // F1.4: the cloud revision is server-authoritative. Carry it even when
+      // the merge adopts no field, so the next save quotes the base it was
+      // actually built from instead of sending no base at all.
+      const incRev = Number(incoming.revision);
+      if (Number.isFinite(incRev) && incRev >= 0) {
+        _state.revision = incRev;
+      }
       if (adopted > 0) {
         _state.updatedAt = new Date().toISOString();
         // CRITICAL: align the save-fingerprint with the POST-merge state so
@@ -1641,6 +1648,54 @@ var MMGR = window.MMGR || {};
       return { report: report, adopted: adopted, total: report.length };
     } catch (e) {
       console.warn('State merge failed:', e);
+      return null;
+    }
+  }
+
+  /* MCP-FINAL 2026-11-16 F1.3: after an owner ACCEPT the cloud state is
+     authoritative - the server just applied the proposal. A newest-wins merge
+     (mergeExternal) can keep a stale local field whose per-field timestamp is
+     newer, so the accepted change never appears (the witnessed proposal #68
+     failure: accepted 11/11 server-side, nothing changed on screen). This
+     replaces the in-memory state with the cloud snapshot WHOLE, so every view
+     renders exactly what the server now holds. Undoable like a merge. */
+  function replaceExternal(parsedState) {
+    try {
+      const incoming = migrate(parsedState);
+      if (!incoming || typeof incoming !== 'object') {
+        return null;
+      }
+      pushUndo();
+      let adopted = 0;
+      FIELD_KEYS.forEach(function (k) {
+        if (incoming[k] !== undefined) {
+          _state[k] = incoming[k];
+          adopted++;
+        }
+      });
+      _state.fieldTs =
+        incoming.fieldTs && typeof incoming.fieldTs === 'object' ? incoming.fieldTs : {};
+      _state.updatedAt = incoming.updatedAt || new Date().toISOString();
+      // F1.4: carry the cloud revision so the next save quotes its base.
+      const incRev = Number(incoming.revision);
+      if (Number.isFinite(incRev) && incRev >= 0) {
+        _state.revision = incRev;
+      } else {
+        delete _state.revision;
+      }
+      _fieldJsonCache = {};
+      FIELD_KEYS.forEach(function (k) {
+        if (_state[k] !== undefined) {
+          _fieldJsonCache[k] = JSON.stringify(_state[k]);
+        }
+      });
+      _dirtyFields = new Set();
+      _dirty = false;
+      save(true);
+      _changeListeners.forEach(fn => fn('replace'));
+      return { adopted: adopted };
+    } catch (e) {
+      console.warn('State replace failed:', e);
       return null;
     }
   }
@@ -2446,6 +2501,7 @@ var MMGR = window.MMGR || {};
     redoDepth: redoDepth,
     adoptExternal: adoptExternal,
     mergeExternal: mergeExternal,
+    replaceExternal: replaceExternal,
     flushSave: flushSave,
     restoreFromJournal: restoreFromJournal,
     journalPut: journalPut,

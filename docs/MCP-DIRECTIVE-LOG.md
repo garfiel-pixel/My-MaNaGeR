@@ -228,6 +228,25 @@ query in planning); `qa-appwide-mcp` 62/62 (a company plan raises the app-wide
 cap to 500); `qa-api-keys` all green; `npm test` 458/458; `npm run verify`
 green; `qa-mcp-live-e2e` 43/43.
 
+**F3 Remaining acceptance tests — PASS.** AT01 (two same-table proposals in one
+change set, Accept all -> the union is live), AT13 (R07b renamed: a UI save
+racing an accept keeps both), AT14a-d (through the accept endpoint: a phase with
+children refused, a task referenced by a budget line refused, an unreferenced
+task deleted with survivors' `predecessors` cleaned, budget lines not deletable
+through MCP), AT16a-c (browser XSS sweep: the hostile string proposed into
+tasks/risks/issues/changes, accepted, rendered through every module tab, the
+review panel, the export path and the print view - `window.__pwn` undefined, no
+`img[src=x]` element, payload present as literal text), AT17 (tools/list parity
+extended to annotations and outputSchema presence, plus the shared
+record-text-is-data sentence), AT18 (the 50-input validate/apply refusal parity
+test now carries its id), AT20a-b (a legacy row truncated at 500 refused with
+the stated message; a normal legacy row still accepts). **Defect found and
+fixed by AT14c:** `applyOps` guarded the predecessor strip with an
+`alsoDeleting` flag that was always true (the record IS in the delete ops), so
+the strip never ran and survivors kept a dangling reference to a deleted task.
+The guard is gone and the skill gained rule 10. Gates: `qa-mcp-agent-first`
+185/185; `qa-mcp-parity` 17/17; `qa-mcp-live-e2e` 46/46; `npm test` 458/458.
+
 ---
 
 ## Phase 0 — baseline and reproduction

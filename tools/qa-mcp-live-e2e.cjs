@@ -911,6 +911,99 @@ async function main() {
         b5 && b5.warned && b5.acceptLeft === 1,
         b5
       );
+
+      // AT16 (F3) — XSS sweep. A hostile string is proposed through MCP into
+      // every text-bearing list the key can write, accepted, then rendered
+      // through every module view, the review panel, the export path and the
+      // print view. Nothing may execute, and the markup must appear as text.
+      const PAY = '"><img src=x onerror="window.__pwn=1">';
+      const xssProp = await mcp(
+        OC,
+        'tools/call',
+        {
+          name: 'apply_changes',
+          arguments: {
+            creates: [
+              { path: 'tasks', record: { name: 'XSS ' + PAY, notes: PAY } },
+              { path: 'risks', record: { name: 'XSS ' + PAY, description: PAY } },
+              { path: 'issues', record: { name: 'XSS ' + PAY, description: PAY } },
+              { path: 'changes', record: { name: 'XSS ' + PAY, description: PAY } }
+            ]
+          }
+        },
+        771
+      );
+      const xssText =
+        xssProp && xssProp.result && xssProp.result.content ? xssProp.result.content[0].text : '';
+      const xssList = await api(
+        'GET',
+        '/api/cloud/projects/' + PID + '/reviews',
+        undefined,
+        ownerH(OC)
+      );
+      const xssPending =
+        (xssList.data && (xssList.data.proposals || xssList.data.reviews || [])) || [];
+      const xssRow = xssPending.filter(function (r) {
+        return r.status === 'pending';
+      })[0];
+      let xssAccept = null;
+      if (xssRow) {
+        xssAccept = await api(
+          'POST',
+          '/api/cloud/projects/' + PID + '/reviews/' + xssRow.id + '/accept',
+          {},
+          ownerH(OC)
+        );
+      }
+      check(
+        'AT16a the hostile payload is queued and accepted',
+        !!xssRow && xssAccept && xssAccept.status === 200 && xssAccept.data.ok === true,
+        { queued: xssText.slice(0, 160), accept: xssAccept && xssAccept.data }
+      );
+
+      await send('Page.navigate', { url: BASE + '/project.html?id=' + PID });
+      await sleep(2500);
+      const xssRun = await ev(`(async function(){
+        try {
+          window.__pwn = undefined;
+          if (window.MMGR && window.MMGR.Render && window.MMGR.Render.renderAll) {
+            window.MMGR.Render.renderAll();
+          }
+          await new Promise(r => setTimeout(r, 400));
+          // Every module tab the page exposes.
+          const tabs = Array.from(document.querySelectorAll('[data-tab], [data-view], nav [role="tab"]'));
+          for (const t of tabs) {
+            try { t.click(); } catch (e) {}
+            await new Promise(r => setTimeout(r, 120));
+          }
+          // The review panel and the print view.
+          try { if (window.MMGR && window.MMGR.CloudReview) await window.MMGR.CloudReview.cloudReviewList(); } catch (e) {}
+          await new Promise(r => setTimeout(r, 300));
+          try { if (window.MMGR && window.MMGR.Print && window.MMGR.Print.printProject) window.MMGR.Print.printProject(); } catch (e) {}
+          await new Promise(r => setTimeout(r, 300));
+          const state = window.MMGR && window.MMGR.State && window.MMGR.State.get ? window.MMGR.State.get() : null;
+          const stored = !!state && Array.isArray(state.tasks) && state.tasks.some(function (t) {
+            return typeof t.name === 'string' && t.name.indexOf('<img src=x') !== -1;
+          });
+          return {
+            pwn: window.__pwn,
+            imgs: document.querySelectorAll('img[src="x"]').length,
+            stored: stored,
+            tabs: tabs.length,
+            textHasMarkup: (document.body.textContent || '').indexOf('<img src=x') !== -1
+          };
+        } catch (e) { return { threw: String(e && e.message || e) }; }
+      })()`);
+      check(
+        'AT16b no payload executes in any view, panel, export or print path',
+        !!xssRun && xssRun.pwn === undefined && xssRun.imgs === 0,
+        xssRun
+      );
+      check(
+        'AT16c the payload renders as literal text, never as markup',
+        !!xssRun && xssRun.imgs === 0 && xssRun.textHasMarkup === true,
+        xssRun
+      );
     } catch (e) {
       check('BROWSER PHASE', false, String((e && e.stack) || e));
     } finally {

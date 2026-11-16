@@ -71,6 +71,11 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
    or message; pass the tier the handler already resolved. An unknown paid tier
    reads as contractor, an empty tier as free. `pricing.html` publishes two of
    the columns and `test/tier-limits.test.mjs` fails if either side drifts.
+10. **A delete cleans every reference to the deleted id.** In `applyOps`, a
+    task delete strips the id from EVERY survivor's `predecessors` (AT14c). A
+    guard that only strips "when the record is not also being deleted" is
+    always false-to-strip and leaves dangling predecessors - the schedule then
+    references a record that no longer exists.
 
 ## Architecture (reference: My MaNaGeR)
 

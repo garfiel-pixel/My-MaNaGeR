@@ -431,20 +431,16 @@ export function applyOps(liveState, proposals, deps) {
             recordResult(entry, 'conflict', 'a budget line references this task');
             continue;
           }
-          // Strip this id from any survivor task's predecessor list unless that
-          // task is also being deleted in this accept.
-          const alsoDeleting = ops.some(
-            o =>
-              o.op === 'delete' && o.path === 'tasks' && String(o.recordId) === String(op.recordId)
-          );
+          // Strip this id from every survivor's predecessor list. AT14c: the
+          // old `alsoDeleting` guard was always true (the record IS in the
+          // delete ops), so the strip never ran and survivors kept a dangling
+          // reference to a deleted task.
           arr.forEach(t => {
             if (t === rec) {
               return;
             }
             if (Array.isArray(t.predecessors) && t.predecessors.indexOf(op.recordId) !== -1) {
-              if (!alsoDeleting) {
-                t.predecessors = t.predecessors.filter(p => p !== op.recordId);
-              }
+              t.predecessors = t.predecessors.filter(p => p !== op.recordId);
             }
           });
         }

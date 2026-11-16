@@ -35,7 +35,7 @@
       "source": "./local",
       "sourceType": "local",
       "skillPath": ".agents/skills/high-grade-mcp/SKILL.md",
-      "computedHash": "6fd6a07cb1a1e8ad31054e76d38e262cac0c5c4df1a2ffe43f4699e87d713a4c"
+      "computedHash": "8a17ce8917b3a895e231bf2e204cde1f79e9d6b5bba15eb8916e0231b77e0e4a"
     },
     "human-audit": {
       "source": "./local",

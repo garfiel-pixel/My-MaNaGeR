@@ -1034,7 +1034,7 @@ function addReview(env, row) {
   // =====================================================================
   // R07b — a UI save and an accept must not lose each other
   // =====================================================================
-  section('R07b — a UI save and an accept keep both changes');
+  section('AT13 (R07b) — a UI save and an accept keep both changes');
   {
     const env = await makeEnv({ mod });
     await tool(env, 41, 'apply_changes', {
@@ -1062,12 +1062,12 @@ function addReview(env, row) {
         return null;
       });
     const st = await stateOf(env);
-    check('R07b the UI save lands', saveRes.status === 200 && !!(saveData && saveData.ok), {
+    check('AT13 the UI save lands', saveRes.status === 200 && !!(saveData && saveData.ok), {
       status: saveRes.status,
       data: saveData
     });
     check(
-      'R07b both the saved field and the accepted field survive',
+      'AT13 both the saved field and the accepted field survive',
       st.tasks[5].notes === 'from agent' && st.tasks[7].name === 'From UI',
       {
         notes: st.tasks[5].notes,
@@ -1729,7 +1729,7 @@ function addReview(env, row) {
       }
     }
     check(
-      'F1 50 generated inputs produce identical refusals from both tools',
+      'AT18 50 generated inputs produce identical refusals from both tools',
       mismatches.length === 0,
       mismatches.slice(0, 2)
     );
@@ -4351,6 +4351,223 @@ function addReview(env, row) {
       'AT28i a planning call performs no tier query of its own',
       tierQueries === 0,
       tierQueries
+    );
+  }
+
+  // =====================================================================
+  // F3 — remaining acceptance tests (AT01, AT14, AT20)
+  // =====================================================================
+  section('F3 — acceptance: change-set union, delete rules, legacy rows');
+  {
+    // AT01: two proposals on the same table, one change set, Accept all.
+    // The result is the union - both fields are present, neither wins.
+    const env01 = await makeEnv({ mod });
+    const CS01 = 'cs-AT01';
+    addReview(env01, {
+      change_set_id: CS01,
+      key_id: 'k-AT01',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't2',
+            field: 'name',
+            before: 'Task 2',
+            beforeAbsent: false,
+            after: 'Renamed by A',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    addReview(env01, {
+      change_set_id: CS01,
+      key_id: 'k-AT01',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          {
+            op: 'set',
+            path: 'tasks',
+            recordId: 't2',
+            field: 'notes',
+            before: '',
+            beforeAbsent: false,
+            after: 'note from B',
+            afterAbsent: false
+          }
+        ]
+      }),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const req01 = new Request(
+      'http://localhost/api/cloud/projects/' + PROJECT + '/changesets/' + CS01 + '/accept',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+        body: '{}'
+      }
+    );
+    const res01 = await mod.handleChangeSetAccept(req01, env01, PROJECT, CS01, undefined);
+    const body01 = await res01.json();
+    const st01 = await stateOf(env01);
+    const t2 = (st01.tasks || []).find(function (t) {
+      return t.id === 't2';
+    });
+    check(
+      'AT01 Accept all on two same-table proposals applies the union',
+      res01.status === 200 &&
+        body01.ok === true &&
+        body01.appliedCount === 2 &&
+        !!t2 &&
+        t2.name === 'Renamed by A' &&
+        t2.notes === 'note from B',
+      { status: res01.status, appliedCount: body01.appliedCount, t2: t2 }
+    );
+
+    // AT14: the delete rules through the accept endpoint.
+    const env14 = await makeEnv({ mod });
+    const live14 = JSON.parse(JSON.stringify(env14.__store.state));
+    live14.tasks.push({
+      id: 'ph1',
+      name: 'Phase One',
+      isPhase: true,
+      status: 'todo',
+      predecessors: []
+    });
+    live14.tasks.push({
+      id: 'c1',
+      name: 'Child',
+      parentName: 'Phase One',
+      status: 'todo',
+      predecessors: [],
+      isPhase: false
+    });
+    live14.tasks.push({ id: 'ref1', name: 'Referenced', status: 'todo', predecessors: [] });
+    live14.tasks.push({ id: 'free1', name: 'Free', status: 'todo', predecessors: [] });
+    live14.tasks.push({
+      id: 'dep1',
+      name: 'Dependent',
+      status: 'todo',
+      predecessors: ['free1']
+    });
+    live14.budgetLines[0].taskId = 'ref1';
+    await env14.R2.put(R2_KEY, JSON.stringify(live14));
+    env14.__store.state = live14;
+    const id14 = addReview(env14, {
+      key_id: 'k-AT14',
+      ops_json: JSON.stringify({
+        v: 2,
+        ops: [
+          { op: 'delete', path: 'tasks', recordId: 'ph1' },
+          { op: 'delete', path: 'tasks', recordId: 'ref1' },
+          { op: 'delete', path: 'tasks', recordId: 'free1' }
+        ]
+      }),
+      ops_count: 3,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const acc14 = await accept(env14, id14);
+    const rep14 = (acc14.data && acc14.data.refused) || [];
+    const byRec = function (id) {
+      return rep14.find(function (r) {
+        return String(r.recordId) === id;
+      });
+    };
+    check(
+      'AT14a a phase with children is refused at accept',
+      !!(byRec('ph1') && /phase still has child tasks/.test(byRec('ph1').reason)),
+      byRec('ph1')
+    );
+    check(
+      'AT14b a task referenced by a budget line is refused at accept',
+      !!(byRec('ref1') && /budget line references/.test(byRec('ref1').reason)),
+      byRec('ref1')
+    );
+    const st14 = await stateOf(env14);
+    const ids14 = (st14.tasks || []).map(function (t) {
+      return t.id;
+    });
+    const dep14 = (st14.tasks || []).find(function (t) {
+      return t.id === 'dep1';
+    });
+    check(
+      'AT14c an unreferenced task is deleted and survivors lose it from predecessors',
+      ids14.indexOf('free1') === -1 &&
+        ids14.indexOf('ph1') !== -1 &&
+        ids14.indexOf('ref1') !== -1 &&
+        !!dep14 &&
+        dep14.predecessors.indexOf('free1') === -1,
+      { ids: ids14, predecessors: dep14 && dep14.predecessors }
+    );
+    const budgetDelete = await mod.planProposal(
+      { deletes: [{ path: 'budgetLines', recordId: 'b1' }] },
+      live14,
+      { apiKeyId: '1', scope: ALL_SECTIONS, label: 'Agent key' },
+      { env: env14, projectId: PROJECT, tier: 'contractor' }
+    );
+    check(
+      'AT14d budget lines cannot be deleted through MCP',
+      budgetDelete.refused.some(function (r) {
+        return /not deletable through MCP/.test(r);
+      }),
+      budgetDelete.refused
+    );
+
+    // AT20: a legacy row whose stored list is exactly 500 is a truncated copy;
+    // it is refused with the stated message. A normal legacy row still accepts.
+    const env20 = await makeEnv({ mod });
+    const truncDiffs = [];
+    for (let i = 0; i < 500; i++) {
+      truncDiffs.push({
+        path: 'tasks',
+        recordId: 't3',
+        field: 'notes',
+        before: '',
+        after: 'x' + i
+      });
+    }
+    const truncId = addReview(env20, {
+      key_id: 'k-AT20',
+      ops_json: null,
+      diffs_json: JSON.stringify(truncDiffs),
+      ops_count: 500,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const accTrunc = await accept(env20, truncId);
+    check(
+      'AT20a a truncated legacy row is refused with the stated message',
+      accTrunc.status === 409 &&
+        !!(accTrunc.data && accTrunc.data.error === 'truncated') &&
+        /truncated when it was queued/.test(accTrunc.text),
+      { status: accTrunc.status, data: accTrunc.data, text: accTrunc.text }
+    );
+    const legacyId = addReview(env20, {
+      key_id: 'k-AT20',
+      ops_json: null,
+      diffs_json: JSON.stringify([
+        { path: 'tasks', recordId: 't4', field: 'notes', before: '', after: 'legacy note' }
+      ]),
+      ops_count: 1,
+      proposal_json: JSON.stringify({ changes: [], currency: 'USD' })
+    });
+    const accLegacy = await accept(env20, legacyId);
+    const st20 = await stateOf(env20);
+    const t4 = (st20.tasks || []).find(function (t) {
+      return t.id === 't4';
+    });
+    check(
+      'AT20b a normal legacy row still accepts',
+      accLegacy.status === 200 &&
+        !!(accLegacy.data && accLegacy.data.ok === true) &&
+        !!t4 &&
+        t4.notes === 'legacy note',
+      { status: accLegacy.status, notes: t4 && t4.notes }
     );
   }
 

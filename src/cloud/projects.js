@@ -65,7 +65,10 @@ const CLOUD_STATE_SECRET_PATHS = ['config.ai.apiKey', 'config.ai.azureKey', 'con
    launcher card, the cloud card and the D1 row. An unknown value never fails a
    write - it falls back to 'active' so a stale client cannot wedge a save. */
 const PROJECT_STATUSES = ['active', 'planning', 'on-hold', 'completed'];
-function normaliseProjectStatus(v) {
+// Exported for /api/team/memberships: a shared card shows the OWNER's project
+// status, and it must use this one vocabulary so the same project reads the
+// same on the owner's launcher and the member's "Shared with me" card.
+export function normaliseProjectStatus(v) {
   const s = String(v || '').toLowerCase();
   return PROJECT_STATUSES.indexOf(s) > -1 ? s : 'active';
 }

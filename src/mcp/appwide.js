@@ -192,7 +192,7 @@ function buildAppwideTools() {
   out.push({
     name: 'create_project',
     description:
-      'Create a new cloud project owned by this account. Returns the project id and the owner code needed to recover it. Premium accounts only.',
+      'Create a new cloud project owned by this account. The project is created with its first snapshot, so it opens in the app and appears in the launcher and the admin panel immediately, like any other project. The owner code is never returned to an agent; the signed-in owner can recover it in the app. Premium accounts only.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -676,7 +676,10 @@ async function createProject(env, accountSub, toolArgs, id) {
     googleName: null,
     email: email,
     status: 'active',
-    syncMode: 'auto'
+    syncMode: 'auto',
+    // OWNER 2026-11-17: an MCP-created project must open like any other, so
+    // the create seeds the initial snapshot (no home device will save one).
+    seedSnapshot: true
   });
   if (!ins.ok) {
     return rpcErrorResult(id, ins.error || 'could not create project');
@@ -692,7 +695,8 @@ async function createProject(env, accountSub, toolArgs, id) {
             // credential and is NEVER returned by MCP. The owner sees it in the
             // app; an agent does not need it.
             status: ins.status,
-            syncMode: ins.syncMode
+            syncMode: ins.syncMode,
+            hasSnapshot: ins.hasSnapshot
           },
           null,
           2

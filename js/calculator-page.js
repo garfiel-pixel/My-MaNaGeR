@@ -7488,9 +7488,7 @@
       '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg>' +
       '<input type="search" id="rr-q" class="rr-q" placeholder="Search ' +
       all.length +
-      ' rates - a word, a ref, a trade or a price" aria-label="Search the rate book" value="' +
-      esc(_rrQuery) +
-      '" autocomplete="off">' +
+      ' rates - a word, a ref, a trade or a price" aria-label="Search the rate book" autocomplete="off">' +
       '<span class="rr-hits" role="status" aria-live="polite">' +
       (q ? view.length + ' of ' + all.length : all.length + ' rates') +
       '</span>' +
@@ -7500,9 +7498,7 @@
       '</div>' +
       '<div class="rr-scroll">' +
       (empty
-        ? '<div class="rr-empty">No rate matches "' +
-          esc(_rrQuery.trim()) +
-          '"' +
+        ? '<div class="rr-empty">No rate matches that search' +
           (_rrTrade !== 'all' ? ' in this trade' : '') +
           '. Try a single word, or clear the search.</div>'
         : '<table class="rr-table"><thead><tr><th>Ref</th><th>Description</th><th>Unit</th><th class="rr-rate-h">Rate</th><th class="rr-use-h">Use</th></tr></thead><tbody>' +
@@ -7519,6 +7515,23 @@
       '</div>' +
       '</div>';
     document.body.appendChild(card);
+    // The search text is DOM text (an input's value). It goes back into the
+    // new card as a PROPERTY, never interpolated into the HTML string, so it
+    // can never be reinterpreted as markup (CodeQL js/xss-through-dom). The
+    // empty-state sentence names the query the same way, for the same reason.
+    const qEl0 = card.querySelector('#rr-q');
+    if (qEl0) {
+      qEl0.value = _rrQuery;
+    }
+    const emptyEl = card.querySelector('.rr-empty');
+    if (emptyEl) {
+      emptyEl.textContent =
+        'No rate matches "' +
+        _rrQuery.trim() +
+        '"' +
+        (_rrTrade !== 'all' ? ' in this trade' : '') +
+        '. Try a single word, or clear the search.';
+    }
     const close = function () {
       const c = document.getElementById('calc-ratebook-card');
       if (c) {

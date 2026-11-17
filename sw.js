@@ -776,7 +776,7 @@
 // the applied / skipped / conflict / derived summary after a set accept.
 // project.html, the project bundle, admin.html, the admin bundle, the owner
 // review module and css/mmgr.css are shell assets.
-const CACHE = 'mmgr-shell-v660';
+const CACHE = 'mmgr-shell-v662';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

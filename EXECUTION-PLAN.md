@@ -127,7 +127,7 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 | 3.2 | **F4 D1 backup restore drill** | **PARTIAL (3.2, local)** - the local rehearsal is green; the production restore is owner-gated | `tools/qa-d1-restore-drill.cjs` migrates a throwaway D1, seeds it, exports with `wrangler d1 export`, deletes the D1 storage directory, re-imports the dump and verifies counts + a project row's exact hash + the indexes + no orphaned changelog rows (9/9). `docs/RESTORE-DRILL-2026-11-05.md`: export 1184 ms, import **1354 ms**, dump 19 KB. That is the floor, not the production RTO - the remote path adds the dump download, the network and Time Travel, and needs the owner |
 | 3.3 | **F5 targets + incident log** | **DONE 2026-11-05** (verified 2026-11-08) | `docs/RELIABILITY-TARGETS.md` (SLO table, RTO/RPO, measurement gaps, review policy; cites the F2 load run + local restore drill) and `docs/INCIDENTS.md` (severity ladder, log, detect/contain/communicate/fix/post-mortem process, runbook links). Both complete; no public number published, as required until 3.1 staging + 3.2 production drill land. |
 | 3.4 | **G3 activation/retention/tickets + feedback button** | **Feedback button DONE 2026-11-08; activation/retention/tickets still queued after 2.1** (schema collision) | In-app "Send feedback" row in project Controls -> `contact.html?topic=Feedback` (contact form pre-selects the topic from `?topic=`), reusing the one moderated channel (Turnstile already there), no new endpoint/schema. Commit `9767fb5`. The analytics/tickets half needs the schema slot after 2.1. |
-| 3.5 | **G1 provenance decision, then G4 currency/market copy** | **Owner** | G4 currently blocked: `JMD`, `J$`, `Jamaica` appear zero times on index/pricing/features |
+| 3.5 | **G1 provenance decision, then G4 currency/market copy** | **DONE 2026-11-17** | G1: the book is My MaNaGeR's own first-party data (`RATEBOOK_PROVENANCE.publisher = 'My MaNaGeR'`, status `first-party`), so the JIC/GIC permission question is moot and no other publisher is named. G4: `JMD`/`J$` and `Jamaica` are named on `pricing.html` and `features.html` and in the calculator's rate-book copy. Q11 ("combat purchase" wording) stays open with the owner; no task depends on it. |
 | 3.6 | **G2 pilots** (5-10 contractors) | **Owner**, last | Only after 1.3, 3.2 and the deploy |
 
 ### Wave 5 - owner walkthrough 2026-11-01 (admin panel, project UI, landing)
@@ -704,6 +704,14 @@ second review pass): the landing and pricing copy never names the currency or
 the market - "JMD", "J$" and "Jamaica" appear zero times on `index.html`,
 `pricing.html` and `features.html`, while offline-first is already the
 headline. Small copy task, blocked by G1's wording decision.
+
+**G1/G4 resolved 2026-11-17 (owner directive).** The rate book is My MaNaGeR's
+own first-party data, not another publisher's, so the permission question is
+moot and no external publisher is named anywhere: `tools/gen-ratebook.cjs` and
+the generated `src/data/ratebook.js` carry `publisher: 'My MaNaGeR'`, status
+`first-party`, and the wording gate pins it. G4's copy is live on
+`pricing.html` and `features.html` and in the calculator. Q11 (the "combat
+purchase" wording) is still open with the owner; no task depends on it.
 
 ---
 

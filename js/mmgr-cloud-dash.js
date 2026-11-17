@@ -34,6 +34,50 @@
   function $(id) {
     return document.getElementById(id);
   }
+  // OWNER 2026-11-17: a project created by the MCP server used to have no
+  // cloud snapshot at all, so the launcher refused to open it ("no snapshot
+  // yet") and the project could never be reached. The create path now seeds
+  // one server-side; this is the client fallback for a row that predates
+  // that, so an owner is never locked out of their own project. It builds the
+  // SAME default state a fresh project has, pushes it as the first snapshot,
+  // and returns it for the normal open path.
+  function seedDefaultState(projectId, name) {
+    try {
+      const S = MMGR.State;
+      if (!S || typeof S.getDefaultState !== 'function') {
+        return null;
+      }
+      const st = S.getDefaultState();
+      const title = name || projectId;
+      st.projectId = projectId;
+      st.projectName = title;
+      if (st.charter && typeof st.charter === 'object') {
+        st.charter.name = title;
+      }
+      st.updatedAt = new Date().toISOString();
+      st.revision = 1;
+      return st;
+    } catch (e) {
+      return null;
+    }
+  }
+  async function pushFirstSnapshot(projectId, state) {
+    try {
+      const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/save', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: state,
+          syncMode: 'auto',
+          baseUpdatedAt: state.updatedAt || null
+        })
+      });
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  }
   var escapeHtml =
     (MMGR.Utils && MMGR.Utils.escapeHtml) ||
     function (s) {
@@ -622,6 +666,13 @@
         setStatus('Could not load that project right now.', true);
         return;
       }
+      if (!data.state && (data.role === 'owner' || !data.role)) {
+        const seeded = seedDefaultState(projectId, data.label);
+        if (seeded) {
+          await pushFirstSnapshot(projectId, seeded);
+          data.state = seeded;
+        }
+      }
       if (data.state) {
         try {
           // SAME-DEVICE LINK (owner 2026-09-21): only the OWNER role stamps
@@ -744,6 +795,15 @@
       if (!res.ok || !data.ok) {
         setStatus((data && data.error) || 'Could not fetch the cloud snapshot.', true);
         return;
+      }
+      if (!data.state && (data.role === 'owner' || !data.role)) {
+        // OWNER 2026-11-17: a snapshotless row (an older agent-created
+        // project) still opens - seed the first snapshot instead of refusing.
+        const seeded = seedDefaultState(projectId, data.label);
+        if (seeded) {
+          await pushFirstSnapshot(projectId, seeded);
+          data.state = seeded;
+        }
       }
       if (!data.state) {
         setStatus('No cloud snapshot yet. Open the project and save it once first.', true);

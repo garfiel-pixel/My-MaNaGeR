@@ -3822,12 +3822,31 @@
       // imported rate carries its own source tag and no baseline id.
       rateId: (function () {
         const tid = ($('calc-book-trade') || {}).value || '';
+        if (tid.indexOf('up-') === 0) {
+          return '';
+        }
         const m = /#\s*(\d{1,4})/.exec(($('calc-book-row') || {}).value || '');
         return tid && m ? tid + '-' + m[1] : '';
       })(),
+      // A row from the user's OWN uploaded book carries that book's name and
+      // row number instead of a baseline id - the same "point at the exact
+      // rate" promise, in the user's own terms.
+      rateBook: (function () {
+        const ub = ubookOfTid(($('calc-book-trade') || {}).value || '');
+        return ub ? ub.name : '';
+      })(),
+      rateRef: (function () {
+        const tid = ($('calc-book-trade') || {}).value || '';
+        if (tid.indexOf('up-') !== 0) {
+          return '';
+        }
+        const m = /#\s*(\d{1,4})/.exec(($('calc-book-row') || {}).value || '');
+        return m ? m[1] : '';
+      })(),
       rateSource: (function () {
+        const tid = ($('calc-book-trade') || {}).value || '';
         if (($('calc-book-row') || {}).value) {
-          return 'built-in';
+          return tid.indexOf('up-') === 0 ? 'uploaded' : 'built-in';
         }
         if (($('calc-custom-rate') || {}).value) {
           return 'custom';
@@ -4835,6 +4854,8 @@
       rateId: st.rateId || '',
       rateSource: st.rateSource || '',
       rateUnit: st.rateUnit || '',
+      rateBook: st.rateBook || '',
+      rateRef: st.rateRef || '',
       allInOverridden: allInOverride,
       bookFilled: bookFilled,
       dayBasis: dayBasis,
@@ -5183,6 +5204,69 @@
     wsStampNow('books');
     scheduleWsPut();
   }
+
+  /* ---- OWNER 2026-11-17: the user's OWN rate book ------------------------
+     A person can upload the rate book they already own - spreadsheet, PDF,
+     Word, CSV or plain text - and every rate line is read into a plain
+     record: description, unit, rate. Their book does not share the built-in
+     book's work keys, so it is kept as its own list (never merged into the
+     JSON book format), listed as its own group in the rate picker, and every
+     priced line names the exact row it used. On device first; the workspace
+     sync carries it to the account like every other calculator section. */
+  const UBKEY = 'mmgr_calc_ubooks';
+  const UBACT = 'mmgr_calc_ubook_active';
+  const UB_MAX_BOOKS = 5;
+  const UB_MAX_ROWS = 2000;
+  function loadUbooks() {
+    try {
+      const list = JSON.parse(localStorage.getItem(UBKEY) || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function activeUbookId() {
+    try {
+      return JSON.parse(localStorage.getItem(UBACT) || '""') || '';
+    } catch (e) {
+      return '';
+    }
+  }
+  function activeUbook() {
+    const id = activeUbookId();
+    return (
+      loadUbooks().find(function (b) {
+        return b && b.id === id;
+      }) || null
+    );
+  }
+  function setActiveUbook(id) {
+    try {
+      localStorage.setItem(UBACT, JSON.stringify(String(id || '')));
+    } catch (e) {
+      /* nicety */
+    }
+    wsStampNow('ubooks');
+    scheduleWsPut();
+  }
+  function persistUbooks(list) {
+    try {
+      localStorage.setItem(UBKEY, JSON.stringify(list.slice(0, UB_MAX_BOOKS)));
+    } catch (e) {
+      /* quota - the caller reports it */
+      return false;
+    }
+    wsStampNow('ubooks');
+    scheduleWsPut();
+    return true;
+  }
+  // The file readers (spreadsheet, Word, PDF, CSV, text) live in
+  // js/book-import.js - MMGR.BookImport.parse(file, cb). Storage, the picker
+  // and the "which rate did this line use" wiring stay here.
+  function ubookNewId() {
+    return 'ub' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
+  }
+
   // djb2 over a canonical rendering of the rates - detects any hand edit.
   // The checksum MUST cover every field the validator keeps, including the
   // all-in figure: it is computed over the CLEANED rates, so a book whose only
@@ -5409,6 +5493,44 @@
       }
     }
   }
+  // The uploaded-book select: one option per book the user uploaded, with the
+  // active one mirrored back so the control never lies about which book is
+  // feeding the picker.
+  function renderUbooks() {
+    const sel = $('calc-ubook-select');
+    const rm = $('calc-ubook-remove');
+    const list = loadUbooks();
+    if (
+      activeUbookId() &&
+      !list.some(function (b) {
+        return b.id === activeUbookId();
+      })
+    ) {
+      setActiveUbook('');
+    }
+    if (rm) {
+      rm.hidden = !activeUbookId();
+    }
+    if (!sel) {
+      return;
+    }
+    sel.innerHTML =
+      '<option value="">' +
+      (list.length ? 'My rate books...' : 'My rate book (none uploaded)') +
+      '</option>' +
+      list
+        .map(function (b) {
+          return (
+            '<option value="' +
+            esc(b.id) +
+            '">' +
+            esc(b.name + ' (' + (b.rows || []).length + ' rates)') +
+            '</option>'
+          );
+        })
+        .join('');
+    sel.value = activeUbookId();
+  }
   // ---- The rate book card (owner 2026-10-02) ----
   // Shows the rate book to the user in a modal-style card with
   // imperial/metric toggle. The BOOK_RATES data carries the 100 line items from
@@ -5431,6 +5553,31 @@
       return "Planning rates built from this business's own costs. Check them against current supplier quotes before you send a price.";
     }
     return 'Starting rates for planning. Prices vary by site, supplier and date. Replace any rate with your own.';
+  }
+  // ONE sentence naming the rate a line used, from whichever source priced it:
+  // a baseline row (stable id), the user's own uploaded book (book name + row),
+  // a hand-typed rate, or the built-in model. The notice, the CSV/print export
+  // and the bill all read this, so they can never disagree.
+  function rateUsedText(r) {
+    if (!r) {
+      return '';
+    }
+    const per = r.rateUnit ? ' per ' + r.rateUnit : '';
+    if (r.rateSource === 'uploaded') {
+      return (
+        'Your rate book' +
+        (r.rateBook ? ' "' + r.rateBook + '"' : '') +
+        (r.rateRef ? ' row ' + r.rateRef : '') +
+        per
+      );
+    }
+    if (r.rateId) {
+      return 'My MaNaGeR planning rate ' + r.rateId + per;
+    }
+    if (r.rateSource === 'custom') {
+      return 'Your own rate' + per;
+    }
+    return 'Built-in planning model';
   }
   const RATEBOOK_MARK =
     '<svg class="ico rr-mark" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>';
@@ -6781,21 +6928,44 @@
     }
   }
   // Trade list, in book order, from whichever source is loaded.
-  function rrTrades() {
-    if (_rrFull) {
-      return _rrFull.trades;
+  function ubookTid(b) {
+    return b && b.id ? 'up-' + String(b.id).replace(/^ub/, '').slice(-8) : '';
+  }
+  function ubookOfTid(tid) {
+    if (!tid || tid.indexOf('up-') !== 0) {
+      return null;
     }
-    const seen = [];
-    BOOK_RATES.forEach(function (r) {
-      if (
-        !seen.some(function (x) {
-          return x.tid === r.tid;
-        })
-      ) {
-        seen.push({ tid: r.tid, label: r.trade });
+    const list = loadUbooks();
+    for (let i = 0; i < list.length; i++) {
+      if (ubookTid(list[i]) === tid) {
+        return list[i];
       }
-    });
-    return seen;
+    }
+    return null;
+  }
+  function rrTrades() {
+    let list;
+    if (_rrFull) {
+      list = _rrFull.trades.slice();
+    } else {
+      list = [];
+      BOOK_RATES.forEach(function (r) {
+        if (
+          !list.some(function (x) {
+            return x.tid === r.tid;
+          })
+        ) {
+          list.push({ tid: r.tid, label: r.trade });
+        }
+      });
+    }
+    // OWNER 2026-11-17: the user's own uploaded book is a trade group of its
+    // own in the same picker, so one picker prices a line from either book.
+    const ub = activeUbook();
+    if (ub && Array.isArray(ub.rows) && ub.rows.length) {
+      list.push({ tid: ubookTid(ub), label: 'My rate book: ' + ub.name });
+    }
+    return list;
   }
   // One row shape whether the data came from the generated 811-row file or the
   // 100 rows shipped inline.
@@ -6804,23 +6974,47 @@
     rrTrades().forEach(function (t) {
       labels[t.tid] = t.label;
     });
-    if (_rrFull) {
-      return _rrFull.rows.map(function (r) {
-        const label = labels[r.t] || r.t;
-        return {
-          tid: r.t,
+    const own = [];
+    const ub = activeUbook();
+    if (ub && Array.isArray(ub.rows) && ub.rows.length) {
+      const tid = ubookTid(ub);
+      const label = labels[tid] || 'My rate book: ' + ub.name;
+      ub.rows.forEach(function (r, i) {
+        own.push({
+          tid: tid,
           trade: label,
-          ref: label + ' #' + r.n,
-          desc: r.d,
-          impUnit: r.iu,
-          impRate: r.ir,
-          metUnit: r.mu,
-          metRate: r.mr,
-          basis: r.b === 'C' ? 'C' : 'S',
-          note: r.note || '',
-          inApp: !!r.app
-        };
+          ref: label + ' #' + (i + 1),
+          desc: r.desc,
+          impUnit: r.unit,
+          impRate: r.rate,
+          metUnit: r.unit,
+          metRate: r.rate,
+          basis: 'S',
+          note: r.trade && r.trade !== ub.name ? r.trade : '',
+          inApp: true,
+          own: true
+        });
       });
+    }
+    if (_rrFull) {
+      return _rrFull.rows
+        .map(function (r) {
+          const label = labels[r.t] || r.t;
+          return {
+            tid: r.t,
+            trade: label,
+            ref: label + ' #' + r.n,
+            desc: r.d,
+            impUnit: r.iu,
+            impRate: r.ir,
+            metUnit: r.mu,
+            metRate: r.mr,
+            basis: r.b === 'C' ? 'C' : 'S',
+            note: r.note || '',
+            inApp: !!r.app
+          };
+        })
+        .concat(own);
     }
     return BOOK_RATES.map(function (r) {
       return {
@@ -6836,7 +7030,7 @@
         note: '',
         inApp: true
       };
-    });
+    }).concat(own);
   }
   // The search indexes what a person would actually type: the description, the
   // ref, the trade, either unit, AND both rate numbers - so typing a price
@@ -6896,7 +7090,8 @@
   // workName() names the line from the same row. Memoized per source (inline
   // 100 / full 811), so a render never re-maps the whole book.
   function bookRowIndex() {
-    const src = _rrFull ? 'full' : 'inline';
+    const ub = activeUbook();
+    const src = (_rrFull ? 'full' : 'inline') + '|' + (ub ? ub.id : '');
     if (_bookIdx && _bookIdxSrc === src) {
       return _bookIdx;
     }
@@ -7020,6 +7215,16 @@
         const unit = bookUnitFor(r, imp);
         const rate = bookRateFor(r, imp);
         const d = r.desc.length > 46 ? r.desc.slice(0, 43) + '...' : r.desc;
+        // A row from the user's own book speaks the book's own currency; the
+        // built-in rows are JMD (the planning baseline's money).
+        const ownCur = r.own ? (activeUbook() || {}).currency || '' : 'J$';
+        const money = ownCur
+          ? ownCur +
+            Number(rate).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })
+          : rrMoney(rate);
         return (
           '<option value="' +
           esc(r.ref) +
@@ -7030,7 +7235,7 @@
           ' (' +
           esc(unit) +
           ' - ' +
-          rrMoney(rate) +
+          money +
           ')' +
           (r.note ? ' - ' + esc(r.note) : '') +
           (r.basis === 'C' && !imp ? ' [our conversion]' : '') +
@@ -7072,7 +7277,11 @@
     // there is no full-book load and no "sign in for all 811" hint any more.
     const hint = $('calc-book-hint');
     if (hint) {
-      hint.textContent = '- pick a trade, then a rate (built-in planning set)';
+      const own = activeUbook();
+      hint.textContent =
+        '- pick a trade, then a rate (built-in planning set' +
+        (own ? ', or your rate book: ' + own.name : '') +
+        ')';
     }
     syncBookPickNote();
   }
@@ -9311,6 +9520,8 @@
         rateId: r.rateId || '',
         rateSource: r.rateSource || '',
         rateUnit: r.rateUnit || '',
+        rateBook: r.rateBook || '',
+        rateRef: r.rateRef || '',
         kind: 'work'
       });
     });
@@ -10048,19 +10259,7 @@
     // OWNER 2026-11-17: name the SPECIFIC rate this line used, so the exported
     // sheet points back to the one baseline row (or the user's own rate)
     // instead of leaving the number unattributed.
-    add(
-      'Assumption',
-      'Rate used',
-      r.rateId
-        ? 'My MaNaGeR planning rate ' + r.rateId + (r.rateUnit ? ' per ' + r.rateUnit : '')
-        : r.rateSource === 'custom'
-          ? 'Your own rate' + (r.rateUnit ? ' per ' + r.rateUnit : '')
-          : 'Built-in planning model',
-      '',
-      '',
-      '',
-      ''
-    );
+    add('Assumption', 'Rate used', rateUsedText(r), '', '', '', '');
     add('Assumption', 'Variant', r.variantLabel || '-', '', '', '', '');
     add(
       'Assumption',
@@ -10522,7 +10721,8 @@
       sheets: sec('sheets', loadSheets()),
       docCounter: sec('docCounter', docCounterLoad()),
       fx: sec('fx', loadFx()),
-      books: sec('books', { list: loadBooks(), active: activeBookId() })
+      books: sec('books', { list: loadBooks(), active: activeBookId() }),
+      ubooks: sec('ubooks', { list: loadUbooks(), active: activeUbookId() })
     };
   }
   // PURE merge decision: newer stamp wins; empty local adopts cloud; equal
@@ -10658,6 +10858,23 @@
           } catch (e) {}
           renderBooks();
         }
+      ],
+      [
+        'ubooks',
+        ws.ubooks,
+        function (v) {
+          const o = v && typeof v === 'object' ? v : {};
+          try {
+            localStorage.setItem(UBKEY, JSON.stringify(Array.isArray(o.list) ? o.list : []));
+          } catch (e) {}
+          try {
+            localStorage.setItem(
+              UBACT,
+              JSON.stringify(typeof o.active === 'string' ? o.active : '')
+            );
+          } catch (e) {}
+          renderUbooks();
+        }
       ]
     ];
     try {
@@ -10710,7 +10927,8 @@
         sheets: RKEY,
         docCounter: DOCNO_KEY,
         fx: FXKEY,
-        books: BKKEY
+        books: BKKEY,
+        ubooks: UBKEY
       };
     }
     return WS_KEYS;
@@ -11648,9 +11866,7 @@
         // it, so the user can see exactly which planning rate priced the line.
         notice.textContent =
           rateBookNotice() +
-          (r.rateId
-            ? ' Rate used: ' + r.rateId + (r.rateUnit ? ' per ' + r.rateUnit : '') + '.'
-            : '');
+          (r.rateId || r.rateSource === 'uploaded' ? ' Rate used: ' + rateUsedText(r) + '.' : '');
         notice.hidden = false;
       } else {
         notice.textContent = '';
@@ -13524,6 +13740,29 @@
       render();
       sheetMsg('Rate book cleared - the built-in model rates prefill again.');
     },
+    // OWNER 2026-11-17: upload the user's OWN rate book in any common format.
+    // Same input as the JSON import; the change handler routes by extension.
+    calcBookUpload: function () {
+      const f = $('calc-book-file');
+      if (f) {
+        f.click();
+      }
+    },
+    calcUbookRemove: function () {
+      const id = activeUbookId();
+      if (!id) {
+        return;
+      }
+      const list = loadUbooks().filter(function (b) {
+        return b.id !== id;
+      });
+      persistUbooks(list);
+      setActiveUbook(list.length ? list[0].id : '');
+      renderUbooks();
+      renderBookPicker();
+      render();
+      sheetMsg('Your uploaded rate book was removed from this device.');
+    },
     // Owner directive 2026-10-01: one-tap fix for a flagged unit slip.
     calcFixDim: function (el) {
       const f = el.getAttribute('data-field'),
@@ -13534,7 +13773,8 @@
         input.dispatchEvent(new Event('input', { bubbles: true }));
       }
     },
-    calcSheetPick: null
+    calcSheetPick: null,
+    calcUbookPick: null
   };
 
   document.addEventListener('click', function (e) {
@@ -13647,6 +13887,8 @@
 
   // E4: the rate-book file input - same contract as sheets/packs. A bad file
   // reports in the status line and never throws, never clears storage.
+  // OWNER 2026-11-17: a My MaNaGeR JSON export imports as before; any other
+  // file (xlsx, docx, pdf, csv, txt, md) is read as the user's OWN rate book.
   document.addEventListener('change', function (e) {
     if (!e.target || e.target.id !== 'calc-book-file') {
       return;
@@ -13654,6 +13896,58 @@
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) {
+      return;
+    }
+    const ext = (
+      '.' +
+      String(file.name || '')
+        .split('.')
+        .pop()
+    ).toLowerCase();
+    if (ext !== '.json') {
+      sheetMsg('Reading ' + file.name + '...');
+      MMGR.BookImport.parse(file, function (out) {
+        if (!out.rows.length) {
+          sheetMsg(out.error || 'No rate lines were found in that file.');
+          return;
+        }
+        const rows = out.rows.slice(0, UB_MAX_ROWS);
+        const book = {
+          id: ubookNewId(),
+          name: out.name,
+          currency: (($('calc-currency') || {}).value || '').toString().slice(0, 3) || '',
+          imported: new Date().toISOString().slice(0, 10),
+          rows: rows
+        };
+        const list = loadUbooks()
+          .filter(function (b) {
+            return b && b.name !== book.name;
+          })
+          .concat([book]);
+        if (!persistUbooks(list)) {
+          sheetMsg(
+            'That rate book is too large to keep on this device. Split it into smaller files and upload them one at a time.'
+          );
+          return;
+        }
+        setActiveUbook(book.id);
+        renderUbooks();
+        renderBookPicker();
+        render();
+        sheetMsg(
+          'Added ' +
+            rows.length +
+            ' rates from ' +
+            file.name +
+            '. Pick "' +
+            'My rate book: ' +
+            book.name +
+            '" in the Trade list to price from it' +
+            (out.rows.length > rows.length
+              ? ' (the first ' + rows.length + ' rates were kept).'
+              : '.')
+        );
+      });
       return;
     }
     const reader = new FileReader();
@@ -13680,6 +13974,29 @@
       );
     };
     reader.readAsText(file);
+  });
+
+  // OWNER 2026-11-17: choosing one of the user's own uploaded books makes it
+  // the active source for the picker's own trade group.
+  document.addEventListener('change', function (e) {
+    const el = e.target.closest('[data-action="calcUbookPick"]');
+    if (!el) {
+      return;
+    }
+    setActiveUbook(el.value);
+    renderUbooks();
+    renderBookPicker();
+    render();
+    const b = activeUbook();
+    sheetMsg(
+      b
+        ? 'Your rate book "' +
+            b.name +
+            '" is active - pick "My rate book: ' +
+            b.name +
+            '" in the Trade list.'
+        : 'Your own rate book is no longer active.'
+    );
   });
 
   // E4: choosing a book in the select makes it the ACTIVE book (value-apply-
@@ -15073,6 +15390,8 @@
     ACTIONS.calcBookDefault();
   }
   renderBooks();
+  // OWNER 2026-11-17: the user's own uploaded rate books paint on load too.
+  renderUbooks();
   // W1 bill of quantities: paint the stored bill on load.
   renderBoq();
   // W4 site & other costs: restore the stored items on load.

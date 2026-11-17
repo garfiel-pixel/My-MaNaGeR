@@ -765,6 +765,79 @@
     return sheets;
   }
 
+  // ---- .docx reader ------------------------------------------------------
+  // A .docx is the same kind of ZIP. Rates in a Word rate book live in TABLES,
+  // so tables are read as rows of cell text and the body paragraphs are kept
+  // as a text fallback. Best effort only: a file that carries no table still
+  // yields its paragraphs, and a corrupt part throws a plain-language error
+  // the caller reports instead of crashing the page.
+  function readDocx(bytes) {
+    var entries = zipEntries(bytes);
+    var byName = {};
+    entries.forEach(function (e) {
+      byName[e.name] = e;
+    });
+    var part = byName['word/document.xml'];
+    if (!part) {
+      throw new Error('That file is not a Word document (no document part).');
+    }
+    var doc = decodeUtf8(part.data);
+
+    function cellText(chunk) {
+      var text = '';
+      var re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
+      var m;
+      while ((m = re.exec(chunk))) {
+        text += m[1];
+      }
+      return xmlUnescape(text).replace(/\s+/g, ' ').trim();
+    }
+
+    var tables = [];
+    doc
+      .split('<w:tbl>')
+      .slice(1)
+      .forEach(function (tbl) {
+        var body = tbl.split('</w:tbl>')[0];
+        var rows = [];
+        // '<w:tr' also matches '<w:trPr', so match only the tag itself.
+        body
+          .split(/<w:tr[ >]/)
+          .slice(1)
+          .forEach(function (tr) {
+            var cells = [];
+            tr.split(/<w:tc[ >]/)
+              .slice(1)
+              .forEach(function (tc) {
+                cells.push(cellText(tc.split('</w:tc>')[0]));
+              });
+            if (
+              cells.some(function (c) {
+                return c !== '';
+              })
+            ) {
+              rows.push(cells);
+            }
+          });
+        if (rows.length) {
+          tables.push(rows);
+        }
+      });
+
+    var paras = [];
+    doc
+      .split(/<w:p[ >]/)
+      .slice(1)
+      .forEach(function (p) {
+        var t = cellText(p.split('</w:p>')[0]);
+        if (t) {
+          paras.push(t);
+        }
+      });
+
+    return { tables: tables, paragraphs: paras, text: paras.join('\n') };
+  }
+
   ns.XlsxLite = {
     build: build,
     crc32: crc32,
@@ -772,4 +845,5 @@
     zipEntries: zipEntries,
     read: read
   };
+  ns.DocxLite = { read: readDocx };
 })();

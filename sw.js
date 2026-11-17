@@ -776,7 +776,7 @@
 // the applied / skipped / conflict / derived summary after a set accept.
 // project.html, the project bundle, admin.html, the admin bundle, the owner
 // review module and css/mmgr.css are shell assets.
-const CACHE = 'mmgr-shell-v656';
+const CACHE = 'mmgr-shell-v659';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated
@@ -1633,10 +1633,11 @@ const SHELL = [
   // Data
   'projects-data.js',
   'demo-data.js',
-  // The full 811-row rate book is NOT here any more (RB-1, 2026-10-25). It is
-  // signed-in data served by GET /api/ratebook, and the calculator keeps its
-  // own offline copy in the Cache API (mmgr-ratebook-v1) after the first
-  // signed-in load. Listing it in the shell published it to every visitor.
+  // The rate book is NOT here (RB-1, 2026-10-25; tightened 2026-11-17). It is
+  // a first-party trade secret served ONE rate at a time to a signed-in user
+  // (GET /api/ratebook/rate/:id), and the calculator keeps only the ids a line
+  // actually used in the Cache API (mmgr-ratebook-v2). Listing it in the shell
+  // would publish it to every visitor.
   // PWA
   'manifest.webmanifest',
   'robots.txt',
@@ -1655,6 +1656,10 @@ const SHELL = [
   'images/hero-globe-poster.svg',
   // unbundled modules not in any bundle (loaded by non-project pages)
   'js/mmgr-theme.js',
+  // OWNER 2026-11-17: the reader for an uploaded rate book (spreadsheet, Word,
+  // PDF, CSV, text). calculator.html loads it as its own script, so it must
+  // be precached or the upload path dies with no network.
+  'js/book-import.js',
   // PERF-1 boot (REFINEMENT-DIRECTIVE-2026-10-24.md): loaded by <script src>
   // on sixteen pages, so it must be precached or the offline shell loses it.
   'js/mmgr-perf-boot.js',

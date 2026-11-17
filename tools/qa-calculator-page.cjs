@@ -136,6 +136,81 @@ const check = (name, val, detail) => {
   );
 };
 
+/* ---- OWNER 2026-11-17: a .docx built here, so the Word upload path is
+   exercised with a REAL OOXML table instead of a mock. A stored ZIP needs
+   nothing but a CRC - the same primitive the app's writer uses. */
+function crc32buf(buf) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) {
+    crc ^= buf[i];
+    for (let k = 0; k < 8; k++) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+function storedZip(files) {
+  const parts = [];
+  const central = [];
+  let off = 0;
+  files.forEach(f => {
+    const name = Buffer.from(f.name, 'utf8');
+    const data = Buffer.from(f.data, 'utf8');
+    const crc = crc32buf(data);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0);
+    lh.writeUInt16LE(20, 4);
+    lh.writeUInt32LE(crc, 14);
+    lh.writeUInt32LE(data.length, 18);
+    lh.writeUInt32LE(data.length, 22);
+    lh.writeUInt16LE(name.length, 26);
+    parts.push(lh, name, data);
+    const cd = Buffer.alloc(46);
+    cd.writeUInt32LE(0x02014b50, 0);
+    cd.writeUInt16LE(20, 4);
+    cd.writeUInt16LE(20, 6);
+    cd.writeUInt32LE(crc, 16);
+    cd.writeUInt32LE(data.length, 20);
+    cd.writeUInt32LE(data.length, 24);
+    cd.writeUInt16LE(name.length, 28);
+    cd.writeUInt32LE(off, 42);
+    central.push(cd, name);
+    off += 30 + name.length + data.length;
+  });
+  const cdBuf = Buffer.concat(central);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(files.length, 8);
+  eocd.writeUInt16LE(files.length, 10);
+  eocd.writeUInt32LE(cdBuf.length, 12);
+  eocd.writeUInt32LE(off, 16);
+  return Buffer.concat(parts.concat([cdBuf, eocd]));
+}
+function buildDocx(rows) {
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const tr = cells =>
+    '<w:tr>' +
+    cells
+      .map(
+        c =>
+          '<w:tc><w:tcPr><w:tcW w:w="2400" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>' +
+          esc(c) +
+          '</w:t></w:r></w:p></w:tc>'
+      )
+      .join('') +
+    '</w:tr>';
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+    '<w:tbl>' +
+    rows.map(tr).join('') +
+    '</w:tbl></w:body></w:document>';
+  return storedZip([
+    { name: '[Content_Types].xml', data: '<?xml version="1.0"?><Types/>' },
+    { name: 'word/document.xml', data: xml }
+  ]);
+}
+
 /* ---- OWNER 2026-11-17: the rate book is a first-party TRADE SECRET --------
    There is no whole-book route and no whole-book cache any more. The picker
    shows the 100 planning rows shipped inline (all 11 trades); a priced line
@@ -1885,12 +1960,12 @@ async function withChrome(fn) {
       return { names: names.join(','), n: names.length, allSections: names.every(function(k){ return c[k] && typeof c[k] === 'object' && 'updatedAt' in c[k] && 'val' in c[k]; }), stamps: names.every(function(k){ return typeof c[k].updatedAt === 'number'; }) };
     })()`);
     check(
-      'WS1 wsCollect returns all ten sections each carrying an updatedAt stamp (sheets + fx + books follow the account)',
+      'WS1 wsCollect returns all eleven sections each carrying an updatedAt stamp (sheets + fx + books + your own uploaded books follow the account)',
       ws1 &&
-        ws1.n === 10 &&
+        ws1.n === 11 &&
         ws1.allSections &&
         ws1.stamps &&
-        ws1.names === 'estimates,boq,history,packs,rollup,brand,sheets,docCounter,fx,books',
+        ws1.names === 'estimates,boq,history,packs,rollup,brand,sheets,docCounter,fx,books,ubooks',
       ws1
     );
     const ws2 = await ev(`(function(){
@@ -4548,6 +4623,210 @@ async function withChrome(fn) {
         notice: rid.notice.slice(0, 140)
       }
     );
+
+    // ---------- OWNER 2026-11-17: the user's OWN rate book ----------
+    // A CSV of the user's own rates uploads as plain line items, appears as its
+    // own group in the picker, and a line priced from it names the book + row
+    // in state, on the notice and in the CSV - the same "point at the exact
+    // rate" promise the built-in book carries.
+    await ev(`(function(){
+      var txt = 'Item,Unit,Rate\\n"Concrete 25 MPa","m3","18500"\\n"Block 6 inch","each","180"\\n"Excavate soft clay","m3","1200"\\n';
+      var f = new File([txt], 'qa-own-rates.csv', { type: 'text/csv' });
+      var dt = new DataTransfer();
+      dt.items.add(f);
+      var inp = document.getElementById('calc-book-file');
+      inp.files = dt.files;
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    await delay(500);
+    const ub1 = await ev(`(function(){
+      window.__MMGR_RR_AUTH = 'in';
+      var sel = document.getElementById('calc-ubook-select');
+      var w = document.getElementById('calc-work');
+      var prevWork = w ? w.value : '';
+      w.value = 'book'; w.dispatchEvent(new Event('change', { bubbles: true }));
+      var t = document.getElementById('calc-book-trade');
+      var opt = null;
+      for (var i = 0; i < t.options.length; i++) {
+        if (/^My rate book:/.test(t.options[i].textContent)) { opt = t.options[i]; break; }
+      }
+      if (opt) { t.value = opt.value; t.dispatchEvent(new Event('change', { bubbles: true })); }
+      var r = document.getElementById('calc-book-row');
+      if (r && r.options.length) { r.selectedIndex = 0; r.dispatchEvent(new Event('change', { bubbles: true })); }
+      var d = document.getElementById('calc-d1');
+      if (d) { d.value = '3'; d.dispatchEvent(new Event('input', { bubbles: true })); }
+      var run = document.querySelector('[data-action="calcRun"]');
+      if (run) run.click();
+      var st = __calcEngine.readState();
+      var csv = ''; try { csv = (window.MMGR_CALC_FILE() || {}).text || ''; } catch (e) {}
+      var out = {
+        books: sel ? sel.options.length - 1 : -1,
+        ownTrade: opt ? opt.textContent : '',
+        rows: r ? r.options.length : 0,
+        firstRow: r && r.options.length ? r.options[0].textContent : '',
+        rateId: st.rateId, rateSource: st.rateSource, rateBook: st.rateBook,
+        rateRef: st.rateRef, rateUnit: st.rateUnit,
+        notice: (document.getElementById('calc-rate-notice') || {}).textContent || '',
+        csvHas: csv.indexOf('Your rate book') > -1 && csv.indexOf('qa-own-rates') > -1
+      };
+      if (w && prevWork) { w.value = prevWork; w.dispatchEvent(new Event('change', { bubbles: true })); }
+      return out;
+    })()`);
+    check(
+      'UB1 a CSV rate book uploads as its own picker group with one row per rate line',
+      ub1 &&
+        ub1.books === 1 &&
+        /^My rate book: qa-own-rates/.test(ub1.ownTrade) &&
+        ub1.rows === 3 &&
+        /Concrete 25 MPa/.test(ub1.firstRow),
+      ub1
+    );
+    check(
+      'UB2 a line priced from the user book names the book and row in state, notice and CSV',
+      ub1 &&
+        ub1.rateSource === 'uploaded' &&
+        ub1.rateId === '' &&
+        ub1.rateBook === 'qa-own-rates' &&
+        ub1.rateRef === '1' &&
+        !!ub1.rateUnit &&
+        /Your rate book "qa-own-rates" row 1/.test(ub1.notice) &&
+        ub1.csvHas,
+      ub1 && { notice: ub1.notice.slice(0, 160), csvHas: ub1.csvHas, rateBook: ub1.rateBook }
+    );
+
+    // A spreadsheet built by the page's own writer round-trips through the
+    // reader (same ZIP primitives, real .xlsx bytes).
+    await ev(`(function(){
+      var bytes = MMGR.XlsxLite.build([{ name: 'Rates', rows: [
+        ['Item', 'Unit', 'Rate'],
+        ['Roof sheet 0.5 mm', 'm2', 3100],
+        ['Ridge flashing', 'lm', 1450]
+      ] }]);
+      var f = new File([bytes], 'qa-own-sheet.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var dt = new DataTransfer();
+      dt.items.add(f);
+      var inp = document.getElementById('calc-book-file');
+      inp.files = dt.files;
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    await delay(500);
+    const ub3 = await ev(`(function(){
+      var sel = document.getElementById('calc-ubook-select');
+      var active = sel ? sel.value : '';
+      var books = [];
+      try { books = JSON.parse(localStorage.getItem('mmgr_calc_ubooks') || '[]'); } catch (e) {}
+      var b = null;
+      for (var i = 0; i < books.length; i++) { if (books[i].id === active) { b = books[i]; } }
+      return { books: sel ? sel.options.length - 1 : -1,
+               name: b ? b.name : '',
+               rows: b && b.rows ? b.rows.length : -1,
+               first: b && b.rows && b.rows[0] ? b.rows[0].desc : '',
+               rate: b && b.rows && b.rows[0] ? b.rows[0].rate : NaN,
+               unit: b && b.rows && b.rows[0] ? b.rows[0].unit : '' };
+    })()`);
+    check(
+      'UB3 an .xlsx rate book reads its rows (description, unit, rate) from a real spreadsheet',
+      ub3 &&
+        ub3.books === 2 &&
+        ub3.name === 'qa-own-sheet' &&
+        ub3.rows === 2 &&
+        /Roof sheet/.test(ub3.first) &&
+        ub3.unit === 'm2' &&
+        ub3.rate === 3100,
+      ub3
+    );
+
+    // A real .docx table, uploaded through the file input exactly as a user's
+    // Word file arrives.
+    const docxDir = path.join(ROOT, 'tmp');
+    try {
+      fs.mkdirSync(docxDir, { recursive: true });
+    } catch (e) {}
+    const docxPath = path.join(docxDir, 'qa-own-word.docx');
+    fs.writeFileSync(
+      docxPath,
+      buildDocx([
+        ['Item', 'Unit', 'Rate'],
+        ['Tile adhesive 20 kg', 'bag', '2450'],
+        ['Skim coat', 'm2', '950']
+      ])
+    );
+    const docxB64 = fs.readFileSync(docxPath).toString('base64');
+    await ev(`(function(){
+      var bin = atob(${JSON.stringify(docxB64)});
+      var arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) { arr[i] = bin.charCodeAt(i); }
+      var f = new File([arr], 'qa-own-word.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      var dt = new DataTransfer();
+      dt.items.add(f);
+      var inp = document.getElementById('calc-book-file');
+      inp.files = dt.files;
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    await delay(600);
+    const ub4 = await ev(`(function(){
+      var sel = document.getElementById('calc-ubook-select');
+      var active = sel ? sel.value : '';
+      var books = [];
+      try { books = JSON.parse(localStorage.getItem('mmgr_calc_ubooks') || '[]'); } catch (e) {}
+      var b = null;
+      for (var i = 0; i < books.length; i++) { if (books[i].id === active) { b = books[i]; } }
+      return { books: sel ? sel.options.length - 1 : -1,
+               name: b ? b.name : '',
+               rows: b && b.rows ? b.rows.length : -1,
+               first: b && b.rows && b.rows[0] ? b.rows[0].desc : '',
+               rate: b && b.rows && b.rows[0] ? b.rows[0].rate : NaN };
+    })()`);
+    check(
+      'UB4 a .docx rate book reads the rates out of its Word table',
+      ub4 &&
+        ub4.books === 3 &&
+        ub4.name === 'qa-own-word' &&
+        ub4.rows === 2 &&
+        /Tile adhesive/.test(ub4.first) &&
+        ub4.rate === 2450,
+      ub4
+    );
+
+    // Removing the active book drops it from the picker and from storage.
+    const ub5 = await ev(`(function(){
+      window.__MMGR_RR_AUTH = 'in';
+      document.querySelector('[data-action="calcUbookRemove"]').click();
+      var sel = document.getElementById('calc-ubook-select');
+      var books = [];
+      try { books = JSON.parse(localStorage.getItem('mmgr_calc_ubooks') || '[]'); } catch (e) {}
+      var w = document.getElementById('calc-work');
+      w.value = 'book'; w.dispatchEvent(new Event('change', { bubbles: true }));
+      var t = document.getElementById('calc-book-trade');
+      var own = 0;
+      for (var i = 0; i < t.options.length; i++) {
+        if (/^My rate book:/.test(t.options[i].textContent)) { own++; }
+      }
+      return { books: sel ? sel.options.length - 1 : -1, stored: books.length, own: own };
+    })()`);
+    check(
+      'UB5 removing an uploaded book drops it from storage and the picker falls back to the next one',
+      ub5 && ub5.books === 2 && ub5.stored === 2 && ub5.own === 1,
+      ub5
+    );
+    // Leave the device as the later families expect it: no uploaded book.
+    await ev(`(function(){
+      try {
+        localStorage.removeItem('mmgr_calc_ubooks');
+        localStorage.removeItem('mmgr_calc_ubook_active');
+      } catch (e) {}
+      var sel = document.getElementById('calc-ubook-select');
+      if (sel) { sel.innerHTML = '<option value="">My rate book (none uploaded)</option>'; }
+      var rm = document.getElementById('calc-ubook-remove');
+      if (rm) { rm.hidden = true; }
+      var w = document.getElementById('calc-work');
+      if (w && w.value === 'book') { w.value = 'slab'; w.dispatchEvent(new Event('change', { bubbles: true })); }
+      window.__MMGR_RR_AUTH = null;
+      return true;
+    })()`);
 
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.

@@ -5264,7 +5264,10 @@
   // js/book-import.js - MMGR.BookImport.parse(file, cb). Storage, the picker
   // and the "which rate did this line use" wiring stay here.
   function ubookNewId() {
-    return 'ub' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
+    // A local list id, never a credential or a token.
+    return (
+      'ub' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36) // ok: non-secret
+    );
   }
 
   // djb2 over a canonical rendering of the rates - detects any hand edit.

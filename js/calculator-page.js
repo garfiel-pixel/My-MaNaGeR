@@ -3816,6 +3816,39 @@
       bookRef: ($('calc-book-row') || {}).value || '',
       bookRate: ($('calc-book-rate') || {}).value || '',
       bookModel: (($('calc-book-rate') || {}).dataset || {}).model || '',
+      // OWNER 2026-11-17: the SPECIFIC rate this line used, so a bill line,
+      // a CSV/print export and a recall can all name it. rateId is the stable
+      // baseline id (trade + row number, e.g. "excavation-3"); a custom or
+      // imported rate carries its own source tag and no baseline id.
+      rateId: (function () {
+        const tid = ($('calc-book-trade') || {}).value || '';
+        const m = /#\s*(\d{1,4})/.exec(($('calc-book-row') || {}).value || '');
+        return tid && m ? tid + '-' + m[1] : '';
+      })(),
+      rateSource: (function () {
+        if (($('calc-book-row') || {}).value) {
+          return 'built-in';
+        }
+        if (($('calc-custom-rate') || {}).value) {
+          return 'custom';
+        }
+        return '';
+      })(),
+      rateUnit: (function () {
+        const tid = ($('calc-book-trade') || {}).value || '';
+        const ref = ($('calc-book-row') || {}).value || '';
+        if (tid && ref) {
+          try {
+            const row = bookRowFor(tid, ref);
+            if (row) {
+              return _rateBookUnits === 'imperial' ? row.impUnit : row.metUnit;
+            }
+          } catch (e) {
+            /* picker not ready */
+          }
+        }
+        return ($('calc-custom-unit') || {}).value || '';
+      })(),
       measuredQty: ($('calc-measured-qty') || {}).value || '',
       // C1: how to READ the number above ('imp' = imperial entry unit shown on
       // the box, 'eng' = engine units). A missing value means 'eng'.
@@ -4796,6 +4829,12 @@
       customRate: isCustom ? allInRate : 0,
       isBook: isBook,
       bookRef: bookRow ? bookRow.ref : '',
+      // OWNER 2026-11-17: the specific rate this line used, carried onto the
+      // result so the on-screen chip, the CSV/print export and a bill line can
+      // name it (stable id + source + the unit the rate is expressed in).
+      rateId: st.rateId || '',
+      rateSource: st.rateSource || '',
+      rateUnit: st.rateUnit || '',
       allInOverridden: allInOverride,
       bookFilled: bookFilled,
       dayBasis: dayBasis,
@@ -9267,6 +9306,11 @@
         unit: (r.unit || '').toString().slice(0, 24),
         rate: qty > 0 ? Math.round((planned / qty) * 1000000) / 1000000 : 0,
         planned: planned,
+        // OWNER 2026-11-17: which specific rate priced this line (stable
+        // baseline id + source + unit), so the bill and its exports can name it.
+        rateId: r.rateId || '',
+        rateSource: r.rateSource || '',
+        rateUnit: r.rateUnit || '',
         kind: 'work'
       });
     });
@@ -10001,6 +10045,22 @@
     );
     add('Assumption', 'Quantity', qtyShownRow.main + qtyShownRow.alt, num2(qty), r.unit, '', '');
     add('Assumption', 'Rate basis', r.matDesc || '', '', '', '', '');
+    // OWNER 2026-11-17: name the SPECIFIC rate this line used, so the exported
+    // sheet points back to the one baseline row (or the user's own rate)
+    // instead of leaving the number unattributed.
+    add(
+      'Assumption',
+      'Rate used',
+      r.rateId
+        ? 'My MaNaGeR planning rate ' + r.rateId + (r.rateUnit ? ' per ' + r.rateUnit : '')
+        : r.rateSource === 'custom'
+          ? 'Your own rate' + (r.rateUnit ? ' per ' + r.rateUnit : '')
+          : 'Built-in planning model',
+      '',
+      '',
+      '',
+      ''
+    );
     add('Assumption', 'Variant', r.variantLabel || '-', '', '', '', '');
     add(
       'Assumption',
@@ -11583,7 +11643,14 @@
     const notice = $('calc-rate-notice');
     if (notice) {
       if (r && !r.error) {
-        notice.textContent = rateBookNotice();
+        // OWNER 2026-11-17: the placeholder sentence stays first; when the line
+        // used a specific baseline rate, its id and unit are named right after
+        // it, so the user can see exactly which planning rate priced the line.
+        notice.textContent =
+          rateBookNotice() +
+          (r.rateId
+            ? ' Rate used: ' + r.rateId + (r.rateUnit ? ' per ' + r.rateUnit : '') + '.'
+            : '');
         notice.hidden = false;
       } else {
         notice.textContent = '';

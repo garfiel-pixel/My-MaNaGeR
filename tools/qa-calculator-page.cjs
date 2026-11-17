@@ -4509,6 +4509,46 @@ async function withChrome(fn) {
       return w ? w.value : null;
     })()`);
 
+    // OWNER 2026-11-17: a priced book line names the SPECIFIC rate it used.
+    // The stable id (trade + row number), its source and its unit ride
+    // readState, the on-screen notice and the CSV export.
+    const rid = await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      var prevWork = w ? w.value : '';
+      w.value = 'book'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      var t = document.getElementById('calc-book-trade');
+      t.value = 'welding'; t.dispatchEvent(new Event('change',{bubbles:true}));
+      var r = document.getElementById('calc-book-row');
+      if (r && r.options.length) { r.selectedIndex = 0; r.dispatchEvent(new Event('change',{bubbles:true})); }
+      var d = document.getElementById('calc-d1');
+      if (d) { d.value = '2'; d.dispatchEvent(new Event('input',{bubbles:true})); }
+      var run = document.querySelector('[data-action="calcRun"]');
+      if (run) run.click();
+      var st = __calcEngine.readState();
+      var csv = ''; try { csv = (window.MMGR_CALC_FILE() || {}).text || ''; } catch (e) {}
+      var notice = (document.getElementById('calc-rate-notice') || {}).textContent || '';
+      if (w && prevWork) { w.value = prevWork; w.dispatchEvent(new Event('change',{bubbles:true})); }
+      return { rateId: st.rateId, rateSource: st.rateSource, rateUnit: st.rateUnit,
+               csv: csv, notice: notice };
+    })()`);
+    check(
+      'RATEID a priced book line names its specific rate in state, notice and CSV',
+      rid &&
+        rid.rateId === 'welding-1' &&
+        rid.rateSource === 'built-in' &&
+        !!rid.rateUnit &&
+        rid.csv.indexOf('Rate used') > -1 &&
+        rid.csv.indexOf('welding-1') > -1 &&
+        rid.notice.indexOf('welding-1') > -1,
+      rid && {
+        rateId: rid.rateId,
+        rateSource: rid.rateSource,
+        rateUnit: rid.rateUnit,
+        csvHas: rid.csv.indexOf('Rate used') > -1,
+        notice: rid.notice.slice(0, 140)
+      }
+    );
+
     // ---------- F4 ENHANCEMENTS ----------
     // U1: imperial toggle - labels convert, state persists, aria follows.
     const u1 = await ev(`(function(){

@@ -615,6 +615,11 @@ var MMGR = window.MMGR || {};
         localStorage.setItem(SIGNIN_KEY, '1');
       } else {
         localStorage.removeItem(SIGNIN_KEY);
+        // Signing out is the one failure this cache must never outlive: the
+        // next person on the device must not see the previous account's
+        // project names painted before the first fetch lands. Same rule as
+        // the cloud list cache in js/mmgr-cloud-dash.js.
+        localStorage.removeItem(CACHE_KEY);
       }
     } catch (e) {
       /* storage may be blocked */
@@ -1629,21 +1634,76 @@ var MMGR = window.MMGR || {};
 
   async function loadMemberships() {
     var r = await jfetch('/api/team/memberships');
-    if (r.ok && r.body && r.body.ok) {
-      state.memberships = r.body.memberships || [];
-      renderCollaborators();
-      renderShared();
-    }
+    applyMemberships(r);
     return r;
   }
 
+  // One place applies a memberships answer, whether it came from the parallel
+  // boot fetch or a later refresh, so every caller repaints the same way.
+  function applyMemberships(r) {
+    if (!r || !r.ok || !r.body || !r.body.ok) {
+      return false;
+    }
+    state.memberships = r.body.memberships || [];
+    renderCollaborators();
+    renderShared();
+    return true;
+  }
+
+  // Paint the device's last known lists BEFORE the first fetch. A reload then
+  // shows the shared cards and the invitation count instantly, and the fetch
+  // replaces them when it lands - the same cache-paint-first contract the
+  // cloud list uses in js/mmgr-cloud-dash.js. OWNER 2026-11-17: "the projects
+  // that are shared with me don't instantly load up".
+  function paintCached() {
+    // Never paint another account's list into a signed-out page: the cache is
+    // only meaningful while the restored signed-in marker is set, and sign-out
+    // deletes it.
+    if (!state.signedIn) {
+      return;
+    }
+    var c = readCache();
+    if (!c) {
+      return;
+    }
+    if (Array.isArray(c.memberships)) {
+      state.memberships = c.memberships;
+      renderShared();
+    }
+    if (Array.isArray(c.invitations)) {
+      state.invitations = c.invitations;
+      renderInvitations();
+      setBadge(state.invitations.length);
+    }
+  }
+
   async function refresh() {
-    var inv = await jfetch('/api/team/invitations');
+    var wantsShared = !!$('shared-dash') || state.tab === 'collaborators';
+    // The two reads are independent and both are session-gated, so they go out
+    // together. Before this, the launcher's Shared-with-me list waited for the
+    // invitations round trip to finish before its own request even started.
+    var both = await Promise.all([
+      jfetch('/api/team/invitations'),
+      wantsShared ? jfetch('/api/team/memberships') : Promise.resolve(null)
+    ]);
+    var inv = both[0];
+    var mem = both[1];
     if (inv.status === 403) {
       // Signed out, or an unverified address. The bell is not useful there.
       setSignedIn(false);
       setBadge(0);
+      state.memberships = [];
+      renderShared();
       return;
+    }
+    // The shared list does not depend on the bell: apply it even when the
+    // invitations read failed, and fall back to the device's last good list.
+    if (!applyMemberships(mem)) {
+      var cachedMem = readCache();
+      if (cachedMem && Array.isArray(cachedMem.memberships)) {
+        state.memberships = cachedMem.memberships;
+        renderShared();
+      }
     }
     if (!inv.ok) {
       var cached = readCache();
@@ -1662,11 +1722,7 @@ var MMGR = window.MMGR || {};
     // The launcher renders "Shared with me" outside the panel, so the list has
     // to be loaded on the ordinary refresh - waiting for the Collaborators tab
     // would leave a returning member with no way to reach their project.
-    if ($('shared-dash')) {
-      await loadMemberships();
-    }
     if (state.tab === 'collaborators') {
-      await loadMemberships();
       await loadOwnedProjects();
     }
     cache({ invitations: state.invitations, memberships: state.memberships });
@@ -1693,28 +1749,55 @@ var MMGR = window.MMGR || {};
     }
     if (!state.memberships.length) {
       wrap.hidden = true;
+      list.innerHTML = '';
       return;
     }
     wrap.hidden = false;
+    /* OWNER 2026-11-17: a shared card is the SAME card as the owner's cloud
+       card - .pcard with the gold top band, the title + role chip, the
+       "last saved" line, the status dot + label foot and one whole-card hit
+       layer. Before this it used a retired .cd-card-head markup that has no
+       CSS at all, so shared projects rendered as plain unstyled blocks while
+       every other project card was a proper card. The card carries no pill
+       icon: the project name is the identity. */
     list.innerHTML = state.memberships
       .map(function (m) {
+        var readOnly = m.role === 'view' || m.role === 'client';
+        var chip =
+          '<span class="cd-role">' + esc(readOnly ? 'Viewer (read-only)' : 'Editor') + '</span>';
+        var status = String(m.status || 'active').toLowerCase();
+        var statusLabel = status.replace('-', ' ');
+        var statusDot = esc(
+          { active: 'g', completed: 'g', planning: 'b', 'on-hold': 'a' }[status] || ''
+        );
+        var when = m.updatedAt ? 'Last saved ' + fmtDate(m.updatedAt) : 'Shared with you';
+        var snap =
+          m.hasSnapshot === false
+            ? '<div class="cd-meta">No snapshot saved yet. Ask the owner to save it once.</div>'
+            : '';
         return (
-          '<div class="cd-card" role="listitem"><div class="cd-card-head"><div class="cd-card-title">' +
-          '<span class="db-project-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span>' +
-          '<span class="cd-card-name">' +
-          esc(m.projectName) +
-          '</span></div>' +
-          '<span class="team-role team-role-' +
-          esc(m.role) +
-          '">' +
-          esc(roleLabel(m.role)) +
-          '</span></div>' +
-          '<div class="cd-card-meta"><span>Owner: ' +
-          esc(m.ownerName) +
-          '</span></div>' +
-          '<div class="cd-card-actions"><button type="button" class="btn btn-o btn-s" data-team-open="' +
+          '<div class="cd-card pcard" role="listitem">' +
+          '<button type="button" class="cd-hit" data-team-open="' +
           esc(m.projectId) +
-          '">Open project <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button></div></div>'
+          '" aria-label="Open ' +
+          esc(m.projectName) +
+          '"></button>' +
+          '<div class="pc-head"><div class="pc-title">' +
+          esc(m.projectName) +
+          chip +
+          '</div></div>' +
+          '<div class="pc-desc">Owner: ' +
+          esc(m.ownerName) +
+          '. ' +
+          esc(when) +
+          '.</div>' +
+          snap +
+          '<div class="pc-foot"><span class="pc-status"><span class="sdot ' +
+          statusDot +
+          '"></span>' +
+          esc(statusLabel) +
+          '</span><span class="pc-cta"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Open</span></div>' +
+          '</div>'
         );
       })
       .join('');
@@ -1799,6 +1882,7 @@ var MMGR = window.MMGR || {};
       if ($('shared-dash')) {
         buildPanel();
         restoreSignedIn();
+        paintCached();
         refresh().then(markReady, markReady);
       } else {
         markReady();
@@ -1807,6 +1891,7 @@ var MMGR = window.MMGR || {};
     }
     buildPanel();
     restoreSignedIn();
+    paintCached();
     bell.addEventListener('click', function (ev) {
       ev.preventDefault();
       togglePanel();

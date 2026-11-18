@@ -46,6 +46,9 @@ import {
   parseTeamMatrix
 } from '../lib/http.js';
 import { subscriptionActive } from '../billing.js';
+// One status vocabulary: a shared card shows the OWNER's project status with
+// the same values and the same fallback the owner's own card uses.
+import { normaliseProjectStatus } from './projects.js';
 
 export const TEAM_ROLES = ['manager', 'supervisor', 'contractor', 'client'];
 // Sprint 3 enterprise layer: custom matrices, time-boxed access, bulk invite,
@@ -1113,7 +1116,7 @@ export async function handleTeamMemberships(request, env) {
     return cloudForbidden();
   }
   const rows = await env.DB.prepare(
-    "SELECT m.id, m.project_id, m.role, m.scope, m.perm, m.access_expires_at, m.expires_at, m.accepted_at, p.owner_label AS project_name, p.google_name AS owner_name FROM cloud_team_members m JOIN cloud_projects p ON p.project_id = m.project_id WHERE m.invitee_email = ? AND m.status = 'active' AND (m.expires_at IS NULL OR m.expires_at > ?) AND (m.access_expires_at IS NULL OR m.access_expires_at > ?) AND p.deleted_at IS NULL ORDER BY m.accepted_at DESC"
+    "SELECT m.id, m.project_id, m.role, m.scope, m.perm, m.access_expires_at, m.expires_at, m.accepted_at, p.owner_label AS project_name, p.google_name AS owner_name, p.status, p.updated_at, p.latest_r2_key FROM cloud_team_members m JOIN cloud_projects p ON p.project_id = m.project_id WHERE m.invitee_email = ? AND m.status = 'active' AND (m.expires_at IS NULL OR m.expires_at > ?) AND (m.access_expires_at IS NULL OR m.access_expires_at > ?) AND p.deleted_at IS NULL ORDER BY m.accepted_at DESC"
   )
     .bind(email, nowIso(), nowIso())
     .all();
@@ -1124,6 +1127,13 @@ export async function handleTeamMemberships(request, env) {
       projectName: r.project_name || 'Cloud project',
       ownerName: r.owner_name || 'Owner',
       role: r.role,
+      // The shared card mirrors the owner's card: the same status vocabulary,
+      // the same "last saved" line, and an honest note when the owner has not
+      // pushed a snapshot yet (opening it would otherwise bounce the member
+      // back to the launcher with no explanation).
+      status: normaliseProjectStatus(r.status),
+      updatedAt: r.updated_at || null,
+      hasSnapshot: !!r.latest_r2_key,
       scope: teamScopeForRole(r.role, parseScope(r.scope), parseTeamMatrix(r.perm)),
       perm: parseTeamMatrix(r.perm) || teamMatrixForRole(r.role, parseScope(r.scope)),
       accessExpiresAt: r.access_expires_at || null,

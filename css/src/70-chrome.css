@@ -240,10 +240,10 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta {
     justify-content: center;
     width: 38px;
     height: 38px;
-    border: 1px solid var(--db-border);
-    background: var(--db-surface);
-    color: var(--db-accent);
-    border-radius: var(--radius);
+    border: none;
+    background: transparent;
+    color: var(--db-text-secondary);
+    border-radius: var(--radius-control);
     cursor: pointer;
     flex-shrink: 0;
   }
@@ -465,9 +465,9 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
     justify-content: center;
     width: 38px;
     height: 38px;
-    border: 1px solid var(--border);
-    background: var(--card);
-    color: var(--gold-text);
+    border: none;
+    background: transparent;
+    color: var(--slate);
     border-radius: var(--radius-control);
     cursor: pointer;
     flex-shrink: 0;

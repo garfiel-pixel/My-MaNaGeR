@@ -604,7 +604,14 @@
              is one tap; every rate it holds is still yours to change. -->
         <button type="button" class="btn btn-n btn-s" data-action="calcBookPick" title="Load the My MaNaGeR Rate Book 2025-2027"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> Rate book</button>
         <button type="button" class="btn btn-n btn-s" data-action="calcBookClear" title="Stop using the active rate book">Use model rates</button>
-        <input type="file" id="calc-book-file" accept="application/json,.json" hidden>
+        <!-- OWNER 2026-11-17: upload your OWN rate book in any common
+             format. Every rate line is read on this device and listed as its
+             own group in the rate picker, so a line names the exact rate it
+             used. The JSON Import above stays for My MaNaGeR exports. -->
+        <button type="button" class="btn btn-n btn-s" data-action="calcBookUpload" title="Upload your own rate book - spreadsheet, PDF, Word, CSV or text"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Upload my rate book</button>
+        <select id="calc-ubook-select" data-action="calcUbookPick" aria-label="Apply one of your own uploaded rate books"></select>
+        <button type="button" class="btn btn-n btn-s" id="calc-ubook-remove" data-action="calcUbookRemove" title="Remove the active uploaded rate book from this device" hidden>Remove my book</button>
+        <input type="file" id="calc-book-file" accept=".json,.xlsx,.docx,.pdf,.csv,.txt,.md,application/json,application/pdf,text/csv,text/plain" hidden>
       </div>
       <p class="bcp-jm-note" id="calc-book-expired" hidden></p>
 
@@ -991,10 +998,11 @@
 <script src="js/mmgr-viewport.js?v=1"></script>
 <script src="js/mmgr-perf.js?v=2"></script>
 <script src="js/mmgr-glass.js?v=2"></script>
-<script src="js/xlsx-lite.js?v=1"></script>
+<script src="js/xlsx-lite.js?v=2"></script>
+<script src="js/book-import.js?v=1"></script>
 <script src="js/mmgr-combobox.js?v=2"></script>
-<script src="js/calculator-page.js?v=51"></script>
-<script src="js/calc-ai.js?v=11"></script>
+<script src="js/calculator-page.js?v=55"></script>
+<script src="js/calc-ai.js?v=12"></script>
 <!-- AUDIT 2026-10-18 M-5: keyboard shortcuts + the shortcut sheet.
      Its own script tag (not in the bundle) so the CSP inline-script
      hashes never move. -->

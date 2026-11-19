@@ -136,25 +136,88 @@ const check = (name, val, detail) => {
   );
 };
 
-/* ---- RB-1 (2026-10-25): the rate book is signed-in data now --------------
-   The 811 rates used to be a public script the page injected. They come from
-   GET /api/ratebook behind a session, and the page keeps its own offline copy
-   in the Cache API (mmgr-ratebook-v1). serve.cjs is static-only, so it cannot
-   answer that route - the harness seeds the SAME offline copy a signed-in
-   first load would leave behind, using the generated module the Worker
-   imports. The offline families (UR6, JP7) then delete that copy and block
-   the route, which is exactly the "cannot load the book" state they test. */
-function loadRatebook() {
-  const src = fs.readFileSync(path.join(ROOT, 'src', 'data', 'ratebook.js'), 'utf8');
-  const key = 'export const RATEBOOK = ';
-  const at = src.indexOf(key);
-  const end = src.lastIndexOf('};');
-  if (at < 0 || end < 0) {
-    throw new Error('src/data/ratebook.js shape changed');
+/* ---- OWNER 2026-11-17: a .docx built here, so the Word upload path is
+   exercised with a REAL OOXML table instead of a mock. A stored ZIP needs
+   nothing but a CRC - the same primitive the app's writer uses. */
+function crc32buf(buf) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) {
+    crc ^= buf[i];
+    for (let k = 0; k < 8; k++) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
   }
-  return new Function('return ' + src.slice(at + key.length, end + 1))();
+  return (crc ^ 0xffffffff) >>> 0;
 }
-const RATEBOOK_BODY = JSON.stringify({ ok: true, book: loadRatebook() });
+function storedZip(files) {
+  const parts = [];
+  const central = [];
+  let off = 0;
+  files.forEach(f => {
+    const name = Buffer.from(f.name, 'utf8');
+    const data = Buffer.from(f.data, 'utf8');
+    const crc = crc32buf(data);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0);
+    lh.writeUInt16LE(20, 4);
+    lh.writeUInt32LE(crc, 14);
+    lh.writeUInt32LE(data.length, 18);
+    lh.writeUInt32LE(data.length, 22);
+    lh.writeUInt16LE(name.length, 26);
+    parts.push(lh, name, data);
+    const cd = Buffer.alloc(46);
+    cd.writeUInt32LE(0x02014b50, 0);
+    cd.writeUInt16LE(20, 4);
+    cd.writeUInt16LE(20, 6);
+    cd.writeUInt32LE(crc, 16);
+    cd.writeUInt32LE(data.length, 20);
+    cd.writeUInt32LE(data.length, 24);
+    cd.writeUInt16LE(name.length, 28);
+    cd.writeUInt32LE(off, 42);
+    central.push(cd, name);
+    off += 30 + name.length + data.length;
+  });
+  const cdBuf = Buffer.concat(central);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(files.length, 8);
+  eocd.writeUInt16LE(files.length, 10);
+  eocd.writeUInt32LE(cdBuf.length, 12);
+  eocd.writeUInt32LE(off, 16);
+  return Buffer.concat(parts.concat([cdBuf, eocd]));
+}
+function buildDocx(rows) {
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const tr = cells =>
+    '<w:tr>' +
+    cells
+      .map(
+        c =>
+          '<w:tc><w:tcPr><w:tcW w:w="2400" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>' +
+          esc(c) +
+          '</w:t></w:r></w:p></w:tc>'
+      )
+      .join('') +
+    '</w:tr>';
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+    '<w:tbl>' +
+    rows.map(tr).join('') +
+    '</w:tbl></w:body></w:document>';
+  return storedZip([
+    { name: '[Content_Types].xml', data: '<?xml version="1.0"?><Types/>' },
+    { name: 'word/document.xml', data: xml }
+  ]);
+}
+
+/* ---- OWNER 2026-11-17: the rate book is a first-party TRADE SECRET --------
+   There is no whole-book route and no whole-book cache any more. The picker
+   shows the 100 planning rows shipped inline (all 11 trades); a priced line
+   resolves only its own single rate by id (GET /api/ratebook/rate/:id), kept
+   per-id in mmgr-ratebook-v2. serve.cjs is static-only, so the picker needs
+   no seed at all - the offline families (UR6, JP7) still clear the v2 cache
+   and block the route to prove the inline floor carries the whole workflow. */
 
 function chromePath() {
   return require('./chrome-launcher.cjs').chromePath;
@@ -266,19 +329,13 @@ async function withChrome(fn) {
     // copy. The seed writes the byte-for-byte shape a signed-in first load
     // leaves in the Cache API, so every "the full book is open" gate measures
     // the real 811 rows without a network route serve.cjs does not have.
-    const seedRatebook = () =>
-      ev(`(async function(){
-        try {
-          var c = await caches.open('mmgr-ratebook-v1');
-          await c.put('/api/ratebook', new Response(${JSON.stringify(RATEBOOK_BODY)}, {
-            headers: { 'Content-Type': 'application/json; charset=utf-8' }
-          }));
-          return true;
-        } catch (e) { return String((e && e.message) || e); }
-      })()`);
+    // OWNER 2026-11-17: nothing is seeded any more - the picker reads the 100
+    // inline rows. These stay as named no-op/clear seams so the offline
+    // families keep exercising a cold cache without a whole-book copy.
+    const seedRatebook = () => Promise.resolve(true);
     const clearRatebook = () =>
       ev(`(async function(){
-        try { return await caches.delete('mmgr-ratebook-v1'); } catch (e) { return false; }
+        try { return await caches.delete('mmgr-ratebook-v2'); } catch (e) { return false; }
       })()`);
 
     // ---------- CALCULATOR PAGE ----------
@@ -1903,12 +1960,12 @@ async function withChrome(fn) {
       return { names: names.join(','), n: names.length, allSections: names.every(function(k){ return c[k] && typeof c[k] === 'object' && 'updatedAt' in c[k] && 'val' in c[k]; }), stamps: names.every(function(k){ return typeof c[k].updatedAt === 'number'; }) };
     })()`);
     check(
-      'WS1 wsCollect returns all ten sections each carrying an updatedAt stamp (sheets + fx + books follow the account)',
+      'WS1 wsCollect returns all eleven sections each carrying an updatedAt stamp (sheets + fx + books + your own uploaded books follow the account)',
       ws1 &&
-        ws1.n === 10 &&
+        ws1.n === 11 &&
         ws1.allSections &&
         ws1.stamps &&
-        ws1.names === 'estimates,boq,history,packs,rollup,brand,sheets,docCounter,fx,books',
+        ws1.names === 'estimates,boq,history,packs,rollup,brand,sheets,docCounter,fx,books,ubooks',
       ws1
     );
     const ws2 = await ev(`(function(){
@@ -2889,7 +2946,7 @@ async function withChrome(fn) {
       var E = __calcEngine;
       E.importBooks(E.bookPayload());
       var books = JSON.parse(localStorage.getItem('mmgr_calc_books') || '[]');
-      var jb = books.filter(function(b) { return b.name === 'Jamaica rate book 2025-2027'; })[0];
+      var jb = books.filter(function(b) { return b.name === 'My MaNaGeR Rate Book 2025-2027'; })[0];
       if (!jb) return { bookActive: false };
       E.setActiveBook(jb.id);
       // Re-run the prefill through the real form so the honest note is painted.
@@ -3344,41 +3401,31 @@ async function withChrome(fn) {
       window.__MMGR_RR_AUTH = 'in';
       return true;
     })()`);
-    // The full 811-rate book is fetched LAZILY on first open (so a slow
-    // connection is not held up by 16 KB of rates nobody has asked for yet),
-    // which means the first paint is the 100-row inline fallback. This helper
-    // waits for the real book to land and the card to re-render, so the gates
-    // below measure the thing a user actually ends up looking at.
-    // RB-1: seed the signed-in offline copy first (see seedRatebook above).
+    // OWNER 2026-11-17: there is no whole-book load. The card paints the 100
+    // inline planning rows immediately; no cache seed, no fetch, no wait.
     const rbSeed = await seedRatebook();
-    check(
-      'RB0a the offline rate-book copy seeds from the generated module',
-      rbSeed === true,
-      rbSeed
-    );
-    const rrWait = `
-      (async function(){
-        // The book loads lazily on FIRST OPEN, so the card has to be open
-        // before there is anything to wait for.
-        if (!document.getElementById('calc-ratebook-card')) {
-          document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
-        }
-        var t0 = Date.now();
-        while (!window.MMGR_RATEBOOK && Date.now() - t0 < 8000) {
-          await new Promise(r => setTimeout(r, 100));
-        }
-        return !!window.MMGR_RATEBOOK;
-      })()`;
-    const rbFull = await ev(rrWait);
-    check('RB0 the full 811-rate book loads when the card opens', rbFull === true, rbFull);
-    // Re-open so the card renders against the loaded data.
+    check('RB0a the picker needs no whole-book seed (inline rows only)', rbSeed === true, rbSeed);
     await ev(`(function(){
       var c = document.getElementById('calc-ratebook-card');
-      if (c) c.remove();
-      document.body.classList.remove('rr-open');
+      if (c) { c.remove(); document.body.classList.remove('rr-open'); }
       document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
       return true;
     })()`);
+    await delay(250);
+    const rb0 = await ev(`(function(){
+      var c = document.getElementById('calc-ratebook-card');
+      if (!c) return { open: false };
+      return {
+        open: true,
+        rows: c.querySelectorAll('tbody tr:not(.rr-trade)').length,
+        groups: c.querySelectorAll('tbody tr.rr-trade').length
+      };
+    })()`);
+    check(
+      'RB0 the card opens on the 100 inline planning rows (no whole-book load)',
+      rb0 && rb0.open && rb0.rows === 100,
+      rb0
+    );
     const rb2 = await ev(`(function(){
       var c = document.getElementById('calc-ratebook-card');
       if (!c) return { open: false };
@@ -3417,8 +3464,8 @@ async function withChrome(fn) {
       rb2
     );
     check(
-      'RB3 the card opens on the FULL 811-rate book across 11 trade groups',
-      rb2 && rb2.rows === 811 && rb2.groups === 11,
+      'RB3 the card opens on the 100 inline planning rows across 11 trade groups',
+      rb2 && rb2.rows === 100 && rb2.groups === 11,
       { rows: rb2 && rb2.rows, groups: rb2 && rb2.groups }
     );
     // OWNER 2026-10-02: the count sentence is GONE by request, so this gate now
@@ -3477,7 +3524,7 @@ async function withChrome(fn) {
       return { toggled: true, rowCount: after,
                firstUnit: first ? first.children[2].textContent : '', units: units.slice(0, 4),
                metricActive: metricActive, impActive: impActive,
-               sameRowCount: after === before && after > 100 };
+               sameRowCount: after === before && after >= 100 };
     })()`);
     check(
       'RB6 the imperial toggle flips the units and keeps every row',
@@ -3557,20 +3604,13 @@ async function withChrome(fn) {
         var c = document.getElementById('calc-ratebook-card');
         if (c) { c.remove(); document.body.classList.remove('rr-open'); }
         document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
-        var t0 = Date.now();
-        while (!window.MMGR_RATEBOOK && Date.now() - t0 < 8000) {
-          await new Promise(r => setTimeout(r, 100));
-        }
-        if (!window.MMGR_RATEBOOK) return false;
-        // Re-render once the book is in, the same way a returning user sees it.
+        await new Promise(r => setTimeout(r, 150));
         c = document.getElementById('calc-ratebook-card');
-        if (c) { c.remove(); document.body.classList.remove('rr-open'); }
-        document.querySelector('.bcp-ratebook[data-action="openRateBook"]').click();
-        return true;
+        return !!(c && c.querySelectorAll('tbody tr:not(.rr-trade)').length === 100);
       })()`;
     const rbSearchOpen = await ev(rbOpen);
     check(
-      'RB13 the rate book card reopens with the full book loaded',
+      'RB13 the rate book card reopens on the 100 inline planning rows',
       rbSearchOpen === true,
       rbSearchOpen
     );
@@ -3628,15 +3668,14 @@ async function withChrome(fn) {
       b.click();
       var c = document.getElementById('calc-ratebook-card');
       var rows = c.querySelectorAll('tbody tr:not(.rr-trade)');
-      var nonWelding = Array.prototype.filter.call(rows, function (tr) {
-        return !/^Welding #/.test((tr.querySelector('.rr-ref')||{}).textContent || '');
-      }).length;
-      return { ok: true, rows: rows.length, nonWelding: nonWelding,
+      var head = c.querySelector('tbody tr.rr-trade th');
+      return { ok: true, rows: rows.length,
+               head: head ? head.textContent.trim() : '',
                groups: c.querySelectorAll('tbody tr.rr-trade').length };
     })()`);
     check(
-      'RB16 the trade picker scopes the book to one trade (Welding, 100 rows)',
-      rbS3 && rbS3.ok && rbS3.rows === 100 && rbS3.nonWelding === 0 && rbS3.groups === 1,
+      'RB16 the trade picker scopes the book to one trade (Welding, 9 inline rows)',
+      rbS3 && rbS3.ok && rbS3.rows === 9 && /^Welding/.test(rbS3.head || '') && rbS3.groups === 1,
       rbS3
     );
     const rbS4 = await ev(rbType('198'));
@@ -3652,7 +3691,10 @@ async function withChrome(fn) {
       rbS5 && rbS5.ok && rbS5.hits === 0 && rbS5.emptyShown,
       rbS5
     );
-    // The 'C' marker: 711 of the 811 rates are ours, and the legend must say so.
+    // OWNER 2026-11-17: the picker shows the 100 printed planning rows, all of
+    // them standard (no converted 'C' rows); the hidden converted rows are no
+    // longer rendered, so there are zero C marks here. The legend still
+    // explains the marker if a converted row ever appears.
     const rbS6 = await ev(`(function(){
       var el = document.getElementById('rr-q');
       el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -3666,8 +3708,8 @@ async function withChrome(fn) {
                }) };
     })()`);
     check(
-      'RB19 calculated rates carry the C marker with a legend explaining it',
-      rbS6 && rbS6.cMarks === 711 && rbS6.legend && rbS6.titled,
+      'RB19 the inline set carries no converted rows and the C legend is present',
+      rbS6 && rbS6.cMarks === 0 && rbS6.legend,
       rbS6
     );
     // Close cleanly so the next family starts from a clean page.
@@ -3780,35 +3822,21 @@ async function withChrome(fn) {
       }
       return true;
     })()`);
-    // The assistant's grounding: wait for the full book, then ask in the
-    // site's own word. "cement" must reach concrete/mortar/block rows.
+    // OWNER 2026-11-17: the assistant is NOT given the whole book any more.
+    // The grounding must carry no row/trade counts and no whole-book rows; it
+    // states plainly that only the current estimate's rates are available.
     const wuA = await ev(`(function(){
-      return new Promise(function(res){
-        var t0 = Date.now();
-        var tick = function(){
-          try {
-            var fn = window.MMGR_CALC_RATEBOOK;
-            var txt = typeof fn === 'function' ? (fn('What is the price of cement per cubic metre?') || '') : '';
-            var hasScope = /811/.test(txt);
-            if (hasScope || Date.now() - t0 > 6000) {
-              var rows = txt.split('\\n').filter(function(l){ return l.indexOf(' | J$') > -1; });
-              res({ rows: rows.length, hit: /concrete|block|mortar/i.test(txt), scope: hasScope,
-                    first: rows[0] ? rows[0].slice(0, 90) : null });
-              return;
-            }
-            if (typeof window.MMGR_BOOK_FULL_LOAD === 'function') window.MMGR_BOOK_FULL_LOAD(function(){});
-          } catch (e) {
-            res({ err: String((e && e.message) || e) });
-            return;
-          }
-          setTimeout(tick, 500);
-        };
-        tick();
-      });
+      var fn = window.MMGR_CALC_RATEBOOK;
+      var txt = typeof fn === 'function' ? (fn('What is the price of cement per cubic metre?') || '') : '';
+      return {
+        noScope: txt.indexOf('811') === -1 && txt.indexOf('rates across') === -1,
+        honest: /Only the rates on the current estimate/i.test(txt),
+        hasRows: / \\| J\\$/.test(txt)
+      };
     })()`);
     check(
-      'WU4 assistant grounding: "cement" reaches concrete/mortar/block rates, full-book scope visible',
-      wuA && wuA.scope && wuA.rows > 0 && wuA.hit,
+      'WU4 assistant grounding is scoped to the current estimate (no whole-book scope or row dump)',
+      wuA && wuA.noScope && wuA.honest,
       wuA
     );
 
@@ -3828,7 +3856,7 @@ async function withChrome(fn) {
     })()`);
     const urOpenOk = await ev(rbOpen);
     check(
-      'UR0 the book reopens with the full 811-row payload for the row-action family',
+      'UR0 the book reopens on the 100 inline planning rows for the row-action family',
       urOpenOk === true,
       urOpenOk
     );
@@ -3849,11 +3877,11 @@ async function withChrome(fn) {
       };
     })()`);
     check(
-      'UR1 all 811 rows carry a Use action (header Ref/Description/Unit/Rate/Use, named SVG button per row)',
+      'UR1 all 100 inline rows carry a Use action (header Ref/Description/Unit/Rate/Use, named SVG button per row)',
       ur1 &&
         ur1.heads.join(',') === 'Ref,Description,Unit,Rate,Use' &&
-        ur1.rows === 811 &&
-        ur1.btns === 811 &&
+        ur1.rows === 100 &&
+        ur1.btns === 100 &&
         ur1.aria.indexOf('Use ') === 0 &&
         ur1.icon,
       ur1
@@ -3865,7 +3893,7 @@ async function withChrome(fn) {
     // Self-computing: the row's own displayed cells are the expected values.
     await ev(`(function(){
       var q = document.getElementById('rr-q');
-      q.value = '1/8" thick metal using torch';
+      q.value = '1/8 in thick metal using torch';
       q.dispatchEvent(new Event('input', { bubbles: true }));
       return true;
     })()`);
@@ -3892,7 +3920,7 @@ async function withChrome(fn) {
       'UR2 Use prefills Custom from the shown row: ref-first name <=60, shown unit + rate, qty cleared, popup closed, focus in quantity',
       ur2 &&
         ur2.hits === 1 &&
-        ur2.refCell === 'Welding #1' &&
+        ur2.refCell === 'Book #1' &&
         ur2.work === 'custom' &&
         ur2.wrap &&
         ur2.name.indexOf(ur2.refCell + ' - ') === 0 &&
@@ -3936,7 +3964,7 @@ async function withChrome(fn) {
         if (!b.classList.contains('active')) { flipped = b.getAttribute('data-units'); b.click(); }
       });
       var q = document.getElementById('rr-q');
-      if (q) { q.value = '1/8" thick metal using torch'; q.dispatchEvent(new Event('input', { bubbles: true })); }
+      if (q) { q.value = '1/8 in thick metal using torch'; q.dispatchEvent(new Event('input', { bubbles: true })); }
       return { flipped: flipped };
     })()`);
     const ur4 = await ev(`(function(){
@@ -4001,7 +4029,7 @@ async function withChrome(fn) {
     })()`);
     check(
       'UR5 the landed bill line carries the book ref for traceability',
-      ur5 && ur5.added && ur5.name.indexOf('Welding #1') > -1,
+      ur5 && ur5.added && ur5.name.indexOf('Book #1') > -1,
       ur5
     );
 
@@ -4554,6 +4582,250 @@ async function withChrome(fn) {
       }
       window.__MMGR_RR_AUTH = null;
       return w ? w.value : null;
+    })()`);
+
+    // OWNER 2026-11-17: a priced book line names the SPECIFIC rate it used.
+    // The stable id (trade + row number), its source and its unit ride
+    // readState, the on-screen notice and the CSV export.
+    const rid = await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      var prevWork = w ? w.value : '';
+      w.value = 'book'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      var t = document.getElementById('calc-book-trade');
+      t.value = 'welding'; t.dispatchEvent(new Event('change',{bubbles:true}));
+      var r = document.getElementById('calc-book-row');
+      if (r && r.options.length) { r.selectedIndex = 0; r.dispatchEvent(new Event('change',{bubbles:true})); }
+      var d = document.getElementById('calc-d1');
+      if (d) { d.value = '2'; d.dispatchEvent(new Event('input',{bubbles:true})); }
+      var run = document.querySelector('[data-action="calcRun"]');
+      if (run) run.click();
+      var st = __calcEngine.readState();
+      var csv = ''; try { csv = (window.MMGR_CALC_FILE() || {}).text || ''; } catch (e) {}
+      var notice = (document.getElementById('calc-rate-notice') || {}).textContent || '';
+      if (w && prevWork) { w.value = prevWork; w.dispatchEvent(new Event('change',{bubbles:true})); }
+      return { rateId: st.rateId, rateSource: st.rateSource, rateUnit: st.rateUnit,
+               csv: csv, notice: notice };
+    })()`);
+    check(
+      'RATEID a priced book line names its specific rate in state, notice and CSV',
+      rid &&
+        rid.rateId === 'welding-1' &&
+        rid.rateSource === 'built-in' &&
+        !!rid.rateUnit &&
+        rid.csv.indexOf('Rate used') > -1 &&
+        rid.csv.indexOf('welding-1') > -1 &&
+        rid.notice.indexOf('welding-1') > -1,
+      rid && {
+        rateId: rid.rateId,
+        rateSource: rid.rateSource,
+        rateUnit: rid.rateUnit,
+        csvHas: rid.csv.indexOf('Rate used') > -1,
+        notice: rid.notice.slice(0, 140)
+      }
+    );
+
+    // ---------- OWNER 2026-11-17: the user's OWN rate book ----------
+    // A CSV of the user's own rates uploads as plain line items, appears as its
+    // own group in the picker, and a line priced from it names the book + row
+    // in state, on the notice and in the CSV - the same "point at the exact
+    // rate" promise the built-in book carries.
+    await ev(`(function(){
+      var txt = 'Item,Unit,Rate\\n"Concrete 25 MPa","m3","18500"\\n"Block 6 inch","each","180"\\n"Excavate soft clay","m3","1200"\\n';
+      var f = new File([txt], 'qa-own-rates.csv', { type: 'text/csv' });
+      var dt = new DataTransfer();
+      dt.items.add(f);
+      var inp = document.getElementById('calc-book-file');
+      inp.files = dt.files;
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    await delay(500);
+    const ub1 = await ev(`(function(){
+      window.__MMGR_RR_AUTH = 'in';
+      var sel = document.getElementById('calc-ubook-select');
+      var w = document.getElementById('calc-work');
+      var prevWork = w ? w.value : '';
+      w.value = 'book'; w.dispatchEvent(new Event('change', { bubbles: true }));
+      var t = document.getElementById('calc-book-trade');
+      var opt = null;
+      for (var i = 0; i < t.options.length; i++) {
+        if (/^My rate book:/.test(t.options[i].textContent)) { opt = t.options[i]; break; }
+      }
+      if (opt) { t.value = opt.value; t.dispatchEvent(new Event('change', { bubbles: true })); }
+      var r = document.getElementById('calc-book-row');
+      if (r && r.options.length) { r.selectedIndex = 0; r.dispatchEvent(new Event('change', { bubbles: true })); }
+      var d = document.getElementById('calc-d1');
+      if (d) { d.value = '3'; d.dispatchEvent(new Event('input', { bubbles: true })); }
+      var run = document.querySelector('[data-action="calcRun"]');
+      if (run) run.click();
+      var st = __calcEngine.readState();
+      var csv = ''; try { csv = (window.MMGR_CALC_FILE() || {}).text || ''; } catch (e) {}
+      var out = {
+        books: sel ? sel.options.length - 1 : -1,
+        ownTrade: opt ? opt.textContent : '',
+        rows: r ? r.options.length : 0,
+        firstRow: r && r.options.length ? r.options[0].textContent : '',
+        rateId: st.rateId, rateSource: st.rateSource, rateBook: st.rateBook,
+        rateRef: st.rateRef, rateUnit: st.rateUnit,
+        notice: (document.getElementById('calc-rate-notice') || {}).textContent || '',
+        csvHas: csv.indexOf('Your rate book') > -1 && csv.indexOf('qa-own-rates') > -1
+      };
+      if (w && prevWork) { w.value = prevWork; w.dispatchEvent(new Event('change', { bubbles: true })); }
+      return out;
+    })()`);
+    check(
+      'UB1 a CSV rate book uploads as its own picker group with one row per rate line',
+      ub1 &&
+        ub1.books === 1 &&
+        /^My rate book: qa-own-rates/.test(ub1.ownTrade) &&
+        ub1.rows === 3 &&
+        /Concrete 25 MPa/.test(ub1.firstRow),
+      ub1
+    );
+    check(
+      'UB2 a line priced from the user book names the book and row in state, notice and CSV',
+      ub1 &&
+        ub1.rateSource === 'uploaded' &&
+        ub1.rateId === '' &&
+        ub1.rateBook === 'qa-own-rates' &&
+        ub1.rateRef === '1' &&
+        !!ub1.rateUnit &&
+        /Your rate book "qa-own-rates" row 1/.test(ub1.notice) &&
+        ub1.csvHas,
+      ub1 && { notice: ub1.notice.slice(0, 160), csvHas: ub1.csvHas, rateBook: ub1.rateBook }
+    );
+
+    // A spreadsheet built by the page's own writer round-trips through the
+    // reader (same ZIP primitives, real .xlsx bytes).
+    await ev(`(function(){
+      var bytes = MMGR.XlsxLite.build([{ name: 'Rates', rows: [
+        ['Item', 'Unit', 'Rate'],
+        ['Roof sheet 0.5 mm', 'm2', 3100],
+        ['Ridge flashing', 'lm', 1450]
+      ] }]);
+      var f = new File([bytes], 'qa-own-sheet.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var dt = new DataTransfer();
+      dt.items.add(f);
+      var inp = document.getElementById('calc-book-file');
+      inp.files = dt.files;
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    await delay(500);
+    const ub3 = await ev(`(function(){
+      var sel = document.getElementById('calc-ubook-select');
+      var active = sel ? sel.value : '';
+      var books = [];
+      try { books = JSON.parse(localStorage.getItem('mmgr_calc_ubooks') || '[]'); } catch (e) {}
+      var b = null;
+      for (var i = 0; i < books.length; i++) { if (books[i].id === active) { b = books[i]; } }
+      return { books: sel ? sel.options.length - 1 : -1,
+               name: b ? b.name : '',
+               rows: b && b.rows ? b.rows.length : -1,
+               first: b && b.rows && b.rows[0] ? b.rows[0].desc : '',
+               rate: b && b.rows && b.rows[0] ? b.rows[0].rate : NaN,
+               unit: b && b.rows && b.rows[0] ? b.rows[0].unit : '' };
+    })()`);
+    check(
+      'UB3 an .xlsx rate book reads its rows (description, unit, rate) from a real spreadsheet',
+      ub3 &&
+        ub3.books === 2 &&
+        ub3.name === 'qa-own-sheet' &&
+        ub3.rows === 2 &&
+        /Roof sheet/.test(ub3.first) &&
+        ub3.unit === 'm2' &&
+        ub3.rate === 3100,
+      ub3
+    );
+
+    // A real .docx table, uploaded through the file input exactly as a user's
+    // Word file arrives.
+    const docxDir = path.join(ROOT, 'tmp');
+    try {
+      fs.mkdirSync(docxDir, { recursive: true });
+    } catch (e) {}
+    const docxPath = path.join(docxDir, 'qa-own-word.docx');
+    fs.writeFileSync(
+      docxPath,
+      buildDocx([
+        ['Item', 'Unit', 'Rate'],
+        ['Tile adhesive 20 kg', 'bag', '2450'],
+        ['Skim coat', 'm2', '950']
+      ])
+    );
+    const docxB64 = fs.readFileSync(docxPath).toString('base64');
+    await ev(`(function(){
+      var bin = atob(${JSON.stringify(docxB64)});
+      var arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) { arr[i] = bin.charCodeAt(i); }
+      var f = new File([arr], 'qa-own-word.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      var dt = new DataTransfer();
+      dt.items.add(f);
+      var inp = document.getElementById('calc-book-file');
+      inp.files = dt.files;
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    await delay(600);
+    const ub4 = await ev(`(function(){
+      var sel = document.getElementById('calc-ubook-select');
+      var active = sel ? sel.value : '';
+      var books = [];
+      try { books = JSON.parse(localStorage.getItem('mmgr_calc_ubooks') || '[]'); } catch (e) {}
+      var b = null;
+      for (var i = 0; i < books.length; i++) { if (books[i].id === active) { b = books[i]; } }
+      return { books: sel ? sel.options.length - 1 : -1,
+               name: b ? b.name : '',
+               rows: b && b.rows ? b.rows.length : -1,
+               first: b && b.rows && b.rows[0] ? b.rows[0].desc : '',
+               rate: b && b.rows && b.rows[0] ? b.rows[0].rate : NaN };
+    })()`);
+    check(
+      'UB4 a .docx rate book reads the rates out of its Word table',
+      ub4 &&
+        ub4.books === 3 &&
+        ub4.name === 'qa-own-word' &&
+        ub4.rows === 2 &&
+        /Tile adhesive/.test(ub4.first) &&
+        ub4.rate === 2450,
+      ub4
+    );
+
+    // Removing the active book drops it from the picker and from storage.
+    const ub5 = await ev(`(function(){
+      window.__MMGR_RR_AUTH = 'in';
+      document.querySelector('[data-action="calcUbookRemove"]').click();
+      var sel = document.getElementById('calc-ubook-select');
+      var books = [];
+      try { books = JSON.parse(localStorage.getItem('mmgr_calc_ubooks') || '[]'); } catch (e) {}
+      var w = document.getElementById('calc-work');
+      w.value = 'book'; w.dispatchEvent(new Event('change', { bubbles: true }));
+      var t = document.getElementById('calc-book-trade');
+      var own = 0;
+      for (var i = 0; i < t.options.length; i++) {
+        if (/^My rate book:/.test(t.options[i].textContent)) { own++; }
+      }
+      return { books: sel ? sel.options.length - 1 : -1, stored: books.length, own: own };
+    })()`);
+    check(
+      'UB5 removing an uploaded book drops it from storage and the picker falls back to the next one',
+      ub5 && ub5.books === 2 && ub5.stored === 2 && ub5.own === 1,
+      ub5
+    );
+    // Leave the device as the later families expect it: no uploaded book.
+    await ev(`(function(){
+      try {
+        localStorage.removeItem('mmgr_calc_ubooks');
+        localStorage.removeItem('mmgr_calc_ubook_active');
+      } catch (e) {}
+      var sel = document.getElementById('calc-ubook-select');
+      if (sel) { sel.innerHTML = '<option value="">My rate book (none uploaded)</option>'; }
+      var rm = document.getElementById('calc-ubook-remove');
+      if (rm) { rm.hidden = true; }
+      var w = document.getElementById('calc-work');
+      if (w && w.value === 'book') { w.value = 'slab'; w.dispatchEvent(new Event('change', { bubbles: true })); }
+      window.__MMGR_RR_AUTH = null;
+      return true;
     })()`);
 
     // ---------- F4 ENHANCEMENTS ----------

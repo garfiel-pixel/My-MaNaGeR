@@ -18,9 +18,12 @@
    is not a static asset (src/ is excluded in .assetsignore) and it
    is not in the service-worker shell.
 
-   Offline still works: the calculator stores the fetched book in
-   the Cache API (mmgr-ratebook-v1) on the first signed-in load, so
-   the book opens with no network afterwards.
+   OWNER 2026-11-17: this is My MaNaGeR's OWN first-party rate book,
+   not third-party data. It is a trade secret: no endpoint serves the whole
+   book. The Worker exposes a signed-in, rate-limited single-rate lookup
+   (GET /api/ratebook/rate/:id) and the calculator caches only the ids a
+   line actually used (Cache API mmgr-ratebook-v2), so offline lines keep
+   their rate without a downloadable copy of the book.
 
    RULE 7 (no emoji on a served page) is enforced HERE rather than
    trusted to memory: the source doc uses the heavy check mark
@@ -39,10 +42,10 @@
    marker for C so the user knows which numbers are the book's own and which
    we derived.
 
-   `RATEBOOK_PROVENANCE` is the private record the directive asks for
-   (3.3): it names the source, the edition and the permission status,
-   is NEVER put in the API response, and is never rendered to a user.
-   Removing it later is the owner's decision, not a code cleanup.
+   `RATEBOOK_PROVENANCE` is the private ownership record: the book is
+   first-party (My MaNaGeR's own, adjusted from a baseline), status
+   'first-party'. It is NEVER put in the API response and never rendered
+   to a user. Changing it is the owner's decision, not a code cleanup.
 
    Usage:  node tools/gen-ratebook.cjs           (write the file)
            node tools/gen-ratebook.cjs --check   (verify in sync)
@@ -228,24 +231,23 @@ function render(rows) {
     '   Verify in sync with: node tools/gen-ratebook.cjs --check\n' +
     '   811 rates across 11 trades. Carries no emoji (AGENTS rule 7).\n' +
     '\n' +
-    '   PRIVATE (RB-1): imported by src/ratebook.js and served ONLY by\n' +
-    '   GET /api/ratebook behind a signed-in session. Not a static asset and\n' +
-    '   not in the service-worker shell. The calculator caches it in the Cache\n' +
-    '   API (mmgr-ratebook-v1) for offline use and clears that on sign-out. */\n' +
+    "   OWNER 2026-11-17: My MaNaGeR's OWN first-party rate book and a trade\n" +
+    '   secret. Imported by src/ratebook.js, which serves only a signed-in,\n' +
+    '   rate-limited single-rate lookup (GET /api/ratebook/rate/:id). No\n' +
+    '   endpoint returns the whole book. Not a static asset and not in the\n' +
+    '   service-worker shell. The calculator caches only the ids a line used\n' +
+    '   (Cache API mmgr-ratebook-v2) and clears that on sign-out. */\n' +
     '\n';
   const provenance =
-    '/* Provenance record, REQUIRED by REFINEMENT-DIRECTIVE-2026-10-24 3.3.\n' +
-    '   Never served to a user and never rendered: while `status` is not\n' +
-    "   'rebuilt', the served copy keeps the source line and makes no claim\n" +
-    '   that the figures are independently produced. The owner changes this\n' +
-    '   value deliberately, with advice; it is not a code cleanup. */\n' +
+    "/* Provenance: My MaNaGeR's OWN first-party rate book. Adjusted from a\n" +
+    '   standard baseline; not third-party data. Never served to a user and\n' +
+    '   never rendered. The owner sets this deliberately, not as a cleanup. */\n' +
     'export const RATEBOOK_PROVENANCE = {\n' +
-    "  source: 'RATE-BOOK-2025-2027-FULL.md',\n" +
-    "  publisher: 'Jamaica Institute of Construction',\n" +
+    "  publisher: 'My MaNaGeR',\n" +
     "  edition: '" +
     data.years +
     "',\n" +
-    "  status: 'unresolved' // unresolved | permission-granted | rebuilt\n" +
+    "  status: 'first-party' // first-party | rebuilt\n" +
     '};\n' +
     '\n';
   const body =

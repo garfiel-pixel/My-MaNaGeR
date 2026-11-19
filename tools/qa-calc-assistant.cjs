@@ -1320,10 +1320,6 @@ async function partARateAccess(browser, errors) {
     BOOK.rows.length === 811 && BOOK.trades.length === 11,
     { rows: BOOK.rows.length, trades: BOOK.trades.length }
   );
-  const counts = {};
-  BOOK.rows.forEach(r => {
-    counts[r.t] = (counts[r.t] || 0) + 1;
-  });
 
   // ---- N1 / N2 / N7 / N9: one fresh profile, scripted relay --------------
   {
@@ -1340,93 +1336,69 @@ async function partARateAccess(browser, errors) {
     await mockRatebook(page, BOOK);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
-    // A1: the panel mount starts the ONE full-book loader; give the mocked
-    // API a moment so the first question is answered from all 811 rows.
-    await page
-      .waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 })
-      .catch(() => {});
 
+    // OWNER 2026-11-17: the assistant is NOT given the whole book. The block
+    // carries no row/trade counts and no whole-book rows; it states plainly
+    // that only the current estimate's rates are available.
     await sendQ(page, 'what rates do you have');
     const sys1 = sysOf(bodies[bodies.length - 1]);
     const rb1 = rateBlock(sys1);
     check(
-      'N1 the scope line says 811 rates across 11 trades',
-      rb1.indexOf('811 rates across 11 trades') > -1,
+      'N1 the rate block carries no whole-book count or trade list',
+      rb1.indexOf('811') === -1 && rb1.indexOf('rates across') === -1,
       rb1.slice(0, 160)
     );
-    const missing = BOOK.trades
-      .filter(t => !rb1.includes(t.label + ' ' + counts[t.tid]))
-      .map(t => t.label + ' ' + counts[t.tid]);
-    check('N1 all 11 trade names appear with their counts', missing.length === 0, missing);
+    check(
+      'N1 the rate block says it is scoped to the current estimate',
+      /Only the rates on the current estimate/i.test(rb1),
+      rb1.slice(0, 200)
+    );
+    check(
+      'N1 a generic question dumps no whole-book rows',
+      !/ \| J\$/.test(rb1),
+      rb1.slice(0, 200)
+    );
     check('N1 never "Active rate book: none"', sys1.indexOf('Active rate book: none') < 0);
 
+    // N2: a question about a specific book row must NOT surface it - that row
+    // is not on the estimate, so it was never sent.
     await sendQ(page, 'rate for excavation in stiff clay');
     const rb2 = rateBlock(sysOf(bodies[bodies.length - 1]));
-    const firstRow2 = rb2.split('\n').find(l => l.indexOf(' | ') > -1) || '';
-    const stiff = BOOK.rows.find(r => /stiff clay/i.test(r.d || ''));
-    check('N2 the first rate line is the stiff clay row', /stiff clay/i.test(firstRow2), firstRow2);
+    const stiffRow = rb2.split('\n').filter(l => l.indexOf(' | J$') > -1 && /stiff clay/i.test(l));
     check(
-      'N2 its metric rate comes from the file, not the test',
-      !!stiff && firstRow2.indexOf('J$' + stiff.mr + ' per ' + stiff.mu) > -1,
-      { row: firstRow2, file: stiff ? { mr: stiff.mr, mu: stiff.mu } : null }
+      'N2 a book-only question does not leak the stiff clay rate row',
+      stiffRow.length === 0,
+      stiffRow.slice(0, 2)
     );
-    // 5.5: the manual spot check - the first five rate lines of the request
-    // that was actually captured off the wire.
-    const five = rb2
-      .split('\n')
-      .filter(l => l.indexOf(' | ') > -1)
-      .slice(0, 5);
-    log('5.5 first five rate lines: ' + JSON.stringify(five));
+    check(
+      'N2 the block still states its current-estimate scope',
+      /Only the rates on the current estimate/i.test(rb2),
+      rb2.slice(0, 200)
+    );
 
-    // N3: one representative question per trade - a row OF that trade first.
+    // N3: no per-trade query can mine that trade's rows out of the block.
     const n3bad = [];
     for (const t of BOOK.trades) {
-      const first = await page.evaluate(q => {
-        const row =
-          window
-            .MMGR_CALC_RATEBOOK(q)
-            .split('\n')
-            .find(l => l.indexOf(' | ') > -1) || '';
-        return row.split(' #')[0];
-      }, t.label.toLowerCase());
-      if (first.toLowerCase().indexOf(t.label.toLowerCase()) < 0) {
-        n3bad.push({ trade: t.label, first });
+      const txt = await page.evaluate(q => window.MMGR_CALC_RATEBOOK(q), t.label.toLowerCase());
+      if (/ \| J\$/.test(txt)) {
+        n3bad.push({ trade: t.label, sample: txt.slice(0, 120) });
       }
     }
-    check('N3 each of the 11 trades returns a row of that trade first', n3bad.length === 0, n3bad);
+    check('N3 no trade query leaks a book row', n3bad.length === 0, n3bad);
 
-    // N4: everyday questions land on a relevant row.
+    // N4: everyday questions do not leak rows either.
     const n4 = await page.evaluate(() => {
-      const first = q =>
-        window
-          .MMGR_CALC_RATEBOOK(q)
-          .split('\n')
-          .find(l => l.indexOf(' | ') > -1) || '';
-      return {
-        block: first('block walls'),
-        paint: first('painting walls'),
-        tiles: first('tiles')
-      };
+      const has = q => / \| J\$/.test(window.MMGR_CALC_RATEBOOK(q));
+      return { block: has('block walls'), paint: has('painting walls'), tiles: has('tiles') };
     });
-    check(
-      'N4 "block walls" lands on a block-and-wall row',
-      /block/i.test(n4.block) && /wall/i.test(n4.block),
-      n4.block
-    );
-    check(
-      'N4 "painting walls" lands on a paint-and-wall row',
-      /paint/i.test(n4.paint) && /wall/i.test(n4.paint),
-      n4.paint
-    );
-    check('N4 "tiles" lands on a tile row', /tile/i.test(n4.tiles), n4.tiles);
+    check('N4 no everyday question leaks a book row', !n4.block && !n4.paint && !n4.tiles, n4);
 
-    // N7: the section never exceeds 9000 characters and no row is cut.
-    const rowLines = rb2.split('\n').filter(l => l.indexOf(' | ') > -1);
+    // N7: the section stays small and never exceeds 9000 characters.
     check('N7 the rate section never exceeds 9000 characters', rb2.length <= 9000, rb2.length);
     check(
-      'N7 no row is cut mid-line',
-      rowLines.length > 0 && rowLines.every(l => /in calculator: (yes|no)$/.test(l)),
-      rowLines.slice(-2)
+      'N7 the rate section carries no truncated row',
+      rb2.indexOf('in calculator:') === -1 || /in calculator: (yes|no)$/.test(rb2.trim()),
+      rb2.slice(-160)
     );
 
     // N9 (re-baselined 2026-10-18, audit C8): the PROPOSAL instruction now
@@ -1490,23 +1462,17 @@ async function partARateAccess(browser, errors) {
     await mockRatebook(page, BOOK);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
-    await page
-      .waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 })
-      .catch(() => {});
+    // OWNER 2026-11-17: the user's own imported book is named, but its rows
+    // are sent only when a line actually uses one - not as a browsable dump.
     const n5 = await page.evaluate(q => {
-      const lines = window.MMGR_CALC_RATEBOOK(q).split('\n');
-      const imp = lines.findIndex(l => l.indexOf('source: Owner import') > -1);
-      const bookLine = lines.findIndex(
-        l => l.indexOf('source: published book ') > -1 && l.indexOf(q.slice(0, 18)) > -1
-      );
-      return { imp, book: bookLine, impLine: lines[imp] || '', bookLine: lines[bookLine] || '' };
+      const txt = window.MMGR_CALC_RATEBOOK(q);
+      return {
+        namesActive: /Active rate book: Owner import/.test(txt),
+        leaksRow: /source: Owner import/.test(txt) && / \| J\$/.test(txt)
+      };
     }, same.d);
-    check('N5 both sources appear for the same item', n5.imp > -1 && n5.book > -1, n5);
-    check(
-      'N5 the imported row is listed first',
-      n5.imp > -1 && n5.book > -1 && n5.imp < n5.book,
-      n5
-    );
+    check('N5 the active imported book is named', n5.namesActive, n5);
+    check('N5 imported rows are not dumped unless a line uses one', !n5.leaksRow, n5);
     await ctx.close();
   }
 
@@ -1516,9 +1482,9 @@ async function partARateAccess(browser, errors) {
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('calc(partA-n6): ' + String(e).slice(0, 140)));
     await mockAuth(page);
-    // RB-1: the book now arrives from GET /api/ratebook, so that is the call
-    // a dead network kills. The failure contract is unchanged and is what this
-    // gate protects: one honest line, the 100 inline rows, and no hang.
+    // OWNER 2026-11-17: with the rate API blocked the assistant must still
+    // answer, and the block must keep its honest current-estimate scope. There
+    // is no "the full rate book could not load" line any more.
     await page.route('**/api/ratebook*', route => route.abort());
     const bodies = await mockRelay(page, () => 'Masonry starts with the block work rows.');
     await seedCalcFx(page);
@@ -1526,9 +1492,11 @@ async function partARateAccess(browser, errors) {
     await page.waitForFunction(() => !!window.MMGR_CALC_RATEBOOK, null, { timeout: 20000 });
     await sendQ(page, 'what rates do you have for masonry');
     const rb = rateBlock(sysOf(bodies[bodies.length - 1]));
-    const FAIL =
-      'The full rate book could not load on this device; only the rates already on this page are available.';
-    check('N6 the exact A2 failure line is sent', rb.indexOf(FAIL) > -1, rb.slice(0, 200));
+    check(
+      'N6 the block keeps its current-estimate scope when the API is blocked',
+      /Only the rates on the current estimate/i.test(rb),
+      rb.slice(0, 200)
+    );
     const ai = await page.evaluate(
       () => document.querySelectorAll('.bcp-ai-log .bcp-ai-msg.ai').length
     );
@@ -1536,12 +1504,10 @@ async function partARateAccess(browser, errors) {
     await ctx.close();
   }
 
-  // ---- N8: ONE load, even with the assistant AND the card open ------------
-  // RB-1 re-baseline: there is no rate-data script tag any more (that was the
-  // leak). The property worth protecting is the same one it protected - the
-  // book is fetched ONCE per page life, not once per consumer - so this counts
-  // the /api/ratebook requests instead of the script tags, and additionally
-  // asserts the retired script tag count is zero.
+  // ---- N8: NO whole-book fetch, even with the assistant AND card open ------
+  // OWNER 2026-11-17: the picker reads the inline rows, so opening it (and the
+  // assistant) must make ZERO /api/ratebook requests. The per-id route is the
+  // only rate path, and only a priced line triggers it.
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
@@ -1574,11 +1540,7 @@ async function partARateAccess(browser, errors) {
       () => document.querySelectorAll('script[src*="rates-full"]').length
     );
     check('N8a no rate-data script tag is injected any more (the RB-1 leak)', tags === 0, tags);
-    check(
-      'N8b exactly one /api/ratebook request for the whole page life',
-      apiCalls === 1,
-      apiCalls
-    );
+    check('N8b no whole-book /api/ratebook request is made at all', apiCalls === 0, apiCalls);
     await ctx.close();
   }
 }
@@ -1929,9 +1891,6 @@ async function partBCustomLine(browser, errors) {
     await mockRatebook(page, BOOK);
     await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!window.MMGR_CALC_POPULATE, null, { timeout: 20000 });
-    await page
-      .waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 })
-      .catch(() => {});
     const rowCount = () =>
       page.evaluate(() => document.querySelectorAll('[data-action="calcBoqRecall"]').length);
     const lastNote = () =>
@@ -2034,17 +1993,18 @@ async function partBCustomLine(browser, errors) {
       { rows, note, htmlLeak }
     );
 
-    // C8: a row marked "in calculator: no" is visible to the model, and an
-    // accepted proposal lands as a custom line at the file's metric rate
-    // with the row's metric unit.
+    // C8 (re-baselined 2026-11-17): the whole book is a trade secret, so the
+    // system text carries NO book rows at all - not even the old "in
+    // calculator: no" rows. An accepted scripted proposal still lands as a
+    // custom line at the file's metric rate with the row's metric unit.
     const sys6 = sysOf(bodies[bodies.length - 1]);
     const rb6 = rateBlock(sys6);
     const noRow = rb6
       .split('\n')
       .filter(l => l.indexOf(' | ') > -1 && /in calculator: no$/.test(l));
     check(
-      'C8 the system text marks an "in calculator: no" row',
-      noRow.length > 0,
+      'C8 the system text carries no whole-book rows (trade secret)',
+      noRow.length === 0,
       noRow.slice(0, 2)
     );
     await sendQ(page, 'add that demolition as a custom line');
@@ -2137,7 +2097,6 @@ async function s6OwnRateAndSettings(browser, errors) {
   await mockRatebook(page, loadBook());
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.MMGR_CALC_AI, null, { timeout: 20000 });
-  await page.waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 }).catch(() => {});
 
   // S6.0 - both hooks exist and the panel reports the build that uses them.
   const hooks = await page.evaluate(() => ({
@@ -2385,7 +2344,6 @@ async function ai3SettingsAndAsk(browser, errors) {
   await mockRatebook(page, loadBook());
   await page.goto(BASE + '/calculator.html', { waitUntil: 'load' });
   await page.waitForFunction(() => !!window.MMGR_CALC_AI, null, { timeout: 20000 });
-  await page.waitForFunction(() => !!window.MMGR_RATEBOOK, null, { timeout: 8000 }).catch(() => {});
 
   // AI3.1 - what the system prompt promises, and what the page publishes.
   await sendQ(page, 'can you set the tax?');

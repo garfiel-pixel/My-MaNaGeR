@@ -937,16 +937,16 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       /* still clear the local chip */
     }
-    // RB-1 (2026-10-25, REFINEMENT-DIRECTIVE-2026-10-24 3.4): the rate book is
-    // signed-in data now, and the calculator keeps an offline copy of all 811
-    // rates in the Cache API (mmgr-ratebook-v1) so the book opens with no
-    // network. Signing out is the moment that copy must go, or the next person
-    // on this device inherits the book the sign-out was supposed to close.
-    // The cache holds exactly one entry, so dropping it whole is correct; a
-    // browser that forbids the Cache API simply has nothing to delete.
+    // OWNER 2026-11-17: the rate book is My MaNaGeR's own first-party trade
+    // secret - it is NEVER cached whole. The calculator keeps only the
+    // individual rates a signed-in person used in an estimate, under
+    // mmgr-ratebook-v2, so those lines still open offline. Signing out is the
+    // moment those single-rate entries must go, or the next person on this
+    // device inherits rates the sign-out was supposed to close. Dropping the
+    // cache whole is correct: it holds only per-id lookups, never a book.
     try {
       if (typeof caches !== 'undefined' && caches.delete) {
-        caches.delete('mmgr-ratebook-v1');
+        caches.delete('mmgr-ratebook-v2');
       }
     } catch (e) {
       /* not fatal: the session cookie is already gone */

@@ -198,6 +198,46 @@ body.dark-mode .team-status.is-err {
   font-weight: 700;
   color: var(--danger);
 }
+/* OWNER 2026-11-19: a slow read shows a line travelling across, not a spinner
+   and not "Needs a connection". The same line sits above Shared with me on the
+   launcher, so a member sees their projects arriving rather than an empty gap. */
+.team-progress,
+.cd-progress {
+  position: relative;
+  height: 2px;
+  margin: 6px 0 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
+}
+.team-progress::after,
+.cd-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: 2px;
+  background: var(--gold);
+  animation: mmgr-line-run 1.15s var(--ease-ios, ease) infinite;
+}
+.team-progress[hidden],
+.cd-progress[hidden] {
+  display: none;
+}
+@keyframes mmgr-line-run {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(265%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-progress::after,
+  .cd-progress::after {
+    animation-duration: 2.6s;
+  }
+}
 .team-offline[hidden] {
   display: none;
 }

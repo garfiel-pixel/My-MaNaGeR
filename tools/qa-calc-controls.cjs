@@ -418,6 +418,23 @@ const CONTRAST_HELPERS = `window.__mmcbContrast = (function () {
         await page.waitForSelector('.mmcb-pop[data-for="' + id + '"]:not([hidden])', {
           timeout: 8000
         });
+        // Park the pointer clear of the list: a wheel over the listbox scrolls
+        // the list, not the page. The 600px block below the card (added before
+        // the control was centred) guarantees the wheel run always has room to
+        // move the control well past the 100px this gate needs - without it a
+        // short viewport can leave only 60px of scroll and the gate fails for
+        // no reason.
+        await page.mouse.move(Math.round(vp.w - 12), Math.round(vp.h / 2));
+        await page.evaluate(sel => {
+          const input = document.querySelector('.mmcb[data-for="' + sel + '"] .mmcb-input');
+          const card = document.getElementById('calc-input-card');
+          const room = document.createElement('div');
+          room.id = 'mmcb-room';
+          room.style.height = '600px';
+          card.parentNode.insertBefore(room, card.nextSibling);
+          input.scrollIntoView({ block: 'center' });
+        }, id);
+        await delay(120);
 
         const sampling = page.evaluate(sel => {
           return new Promise(resolve => {

@@ -127,6 +127,35 @@ body.db-page [data-rail-toggle] .ico-caret {
 body.db-page [data-rail-toggle].open .ico-caret {
   transform: rotate(90deg);
 }
+/* OWNER 2026-11-19 (surface-language): the six rail GROUP headings are
+   dropdown toggles now, not static labels. They keep the .db-g look (small
+   caps, letter-spaced) and inherit the full-width button reset above, so the
+   only overrides needed are:
+   - the label's 10px side margin, because [data-rail-toggle] is width:100%
+     and the margin would push every group row 20px past the rail;
+   - flex, so the caret reaches the far edge (the label is short, so a
+     margin-left:auto caret needs a flex row to travel);
+   - a rounded hit area, because the row is now clickable.
+   The group body (.db-g-body) deliberately carries NO display declaration:
+   tools/verify-hidden-attr.cjs fails any [hidden] element painted by one. */
+body.db-page .db-g[data-rail-toggle] {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 14px 0 4px;
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+}
+body.db-page .db-g[data-rail-toggle]:hover {
+  color: var(--gold-text);
+}
+body.dark-mode.db-page .db-g[data-rail-toggle]:hover {
+  color: var(--db-accent);
+}
+body.db-page .db-g[data-rail-toggle]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
 /* T-28 (owner 2026-11-12): the admin rail is dropdown groups. A group row
    reads as a destination header (a little more weight than a plain link and
    air above it); a sub-row is the same language one step down, so the rail
@@ -1678,19 +1707,26 @@ body.db-page .cd-card .pc-title {
   gap: 8px;
   flex-wrap: wrap;
 }
+/* OWNER 2026-11-19 (surface-language): the role chip is quiet text, not a
+   pill. Same slot in the title row, same class (harnesses and the card markup
+   both key on .cd-role) - only the pill chrome is gone: no border, no fill,
+   no uppercase tracking. Lowercase, because the rendered text is now
+   "editor" / "viewer". */
 body.db-page .cd-role {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 9px;
-  border-radius: 100px;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--gold-text);
-  background: color-mix(in oklch, var(--gold) 10%, transparent);
-  border: 1px solid color-mix(in oklch, var(--gold) 30%, transparent);
+  display: inline;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--slate);
   white-space: nowrap;
+}
+body.dark-mode.db-page .cd-role {
+  color: var(--db-text-secondary);
 }
 body.db-page .cd-actions {
   display: flex;

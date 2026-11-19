@@ -46,9 +46,10 @@ body.db-page[data-skin='pegboard'],
 
 /* Label card with two corner hooks. */
 body.db-page[data-skin='pegboard'] .pcard {
+  --pc-band-color: var(--brand);
   border: 1px solid var(--border);
   border-radius: 4px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--pc-band), var(--glass-shadow);
 }
 body.db-page[data-skin='pegboard'] .pcard::before,
 body.db-page[data-skin='pegboard'] .pcard::after {
@@ -67,7 +68,7 @@ body.db-page[data-skin='pegboard'] .pcard::after {
   right: 8px;
 }
 body.db-page[data-skin='pegboard'] .pcard.unlocked {
-  box-shadow: inset 0 3px 0 var(--brand);
+  box-shadow: var(--pc-band-strong), var(--glass-shadow);
 }
 
 /* Status: label-maker tape (real word, dot colour preserved). */

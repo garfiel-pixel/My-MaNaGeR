@@ -20,6 +20,113 @@
   var LANE_W = 64; // --rail-closed-w
   var PANEL_W = 340; // close only after the pointer clears the opened panel
 
+  /* ---- Rail GROUP dropdowns (owner 2026-11-19, surface-language) ----------
+     The six group headings ([data-rail-toggle^="rail-grp-"]) collapse their
+     .db-g-body panel through the ONE delegated handler in app.html - this
+     module never shows or hides anything itself, it only remembers which
+     groups this person closed.
+
+     Scope: the map is keyed per identity, so two people sharing a browser
+     each keep their own layout and a signed-out visitor keeps 'anon'. The
+     scope is persisted separately (mmgr_rail_scope) because the identity only
+     arrives over the network AFTER this deferred bundle has run - reading the
+     last known scope lets the first paint restore the right layout instead of
+     flashing every group open and then collapsing them.
+
+     Every group defaults to OPEN: a first visit, a cleared storage and a
+     signed-out visitor all see the full rail. Only an explicit collapse is
+     remembered. ----------------------------------------------------------- */
+  var GROUP_KEY = 'mmgr_rail_groups';
+  var SCOPE_KEY = 'mmgr_rail_scope';
+  var scope = 'anon';
+
+  function readJson(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      var val = raw ? JSON.parse(raw) : null;
+      return val && typeof val === 'object' ? val : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function groupScope(user) {
+    if (!user) {
+      return 'anon';
+    }
+    var id = user.sub || user.email || '';
+    return id ? String(id) : 'anon';
+  }
+
+  function groupButtons() {
+    return document.querySelectorAll('[data-rail-toggle^="rail-grp-"]');
+  }
+
+  function applyGroup(btn) {
+    var id = btn.getAttribute('data-rail-toggle');
+    var panel = document.getElementById(id);
+    if (!panel) {
+      return;
+    }
+    var mine = readJson(GROUP_KEY)[scope];
+    var isOpen = !(mine && typeof mine === 'object' && mine[id] === 0);
+    panel.hidden = !isOpen;
+    btn.classList.toggle('open', isOpen);
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  }
+
+  function restoreGroups() {
+    Array.prototype.forEach.call(groupButtons(), applyGroup);
+  }
+
+  function wireGroups() {
+    try {
+      scope = localStorage.getItem(SCOPE_KEY) || 'anon';
+    } catch (e) {
+      scope = 'anon';
+    }
+    restoreGroups();
+
+    document.addEventListener('click', function (e) {
+      var btn =
+        e.target && e.target.closest ? e.target.closest('[data-rail-toggle^="rail-grp-"]') : null;
+      if (!btn) {
+        return;
+      }
+      var id = btn.getAttribute('data-rail-toggle');
+      var panel = document.getElementById(id);
+      if (!panel) {
+        return;
+      }
+      // Read the panel AFTER every click handler has run: app.html's handler
+      // owns the toggle, so the state is only settled once this turn ends.
+      setTimeout(function () {
+        var all = readJson(GROUP_KEY);
+        var mine = all[scope] && typeof all[scope] === 'object' ? all[scope] : {};
+        mine[id] = panel.hidden ? 0 : 1;
+        all[scope] = mine;
+        try {
+          localStorage.setItem(GROUP_KEY, JSON.stringify(all));
+        } catch (err) {}
+      }, 0);
+    });
+
+    document.addEventListener('mmgr:user-changed', function (e) {
+      scope = groupScope(e && e.detail);
+      try {
+        localStorage.setItem(SCOPE_KEY, scope);
+      } catch (err) {}
+      restoreGroups();
+    });
+    document.addEventListener('mmgr:google-signed-out', function () {
+      scope = 'anon';
+      try {
+        localStorage.setItem(SCOPE_KEY, scope);
+      } catch (err) {}
+      restoreGroups();
+    });
+  }
+
   function body() {
     return document.body;
   }
@@ -61,11 +168,20 @@
     }
   }
 
+  /* Group persistence is independent of the hover-peek, so it is wired
+     unconditionally - the peek below is desktop-fine-pointer only. */
+  wireGroups();
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', wire);
   } else {
     wire();
   }
 
-  ns.LauncherRail = { wire: wire, openPeek: openPeek, closePeek: closePeek };
+  ns.LauncherRail = {
+    wire: wire,
+    openPeek: openPeek,
+    closePeek: closePeek,
+    restoreGroups: restoreGroups
+  };
 })((window.MMGR = window.MMGR || {}));

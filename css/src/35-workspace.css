@@ -3269,7 +3269,21 @@ body.dark-mode .btn-warn:hover {
      an unlock reward. It used to live on .unlocked only, so a new project and
      every demo card looked like a different component. It now sits on .pcard
      and every variant inherits it; .unlocked keeps a stronger edge instead. */
-  --pc-band: inset 0 3px 0 var(--gold);
+  /* OWNER 2026-11-19 (surface-language): the band now also says WHICH KIND of
+     card this is, so a glance separates the three lists:
+       local project  -> band on the TOP    (this rule, the default)
+       cloud project  -> band on the BOTTOM (.pc-band-b)
+       shared with me -> band on the LEFT   (.pc-band-l)
+     --pc-band stays a composite shadow LAYER, so every existing
+     `box-shadow: var(--pc-band), ...` list keeps working untouched and only
+     the direction changes. --pc-band-color is the single tint hook the skins
+     override; --pc-band-strong is the unlocked (thicker) twin, so an unlocked
+     card keeps the band on the same edge instead of snapping back to the top.
+     Keep this block in step with the inline twin in app.html - the launcher's
+     cards are styled by that one, not by this file. */
+  --pc-band-color: var(--gold);
+  --pc-band: inset 0 3px 0 var(--pc-band-color);
+  --pc-band-strong: inset 0 4px 0 var(--pc-band-color);
   background: var(--card);
   border: var(--glass-border);
   border-radius: var(--squircle-md);
@@ -3279,6 +3293,15 @@ body.dark-mode .btn-warn:hover {
     background var(--tr),
     border-color var(--tr),
     box-shadow var(--tr);
+}
+/* Direction modifiers - one per non-local card kind. */
+.pcard.pc-band-b {
+  --pc-band: inset 0 -3px 0 var(--pc-band-color);
+  --pc-band-strong: inset 0 -4px 0 var(--pc-band-color);
+}
+.pcard.pc-band-l {
+  --pc-band: inset 3px 0 0 var(--pc-band-color);
+  --pc-band-strong: inset 4px 0 0 var(--pc-band-color);
 }
 .pcard:hover {
   transform: translateY(-3px);
@@ -3290,13 +3313,11 @@ body.dark-mode .btn-warn:hover {
     0 12px 30px rgba(15, 23, 42, 0.14);
 }
 /* Unlocked card: the band is shared now, so the ON-state cue is the border
-   plus a taller band - still a top edge, never a side rail. */
+   plus a taller band - still on the card's own edge (top / bottom / left),
+   never a fixed side rail. */
 .pcard.unlocked {
   border-color: color-mix(in srgb, var(--gold) 55%, transparent);
-  box-shadow:
-    inset 0 4px 0 var(--gold),
-    var(--glass-rim),
-    var(--glass-shadow);
+  box-shadow: var(--pc-band-strong), var(--glass-rim), var(--glass-shadow);
 } /* §6.3 access-code input - recessed glass well with gold focus ring */
 #code-input {
   background: var(--glass-fill-dark);

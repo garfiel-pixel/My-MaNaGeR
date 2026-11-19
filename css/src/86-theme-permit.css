@@ -42,13 +42,14 @@ body.db-page[data-skin='permit'],
 
 /* Card: 6px ink left band, 2px border, 2px radius, same size for all. */
 body.db-page[data-skin='permit'] .pcard {
+  --pc-band-color: var(--brand);
   border: 2px solid var(--border);
   border-left: 6px solid var(--text);
   border-radius: 2px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--pc-band), var(--glass-shadow);
 }
 body.db-page[data-skin='permit'] .pcard.unlocked {
-  box-shadow: inset 0 3px 0 var(--brand);
+  box-shadow: var(--pc-band-strong), var(--glass-shadow);
   border-left-color: var(--brand);
 }
 

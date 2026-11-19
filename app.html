@@ -46,10 +46,16 @@ body.glass-premium .wrap{position:relative;z-index:1;}
    was removed (the page notice + #om-desc already carry it). */
 #om .btn{border-radius:100px;padding:9px 22px;}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;}
-.pcard{--pc-band:inset 0 3px 0 var(--gold);background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:20px;text-align:left;cursor:pointer;transition:transform var(--release-duration) var(--spring-press),background var(--tr),border-color var(--tr),box-shadow var(--tr);display:flex;flex-direction:column;gap:12px;font:inherit;color:inherit;box-shadow:var(--pc-band),var(--glass-rim),var(--glass-shadow);}
+/* OWNER 2026-11-19: band edge says which list a card belongs to - local TOP,
+   cloud BOTTOM (.pc-band-b), shared LEFT (.pc-band-l). --pc-band stays a
+   shadow LAYER so every `box-shadow: var(--pc-band), ...` list still works.
+   Keep in step with .pcard in css/src/35-workspace.css. */
+.pcard{--pc-band-color:var(--gold);--pc-band:inset 0 3px 0 var(--pc-band-color);--pc-band-strong:inset 0 4px 0 var(--pc-band-color);background:var(--glass-fill-dark);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:var(--glass-border);border-radius:var(--squircle-md);padding:20px;text-align:left;cursor:pointer;transition:transform var(--release-duration) var(--spring-press),background var(--tr),border-color var(--tr),box-shadow var(--tr);display:flex;flex-direction:column;gap:12px;font:inherit;color:inherit;box-shadow:var(--pc-band),var(--glass-rim),var(--glass-shadow);}
+.pcard.pc-band-b{--pc-band:inset 0 -3px 0 var(--pc-band-color);--pc-band-strong:inset 0 -4px 0 var(--pc-band-color);}
+.pcard.pc-band-l{--pc-band:inset 3px 0 0 var(--pc-band-color);--pc-band-strong:inset 4px 0 0 var(--pc-band-color);}
 .pcard:hover{transform:translateY(-3px);border-color:var(--gold);background:var(--glass-fill-dark-hover);box-shadow:var(--pc-band),var(--glass-rim),0 12px 30px rgba(16,24,40,.14);}
 .pcard:active{transform:scale(var(--press-scale));background:var(--glass-fill-dark-active);transition:transform var(--press-duration) var(--spring-in),background var(--tr);}
-.pcard.unlocked{border-color:color-mix(in srgb,var(--gold) 55%,transparent);box-shadow:inset 0 4px 0 var(--gold),var(--glass-rim),var(--glass-shadow);}
+.pcard.unlocked{border-color:color-mix(in srgb,var(--gold) 55%,transparent);box-shadow:var(--pc-band-strong),var(--glass-rim),var(--glass-shadow);}
 .pcard:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .pc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
 .pc-title{font-size:.95rem;font-weight:800;line-height:1.35;}
@@ -352,13 +358,21 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
     <button type="button" class="db-side-close" data-action="toggleSidebar" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
   </div>
   <nav class="db-nav" id="db-nav">
-    <div class="db-g">Overview</div>
+    <!-- OWNER 2026-11-19 (surface-language): the six rail headings are
+         dropdown toggles - a [data-rail-toggle] button + a .db-g-body panel,
+         driven by the ONE delegated handler the inner accordions already use.
+         State is remembered per person by js/app/launcher-rail.js; every group
+         starts OPEN so nothing disappears on a first visit. -->
+    <button type="button" class="db-g open" data-rail-toggle="rail-grp-overview" aria-expanded="true" aria-controls="rail-grp-overview">Overview <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-g-body" id="rail-grp-overview">
     <!-- Dashboard: the full dedicated dashboard view is not built yet          (owner review 2026-09-05) - the link returns to the project overview
          at #top instead of looking broken to a demo viewer. OWNER 2026-09-12
          (P2-10): the Soon chip is gone - "this one is there never ... it
          should just be turned off as it's not needed." -->
     <a class="db-link" href="#top" title="Back to the top of your projects"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Dashboard</a>
-    <div class="db-g">Projects</div>
+    </div>
+    <button type="button" class="db-g open" data-rail-toggle="rail-grp-projects" aria-expanded="true" aria-controls="rail-grp-projects">Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-g-body" id="rail-grp-projects">
     <a class="db-link" href="#grid" data-rail-toggle="rail-projects-list" aria-expanded="false" aria-controls="rail-projects-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> All Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></a>
     <div class="db-sub" id="rail-projects-list" hidden></div>
     <!-- OWNER 2026-09-15: ONE place controls demo visibility - this row in
@@ -369,7 +383,9 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
       <span class="db-project-ico"><svg class="ico" aria-hidden="true"><use id="demo-rail-icon" href="css/mmgr-icons.svg#i-eye"></use></svg></span>
       <span class="db-project-name">Show demo projects</span>
     </button>
-    <div class="db-g">Cloud</div>
+    </div>
+    <button type="button" class="db-g open" data-rail-toggle="rail-grp-cloud" aria-expanded="true" aria-controls="rail-grp-cloud">Cloud <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-g-body" id="rail-grp-cloud">
     <button type="button" class="db-link" data-rail-toggle="rail-cloud-list" aria-expanded="false" aria-controls="rail-cloud-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-sub" id="rail-cloud-list" hidden></div>
     <button type="button" class="db-link" data-rail-toggle="rail-recover" aria-expanded="false" aria-controls="rail-recover"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Recover Deleted <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
@@ -384,11 +400,13 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
       <input type="password" id="drive-pass" class="db-pass" placeholder="Backup passphrase" title="Encrypt backups with a passphrase (optional) -- enter once per browser session" autocomplete="off">
       <span id="drive-sync-status" class="drive-status" role="status" aria-live="polite"></span>
     </div>
+    </div>
     <!-- OWNER 2026-10-09: Administrate and Tools are their OWN groups, so
          the rail reads as five clear destinations (Overview / Projects /
          Cloud / Administrate / Tools / Customize) instead of stacking the
          admin and calculator entries inside Projects. -->
-    <div class="db-g">Administrate</div>
+    <button type="button" class="db-g open" data-rail-toggle="rail-grp-admin" aria-expanded="true" aria-controls="rail-grp-admin">Administrate <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-g-body" id="rail-grp-admin">
     <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
     <!-- CREATE-YOUR-OWN (owner directive 2026-08-15): the launcher's second
          door into admin , an open-lock entry beside the Admin panel link that
@@ -396,14 +414,18 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
          project (their own admin point). Same db-link language as Admin panel
          (replicated UI), i-unlock glyph, plain link close-on-nav behaviour. -->
     <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Create your own</a>
-    <div class="db-g">Tools</div>
+    </div>
+    <button type="button" class="db-g open" data-rail-toggle="rail-grp-tools" aria-expanded="true" aria-controls="rail-grp-tools">Tools <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-g-body" id="rail-grp-tools">
     <!-- Build Cost Calculator (owner 2026-09-28): client-facing estimator,
          standalone page like admin.html. RAIL entry = icon + text, same
-         db-link language as every other rail row (the closed-rail icon strip
-         carries the icon-only twin below). -->
+         db-link language as every other rail row. -->
     <a class="db-link" href="calculator.html" title="Build Cost Calculator - estimate quantities, labor and tax before the project starts"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Build Cost Calculator</a>
-    <div class="db-g">Customize</div>
+    </div>
+    <button type="button" class="db-g open" data-rail-toggle="rail-grp-customize" aria-expanded="true" aria-controls="rail-grp-customize">Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    <div class="db-g-body" id="rail-grp-customize">
     <button type="button" class="db-link" data-nav="customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+    </div>
   </nav>
   <div class="db-foot">
     <!-- YOUR PLAN (owner 2026-11-06): the bar sits directly above the account

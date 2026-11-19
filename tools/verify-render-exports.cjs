@@ -181,7 +181,18 @@ const appDir = path.join(ROOT, 'js', 'app');
 // it self-initializes at DOMContentLoaded and is reached directly as
 // MMGR.SectionAccelerator.* (the control-panel wiring and the test harness both
 // call it that way), so it carries no monolith wrappers by design.
-const APP_EXCLUDE = new Set(['components.js', 'entitlements.js', 'section-accelerator.js']);
+// launcher-rail.js (owner 2026-11-19) is the same shape: it self-initializes
+// (hover-peek + the six rail group dropdowns) and owns only device preferences,
+// so nothing in the monolith delegates to it. Its export object used to sit on
+// ONE line, which this checker's `^\s+key:` rule could not parse - so the gap
+// was invisible until prettier split it. Excluded rather than wrapped: adding
+// four no-op delegations to the monolith would be the wrong fix.
+const APP_EXCLUDE = new Set([
+  'components.js',
+  'entitlements.js',
+  'section-accelerator.js',
+  'launcher-rail.js'
+]);
 const appFiles = fs.readdirSync(appDir).filter(f => f.endsWith('.js') && !APP_EXCLUDE.has(f));
 const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'mmgr-app.js'), 'utf8');
 

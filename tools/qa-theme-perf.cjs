@@ -23,6 +23,11 @@
      T3  both preferences survive a reload, independently
      T4  both preferences travel between pages (project -> calculator ->
          app), which is the "does not reach the app" half of the report
+     T5  an already-open tab follows a change made in another tab
+     T6  the SKIN axis (mmgr_skin, the eight theme-pack looks) reaches the
+         calculator and the admin panel, not just the launcher - added
+         2026-11-19 after the owner reported the calculator kept the default
+         look while the rest of the app was skinned
 
    The controls are driven by the same `change` events a person produces
    (the checkboxes are visually hidden by design, and the Appearance
@@ -338,6 +343,57 @@ const SET_PERF = on => {
       followBack.theme === 'dark' && followBack.dark === true && followBack.perf === 'on',
       followBack
     );
+
+    // ---- T6 (owner 2026-11-19): the SKIN reaches every db-page surface ----
+    // mmgr_theme (light/dark) and mmgr_skin (the eight theme-pack looks) are
+    // separate axes, and only the first one was ever asserted here. The skin
+    // used to be applied BEHIND a #customize-modal guard in js/mmgr-skin.js
+    // wire(), and only app.html carries that modal - so the calculator, a
+    // project and the admin panel silently stayed on the default skin. The
+    // owner reported exactly that ("the theme reaches admin and inside a
+    // project but not the calculator"). T6 pins the fix on the two cheapest
+    // db-page surfaces; app.html is covered by T4b above.
+    const SKIN_PROBE = () => {
+      const cs = getComputedStyle(document.body);
+      return {
+        attr: document.body.getAttribute('data-skin'),
+        htmlAttr: document.documentElement.getAttribute('data-skin'),
+        gold: cs.getPropertyValue('--gold').trim(),
+        radius: cs.getPropertyValue('--radius').trim()
+      };
+    };
+    for (const [slug, page_] of [
+      ['T6 calculator', '/calculator.html'],
+      ['T6 admin', '/admin.html']
+    ]) {
+      await page.goto(BASE + page_, { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => {
+        try {
+          localStorage.setItem('mmgr_skin', 'vellum');
+        } catch (e) {
+          /* storage is a preference */
+        }
+      });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await delay(800);
+      const s0 = await page.evaluate(SKIN_PROBE);
+      check(slug + ' body carries the saved skin', s0.attr === 'vellum', s0);
+      // Vellum's token block is the discriminator: square corners and a
+      // burgundy accent. If only the attribute travelled and the tokens did
+      // not, the page would look unchanged and this gate would catch it.
+      check(
+        slug + ' repaints its tokens, not just the attribute',
+        s0.radius === '0px' && s0.gold.toLowerCase() === '#7a3039',
+        s0
+      );
+    }
+    await page.evaluate(() => {
+      try {
+        localStorage.removeItem('mmgr_skin');
+      } catch (e) {
+        /* storage is a preference */
+      }
+    });
 
     check('zero page errors across the walk', errors.length === 0, errors.slice(0, 4));
     await ctx.close();

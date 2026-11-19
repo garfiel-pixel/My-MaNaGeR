@@ -48,13 +48,14 @@ body.db-page[data-skin='guild'],
 
 /* Parchment card on a timber frame, one corner curled. */
 body.db-page[data-skin='guild'] .pcard {
+  --pc-band-color: var(--brand);
   border: 6px solid #4a3322;
   border-radius: 6px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--pc-band), var(--glass-shadow);
   clip-path: polygon(0 0, 100% 0, 100% 86%, 92% 100%, 0 100%);
 }
 body.db-page[data-skin='guild'] .pcard.unlocked {
-  box-shadow: inset 0 3px 0 var(--brand);
+  box-shadow: var(--pc-band-strong), var(--glass-shadow);
 }
 
 /* Status: faceted gem (clip-path) beside the real word; dot colour tints it. */

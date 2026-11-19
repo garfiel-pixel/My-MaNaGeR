@@ -7,8 +7,11 @@
    and persistence. Device-only, like mmgr_theme.
 
    Scope: the skin CSS is scoped to body.db-page[data-skin="<slug>"]
-   (plus .theme-preview[data-skin=...] for the modal previews), so
-   nothing leaks into project/admin/marketing pages.
+   (plus .theme-preview[data-skin=...] for the modal previews), so a skin
+   reaches every db-page surface - the launcher, the calculator, a project
+   and the admin panel - and never the marketing pages, which do not load
+   this script at all. (OWNER 2026-11-19: the calculator was the one db-page
+   surface left on the default skin; see wire() for the cause.)
 
    CSP: external <script src> (covered by script-src 'self'); no
    inline-script hash churn. No emoji (owner hard gate).
@@ -168,14 +171,19 @@
   }
 
   function wire() {
+    // OWNER 2026-11-19 (surface-language): apply the saved skin to <body>
+    // FIRST, before the customize-modal guard below. The head-time applySkin()
+    // runs before <body> is parsed, so it can only reach <html>; this call is
+    // the one that reaches the body - and it used to sit BEHIND the guard, so
+    // every page without a #customize-modal (calculator, project, admin) kept
+    // the default skin while the launcher changed. The modal wiring below is
+    // still launcher-only, which is correct: those pages have no customize UI.
+    applySkin(read());
+
     var m = modal();
     if (!m) {
       return;
     }
-    // Ensure the saved skin is applied to <body> now that it exists (the
-    // head-time applySkin() ran before body was parsed, so it only reached
-    // <html>). Without this the launcher would stay on the default skin.
-    applySkin(read());
 
     // Delegated clicks for open / close / apply.
     document.addEventListener('click', function (e) {

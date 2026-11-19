@@ -2,9 +2,16 @@
 /* tools/qa-card-parity.cjs - Wave 1 gate: one card language on the launcher
    ---------------------------------------------------------------------------
    The owner's rule (2026-11-10): a project card looks and opens the same way
-   whether it is local, a demo, or a cloud project. That means one gold top
-   band, one status dot + label, and the whole card as the open target - the
+   whether it is local, a demo, or a cloud project. That means one gold band,
+   one status dot + label, and the whole card as the open target - the
    cloud grid must not need a separate Load button.
+
+   OWNER 2026-11-19 (surface-language): the band's EDGE is now part of that
+   language - local cards keep the top edge, cloud cards carry the bottom
+   edge, shared cards the left edge (asserted in qa-team-ui, where shared
+   cards actually render). The old `band()` helper only tested for an inset
+   gold shadow, so its "top band" labels were true for every card and proved
+   nothing about direction; `bandDir()` reads the rendered offsets instead.
 
    Every check measures the RENDERED app.html. The cloud list is served from a
    fixture through page.route(), so no Worker or D1 is needed.
@@ -131,11 +138,50 @@ const CLOUD = [
     }, sel);
 
   const band = s => !!s && /inset/.test(s.shadow) && s.shadow.indexOf(GOLD) > -1;
+  /* OWNER 2026-11-19 (surface-language): the band's DIRECTION is now part of
+     the contract, not just its colour. Local cards keep the top edge, cloud
+     cards carry the bottom edge, shared cards the left edge - so a glance
+     separates the three lists. getComputedStyle() renders the first shadow
+     layer as "<colour> <x>px <y>px <blur>px <spread>px inset"; the band is
+     always the first layer, so read its offsets. */
+  const bandDir = s => {
+    if (!s || !s.shadow) {
+      return null;
+    }
+    const first = s.shadow.split(/,(?![^(]*\))/)[0].trim();
+    if (first.indexOf('inset') === -1) {
+      return null;
+    }
+    const m = /(-?[\d.]+)px\s+(-?[\d.]+)px/.exec(first);
+    if (!m) {
+      return null;
+    }
+    const x = Number(m[1]);
+    const y = Number(m[2]);
+    if (x === 0 && y > 0) {
+      return 'top';
+    }
+    if (x === 0 && y < 0) {
+      return 'bottom';
+    }
+    if (x > 0 && y === 0) {
+      return 'left';
+    }
+    if (x < 0 && y === 0) {
+      return 'right';
+    }
+    return null;
+  };
 
   // ---- local + demo ----
   const local = await probe('#grid .pcard');
   check('P-01', 'a local project card exists', !!local, local && local.text.slice(0, 40));
-  check('P-01', 'the local card carries the gold top band', band(local), local && local.shadow);
+  check(
+    'P-01',
+    'the local card carries the gold band on the TOP edge',
+    band(local) && bandDir(local) === 'top',
+    local && { shadow: local.shadow, dir: bandDir(local) }
+  );
   check(
     'P-02',
     'the local card carries a status dot and label',
@@ -145,7 +191,12 @@ const CLOUD = [
 
   const demo = await probe('#demo-grid .pcard');
   check('P-03', 'a demo project card exists', !!demo, demo && demo.text.slice(0, 40));
-  check('P-03', 'the demo card carries the same top band', band(demo), demo && demo.shadow);
+  check(
+    'P-03',
+    'the demo card carries the same TOP band',
+    band(demo) && bandDir(demo) === 'top',
+    demo && { shadow: demo.shadow, dir: bandDir(demo) }
+  );
   check(
     'P-03',
     'the demo card carries the same status dot and label',
@@ -169,9 +220,9 @@ const CLOUD = [
   );
   check(
     'P-04',
-    'the cloud card carries the same gold top band',
-    band(cloud),
-    cloud && cloud.shadow
+    'the cloud card carries the band on the BOTTOM edge',
+    band(cloud) && bandDir(cloud) === 'bottom',
+    cloud && { shadow: cloud.shadow, dir: bandDir(cloud), cls: cloud.cls }
   );
   check(
     'P-05',

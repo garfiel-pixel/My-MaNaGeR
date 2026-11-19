@@ -44,13 +44,14 @@ body.db-page[data-skin='departure'],
 
 /* Cards -> alternating full-width board rows, no box. */
 body.db-page[data-skin='departure'] .pcard {
+  --pc-band-color: var(--brand);
   flex-direction: row;
   align-items: center;
   gap: 16px;
   border: none;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
-  box-shadow: none;
+  box-shadow: var(--pc-band);
   background: var(--card);
   padding: 14px 16px;
 }
@@ -58,7 +59,7 @@ body.db-page[data-skin='departure'] .pcard:nth-child(even) {
   background: #15181b;
 }
 body.db-page[data-skin='departure'] .pcard.unlocked {
-  box-shadow: none;
+  box-shadow: var(--pc-band-strong);
 }
 body.db-page[data-skin='departure'] .pcard:hover {
   transform: none;

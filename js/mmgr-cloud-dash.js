@@ -505,8 +505,8 @@
         const shared = p.accessRole && p.accessRole !== 'owner';
         const disc = !!p.discontinued;
         const chip = shared
-          ? '<span class="cd-role">Shared ' +
-            escapeHtml(p.accessRole === 'view' ? 'Viewer (read-only)' : 'Editor') +
+          ? '<span class="cd-role">' +
+            escapeHtml(p.accessRole === 'view' ? 'viewer' : 'editor') +
             '</span>'
           : '';
         // OWNER 2026-09-13: owner cards get a 3-dot menu again with TWO items:
@@ -562,7 +562,13 @@
           ? (shared ? 'Shared by ' : 'Created by ') + escapeHtml(p.linkedName) + '. '
           : '';
         return (
-          '<div class="cd-card pcard' +
+          // OWNER 2026-11-19 (surface-language): the accent band says which
+          // list a card belongs to - cloud projects carry it on the BOTTOM,
+          // projects shared with me carry it on the LEFT, local projects keep
+          // the top band they inherit from .pcard. See --pc-band in
+          // css/src/35-workspace.css (and its inline twin in app.html).
+          '<div class="cd-card pcard ' +
+          (shared ? 'pc-band-l' : 'pc-band-b') +
           (disc ? ' cd-disc-card' : '') +
           '" role="listitem">' +
           (disc

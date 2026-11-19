@@ -323,24 +323,19 @@
   // While the project list fetches, placeholder cards paint instead of the
   // section being invisible-then-pop. Pure builders (no user data, nothing
   // to escape); the sheen comes from .skel-box in css/mmgr.css.
-  function dashSkeleton(n) {
-    let out = '';
-    for (let i = 0; i < n; i++) {
-      out +=
-        '<div class="cd-card cd-skel" aria-hidden="true">' +
-        '<div class="skel-row"><span class="skel-box skel-avatar"></span>' +
-        '<span class="skel-box skel-line skel-w-60"></span></div>' +
-        '<div class="skel-box skel-line skel-w-40"></div>' +
-        '<div class="skel-box skel-pill"></div></div>';
-    }
-    return out;
+  /* OWNER 2026-11-19 (chrome-truth): the launcher's two bespoke skeletons are
+     gone - the shared module owns the shape now (js/app/skeleton.js). Kept as
+     thin delegates so every existing call site and the aria-busy handling stay
+     exactly where they were. */
+  function dashSkeleton() {
+    const S = window.MMGR && window.MMGR.Skeleton;
+    // ok: static skeleton template strings only (js/app/skeleton.js)
+    return S && S.skeletonHtml ? S.skeletonHtml('cloud') : '';
   }
   function railSkeleton() {
-    return (
-      '<div class="skel-row db-skel-row" aria-hidden="true">' +
-      '<span class="skel-box skel-avatar"></span>' +
-      '<span class="skel-box skel-line skel-w-60"></span></div>'
-    );
+    const S = window.MMGR && window.MMGR.Skeleton;
+    // ok: static skeleton template strings only (js/app/skeleton.js)
+    return S && S.skeletonHtml ? S.skeletonHtml('rail') : '';
   }
 
   // ---- THE LIST'S LAST GOOD ANSWER (owner report 2026-10-31) ------------
@@ -401,7 +396,7 @@
     dash.hidden = false;
     if (!cached) {
       dash.setAttribute('aria-busy', 'true');
-      list.innerHTML = dashSkeleton(3);
+      list.innerHTML = dashSkeleton();
       const railPre = $(RAIL_CLOUD);
       if (railPre && !railPre.hidden && !railPre.innerHTML.trim()) {
         railPre.innerHTML = railSkeleton();

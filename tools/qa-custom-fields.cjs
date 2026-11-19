@@ -176,18 +176,41 @@ const seedTasks = () => ({
     window.MMGR.State.save(true);
   }, seedTasks());
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!(window.MMGR && window.MMGR.CustomFields), null, {
-    timeout: 15000
-  });
+  await page.waitForFunction(
+    () =>
+      !!(
+        window.MMGR &&
+        window.MMGR.CustomFields &&
+        window.MMGR.App &&
+        document.querySelector('.panel.active')
+      ),
+    null,
+    { timeout: 15000 }
+  );
 
   // The nav rail can be collapsed at boot, so switch sections through the
   // delegated action itself rather than through a visible click target.
+  // UX-2026-11-19 B5: Nav.start() re-shows the URL's #panel on boot, so after
+  // a reload the delegated data-action handler must be wired (init()) before a
+  // showSec click lands. MMGR.CustomFields is defined at parse time, so waiting
+  // for it alone can race the boot gate. Wait for MMGR.App, then confirm the
+  // requested panel is actually active and retry the click once if not.
   const showSection = async sec => {
-    await page.evaluate(s => {
-      const el = document.querySelector('[data-action="showSec"][data-section="' + s + '"]');
-      if (el) el.click();
-    }, sec);
-    await delay(300);
+    await page.waitForFunction(() => !!(window.MMGR && window.MMGR.App), null, {
+      timeout: 15000
+    });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await page.evaluate(s => {
+        const el = document.querySelector('[data-action="showSec"][data-section="' + s + '"]');
+        if (el) el.click();
+      }, sec);
+      await delay(300);
+      const active = await page.evaluate(
+        s => !!document.querySelector('#panel-' + s + '.active'),
+        sec
+      );
+      if (active) return;
+    }
   };
   const openWbs = () => showSection('wbs');
   const openKanban = () => showSection('kan');
@@ -225,9 +248,17 @@ const seedTasks = () => ({
   await page.press(`#wbs-body tr[data-id="t1"] td.wbs-cf input`, 'Tab');
   await delay(250);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!(window.MMGR && window.MMGR.CustomFields), null, {
-    timeout: 15000
-  });
+  await page.waitForFunction(
+    () =>
+      !!(
+        window.MMGR &&
+        window.MMGR.CustomFields &&
+        window.MMGR.App &&
+        document.querySelector('.panel.active')
+      ),
+    null,
+    { timeout: 15000 }
+  );
   await openWbs();
   const v1 = await page.inputValue(`#wbs-body tr[data-id="t1"] td.wbs-cf input`);
   const v2 = await page.inputValue(`#wbs-body tr[data-id="t2"] td.wbs-cf input`);
@@ -330,9 +361,17 @@ const seedTasks = () => ({
     localStorage.setItem('mmgr_scope_' + id, 'readonly');
   }, PID);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!(window.MMGR && window.MMGR.CustomFields), null, {
-    timeout: 15000
-  });
+  await page.waitForFunction(
+    () =>
+      !!(
+        window.MMGR &&
+        window.MMGR.CustomFields &&
+        window.MMGR.App &&
+        document.querySelector('.panel.active')
+      ),
+    null,
+    { timeout: 15000 }
+  );
   await openWbs();
   await openFields();
   const before = await page.evaluate(

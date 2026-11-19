@@ -174,6 +174,23 @@ svg.ico use {
   --dot-yellow-rgb: 230, 81, 0;
   --dot-green-rgb: 46, 125, 50;
   --dot-blue-rgb: 21, 101, 192;
+  /* -- Major-task chart slots (UX-2026-11-19 B2) -------------------------
+     Eight colours for the dashboard ring and the "What is driving
+     completion" list. Every value already ships in this palette (status
+     hues, the theme accents and their deep steps) - no new hue is
+     introduced. These are non-text graphics drawn on a CARD, so 3:1 is the
+     floor, not 4.5:1. Dark mode and the two dark skins re-point the same
+     eight names; guild deepens four of them for its parchment card.
+     tools/verify-major-colors.cjs proves every theme. */
+  --major-1: #17633f; /* forest - the bento brand green */
+  --major-2: #075aa7; /* blue - departure's link blue */
+  --major-3: #d63a3a; /* red - --danger */
+  --major-4: #e65100; /* amber - --warning */
+  --major-5: #7a5a0b; /* bronze - --gold-ink */
+  --major-6: #8b5cf6; /* purple - --purple */
+  --major-7: #00838f; /* teal - the cyan accent's text step */
+  --major-8: #5f6860; /* sage - the pegboard/guild neutral */
+  --major-other: #666666; /* --text-muted: the merged "Other" slot */
   /* -- Legacy aliases (kept for backward compat, migrate to semantic) -- */
   --green: #2e7d32;
   --amber: #e65100;

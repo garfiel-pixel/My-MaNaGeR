@@ -1066,11 +1066,24 @@ html.mmgr-tour-active .bcp-tour-nudge {
 .bcp-tour-text {
   font-size: 0.88rem;
   line-height: 1.5;
+  /* UX-2026-11-19 A3: when the card is height-capped to clear a tall target
+     on a short screen, the copy scrolls inside it rather than overflowing. */
+  overflow-y: auto;
+  min-height: 0;
 }
 .bcp-tour-btns {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+/* UX-2026-11-19 A3/A4: Back, Skip and Next measured 28px high on a coarse
+   pointer, under the 44px target the directive sets. The tour is the one
+   place where a mis-tap costs the reader their place in the walkthrough. */
+@media (pointer: coarse) {
+  .bcp-tour-btns .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 @media (max-width: 600px) {
   .bcp-tour-pop {
@@ -2712,7 +2725,9 @@ body.ai-sheet .ai-inputbar {
 
 /* dark mode */
 body.dark-mode .ai-user {
-  background: linear-gradient(135deg, #f59e0b, #b45309);
+  /* UX-2026-11-19 A8: the accent is a token in dark mode too (white there,
+     by the owner's dark identity), so the bubble cannot stay amber. */
+  background: linear-gradient(135deg, var(--gold), var(--gold-ink, var(--gold)));
 }
 body.dark-mode .ai-bot-body {
   background: var(--lit-white-05);

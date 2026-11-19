@@ -257,6 +257,17 @@ var MMGR = window.MMGR || {};
   }
 
   function signOut() {
+    // UX-2026-11-19 A5: this action can end the site-wide session (below), so
+    // it asks through the same dialog as every other sign-out entry point.
+    // applySignOut is the only path that actually clears anything.
+    if (ns.GoogleAuth && typeof ns.GoogleAuth.confirmSignOut === 'function') {
+      ns.GoogleAuth.confirmSignOut(applySignOut);
+      return;
+    }
+    applySignOut();
+  }
+
+  function applySignOut() {
     clearIdentity();
     // When the identity came from a real site-wide session, sign THAT out
     // too so the whole site flips back to signed-out together.

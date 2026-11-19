@@ -64,6 +64,17 @@ body.dark-mode {
   --dot-yellow-rgb: 255, 197, 61;
   --dot-green-rgb: 61, 220, 132;
   --dot-blue-rgb: 109, 179, 255;
+  /* Major-task chart slots: the dark steps of the same hues, each at or
+     above 3:1 on the #151518 card (UX-2026-11-19 B2). */
+  --major-1: #3ddc84;
+  --major-2: #6db3ff;
+  --major-3: #ff5f56;
+  --major-4: #ffc53d;
+  --major-5: #e6b85f;
+  --major-6: #c9c9cf;
+  --major-7: #50e8f4;
+  --major-8: #aeb8ad;
+  --major-other: #8f8f97;
   --purple: #c9c9cf;
   --purple-rgb: 201, 201, 207;
   --amber-rgb: 255, 255, 255;

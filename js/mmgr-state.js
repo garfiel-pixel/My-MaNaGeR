@@ -290,7 +290,7 @@ var MMGR = window.MMGR || {};
   'use strict';
 
   const STORAGE_KEY = 'mmgr_state';
-  const SCHEMA_VERSION = 31;
+  const SCHEMA_VERSION = 32;
 
   // ---- Default State ----
   /** @returns {AppState} */
@@ -1259,6 +1259,20 @@ var MMGR = window.MMGR || {};
       const allowed = ['active', 'planning', 'on-hold', 'completed'];
       const s = String(state.status || '').toLowerCase();
       state.status = allowed.indexOf(s) > -1 ? s : 'active';
+      return state;
+    },
+    32: function (state) {
+      // V31 -> V32: one canonical risk shape (data-truth PR, 2026-11-19).
+      // Every stored risk is rewritten through normalizeRisk(): description
+      // filled from title/name, probability and impact bucketed to
+      // Low/Medium/High (a 0-1 fraction, a 1-3 integer and a 1-10 score all
+      // map), an AREA held in `impact` moved to `impactArea` with the level
+      // taken from `severity`, and the nine canonical fields defaulted.
+      // Lossless: normalizeRisk copies every existing key first, so `name`,
+      // `title`, `likelihood`, `severity`, `category` and `source` survive.
+      if (Array.isArray(state.risks)) {
+        state.risks = state.risks.map(normalizeRisk);
+      }
       return state;
     },
     25: function (state) {
@@ -2378,20 +2392,129 @@ var MMGR = window.MMGR || {};
   }
 
   function saveBaseline() {
-    const s = getState();
-    s.baseline = JSON.parse(
-      JSON.stringify({
-        tasks: s.tasks,
-        budgetLines: s.budgetLines,
-        budgetEnvelope: s.budgetEnvelope,
-        capturedAt: new Date().toISOString()
-      })
-    );
-    // baseline is a top-level field; mark it dirty since we bypassed updateState.
-    if (_dirtyFields instanceof Set) {
-      _dirtyFields.add('baseline');
+    // Route through updateState: `baseline` is in FIELD_KEYS (:1780), so the
+    // dirty diff, the change listeners and the render all follow. The old
+    // direct write + manual _dirtyFields.add() skipped all three, which is why
+    // a captured baseline did not reach the cloud section or repaint the card.
+    updateState(function (s) {
+      s.baseline = JSON.parse(
+        JSON.stringify({
+          tasks: s.tasks,
+          budgetLines: s.budgetLines,
+          budgetEnvelope: s.budgetEnvelope,
+          capturedAt: new Date().toISOString()
+        })
+      );
+    });
+    // A capture is a deliberate, rare write: land it in localStorage now
+    // rather than 300ms later (the debounce can be lost if the tab dies).
+    flushSave();
+  }
+
+  // ---- Risk record normalisation (data-truth PR, 2026-11-19) --------------
+  // Four writers disagreed on the risk shape: js/mmgr-risks.js (canonical),
+  // js/ai-actions.js (title / likelihood / lowercase), imported demo data
+  // (name / severity / a 0-1 probability / `impact` holding an AREA) and
+  // whatever a cloud snapshot carried. js/render/risks.js reads
+  // `description`, so every addRisk() record rendered blank.
+  //
+  // This returns a NEW object and never deletes an existing field: the
+  // aliases stay on the record (name, title, likelihood, severity, category,
+  // source), while the canonical nine columns are always present and always
+  // on the Low / Medium / High scale. It lives here, not in mmgr-risks.js,
+  // because migration 32 below needs it and this module loads first.
+  const RISK_LEVELS = ['Low', 'Medium', 'High'];
+
+  function riskLevel(value, fallback) {
+    if (typeof value === 'number' && isFinite(value)) {
+      if (value > 0 && value < 1) {
+        return value < 0.34 ? 'Low' : value < 0.67 ? 'Medium' : 'High';
+      }
+      if (value <= 1) {
+        return 'Low';
+      }
+      if (value <= 3) {
+        return value <= 1.5 ? 'Low' : value <= 2.5 ? 'Medium' : 'High';
+      }
+      if (value <= 4) {
+        return 'Low';
+      }
+      return value <= 7 ? 'Medium' : 'High';
     }
-    save(true);
+    const s = String(value == null ? '' : value)
+      .trim()
+      .toLowerCase();
+    if (!s) {
+      return fallback;
+    }
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      return riskLevel(parseFloat(s), fallback);
+    }
+    if (
+      s === 'l' ||
+      s.indexOf('low') === 0 ||
+      s.indexOf('minor') === 0 ||
+      s.indexOf('unlikely') === 0
+    ) {
+      return 'Low';
+    }
+    if (
+      s === 'm' ||
+      s.indexOf('med') === 0 ||
+      s.indexOf('moderate') === 0 ||
+      s.indexOf('possible') === 0
+    ) {
+      return 'Medium';
+    }
+    if (
+      s === 'h' ||
+      s.indexOf('high') === 0 ||
+      s.indexOf('major') === 0 ||
+      s.indexOf('severe') === 0 ||
+      s.indexOf('critical') === 0 ||
+      s.indexOf('likely') === 0
+    ) {
+      return 'High';
+    }
+    return fallback;
+  }
+
+  function normalizeRisk(r) {
+    if (!r || typeof r !== 'object') {
+      return r;
+    }
+    const out = {};
+    Object.keys(r).forEach(function (k) {
+      out[k] = r[k];
+    });
+    const desc = r.description || r.title || r.name || '';
+    out.description = typeof desc === 'string' ? desc : String(desc);
+    out.probability = riskLevel(r.probability != null ? r.probability : r.likelihood, 'Medium');
+    const impactLevel = riskLevel(r.impact, '');
+    if (impactLevel) {
+      out.impact = impactLevel;
+    } else {
+      // `impact` held an AREA (demo data: 'schedule', 'cost'), not a level.
+      const area = String(r.impact == null ? '' : r.impact).trim();
+      if (area && !out.impactArea) {
+        out.impactArea = area;
+      }
+      out.impact = riskLevel(r.severity, 'Medium');
+    }
+    ['mitigation', 'owner', 'notes', 'contingency'].forEach(function (k) {
+      const v = r[k];
+      out[k] = typeof v === 'string' ? v : v == null ? '' : String(v);
+    });
+    out.status = typeof r.status === 'string' && r.status ? r.status : 'open';
+    out.linkedTaskId = r.linkedTaskId || null;
+    out.issueId = r.issueId || null;
+    let cost = r.costImpactEstimate;
+    if (typeof cost === 'string') {
+      cost = cost.trim() === '' ? null : Number(cost.replace(/[^0-9.\-]/g, ''));
+    }
+    out.costImpactEstimate = typeof cost === 'number' && isFinite(cost) ? cost : null;
+    out.id = typeof r.id === 'string' ? r.id : r.id == null ? '' : String(r.id);
+    return out;
   }
 
   // ---- Schema Validation ----
@@ -2506,7 +2629,10 @@ var MMGR = window.MMGR || {};
     restoreFromJournal: restoreFromJournal,
     journalPut: journalPut,
     journalGet: journalGet,
-    SCHEMA_VERSION: SCHEMA_VERSION
+    SCHEMA_VERSION: SCHEMA_VERSION,
+    // The one canonical risk normaliser. js/mmgr-risks.js re-exports it as
+    // Risks.normalize so renderers and callers share this implementation.
+    normalizeRisk: normalizeRisk
   };
 
   // Register the unload flush once at load time. Guarded so the module also

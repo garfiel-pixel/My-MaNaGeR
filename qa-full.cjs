@@ -1097,9 +1097,13 @@ async function pickPort(start) {
     });
     MMGR.Render.renderRisks();
     var rows=Array.prototype.slice.call(document.querySelectorAll('#risk-body tr'));
-    var row=rows.filter(function(r){return r.textContent.indexOf('Ripple risk')>-1;})[0];
+    // The description now lives in an <input value> (editable cell), so match
+    // it the way check 44 reads a change title - by the input's value, not by
+    // row textContent.
+    var row=rows.filter(function(r){var d=r.querySelector('input[data-field=description]');return d&&d.value==='Ripple risk';})[0];
     var late=!!row && row.textContent.indexOf('LATE')>-1;
-    var hasLink=!!row && row.textContent.indexOf('Slip Source')>-1;
+    var lsel=row?row.querySelector('select[data-field=linkedTaskId]'):null;
+    var hasLink=!!lsel && lsel.value==='rp1';
     MMGR.Render.renderWbs();
     var wrows=Array.prototype.slice.call(document.querySelectorAll('#wbs-body tr'));
     var dw=wrows.filter(function(r){return r.textContent.indexOf('Downstream Task')>-1;})[0];

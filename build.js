@@ -77,6 +77,11 @@ const APP_MODULES = [
   // Kanban board model. Must load before the renderer and the domain
   // modules, because both read MMGR.Kanban at call time.
   'js/mmgr-kanban.js',
+  // UX-2026-11-19 B1: the ONE definition of a major group. Loads after the
+  // Kanban model because it counts through MMGR.Kanban.workItems() at call
+  // time, and before the renderers because the ring, the list, the Gantt and
+  // the board all read it.
+  'js/mmgr-major-tasks.js',
   'js/mmgr-net.js',
   // Performance Mode (owner 2026-09-06): gates heavy layers; must load
   // before mmgr-viewport.js / mmgr-dock.js read it.
@@ -241,6 +246,11 @@ const GLOBE_MODULES = ['js/marketing-globe.js'];
 // with the hero for first paint or LCP) ----
 const MARKETING_AI_MODULES = ['js/marketing-ai.js'];
 
+// ---- Role-card 3D figures (C3; index.html only, loaded when #builtfor nears
+// the viewport). One shared canvas for all four figures; the inline SVG
+// silhouette is the fallback and stays unless this bundle replaces it. ----
+const MARKETING_ROLES_MODULES = ['js/marketing-roles.js'];
+
 // ---- app.html bundle (launcher / project list) ----
 const APP_LAUNCHER_MODULES = [
   'projects-data.js',
@@ -248,6 +258,12 @@ const APP_LAUNCHER_MODULES = [
   'js/mmgr-utils.js',
   'js/mmgr-perf.js',
   'js/app/components.js',
+  // OWNER 2026-11-19 (chrome-truth): the entitlements seam carries the ONE
+  // /api/billing/status request for the page (status()). It used to live only
+  // in the project bundle, so the launcher's plan bar, the header chip and the
+  // billing panel each fetched their own copy and each could fail on its own -
+  // a paying account then read "Upgrade to Premium".
+  'js/app/entitlements.js',
   'js/mmgr-google-auth.js',
   'js/mmgr-cloud-dash.js',
   // OWNER 2026-11-06 (second report): the launcher's plan bar is deliberately
@@ -261,6 +277,12 @@ const APP_LAUNCHER_MODULES = [
   'js/cloud/team-ui.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
+  // OWNER 2026-11-19 (chrome-truth): ONE skeleton system. The launcher had its
+  // own dashSkeleton()/railSkeleton() plus a bare "Loading..." string in the
+  // shared list, while js/app/skeleton.js held eleven per-section templates
+  // that only the project bundle could reach. The module is DOM-only and
+  // reads nothing at load time, so the launcher can paint from the same set.
+  'js/app/skeleton.js',
   // Launcher rail: hover-peek (I-14) + one-shot first-load reveal (B7 parity).
   'js/app/launcher-rail.js',
   // T-15 (UI-IA-AND-MCP 2026-11-11): the same search palette as the project
@@ -277,6 +299,9 @@ const ADMIN_MODULES = [
   'js/mmgr-perf.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
+  // OWNER 2026-11-19 (chrome-truth): same single-request seam as the launcher
+  // bundle, so the admin rail's plan strip shares one status answer.
+  'js/app/entitlements.js',
   // Wave 8.10 (owner 2026-10-06): the admin rail's Manage-subscription strip.
   // Self-contained (delegated clicks, no inline script) so adding it changes
   // no CSP hash.
@@ -483,6 +508,11 @@ if (buildGlobe) {
 if (buildMkt) {
   buildBundle(MARKETING_AI_MODULES, 'dist/marketing-ai.js', 'marketing AI bundle');
 }
+// C3: the role figures are their own lazily-loaded bundle, built with the
+// marketing set so a `--marketing` build always produces it.
+if (buildMkt) {
+  buildBundle(MARKETING_ROLES_MODULES, 'dist/marketing-roles.js', 'marketing roles bundle');
+}
 if (buildCss) {
   bundleAppCSS();
   buildCSS('css/mmgr.css', 'dist/mmgr.min.css', 'app CSS');
@@ -510,6 +540,8 @@ if (buildMkt) {
     'marketing-bundle.' + contentHash(path.join(DIST, 'marketing-bundle.js')) + '.js';
   manifest['marketing-ai.js'] =
     'marketing-ai.' + contentHash(path.join(DIST, 'marketing-ai.js')) + '.js';
+  manifest['marketing-roles.js'] =
+    'marketing-roles.' + contentHash(path.join(DIST, 'marketing-roles.js')) + '.js';
 }
 if (buildGlobe) {
   manifest['marketing-globe.js'] =

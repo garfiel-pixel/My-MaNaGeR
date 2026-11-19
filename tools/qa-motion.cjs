@@ -113,12 +113,35 @@ async function newPage(browser, opts) {
     if (!typeAnim) ok('reduced-motion-typing-off');
     else bad('reduced-motion-typing-off', 'data-type-anim present');
 
-    const seamDisplay = await page.evaluate(() => {
+    // UX-2026-11-19 C1 re-baseline: the seam used to be switched off under
+    // reduced motion (display: none), which deleted the band boundary and left
+    // two colours butted together. It is now drawn and merely held still - the
+    // wave and the stroke stay, the drift stops. That is the contract here.
+    const seamReduced = await page.evaluate(() => {
       const el = document.querySelector('.band-seam');
-      return el ? getComputedStyle(el, '::before').display : 'none';
+      if (!el) {
+        return null;
+      }
+      const b = getComputedStyle(el, '::before');
+      const a = getComputedStyle(el, '::after');
+      return {
+        beforeAnim: b.animationName,
+        afterAnim: a.animationName,
+        mask: b.maskImage || b.webkitMaskImage || 'none',
+        display: b.display
+      };
     });
-    if (seamDisplay === 'none') ok('reduced-motion-seam-light-off');
-    else bad('reduced-motion-seam-light-off', 'display=' + seamDisplay);
+    if (
+      seamReduced &&
+      seamReduced.beforeAnim === 'none' &&
+      seamReduced.afterAnim === 'none' &&
+      /url\(/.test(seamReduced.mask) &&
+      seamReduced.display !== 'none'
+    ) {
+      ok('reduced-motion-seam-light-off');
+    } else {
+      bad('reduced-motion-seam-light-off', JSON.stringify(seamReduced));
+    }
 
     const rvClass = await page.evaluate(() => {
       const el = document.querySelector('.fcard, .aud-item, .step, .section-head');

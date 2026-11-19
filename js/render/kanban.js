@@ -95,12 +95,15 @@ var MMGR = window.MMGR || {};
     return ns.Kanban;
   }
 
-  function kanbanCard(t) {
+  function kanbanCard(t, majorOf) {
     const overdue = t.status !== 'completed' && U.isOverdue(t.endDate) ? 'overdue' : '';
     const pulse = U.isDueSoon(t.endDate, 3) && t.status !== 'completed' ? 'pls' : '';
     const lead = t.leadTime ? 'leadtime' : '';
     const rec = t.recurring ? 'recurring' : '';
     const wx = t.weatherExposed ? 'wex' : '';
+    // B6: the same slot colour as the ring arc and the Gantt bar.
+    const slot = majorOf ? majorOf[String(t.id)] : 0;
+    const majorAttr = slot ? ' data-major="' + slot + '"' : '';
     const crit = t.critical
       ? '<svg class="ico" aria-hidden="true" style="color:var(--gold);font-size:.7rem"><use href="css/mmgr-icons.svg#i-target"></use></svg> '
       : '';
@@ -121,7 +124,9 @@ var MMGR = window.MMGR || {};
       U.escapeHtml(t.id) +
       '" data-id="' +
       U.escapeHtml(t.id) +
-      '">' +
+      '"' +
+      majorAttr +
+      '>' +
       '<div class="cn">' +
       crit +
       relationBadge(t) +
@@ -195,6 +200,9 @@ var MMGR = window.MMGR || {};
     if (!s || !s.tasks) {
       return;
     }
+    // B6: one lookup for the whole board - each card's top stripe.
+    const majorOf =
+      ns.MajorTasks && ns.MajorTasks.assignments ? ns.MajorTasks.assignments(s) : null;
     const cols = [
       ['todo', 'kc-todo', 'w-todo', 'col-todo'],
       ['inprogress', 'kc-ip', 'w-ip', 'col-ip'],
@@ -355,7 +363,7 @@ var MMGR = window.MMGR || {};
           '<div class="es" style="padding:16px;font-size:.72rem">No cards match this lens.</div>';
         continue;
       }
-      el.innerHTML = tasks.map(kanbanCard).join('') + quickAddMarkup(status);
+      el.innerHTML = tasks.map(t => kanbanCard(t, majorOf)).join('') + quickAddMarkup(status);
     }
     const ltEl = $('kc-lt');
     if (ltEl) {

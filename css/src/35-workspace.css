@@ -402,6 +402,12 @@ body.readonly-mode
 .kc:hover {
   background: var(--lit-fog);
 }
+/* UX-2026-11-19 B6: the major's slot colour as a top stripe, so a card reads
+   the same as its ring arc, Gantt bar and WBS row. Absent when the project
+   has no groups, so nothing changes for an ungrouped project. */
+.kc[data-major] {
+  border-top: 4px solid var(--major-row);
+}
 .kc.pls {
   border-left-color: var(--amber);
 }
@@ -581,9 +587,17 @@ body.dark-mode .kqa-in {
 #drw {
   position: fixed;
   top: 0;
-  right: -430px;
-  width: 410px;
+  /* OWNER 2026-11-19 (chrome-truth): the panel is a reading surface, not a
+     phone-width sheet. 410px was cramped on a wide screen - the Settings
+     groups had room to breathe but not to be read - so the width is a custom
+     property with one wide-viewport step. The right offset is derived from it
+     (the 20px overshoot keeps the outer drop-shadow off-canvas when closed),
+     so the two can never drift apart. */
+  --drw-w: 410px;
+  width: var(--drw-w);
+  right: calc(-1 * var(--drw-w) - 20px);
   height: 100vh;
+  height: 100dvh;
   z-index: 1000;
   transition: right 0.3s ease;
   overflow: hidden;
@@ -591,6 +605,11 @@ body.dark-mode .kqa-in {
      ROUNDED silhouette of the child .drw-sheet (left corners rounded on      desktop - a box-shadow on the child would be clipped by its own
      overflow:hidden). */
   filter: drop-shadow(-8px 0 24px rgba(15, 23, 42, 0.14));
+}
+@media (min-width: 1440px) {
+  #drw {
+    --drw-w: 480px;
+  }
 }
 #drw.open {
   right: 0;
@@ -602,6 +621,15 @@ body.dark-mode .kqa-in {
   overflow: hidden;
   background: var(--card);
   border-left: 1px solid var(--border);
+  /* OWNER 2026-11-19 (chrome-truth): the panel used to arrive as a bare
+     slide. A short fade on the CONTENT gives it weight without touching the
+     slide itself - opacity only, because a transform here would create a
+     containing block for any fixed child (the float-mode drawer, popovers). */
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+#drw:not(.open) .drw-sheet {
+  opacity: 0;
 }
 .dh {
   padding: 18px;
@@ -656,23 +684,30 @@ body.dark-mode .kqa-in {
 .db {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
+  padding: 16px;
+  /* OWNER 2026-11-19 (chrome-truth): wheeling past the end of the settings
+     list dragged the PAGE behind the panel - a destructive surprise, because
+     the reader then closed the drawer onto a document that had scrolled away
+     from where they left it. `contain` stops the scroll chain at the panel;
+     it is the same rule #app-sidebar and .sec-nav already use. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .fi {
-  padding: 11px;
+  padding: 13px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  margin-bottom: 7px;
+  margin-bottom: 9px;
 }
 .fn {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 .fd {
   font-size: 0.78rem;
-  line-height: 1.45;
+  line-height: 1.55;
   color: var(--slate);
 }
 
@@ -2406,6 +2441,15 @@ body.dark-mode .wbs-alert-item {
   .nav-btn {
     display: inline-flex;
   }
+  /* OWNER 2026-11-19 (chrome-truth): on a phone the settings drawer covers the
+     whole width, so a page that scrolls underneath it reads as the drawer
+     itself scrolling - and closing it lands somewhere else. `contain` on .db
+     stops the wheel chain; this stops the touch chain at the document. `:has`
+     is already used in this file, so no JS bookkeeping across open / close /
+     float-mode / tour. */
+  body:has(#drw.open) {
+    overflow: hidden;
+  }
   /* The desktop sidebar is mobile-hidden: the off-canvas .sec-nav drawer is
      the ONLY mobile nav, and the sidebar's 240px margin must never apply. */
   #app-sidebar {
@@ -2608,6 +2652,109 @@ body.dark-mode .wbs-alert-item {
   justify-content: space-between;
   align-items: center;
   font-size: 0.78rem;
+}
+/* A named anchor at the top of a panel: #wbs, #risk, #stk and #dash are the
+   hash convention the navigator writes, and a plain <a href="#wbs"> must
+   resolve even with JavaScript off (verify-navigation-anchors enforces it).
+   Zero height, so it can never affect layout. */
+.sec-anchor {
+  display: block;
+  height: 0;
+  overflow: hidden;
+  scroll-margin-top: 12px;
+}
+/* UX-2026-11-19 B5: a dashboard row that is also a link. 44px is the touch
+   floor, and the chevron is the only new ink - the number keeps its dot. */
+.dash-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 2px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+.dash-link:hover,
+.dash-link:focus-visible {
+  background: var(--tile-bg);
+  text-decoration: none;
+}
+.dash-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.dash-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.dash-chev {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--slate);
+  opacity: 0.6;
+}
+.dash-link:hover .dash-chev,
+.dash-link:focus-visible .dash-chev {
+  opacity: 1;
+}
+/* A table cell that is a link: same ink, a chevron, no layout shift. */
+.tbl-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  min-height: 32px;
+}
+.tbl-link:hover,
+.tbl-link:focus-visible {
+  color: var(--gold-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tbl-link .dash-chev {
+  width: 12px;
+  height: 12px;
+}
+/* The Next 3 row's link fills the list row. The row keeps the list's own
+   33px rhythm (qa-rhythm R03 is a hard gate); the link adds no height. */
+.n3-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  /* .dash-link's 44px floor and inset belong to the stacked rows, not here */
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.n3-link:hover,
+.n3-link:focus-visible {
+  color: var(--gold-ink);
+  text-decoration: none;
+}
+.n3-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* The EVM tile keeps its centred column; only the ink changes. */
+.evm-tile-link {
+  color: inherit;
+  text-decoration: none;
+}
+.evm-tile-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .fb-top {
   display: flex;
@@ -3499,6 +3646,15 @@ body.dark-mode .pc-status {
   .sb-close .ico {
     transition: none !important;
     transform: none !important;
+  }
+  /* OWNER 2026-11-19 (chrome-truth): the drawer's content fade is an
+     affordance, not information - under reduced motion the panel simply
+     appears. The slide is already instant for the sidebar above; the drawer's
+     `right` transition is left alone here on purpose (it is the open/close
+     state, not decoration) but the sheet's opacity is removed. */
+  .drw-sheet {
+    transition: none !important;
+    opacity: 1 !important;
   }
   .pcard:hover {
     transform: none;

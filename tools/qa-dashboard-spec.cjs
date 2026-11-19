@@ -263,9 +263,12 @@ check(
 );
 // cloud dash: skeleton builders + aria-busy lifecycle in the source module.
 const cloudDash = read('js/mmgr-cloud-dash.js');
+// 2026-11-19 (chrome-truth): the launcher's two bespoke skeletons were
+// replaced by one owner (js/app/skeleton.js). The builder still exists here,
+// but it now DELEGATES - assert the seam, not the retired markup.
 check(
-  'cloud dash paints cd-skel cards',
-  cloudDash.includes('cd-card cd-skel') && cloudDash.includes('function dashSkeleton')
+  'cloud dash delegates its skeleton to the shared module',
+  cloudDash.includes("skeletonHtml('cloud')") && cloudDash.includes('function dashSkeleton')
 );
 check('cloud dash rail skeleton builder', cloudDash.includes('function railSkeleton'));
 check(
@@ -275,7 +278,10 @@ check(
 );
 check(
   'cloud dash skeleton ships in dist bundle',
-  fs.readFileSync(path.join(ROOT, 'dist/app-bundle.js'), 'utf8').includes('cd-skel')
+  (function () {
+    const bundle = fs.readFileSync(path.join(ROOT, 'dist/app-bundle.js'), 'utf8');
+    return bundle.includes('skeletonHtml') && bundle.includes('skel-card skel-tall');
+  })()
 );
 
 console.log('---');

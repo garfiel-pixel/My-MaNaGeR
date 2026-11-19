@@ -334,6 +334,7 @@
   </div>
 
   <div class="panel active" id="panel-dash">
+    <span class="sec-anchor" id="dash" aria-hidden="true"></span>
     <!-- PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE DIR-3: one-time Core-Mode
          onboarding nudge. Rendered by Render.renderCoreCallout() (mmgr-render.js)
          only while a project has zero Advanced Packs enabled AND none have ever
@@ -375,6 +376,10 @@
           </div>
           <div><div class="t-sm">Completed</div><div class="stat-xl" id="dc">0</div><div class="t-xs">of <span id="tc">0</span> tasks</div></div>
         </div>
+        <!-- UX-2026-11-19 B4: the text version of the ring - what is actually
+             driving completion, one row per major group. Rendered by
+             js/mmgr-render.js; hidden when the project has no groups. -->
+        <div class="major-list" id="major-list" hidden></div>
       </div>
       <div class="card blueprint" id="health-card">
         <div class="card-title" data-def="Health Score">Project Health</div>
@@ -385,15 +390,17 @@
             <div class="hs-main"><div class="hs-track"><div id="health-bar"></div></div><div id="health-score-label"></div></div>
           </div>
         </div>
-        <!-- Compact status counts -->
+        <!-- Compact status counts. UX-2026-11-19 B5: every counter opens the
+             WBS filtered to that exact set (Issues and Compliance open their
+             own records), so the number is also the way to the work. -->
         <div class="col-g8 col-mt8">
-          <div class="fb-sm"><span>In Progress</span><span class="dotstat" id="h-ip"><span class="sdot g"></span><span class="ds-num">0</span></span></div>
-          <div class="fb-sm"><span>At Risk</span><span class="dotstat" id="h-ar"><span class="sdot a"></span><span class="ds-num">0</span></span></div>
-          <div class="fb-sm"><span>Blocked</span><span class="dotstat" id="h-bl"><span class="sdot r"></span><span class="ds-num">0</span></span></div>
-          <div class="fb-sm"><span>Done</span><span class="dotstat" id="h-dn"><span class="sdot g"></span><span class="ds-num">0</span></span></div>
-          <div class="fb-sm"><span>Overdue</span><span class="dotstat" id="h-od"><span class="sdot r"></span><span class="ds-num">0</span></span></div>
-          <div class="fb-sm"><span>Issues</span><span class="dotstat" id="h-is"><span class="sdot r"></span><span class="ds-num">0</span></span></div>
-          <div class="fb-sm"><span>Compliance</span><span class="dotstat" id="h-coi"><span class="sdot r"></span><span class="ds-num">0</span></span></div>
+          <a class="dash-link fb-sm" href="#wbs" data-nav="1" data-nav-panel="wbs" data-nav-filter="inprogress"><span>In Progress</span><span class="dash-end"><span class="dotstat" id="h-ip"><span class="sdot g"></span><span class="ds-num">0</span></span><svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></span></a>
+          <a class="dash-link fb-sm" href="#wbs" data-nav="1" data-nav-panel="wbs" data-nav-filter="atrisk"><span>At Risk</span><span class="dash-end"><span class="dotstat" id="h-ar"><span class="sdot a"></span><span class="ds-num">0</span></span><svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></span></a>
+          <a class="dash-link fb-sm" href="#wbs" data-nav="1" data-nav-panel="wbs" data-nav-filter="blocked"><span>Blocked</span><span class="dash-end"><span class="dotstat" id="h-bl"><span class="sdot r"></span><span class="ds-num">0</span></span><svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></span></a>
+          <a class="dash-link fb-sm" href="#wbs" data-nav="1" data-nav-panel="wbs" data-nav-filter="done"><span>Done</span><span class="dash-end"><span class="dotstat" id="h-dn"><span class="sdot g"></span><span class="ds-num">0</span></span><svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></span></a>
+          <a class="dash-link fb-sm" href="#wbs" data-nav="1" data-nav-panel="wbs" data-nav-filter="overdue"><span>Overdue</span><span class="dash-end"><span class="dotstat" id="h-od"><span class="sdot r"></span><span class="ds-num">0</span></span><svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></span></a>
+          <a class="dash-link fb-sm" href="#risk" data-nav="1" data-nav-panel="risk" data-nav-anchor="issues"><span>Issues</span><span class="dash-end"><span class="dotstat" id="h-is"><span class="sdot r"></span><span class="ds-num">0</span></span><svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></span></a>
+          <a class="dash-link fb-sm" href="#stk" data-nav="1" data-nav-panel="stk"><span>Compliance</span><span class="dash-end"><span class="dotstat" id="h-coi"><span class="sdot r"></span><span class="ds-num">0</span></span><svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></span></a>
         </div>
         <!-- Expandable explanation -->
         <details id="health-breakdown-wrap" class="hb-wrap"><summary class="hb-toggle">Why?</summary><div id="health-breakdown"></div></details>
@@ -463,13 +470,14 @@
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg> Expiry &amp; Renewals<span class="ct-sub" id="expiry-count"></span></div>
       <div id="expiry-body"></div>
     </div>
-    <!-- EVM (feature 4) -->
-    <div class="card mt-lg" id="evm-card">
+    <!-- EVM (feature 4). UX-2026-11-19 B5: this card IS the EVM view, so it
+         carries the anchor its summary tiles scroll to. -->
+    <div class="card mt-lg" id="evm-card" data-nav-anchor="evm">
       <div class="card-title" data-def="Earned Value Metrics (CPI & SPI)">Earned Value Management</div>
       <div class="evm-grid">
-        <div class="evm-tile"><div class="evm-tile-label">Schedule Perf. Index</div><div class="evm-tile-val" id="evm-spi">-</div><div class="evm-tile-sub" id="evm-spi-lbl"></div></div>
-        <div class="evm-tile"><div class="evm-tile-label">Cost Perf. Index</div><div class="evm-tile-val" id="evm-cpi">-</div><div class="evm-tile-sub" id="evm-cpi-lbl"></div></div>
-        <div class="evm-tile"><div class="evm-tile-label">Earned Value</div><div class="evm-tile-val txt-gold" id="evm-ev">-</div><div class="evm-tile-sub" id="evm-ev-lbl"></div></div>
+        <a class="evm-tile evm-tile-link" href="#dash" data-nav="1" data-nav-panel="dash" data-nav-anchor="evm"><div class="evm-tile-label">Schedule Perf. Index</div><div class="evm-tile-val" id="evm-spi">-</div><div class="evm-tile-sub" id="evm-spi-lbl"></div></a>
+        <a class="evm-tile evm-tile-link" href="#dash" data-nav="1" data-nav-panel="dash" data-nav-anchor="evm"><div class="evm-tile-label">Cost Perf. Index</div><div class="evm-tile-val" id="evm-cpi">-</div><div class="evm-tile-sub" id="evm-cpi-lbl"></div></a>
+        <a class="evm-tile evm-tile-link" href="#dash" data-nav="1" data-nav-panel="dash" data-nav-anchor="evm"><div class="evm-tile-label">Earned Value</div><div class="evm-tile-val txt-gold" id="evm-ev">-</div><div class="evm-tile-sub" id="evm-ev-lbl"></div></a>
       </div>
       <div class="evm-grid2">
         <div>Schedule Variance (SV): <span class="fw-b" id="evm-sv"></span></div>
@@ -615,6 +623,7 @@
 
   <!-- ═══ WBS ═══ -->
   <div class="panel" id="panel-wbs">
+    <span class="sec-anchor" id="wbs" aria-hidden="true"></span>
     <div class="card">
       <div class="card-title">Work Breakdown Structure
         <div class="g6">
@@ -629,6 +638,9 @@
         </div>
       </div>
       <div id="wbs-alerts" class="wbs-alerts"></div>
+      <!-- UX-2026-11-19 B5: says which view filter is on and clears it.
+           Rendered by js/mmgr-render.js (renderWbsViewBar); view state only. -->
+      <div id="wbs-view-bar" class="wbs-view-bar" hidden></div>
       <div class="ox">
         <table class="dt"><thead><tr id="wbs-head-row">
           <th class="w38">ID</th><th>Task Name</th><th class="w130">Assignee</th>
@@ -1102,6 +1114,7 @@
 
   <!-- ═══ STAKEHOLDERS ═══ -->
   <div class="panel" id="panel-stk">
+    <span class="sec-anchor" id="stk" aria-hidden="true"></span>
     <div class="card">
       <div class="card-title">Stakeholder Register
         <div class="g6">
@@ -1200,10 +1213,12 @@
 
   <!-- ═══ RISK ═══ -->
   <div class="panel" id="panel-risk">
+    <span class="sec-anchor" id="risk" aria-hidden="true"></span>
     <div class="card">
       <div class="card-title" data-def="Risk">Risk & Issue Matrix
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="addRisk">+ Add Risk</button>
+          <button class="btn btn-n btn-s" data-action="askAboutRisk" title="Open the assistant on your highest-exposure risk and discuss how to mitigate it. It discusses and suggests - it never changes the project."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Discuss with AI</button>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="risk"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
           <button class="btn btn-d btn-s" data-action="startHold" data-section="risk"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear All</button>
         </div>
@@ -1221,7 +1236,7 @@
           <th class="w90">→ Issue</th><th class="w96">Actions</th>
         </tr></thead><tbody id="risk-body"></tbody></table></div>
       </div>
-      <div class="rsec">
+      <div class="rsec" data-nav-anchor="issues">
         <div class="rst iss"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-dot"></use></svg> Live Issues</div>
         <div class="ox"><table class="dt"><thead><tr>
           <th class="w38">ID</th><th>Description</th>

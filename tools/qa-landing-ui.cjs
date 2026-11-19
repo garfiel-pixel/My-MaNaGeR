@@ -833,24 +833,37 @@ async function newPage(browser, opts) {
       gold && gold.shadow
     );
 
-    // OWNER 2026-11-10: the gold light on the band seam must track the seam's
-    // own position (so it travels while the seam is on screen), not the whole
-    // document scroll fraction (which leaves it pinned at the left until the
-    // seam has scrolled away).
-    const seamP = await p3.evaluate(async () => {
+    // UX-2026-11-19 C1 (re-baselined): the gold light that tracked the seam's
+    // scroll position is retired. The seam is now a wave with a thin cream
+    // stroke, drifting on transform only, independent of scrolling - so the
+    // contract this check holds is the NEW one: the wave and the stroke are
+    // drawn, and the seam is given no --page-progress at all. The motion
+    // itself is proven in tools/qa-landing-motion.cjs (S2-S7).
+    const seam = await p3.evaluate(async () => {
       const s = document.querySelector('.band-seam');
       if (!s) {
         return null;
       }
       s.scrollIntoView({ block: 'center' });
       await new Promise(r => setTimeout(r, 450));
-      return getComputedStyle(s).getPropertyValue('--page-progress').trim();
+      const b = getComputedStyle(s, '::before');
+      const a = getComputedStyle(s, '::after');
+      return {
+        progress: s.style.getPropertyValue('--page-progress'),
+        edge: b.maskImage || b.webkitMaskImage || '',
+        line: a.maskImage || a.webkitMaskImage || '',
+        anim: b.animationName
+      };
     });
     check(
       'L-08',
-      'the seam gold light tracks the seam position (not whole-page progress)',
-      !!seamP && parseFloat(seamP) > 0.2 && parseFloat(seamP) < 0.8,
-      seamP
+      'the seam is a drawn wave and a cream stroke, with no scroll coupling',
+      !!seam &&
+        !seam.progress &&
+        /url\(/.test(String(seam.edge)) &&
+        /url\(/.test(String(seam.line)) &&
+        /seam-drift/.test(seam.anim),
+      seam
     );
 
     await p3.evaluate(() => window.scrollTo(0, 0));

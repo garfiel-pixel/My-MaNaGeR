@@ -515,12 +515,261 @@ var MMGR = window.MMGR || {};
      open in a new tab (middle-click / Ctrl-click still work on any <a href>).
 
      A helper rather than a scattered rule: a new feature calls go() and gets
-     the same behaviour, and the T-NEWTAB gate has one place to allow. */
+     the same behaviour, and the T-NEWTAB gate has one place to allow.
+
+     UX-2026-11-19 B5: the SAME helper now also moves WITHIN the workspace.
+     go({panel, recordId, filter}) switches the panel, applies an optional
+     view filter, scrolls the record into view and flashes it. One helper for
+     both jobs, because a second navigator would drift from this one.
+
+     History: every panel switch is an entry (the dashboard is the entry the
+     project opened on), so the browser and phone back gesture returns to the
+     dashboard with its scroll position restored. The hash carries the panel
+     name (#wbs) - the only hash convention in this app - so a deep link
+     works and an <a href="#wbs"> still works if this module never loads. */
+  var NAV_SECTIONS = {
+    dash: 1,
+    def: 1,
+    wbs: 1,
+    gantt: 1,
+    kan: 1,
+    ideas: 1,
+    agenda: 1,
+    risk: 1,
+    res: 1,
+    bud: 1,
+    stk: 1,
+    chg: 1,
+    log: 1,
+    close: 1,
+    raci: 1,
+    comms: 1,
+    docs: 1,
+    proc: 1,
+    dmaic: 1,
+    meet: 1,
+    charter: 1,
+    claim: 1,
+    photos: 1
+  };
+  var navReady = false;
+  var navSuppress = 0;
+
+  function navPanel() {
+    var active = document.querySelector('.panel.active');
+    if (!active || !active.id || active.id.indexOf('panel-') !== 0) {
+      return 'dash';
+    }
+    return active.id.slice(6);
+  }
+
+  function navSectionFromHash(hash) {
+    var h = String(hash || '')
+      .replace(/^#/, '')
+      .split(/[/?]/)[0]
+      .toLowerCase();
+    return NAV_SECTIONS[h] ? h : '';
+  }
+
+  function navReduced() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function navShow(panel) {
+    var R = ns.Render;
+    if (!R || typeof R.showSection !== 'function') {
+      return false;
+    }
+    var btn = document.querySelector('.sec-btn[data-section="' + panel + '"]');
+    R.showSection(panel, btn, { history: false });
+    return true;
+  }
+
+  // A one-line notice where the record would have been. The panel still
+  // renders - a dead link must never leave the user on a blank screen.
+  function navMiss(panel, label) {
+    var host = document.getElementById('panel-' + panel);
+    if (!host) {
+      return;
+    }
+    var old = host.querySelector('.nav-miss');
+    if (old && old.parentNode) {
+      old.parentNode.removeChild(old);
+    }
+    var el = document.createElement('div');
+    el.className = 'nav-miss';
+    el.setAttribute('role', 'status');
+    el.textContent = (label ? label + ' is' : 'That record is') + ' no longer in this project.';
+    host.insertBefore(el, host.firstChild);
+    window.setTimeout(function () {
+      if (el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    }, 6000);
+  }
+
+  function navFlash(hit) {
+    if (!hit) {
+      return;
+    }
+    // The agenda's own flash: one pulse for the whole app, not a second one.
+    hit.classList.add('ag-hit');
+    if (typeof hit.scrollIntoView === 'function') {
+      hit.scrollIntoView({ block: 'center', behavior: navReduced() ? 'auto' : 'smooth' });
+    }
+    if (!hit.hasAttribute('tabindex')) {
+      hit.setAttribute('tabindex', '-1');
+    }
+    if (typeof hit.focus === 'function') {
+      try {
+        hit.focus({ preventScroll: true });
+      } catch (e) {
+        /* focus is a nicety, never a failure */
+      }
+    }
+    window.setTimeout(function () {
+      hit.classList.remove('ag-hit');
+    }, 1600);
+  }
+
+  function navFocus(panel, wanted) {
+    var id = String(wanted);
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        var root = document.getElementById('panel-' + panel) || document;
+        var nodes = root.querySelectorAll('[data-id], [data-idea-id], [data-idx]');
+        for (var i = 0; i < nodes.length; i += 1) {
+          var el = nodes[i];
+          if (
+            el.getAttribute('data-id') === id ||
+            el.getAttribute('data-idea-id') === id ||
+            el.getAttribute('data-idx') === id
+          ) {
+            navFlash(el);
+            return;
+          }
+        }
+        navMiss(panel);
+      });
+    });
+  }
+
+  function navColumn(panel, name) {
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        var root = document.getElementById('panel-' + panel) || document;
+        // The board names its columns col-todo / col-ip / col-bl / col-dn;
+        // the drop status is the honest key, the id is the fallback.
+        var col =
+          root.querySelector('[data-drop-status="' + name + '"]') ||
+          root.querySelector('[data-col="' + name + '"]') ||
+          document.getElementById('col-' + name);
+        if (!col) {
+          navMiss(panel);
+          return;
+        }
+        navFlash(col);
+      });
+    });
+  }
+
+  // An anchor is a card that is its own destination (the EVM view, the
+  // weather log). It lives on a panel that is already the right place, so
+  // the helper scrolls to it and flashes it exactly like a record.
+  function navAnchor(panel, name) {
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        var root = document.getElementById('panel-' + panel) || document;
+        var el = root.querySelector('[data-nav-anchor="' + name + '"]');
+        if (!el) {
+          navMiss(panel);
+          return;
+        }
+        navFlash(el);
+      });
+    });
+  }
+
+  function navFilter(panel, filter) {
+    var R = ns.Render;
+    if (panel === 'wbs' && R && typeof R.setWbsFilter === 'function') {
+      R.setWbsFilter(filter || '');
+    }
+  }
+
+  function navRememberCurrent(panel) {
+    try {
+      var st = window.history.state;
+      var prev = st && st.mmgrNav ? st : { mmgrNav: 1, panel: panel };
+      prev.scrollY = window.scrollY;
+      window.history.replaceState(prev, '');
+    } catch (e) {
+      /* a history entry is a nicety; never block the switch */
+    }
+  }
+
+  function navPush(panel, req) {
+    var state = {
+      mmgrNav: 1,
+      panel: panel,
+      scrollY: 0,
+      filter: (req && req.filter) || '',
+      recordId: (req && req.recordId) || '',
+      column: (req && req.column) || ''
+    };
+    try {
+      if (req && req.replace) {
+        window.history.replaceState(state, '', '#' + panel);
+      } else {
+        window.history.pushState(state, '', '#' + panel);
+      }
+    } catch (e) {
+      /* file:// or a sandboxed frame: the panel still switches */
+    }
+  }
+
+  function navGoPanel(req) {
+    var panel = String(req.panel || '').toLowerCase();
+    if (!NAV_SECTIONS[panel]) {
+      return false;
+    }
+    if (navReady && req.history !== false) {
+      navRememberCurrent(panel);
+      navPush(panel, req);
+    }
+    // The filter is view state: set it BEFORE the panel renders so the first
+    // paint is already the filtered list (no flash of everything).
+    navSuppress += 1;
+    try {
+      navFilter(panel, req.filter);
+      navShow(panel);
+    } finally {
+      navSuppress -= 1;
+    }
+    if (req.recordId) {
+      navFocus(panel, req.recordId);
+    } else if (req.column) {
+      navColumn(panel, req.column);
+    } else if (req.anchor) {
+      navAnchor(panel, req.anchor);
+    } else {
+      window.scrollTo(0, 0);
+    }
+    return true;
+  }
+
   ns.Nav = {
     isExternal: function (url) {
       return /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(String(url || ''));
     },
     go: function (url, opts) {
+      if (url && typeof url === 'object') {
+        return navGoPanel(url);
+      }
       opts = opts || {};
       var u = String(url || '');
       if (!u) {
@@ -533,7 +782,73 @@ var MMGR = window.MMGR || {};
       }
       window.location.assign(u);
       return true;
-    }
+    },
+    // Called by Render.showSection at the end of every switch, so a click on
+    // the sidebar is a history entry too (not only a go() call).
+    sectionShown: function (section) {
+      if (!navReady || navSuppress > 0) {
+        return;
+      }
+      var st = window.history.state;
+      var prev = st && st.mmgrNav ? st.panel : 'dash';
+      if (prev === section) {
+        return;
+      }
+      try {
+        window.history.replaceState({ mmgrNav: 1, panel: prev, scrollY: window.scrollY }, '');
+      } catch (e) {}
+      navPush(section, {});
+    },
+    // Boot: seed the entry the project opened on, then honour a #panel deep
+    // link without leaving a duplicate entry behind.
+    start: function () {
+      navReady = true;
+      var deep = navSectionFromHash(window.location.hash);
+      try {
+        window.history.replaceState({ mmgrNav: 1, panel: 'dash', scrollY: 0 }, '');
+      } catch (e) {}
+      if (deep && deep !== 'dash') {
+        navGoPanel({ panel: deep, history: false });
+      }
+    },
+    // The dashboard reads this to know whether it is the entry to return to.
+    panel: navPanel,
+    sections: NAV_SECTIONS,
+    fromHash: navSectionFromHash
   };
+
+  window.addEventListener('popstate', function (e) {
+    var st = e.state;
+    if (!st || !st.mmgrNav || !NAV_SECTIONS[st.panel]) {
+      return;
+    }
+    navSuppress += 1;
+    try {
+      navFilter(st.panel, st.filter);
+      navShow(st.panel);
+    } finally {
+      navSuppress -= 1;
+    }
+    // showSection scrolls to the top; the entry's own position wins.
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        if (st.scrollY) {
+          window.scrollTo(0, st.scrollY);
+        }
+      });
+    });
+  });
+
+  // A typed hash, or an <a href="#wbs"> the click handler never saw.
+  window.addEventListener('hashchange', function () {
+    if (!navReady) {
+      return;
+    }
+    var h = navSectionFromHash(window.location.hash);
+    if (!h || h === navPanel()) {
+      return;
+    }
+    navGoPanel({ panel: h, history: false });
+  });
 })(MMGR);
 window.MMGR = MMGR;

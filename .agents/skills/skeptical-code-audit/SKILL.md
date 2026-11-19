@@ -69,6 +69,13 @@ node tools/qa-mcp-live-e2e.cjs   # the harness itself, not just npm run verify
 
 Re-baseline the harness to the NEW contract. Never delete or weaken the assertion to make it pass: the assertion encodes the user-facing contract (here, Accept applies the change; a zero-diff accept warns "nothing left to apply").
 
+Two more drift shapes seen in the UX 2026-11-19 CI repair — grep for them too:
+
+- **A derived metric changed definition, but the harness still hard-codes the old one.** B3 redefined the dashboard's "of N tasks" (`#tc`) as the ring's work-item total (phases excluded) for grouped projects; `qa-p1.cjs` check 5 still asserted `hTc === state.tasks.length`. Local and CI both went red on that one line. Fix: derive the expectation from the app's OWN single rule (`MMGR.Kanban.workItems(state)` / `MMGR.MajorTasks.getMajorGroups`) and mirror the app's grouped/ungrouped split, not from a re-implemented count. Whenever a metric is centralised, grep the harness tree for literal counts of the thing it replaced (`grep -rn "tasks.length" tools/ qa-*.cjs`).
+- **A parse-time module wait is not a boot-complete signal.** `waitForFunction(() => MMGR.CustomFields)` resolves before `init()` (the module-readiness gate) wires delegated `data-action` handlers; a `showSec` click can be dropped and a later forced click hits a hidden panel ("Element is not visible"). This surfaced only when B5's `Nav.start()` made boot ordering stricter. Fix: wait for `MMGR.App` **and a rendered `.panel.active`**, then verify each section switch actually landed (`#panel-<sec>.active`), retrying once. Grep for the weak wait: `grep -rn "waitForFunction.*CustomFields" tools/ qa-*.cjs`.
+
+Both are CI-only harnesses — `npm run verify` cannot catch either, so the affected harness must be run directly (locally AND in the PR run) after the contract change.
+
 ## Audit checklist
 
 Run these checks systematically across every relevant file, not just the one currently open. Adapt names/patterns to the actual codebase.

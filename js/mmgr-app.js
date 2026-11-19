@@ -519,6 +519,14 @@ var MMGR = window.MMGR || {};
     R.renderAll();
     updateUndoUi();
 
+    // UX-2026-11-19 B5: every [data-nav] element is an in-app link through
+    // the ONE helper, and Nav.start seeds the entry the project opened on so
+    // the back gesture always has the dashboard to return to.
+    wireDashNav();
+    if (ns.Nav && typeof ns.Nav.start === 'function') {
+      ns.Nav.start();
+    }
+
     // DIR-2 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): measure the header so
     // the sticky section nav sits exactly below it; re-measure on resize (the
     // header wraps on narrow screens).
@@ -1287,6 +1295,58 @@ var MMGR = window.MMGR || {};
   // ---- Sections ----
   function showSec(section, btn) {
     R.showSection(section, btn);
+  }
+
+  // UX-2026-11-19 B5: one delegated handler turns every [data-nav] element
+  // into an in-app link. The attributes carry the whole destination:
+  //   data-nav-panel  the section (falls back to the href's #hash)
+  //   data-nav-id     the record to scroll to and flash
+  //   data-nav-filter the WBS view filter ("overdue", "ids:1,2", ...)
+  //   data-nav-col    a Kanban column
+  //   data-nav-anchor a card that is its own destination
+  // Modified clicks (Ctrl/Cmd/middle) are left to the browser, so a real
+  // href still opens in a new tab exactly as APP-2 promises.
+  function wireDashNav() {
+    if (document.body.getAttribute('data-nav-wired') === '1') {
+      return;
+    }
+    document.body.setAttribute('data-nav-wired', '1');
+    document.addEventListener('click', function (e) {
+      if (
+        e.defaultPrevented ||
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey
+      ) {
+        return;
+      }
+      const a = e.target && e.target.closest ? e.target.closest('[data-nav]') : null;
+      if (!a) {
+        return;
+      }
+      const panel =
+        a.getAttribute('data-nav-panel') || String(a.getAttribute('href') || '').replace(/^#/, '');
+      if (!panel) {
+        return;
+      }
+      e.preventDefault();
+      ns.Nav.go({
+        panel: panel,
+        recordId: a.getAttribute('data-nav-id') || '',
+        filter: a.getAttribute('data-nav-filter') || '',
+        column: a.getAttribute('data-nav-col') || '',
+        anchor: a.getAttribute('data-nav-anchor') || ''
+      });
+    });
+  }
+
+  // Clearing a WBS view filter is view state, so it is safe in view-only mode.
+  function clearWbsFilter() {
+    if (ns.Render && typeof ns.Render.setWbsFilter === 'function') {
+      ns.Render.setWbsFilter('');
+    }
   }
 
   // ---- Focus Mode ----
@@ -4191,7 +4251,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Jumping to the record is the whole point of the feed. The target panel
-  // renders first (showSec calls its SECTION_RENDERERS entry), then the
+  // renders first (showSec dispatches through renderSectionBody), then the
   // record is found inside it and flashed. The scan is by attribute value,
   // never by building a selector from the id: an id from an import can
   // carry a quote or a bracket, and a string-built selector would throw.
@@ -4600,6 +4660,37 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // Baseline deep link (data-truth PR): the Dashboard's "no baseline yet" card
+  // used to say "use Save Baseline in Controls" with no way there. This opens
+  // the drawer on Controls, expands Your Data, selects Backup & Transfer and
+  // brings the actual button into view - the same path openPacks() takes.
+  function openDrwToBaseline() {
+    if (document.body.classList.contains('focus-mode')) {
+      tglFocusMode();
+    }
+    openDrw();
+    swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
+    const ac = window.MMGR && window.MMGR.AppControls;
+    if (ac && ac.focus) {
+      ac.focus('yourdata', 'backup');
+    }
+    const el = document.querySelector('#db-ctrl [data-action="saveBaseline"]');
+    if (el) {
+      requestAnimationFrame(function () {
+        try {
+          el.scrollIntoView({ block: 'center', behavior: 'auto' });
+        } catch (e) {
+          try {
+            el.scrollIntoView();
+          } catch (e2) {}
+        }
+        try {
+          el.focus();
+        } catch (e) {}
+      });
+    }
+  }
+
   // ---- Backup & Cloud-Sync UI ---- (extracted to js/app/backup.js)
   function cloudLinked() {
     return ns.AppBackup && ns.AppBackup.cloudLinked ? ns.AppBackup.cloudLinked() : false;
@@ -4641,14 +4732,21 @@ var MMGR = window.MMGR || {};
     }
   }
   // ---- Wave 5: skeletons ---- (extracted to js/app/skeleton.js)
+  // OWNER 2026-11-19 (chrome-truth): these three wrappers read `.html`,
+  // `.paint` and `.sections`, but the module exports `skeletonHtml`,
+  // `skeletonPaint` and `skeletonSections` - so every one of the eleven
+  // per-section templates was dead and the only skeleton that ever painted was
+  // the static boot splash. Name the exports that actually exist.
   function skeletonHtml(section) {
-    return ns.Skeleton && ns.Skeleton.html ? ns.Skeleton.html(section) : '';
+    return ns.Skeleton && ns.Skeleton.skeletonHtml ? ns.Skeleton.skeletonHtml(section) : '';
   }
   function skeletonPaint(section, target) {
-    return ns.Skeleton && ns.Skeleton.paint ? ns.Skeleton.paint(section, target) : function () {};
+    return ns.Skeleton && ns.Skeleton.skeletonPaint
+      ? ns.Skeleton.skeletonPaint(section, target)
+      : function () {};
   }
   function skeletonSections() {
-    return ns.Skeleton && ns.Skeleton.sections ? ns.Skeleton.sections : [];
+    return ns.Skeleton && ns.Skeleton.skeletonSections ? ns.Skeleton.skeletonSections : [];
   }
 
   function openDrwToPrompts(type) {
@@ -6030,6 +6128,10 @@ var MMGR = window.MMGR || {};
     showSec: showSec,
     tglFocusMode: tglFocusMode,
     openDrw: openDrw,
+    // The active project id. Three readers already expected it on this object
+    // (mmgr-ai.js MCP toggle + relay, mmgr-app.js row keying); without it they
+    // read `undefined` and keyed per-project settings to a shared bucket.
+    projectId: ns.projectId,
     closeDrw: closeDrw,
     swDtab: swDtab,
     openPacks: openPacks,
@@ -6133,6 +6235,7 @@ var MMGR = window.MMGR || {};
     ideaKeyMove: ideaKeyMove,
     setAgendaDays: setAgendaDays,
     agendaJump: agendaJump,
+    clearWbsFilter: clearWbsFilter,
     exportAgendaIcs: exportAgendaIcs,
     dragIdea: dragIdea,
     dropIdea: dropIdea,
@@ -6183,6 +6286,7 @@ var MMGR = window.MMGR || {};
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
+    openDrwToBaseline: openDrwToBaseline,
     openDrwToPrompts: openDrwToPrompts,
     bkToggle: bkToggle,
     bkClose: bkClose,
@@ -6609,6 +6713,14 @@ window.MMGR = MMGR;
     addRisk: () => window.MMGR.Risks.addRisk(),
     delRisk: el => window.MMGR.Risks.delRisk(parseInt(el.getAttribute('data-idx'))),
     toggleRiskIssue: el => window.MMGR.Risks.toggleRiskIssue(parseInt(el.getAttribute('data-idx'))),
+    // Risk <-> AI: discuss a recorded risk. data-id is optional - with none
+    // the assistant takes the highest-exposure open risk.
+    askAboutRisk: el => {
+      const A = window.MMGR && window.MMGR.AiWin;
+      if (A && A.askAboutRisk) {
+        A.askAboutRisk(el && el.getAttribute('data-id'));
+      }
+    },
     delIssue: el => window.MMGR.Risks.delIssue(parseInt(el.getAttribute('data-idx'))),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-1: risk matrix
     // click-to-filter (view-only , filtering the list, not mutating state).
@@ -6968,6 +7080,9 @@ window.MMGR = MMGR;
     // Rank 2.3: real model wiring , run preset / run question / settings.
     aiRunPreset: el => window.MMGR.AiWin.runPreset(el.getAttribute('data-type')),
     aiRun: () => window.MMGR.AiWin.runQuestion(),
+    majorShowAll: () => window.MMGR.Render.toggleMajorList(),
+    // UX-2026-11-19 B5: a WBS view filter is view state (a module flag).
+    wbsClearFilter: () => window.MMGR.App.clearWbsFilter(),
     aiCopyOut: () => window.MMGR.AiWin.copyOut(),
     aiSetTier: el => {
       window.MMGR.AiWin.setAiCfg({ tier: el.value });
@@ -7502,6 +7617,7 @@ window.MMGR = MMGR;
     populateSprint: () => window.MMGR.App.populateSprint(),
     openPrompt: el => window.MMGR.App.openPrompt(el.getAttribute('data-type')),
     openDrwToSave: () => window.MMGR.App.openDrwToSave(),
+    openDrwToBaseline: () => window.MMGR.App.openDrwToBaseline(),
     openDrwToPrompts: el => window.MMGR.App.openDrwToPrompts(el.getAttribute('data-type')),
     bkToggle: () => window.MMGR.App.bkToggle(),
     bkCloud: () => window.MMGR.App.bkCloud(),
@@ -7907,6 +8023,9 @@ window.MMGR = MMGR;
     swDtab: 1,
     openDrwToPrompts: 1,
     openDrwToSave: 1,
+    // Opening the drawer on the baseline control mutates nothing - the
+    // capture itself (saveBaseline) stays blocked for viewers.
+    openDrwToBaseline: 1,
     // C23 pool: opening the Library / refreshing the merge mutates NO
     // project state until the user explicitly links a row (poolLinkRow
     // etc. are mutating and stay read-only-blocked for viewers).
@@ -7952,6 +8071,9 @@ window.MMGR = MMGR;
     // Print Charter are ALL view-only. saveCharter mutates state and stays
     // blocked in view-only (deliberately not listed here).
     riskMatrixCell: 1,
+    // Discussing a risk writes no project record: a view-only session can ask
+    // the assistant about what it can already read.
+    askAboutRisk: 1,
     riskMatrixClear: 1,
     tglWbsIssues: 1,
     copyIdTemplate: 1,
@@ -7984,9 +8106,15 @@ window.MMGR = MMGR;
     // Rank 2.1: digestGenerate composes a read-only summary; digestPin writes
     // the reference snapshot and stays blocked in view-only mode.
     digestGenerate: 1,
-    // AI window: open/close/load/copy/attach are read-only. Rank 2.3's
-    // aiRunPreset/aiRun WRITE state.aiOutputs and aiSet* writes state.config
-    // , all correctly stay BLOCKED in view-only mode.
+    // AI window: open/close/load/copy/attach are read-only. aiSet* writes
+    // state.config (the model choice) and stays blocked in view-only mode.
+    // UX-2026-11-19 A6: aiRun/aiRunPreset are ALSO safe. They read the
+    // project and write only the assistant transcript (state.aiOutputs + the
+    // conversation history) - never a project record. The tester typed a
+    // question, pressed Send and was refused AFTER typing, which is exactly
+    // what the directive forbids: the guard was answering "you may not" to a
+    // question that changes nothing in the project. Applying an AI-proposed
+    // edit is a different path (the MCP accept engine) and stays blocked.
     openAiWin: 1,
     closeAiWin: 1,
     closeAiWinBg: 1,
@@ -7996,6 +8124,12 @@ window.MMGR = MMGR;
     aiHistToggle: 1,
     aiMoreToggle: 1,
     aiPreset: 1,
+    aiRun: 1,
+    aiRunPreset: 1,
+    // UX-2026-11-19 B4: expanding the contributor list is view state (a
+    // module flag), never project state.
+    majorShowAll: 1,
+    wbsClearFilter: 1,
     aiAttachContext: 1,
     aiCopy: 1,
     aiClear: 1,

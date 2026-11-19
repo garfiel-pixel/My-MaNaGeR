@@ -19,6 +19,17 @@
   animation-iteration-count: 1 !important;
   scroll-behavior: auto !important;
 }
+/* OWNER 2026-11-19 (chrome-truth): the settings drawer's content fade is
+   decoration - Performance Mode turns it off and shows the panel at once. */
+/* UX-2026-11-19 B3: the ring's quarter-turn entry sweep is decoration, so
+   Performance Mode shows the finished ring at once. */
+[data-perf='on'] .pring.ring-in svg {
+  animation: none !important;
+}
+[data-perf='on'] .drw-sheet {
+  transition: none !important;
+  opacity: 1 !important;
+}
 [data-perf='on'] [class*='glass'],
 [data-perf='on'] .card,
 [data-perf='on'] .top,

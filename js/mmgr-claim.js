@@ -799,7 +799,7 @@ var MMGR = window.MMGR || {};
       const rate = ldRate(s);
       if (!slips.length) {
         body.innerHTML =
-          '<tr><td colspan="6" class="wbs-empty"><div>No schedule slip vs baseline detected. Save a baseline (Settings &gt; Controls &gt; Save Baseline), then move a task end date past its baseline end to populate this log with cause tags.</div></td></tr>';
+          '<tr><td colspan="6" class="wbs-empty"><div>No schedule slip vs baseline detected. Save a baseline (Settings &gt; Controls &gt; Your Data &gt; Backup &amp; Transfer &gt; Save Baseline), then move a task end date past its baseline end to populate this log with cause tags.</div></td></tr>';
       } else {
         body.innerHTML = slips
           .map(

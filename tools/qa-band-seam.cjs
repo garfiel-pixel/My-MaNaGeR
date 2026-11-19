@@ -9,17 +9,19 @@
    This gate proves, in a real browser on index.html:
      - exactly six seams exist, in the dark->light / warm->dark order the page
        needs, and every one is aria-hidden with a survey mark;
-     - each seam paints a CSS gradient (the blend) and contains NO canvas,
-       NO script and NO img, so it cannot run a rAF loop or fetch anything;
+     - each seam paints its upper band colour and carries TWO pure-CSS masked
+       layers (a wave cutting in the lower band, a cream stroke), and contains
+       NO canvas, NO script and NO img, so it cannot run a rAF loop or fetch;
      - the hero (the LCP block) precedes the first seam in the DOM, so the seam
        can never be the LCP candidate;
-     - under prefers-reduced-motion the decoration is switched off while the
-       gradient blend stays;
+     - under prefers-reduced-motion the drift stops while the wave and the
+       stroke stay drawn (UX-2026-11-19 C1 replaced the old gradient contract);
      - the seam markup carries no emoji (repo hard gate).
 
-   Teeth: remove the reduced-motion block -> the marks stay visible and the
+   Teeth: remove the reduced-motion block -> the drift keeps running and the
    reduced-motion arm fails. Add a <canvas> inside a seam -> the cheap arm
-   fails. Drop a seam -> the count/order arm fails.
+   fails. Drop a seam -> the count/order arm fails. Remove a mask from the
+   stylesheet -> the wave/stroke arm fails.
 
    Usage:  node tools/qa-band-seam.cjs
    Registry: docs/CI-TEST-COVERAGE.md -> CI row (browser-marketing).
@@ -133,40 +135,62 @@ function resolvePlaywright() {
     check('hero precedes the first seam (seam cannot be LCP)', structure.heroBeforeSeam);
     check('seam markup carries no emoji', !EMOJI_RE.test(structure.markup), null);
 
-    // ---- cheap: gradient only, no canvas / script / img --------------------
+    // ---- cheap: two masked layers, no canvas / script / img ---------------
+    // UX-2026-11-19 C1 re-baseline: the seam is no longer a gradient. It is
+    // the UPPER band's flat colour, with two pure-CSS masked layers over it -
+    // ::before cuts the wave into the lower band, ::after draws the cream
+    // stroke. Both layers are SVG data URIs inside the stylesheet, so the
+    // "cheap" promise (no canvas, no script, no img, no fetch) still holds.
     const cheap = await page.evaluate(() => {
       const seams = Array.from(document.querySelectorAll('.band-seam'));
+      const maskOf = (s, pseudo) => {
+        const cs = getComputedStyle(s, pseudo);
+        return cs.maskImage || cs.webkitMaskImage || 'none';
+      };
       return {
-        allGradient: seams.every(s => getComputedStyle(s).backgroundImage.indexOf('gradient') > -1),
+        allPainted: seams.every(s => {
+          const bg = getComputedStyle(s).backgroundColor;
+          return !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
+        }),
+        allWaved: seams.every(s => /url\(/.test(maskOf(s, '::before'))),
+        allStroked: seams.every(s => /url\(/.test(maskOf(s, '::after'))),
         anyCanvas: seams.some(s => !!s.querySelector('canvas')),
         anyScript: seams.some(s => !!s.querySelector('script')),
         anyImg: seams.some(s => !!s.querySelector('img'))
       };
     });
-    check('every seam paints a gradient blend', cheap.allGradient, cheap.allGradient);
+    check('every seam paints its upper band colour', cheap.allPainted, cheap.allPainted);
+    check('every seam cuts a wave into the lower band', cheap.allWaved, cheap.allWaved);
+    check('every seam draws the cream stroke', cheap.allStroked, cheap.allStroked);
     check('no canvas inside any seam (no rAF loop)', !cheap.anyCanvas);
     check('no script inside any seam', !cheap.anyScript);
     check('no image inside any seam', !cheap.anyImg);
 
-    // ---- reduced motion: decoration off, blend kept -----------------------
+    // ---- reduced motion: the drift stops, the drawing stays ---------------
+    // C1 contract: reduced motion must not remove the seam (it is the band
+    // boundary, not decoration) - it stops the two drifting layers instead.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await delay(150);
     const reduced = await page.evaluate(() => {
       const seam = document.querySelector('.band-seam');
       if (!seam) return null;
       const mark = seam.querySelector('.seam-mark');
-      const cs = getComputedStyle(seam);
+      const b = getComputedStyle(seam, '::before');
+      const a = getComputedStyle(seam, '::after');
+      const maskOf = cs => cs.maskImage || cs.webkitMaskImage || 'none';
       return {
         markHidden: !mark || getComputedStyle(mark).display === 'none',
-        beforeHidden: getComputedStyle(seam, '::before').display === 'none',
-        afterHidden: getComputedStyle(seam, '::after').display === 'none',
-        gradientKept: cs.backgroundImage.indexOf('gradient') > -1
+        waveStopped: b.animationName === 'none',
+        strokeStopped: a.animationName === 'none',
+        waveKept: /url\(/.test(maskOf(b)),
+        strokeKept: /url\(/.test(maskOf(a))
       };
     });
     check('reduced motion: survey mark is off', !!reduced && reduced.markHidden, reduced);
-    check('reduced motion: join line is off', !!reduced && reduced.beforeHidden, reduced);
-    check('reduced motion: tick grid is off', !!reduced && reduced.afterHidden, reduced);
-    check('reduced motion: gradient blend remains', !!reduced && reduced.gradientKept, reduced);
+    check('reduced motion: the wave drift stops', !!reduced && reduced.waveStopped, reduced);
+    check('reduced motion: the stroke drift stops', !!reduced && reduced.strokeStopped, reduced);
+    check('reduced motion: the wave is still drawn', !!reduced && reduced.waveKept, reduced);
+    check('reduced motion: the stroke is still drawn', !!reduced && reduced.strokeKept, reduced);
 
     check('no uncaught page errors', errors.length === 0, errors);
 

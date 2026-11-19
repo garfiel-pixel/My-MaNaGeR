@@ -296,7 +296,10 @@ var MMGR = window.MMGR || {};
     bkClose: bkClose,
     bkSyncHint: bkSyncHint,
     bkCloud: bkCloud,
-    bkCloseSnapshot: bkCloseSnapshot
+    bkCloseSnapshot: bkCloseSnapshot,
+    // The monolith's MMGR.App.openDrwToSave() is a one-line delegate to this
+    // export; it was missing, so any caller of the App export threw.
+    openDrwToSave: openDrwToSave
   };
 })(MMGR);
 window.MMGR = MMGR;

@@ -140,6 +140,289 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Dashboard ----
+  // ---- UX-2026-11-19 B3: the completion ring, one arc per major group ----
+  // Geometry is unchanged (r=39, circ 245.04, the 14.4px stroke and the
+  // quarter-turn entry sweep), so the centre percentage reads exactly as it
+  // did. With no groups the original single #rf stroke is used, untouched.
+  const RING_R = 39;
+  const RING_CIRC = 2 * Math.PI * RING_R;
+  const RING_GAP_DEG = 2;
+
+  function ringData(state) {
+    const M = ns.MajorTasks;
+    if (!M || typeof M.getMajorGroups !== 'function') {
+      return null;
+    }
+    const out = M.getMajorGroups(state);
+    if (!out || !out.grouped || !out.groups || !out.groups.length) {
+      return null;
+    }
+    out.groups = M.withColors ? M.withColors(out.groups) : out.groups;
+    return out;
+  }
+
+  function svgEl(name, attrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+    Object.keys(attrs || {}).forEach(function (k) {
+      el.setAttribute(k, attrs[k]);
+    });
+    return el;
+  }
+
+  function renderRingSlots(state, precomputed) {
+    const pring = document.querySelector('.pring');
+    if (!pring) {
+      return;
+    }
+    const svg = pring.querySelector('svg');
+    if (!svg) {
+      return;
+    }
+    const fill = svg.querySelector('#rf');
+    let layer = svg.querySelector('.ring-slots');
+    const out = precomputed || ringData(state);
+    const groups = out ? out.groups : null;
+    if (!groups) {
+      if (layer) {
+        layer.remove();
+      }
+      if (fill) {
+        fill.style.display = '';
+      }
+      pring.removeAttribute('data-slots');
+      svg.removeAttribute('aria-label');
+      return;
+    }
+    if (!layer) {
+      layer = svgEl('g', { class: 'ring-slots' });
+      svg.appendChild(layer);
+    }
+    while (layer.firstChild) {
+      layer.removeChild(layer.firstChild);
+    }
+    if (fill) {
+      fill.style.display = 'none';
+    }
+    pring.setAttribute('data-slots', String(groups.length));
+
+    let cursor = 0;
+    groups.forEach(function (g) {
+      const share = Math.max(0, Math.min(1, g.share || 0));
+      const slot = Math.max(0, share * 360 - RING_GAP_DEG);
+      const trackLen = (slot / 360) * RING_CIRC;
+      const arcLen = (slot / 360) * RING_CIRC * Math.max(0, Math.min(1, g.fraction || 0));
+      const startLen = (cursor / 360) * RING_CIRC;
+      const token = g.color ? 'var(--major-' + g.color + ')' : 'var(--major-other)';
+      const common = {
+        cx: 48,
+        cy: 48,
+        r: RING_R,
+        fill: 'none',
+        'stroke-width': 14.4,
+        'stroke-linecap': 'butt'
+      };
+      // The faint track: the slot's own colour at about 22%.
+      const track = svgEl('circle', common);
+      track.setAttribute('class', 'ring-slot-track');
+      track.style.stroke = 'color-mix(in oklch, ' + token + ' 22%, transparent)';
+      track.setAttribute('stroke-dasharray', trackLen + ' ' + (RING_CIRC - trackLen));
+      track.setAttribute('stroke-dashoffset', String(-startLen));
+      layer.appendChild(track);
+      // The solid arc: the group's own completion inside its slot.
+      const arc = svgEl('circle', common);
+      arc.setAttribute('class', 'ring-slot');
+      arc.setAttribute('data-major-id', g.id);
+      arc.setAttribute('data-color', String(g.color || 0));
+      arc.setAttribute('data-points', String(Math.round(g.points * 10) / 10));
+      arc.setAttribute('data-completed', String(g.completed));
+      arc.setAttribute('data-total', String(g.total));
+      arc.style.stroke = token;
+      arc.setAttribute('stroke-dasharray', arcLen + ' ' + (RING_CIRC - arcLen));
+      arc.setAttribute('stroke-dashoffset', String(-startLen));
+      layer.appendChild(arc);
+      cursor += share * 360;
+    });
+
+    // Colour is never the only carrier: the label names the top three.
+    const top = (out.groups || [])
+      .slice()
+      .sort(function (a, b) {
+        return b.points - a.points;
+      })
+      .slice(0, 3)
+      .filter(function (g) {
+        return g.points > 0;
+      })
+      .map(function (g) {
+        return g.name + ' ' + Math.round(g.points) + '%';
+      });
+    svg.setAttribute('role', 'img');
+    svg.setAttribute(
+      'aria-label',
+      (out.overall || 0).toFixed(0) +
+        '% complete' +
+        (top.length ? '. Top contributors: ' + top.join(', ') : '')
+    );
+  }
+
+  // ---- UX-2026-11-19 B4: "What is driving completion" --------------------
+  // The text version of the ring. Top five groups by points (zero-completed
+  // rows last, whatever their total), a "Show all (N)" toggle when there are
+  // more, and one honest empty line when nothing is completed yet. The
+  // expanded flag is view state only - it is never written to project state.
+  let majorShowAll = false;
+
+  function toggleMajorList() {
+    majorShowAll = !majorShowAll;
+    renderDash();
+  }
+
+  function majorRows(state) {
+    const out = ringData(state);
+    if (!out || !out.grouped || !out.groups.length) {
+      return null;
+    }
+    const groups = out.groups.slice();
+    groups.sort(function (a, b) {
+      const az = a.completed > 0 ? 0 : 1;
+      const bz = b.completed > 0 ? 0 : 1;
+      if (az !== bz) {
+        return az - bz;
+      }
+      return b.points - a.points;
+    });
+    return { groups: groups, completed: out.completed };
+  }
+
+  function renderMajorList(state) {
+    const host = document.getElementById('major-list');
+    if (!host) {
+      return;
+    }
+    const data = majorRows(state);
+    if (!data) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    const none = data.completed === 0;
+    const shown = majorShowAll ? data.groups : data.groups.slice(0, 5);
+    let html = '';
+    shown.forEach(function (g) {
+      // ok: the token is built from the fixed 1..8 slot that withColors set,
+      // and every other value here is escaped or numeric
+      const token = g.color ? 'var(--major-' + Number(g.color) + ')' : 'var(--major-other)';
+      const width = Math.max(0, Math.min(100, Math.round((g.fraction || 0) * 100)));
+      html +=
+        '<a class="major-row" href="#wbs" data-major-id="' +
+        U.escapeHtml(g.id) +
+        '" data-nav="major" data-nav-id="' +
+        U.escapeHtml(g.id) +
+        '">' +
+        '<span class="major-dot" style="background:' +
+        token +
+        '"></span>' +
+        '<span class="major-name">' +
+        U.escapeHtml(g.name) +
+        '</span>' +
+        '<span class="major-count">' +
+        Number(g.completed) +
+        ' of ' +
+        Number(g.total) +
+        '</span>' +
+        '<span class="major-bar"><span style="width:' +
+        Number(width) +
+        '%;background:' +
+        token +
+        '"></span></span>' +
+        (none ? '' : '<span class="major-pts">+' + Number(g.points).toFixed(1) + ' pts</span>') +
+        '<svg class="ico major-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>' +
+        '</a>';
+    });
+    if (none) {
+      html = '<p class="major-empty">No tasks completed yet</p>' + html;
+    }
+    if (data.groups.length > 5) {
+      html +=
+        '<button type="button" class="btn btn-n btn-s major-more" data-action="majorShowAll">' +
+        (majorShowAll ? 'Show top 5' : 'Show all (' + Number(data.groups.length) + ')') +
+        '</button>';
+    }
+    host.innerHTML = html;
+    host.hidden = false;
+  }
+
+  // Hovering a slot lights the matching row under the ring and vice versa.
+  // Delegated once, because both surfaces are re-rendered on every pass.
+  let ringHoverWired = false;
+  function wireRingHover() {
+    if (ringHoverWired) {
+      return;
+    }
+    ringHoverWired = true;
+    function setHot(id, on) {
+      const els = document.querySelectorAll('[data-major-id]');
+      for (let i = 0; i < els.length; i++) {
+        if (els[i].getAttribute('data-major-id') === id) {
+          els[i].classList.toggle('is-hot', on);
+        }
+      }
+    }
+    function over(e) {
+      const el = e.target && e.target.closest ? e.target.closest('[data-major-id]') : null;
+      if (el) {
+        setHot(el.getAttribute('data-major-id'), true);
+      }
+    }
+    function out(e) {
+      const el = e.target && e.target.closest ? e.target.closest('[data-major-id]') : null;
+      if (el) {
+        setHot(el.getAttribute('data-major-id'), false);
+      }
+    }
+    document.addEventListener('pointerover', over, true);
+    document.addEventListener('pointerout', out, true);
+    document.addEventListener('focusin', over, true);
+    document.addEventListener('focusout', out, true);
+  }
+
+  // ---- UX-2026-11-19 B5: the dashboard's links ---------------------------
+  // Every number on the dashboard that stands for records is a link to those
+  // records. One markup helper, one delegated click handler (js/mmgr-app.js
+  // wireDashNav), one navigator (MMGR.Nav.go). A chevron says "this goes
+  // somewhere"; the row itself is the target and is 44px high.
+  const NAV_CHEV =
+    '<svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>';
+
+  function navLinkOpen(nav, extraClass) {
+    const n = nav || {};
+    let attrs = ' data-nav="1"';
+    if (n.panel) {
+      attrs += ' data-nav-panel="' + U.escapeHtml(n.panel) + '"';
+    }
+    if (n.recordId) {
+      attrs += ' data-nav-id="' + U.escapeHtml(n.recordId) + '"';
+    }
+    if (n.filter) {
+      attrs += ' data-nav-filter="' + U.escapeHtml(n.filter) + '"';
+    }
+    if (n.column) {
+      attrs += ' data-nav-col="' + U.escapeHtml(n.column) + '"';
+    }
+    if (n.anchor) {
+      attrs += ' data-nav-anchor="' + U.escapeHtml(n.anchor) + '"';
+    }
+    return (
+      '<a class="dash-link' +
+      (extraClass ? ' ' + extraClass : '') +
+      '" href="#' +
+      U.escapeHtml(n.panel || 'dash') +
+      '"' +
+      attrs +
+      '>'
+    );
+  }
+
   function renderDash() {
     const s = S();
     if (!s || !s.tasks) {
@@ -175,7 +458,19 @@ var MMGR = window.MMGR || {};
     // Ring (STRUCTURAL-IA §1: brand-new project != 0%, quiet the empty zero)
     // circ = 2pi*r with r=39, matches the ring markup (thicker 18px stroke,
     // owner 2026-08-15).
-    const pct = total ? Math.round((done / total) * 100) : 0;
+    // UX-2026-11-19 B3: when the project has major groups the ring and its
+    // stat speak in WORK ITEMS (phase rows are containers, not tasks), so the
+    // centre percentage is exactly the sum of the group points. Without
+    // groups nothing changes: today's all-tasks number.
+    const ringOut = ringData(s);
+    const useGroups = !!(ringOut && ringOut.grouped && ringOut.groups.length);
+    const baseTotal = useGroups ? ringOut.total : total;
+    const baseDone = useGroups ? ringOut.completed : done;
+    const pct = useGroups
+      ? Math.round(ringOut.overall)
+      : total
+        ? Math.round((done / total) * 100)
+        : 0;
     const circ = 245;
     const offset = circ - (circ * pct) / 100;
     const rf = $('rf');
@@ -188,29 +483,41 @@ var MMGR = window.MMGR || {};
     if (pringEl && !pringEl.classList.contains('ring-in')) {
       pringEl.classList.add('ring-in');
     }
+    // UX-2026-11-19 B3: draw the group arcs over the same geometry.
+    renderRingSlots(s, ringOut);
+    renderMajorList(s);
+    wireRingHover();
     const rt = $('rt');
     // OWNER 2026-09-12 (P2-12): ONLY the percentage lives inside the ring -
     // the word 'Completed' beside it (repeated three times around the title,
     // the ring, and the stat block) crowded the circle. The figure reads as
     // a percent naturally; the beside stat keeps its 'Completed' label.
     if (rt) {
-      rt.textContent = total === 0 ? '0%' : pct + '%';
+      rt.textContent = baseTotal === 0 ? '0%' : pct + '%';
     }
     const dc = $('dc');
     if (dc) {
-      dc.textContent = done;
-      dc.style.color = total === 0 ? 'var(--slate)' : '';
+      dc.textContent = baseDone;
+      dc.style.color = baseTotal === 0 ? 'var(--slate)' : '';
     }
     const tc = $('tc');
     if (tc) {
-      tc.textContent = total;
-      tc.style.color = total === 0 ? 'var(--slate)' : '';
+      tc.textContent = baseTotal;
+      tc.style.color = baseTotal === 0 ? 'var(--slate)' : '';
     }
 
     // Health
+    // B5: the counters are links now, so the number lives in its own
+    // .ds-num span - writing the row's textContent would delete the dot.
     const setVal = (id, val) => {
       const el = $(id);
-      if (el) {
+      if (!el) {
+        return;
+      }
+      const num = el.querySelector ? el.querySelector('.ds-num') : null;
+      if (num) {
+        num.textContent = val;
+      } else {
         el.textContent = val;
       }
     };
@@ -272,7 +579,19 @@ var MMGR = window.MMGR || {};
         n3.innerHTML = sorted
           .map(
             t =>
-              `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ', due ' + U.escapeHtml(U.fmtDateShort(t.endDate)) : ''}</span></li>`
+              '<li>' +
+              navLinkOpen({ panel: 'wbs', recordId: String(t.id) }, 'n3-link') +
+              '<span title="' +
+              U.escapeHtml(t.name) +
+              '">' +
+              U.escapeHtml(t.name) +
+              (t.critical
+                ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>'
+                : '') +
+              (t.endDate ? ', due ' + U.escapeHtml(U.fmtDateShort(t.endDate)) : '') +
+              '</span>' +
+              NAV_CHEV +
+              '</a></li>'
           )
           .join('');
       }
@@ -428,8 +747,15 @@ var MMGR = window.MMGR || {};
       baseEl.textContent = '';
       baseEl.style.color = 'var(--slate)';
       if (baseSub) {
-        baseSub.textContent =
-          'No baseline yet - one is captured automatically once a task has dates and days, or use Save Baseline in Controls.';
+        // The empty state used to be prose pointing at a control four levels
+        // deep in the drawer. It now carries the capture button itself (the
+        // existing saveBaseline handler) plus a link that opens the drawer on
+        // that exact control - so "no baseline" is one click from fixed.
+        const hasTasks = Array.isArray(s.tasks) && s.tasks.length > 0;
+        // ok: static template string; the only branch is a literal, no data.
+        baseSub.innerHTML = hasTasks
+          ? 'No baseline yet. Capture one to start tracking drift.<span class="dw-base-act"><button type="button" class="btn btn-o btn-s" data-action="saveBaseline">Capture baseline now</button><button type="button" class="btn btn-n btn-s" data-action="openDrwToBaseline">Show me where</button></span>'
+          : 'No baseline yet. Add a task with dates, then capture a baseline to start tracking drift.<span class="dw-base-act"><button type="button" class="btn btn-n btn-s" data-action="openDrwToBaseline">Show me where</button></span>';
       }
       if (baseCard) {
         baseCard.classList.add('tier3');
@@ -470,6 +796,7 @@ var MMGR = window.MMGR || {};
             schedVar = U.daysBetween(bt.endDate, cur.endDate);
           }
           rows.push({
+            id: bt.id,
             name: bt.name,
             bEnd: bt.endDate || '',
             cEnd: cur.endDate || '',
@@ -480,13 +807,16 @@ var MMGR = window.MMGR || {};
           bvt.innerHTML =
             '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">Save a baseline to see per-task schedule variance.</td></tr>';
         } else {
+          // B5: the task name is a link to the row in the plan.
           // ok: number - schedVar is a day count, never text
           bvt.innerHTML = rows
             .map(
               r =>
                 '<tr><td>' +
+                navLinkOpen({ panel: 'wbs', recordId: String(r.id) }, 'tbl-link') +
                 U.escapeHtml(r.name) +
-                '</td><td>' +
+                NAV_CHEV +
+                '</a></td><td>' +
                 U.escapeHtml(r.bEnd || '') +
                 '</td><td>' +
                 U.escapeHtml(r.cEnd || '') +
@@ -511,7 +841,7 @@ var MMGR = window.MMGR || {};
         }
       } else {
         bvt.innerHTML =
-          '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">No baseline captured yet - one is captured automatically once a task has dates and days. Use Save Baseline in Controls to set one now.</td></tr>';
+          '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">No baseline captured yet - one is captured automatically once a task has dates and days. Use Save Baseline (Settings &gt; Controls &gt; Your Data &gt; Backup &amp; Transfer) to set one now.</td></tr>';
       }
       const costEl = $('base-var-cost');
       if (costEl) {
@@ -669,22 +999,29 @@ var MMGR = window.MMGR || {};
       if (overdue > 0) {
         attnItems.push({
           label: overdue + ' task' + (overdue > 1 ? 's' : '') + ' overdue',
-          cls: 'br'
+          cls: 'br',
+          nav: { panel: 'wbs', filter: 'overdue' }
         });
       }
       if (blocked > 0) {
         attnItems.push({
           label: blocked + ' task' + (blocked > 1 ? 's' : '') + ' blocked',
-          cls: 'br'
+          cls: 'br',
+          nav: { panel: 'kan', column: 'blocked' }
         });
       }
       if (issues > 0) {
-        attnItems.push({ label: issues + ' live issue' + (issues > 1 ? 's' : ''), cls: 'br' });
+        attnItems.push({
+          label: issues + ' live issue' + (issues > 1 ? 's' : ''),
+          cls: 'br',
+          nav: { panel: 'risk', anchor: 'issues' }
+        });
       }
       if (atRisk > 0) {
         attnItems.push({
           label: atRisk + ' task' + (atRisk > 1 ? 's' : '') + ' due soon',
-          cls: 'ba'
+          cls: 'ba',
+          nav: { panel: 'wbs', filter: 'atrisk' }
         });
       }
       const expiringCompliance =
@@ -692,13 +1029,31 @@ var MMGR = window.MMGR || {};
           ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length
           : 0;
       if (expiringCompliance > 0) {
+        // B5: the row opens the person whose COI or licence is expiring.
+        let stakeIdx = -1;
+        if (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance) {
+          const expiring = ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30);
+          const keys = {};
+          expiring.forEach(function (x) {
+            if (x.id != null) {
+              keys[String(x.id)] = 1;
+            }
+            if (x.name) {
+              keys[String(x.name)] = 1;
+            }
+          });
+          stakeIdx = (s.stakeholders || []).findIndex(function (st) {
+            return keys[String(st.id)] || keys[String(st.name)];
+          });
+        }
         attnItems.push({
           label:
             expiringCompliance +
             ' compliance item' +
             (expiringCompliance > 1 ? 's' : '') +
             ' expiring',
-          cls: 'ba'
+          cls: 'ba',
+          nav: { panel: 'stk', recordId: stakeIdx > -1 ? String(stakeIdx) : '' }
         });
       }
       const attnCard = $('attention-card');
@@ -713,15 +1068,19 @@ var MMGR = window.MMGR || {};
         // spheres jumbled together when several alerts were live. A red dot
         // + the count + the label reads cleanly at any density. cls maps
         // br->red dot, ba->amber dot (the two attention severities).
+        // B5: every row is a link to the records behind the number.
         const dot = it => (it.cls === 'ba' ? 'a' : 'r');
         attnEl.innerHTML = attnItems
           .map(function (it) {
             return (
-              '<div class="fb-sm"><span>' +
+              navLinkOpen(it.nav) +
+              '<span>' +
               U.escapeHtml(it.label) +
-              '</span><span class="dotstat"><span class="sdot ' +
+              '</span><span class="dash-end"><span class="dotstat"><span class="sdot ' +
               dot(it) +
-              '"></span><span class="ds-num">!</span></span></div>'
+              '"></span><span class="ds-num">!</span></span>' +
+              NAV_CHEV +
+              '</span></a>'
             );
           })
           .join('');
@@ -761,18 +1120,28 @@ var MMGR = window.MMGR || {};
         // pills. Colors: amber (planned), green (done), red only when
         // carryover is non-zero (slate-neutral at zero). Three status
         // colors total - no extra palette on the dashboard.
+        // B5: each counter opens the WBS filtered to that exact set.
         twEl.innerHTML =
-          '<div class="fb-sm"><span>Planned this week</span><span class="dotstat"><span class="sdot a"></span><span class="ds-num">' +
+          navLinkOpen({ panel: 'wbs', filter: 'week-planned' }, 'fb-sm') +
+          '<span>Planned this week</span><span class="dash-end"><span class="dotstat"><span class="sdot a"></span><span class="ds-num">' +
           thisWeekPlanned +
-          '</span></span></div>' +
-          '<div class="fb-sm"><span>Completed this week</span><span class="dotstat"><span class="sdot g"></span><span class="ds-num">' +
+          '</span></span>' +
+          NAV_CHEV +
+          '</span></a>' +
+          navLinkOpen({ panel: 'wbs', filter: 'week-done' }, 'fb-sm') +
+          '<span>Completed this week</span><span class="dash-end"><span class="dotstat"><span class="sdot g"></span><span class="ds-num">' +
           thisWeekDone +
-          '</span></span></div>' +
-          '<div class="fb-sm"><span>Carryover (past due)</span><span class="dotstat' +
+          '</span></span>' +
+          NAV_CHEV +
+          '</span></a>' +
+          navLinkOpen({ panel: 'wbs', filter: 'carryover' }, 'fb-sm') +
+          '<span>Carryover (past due)</span><span class="dash-end"><span class="dotstat' +
           (carryover > 0 ? '"><span class="sdot r"></span>' : ' zero"><span class="sdot"></span>') +
           '<span class="ds-num">' +
           carryover +
-          '</span></span></div>';
+          '</span></span>' +
+          NAV_CHEV +
+          '</span></a>';
       }
     }
 
@@ -1604,7 +1973,7 @@ var MMGR = window.MMGR || {};
     const narr = computeBaselineNarrative();
     if (!narr) {
       el.innerHTML =
-        '<div class="es" style="padding:12px;font-size:.76rem">Save a baseline (Settings &gt; Controls &gt; Save Baseline) to see a plain-English week-over-week diff here, and copy it into reports via Copy All.</div>';
+        '<div class="es" style="padding:12px;font-size:.76rem">Save a baseline (Settings &gt; Controls &gt; Your Data &gt; Backup &amp; Transfer &gt; Save Baseline) to see a plain-English week-over-week diff here, and copy it into reports via Copy All.</div>';
       return;
     }
     el.innerHTML = narr
@@ -1831,33 +2200,87 @@ var MMGR = window.MMGR || {};
   });
 
   // ---- Sections ----
-  // Single lookup used by both showSection and renderAll so the active
-  // panel can be re-rendered after any state change.
-  const SECTION_RENDERERS = {
-    dash: renderDash,
-    def: renderDefs,
-    wbs: renderWbs,
-    gantt: renderGantt,
-    kan: renderKanban,
-    ideas: renderIdeas,
-    agenda: renderAgenda,
-    risk: renderRisks,
-    res: renderResources,
-    bud: renderBudget,
-    stk: renderStakeholders,
-    chg: renderChanges,
-    log: renderLog,
-    close: renderClosure,
-    raci: renderRaci,
-    comms: renderComms,
-    docs: renderDocuments,
-    proc: renderProcPanel,
-    dmaic: renderDmaic,
-    meet: renderMeetingsPanel,
-    charter: renderCharter,
-    claim: renderClaimPanel,
-    photos: renderPhotosPanel
-  };
+  // One explicit dispatcher used by both showSection and renderAll so the
+  // active panel can be re-rendered after any state change. This is a switch
+  // of direct named calls, not a `MAP[section]()` lookup: `section` can arrive
+  // from the URL hash (MMGR.Nav), and CodeQL's js/unvalidated-dynamic-method-call
+  // rightfully refuses a function selected by a tainted key. An unknown
+  // section simply renders nothing, so a bad hash cannot call anything.
+  function renderSectionBody(section) {
+    switch (section) {
+      case 'dash':
+        renderDash();
+        break;
+      case 'def':
+        renderDefs();
+        break;
+      case 'wbs':
+        renderWbs();
+        break;
+      case 'gantt':
+        renderGantt();
+        break;
+      case 'kan':
+        renderKanban();
+        break;
+      case 'ideas':
+        renderIdeas();
+        break;
+      case 'agenda':
+        renderAgenda();
+        break;
+      case 'risk':
+        renderRisks();
+        break;
+      case 'res':
+        renderResources();
+        break;
+      case 'bud':
+        renderBudget();
+        break;
+      case 'stk':
+        renderStakeholders();
+        break;
+      case 'chg':
+        renderChanges();
+        break;
+      case 'log':
+        renderLog();
+        break;
+      case 'close':
+        renderClosure();
+        break;
+      case 'raci':
+        renderRaci();
+        break;
+      case 'comms':
+        renderComms();
+        break;
+      case 'docs':
+        renderDocuments();
+        break;
+      case 'proc':
+        renderProcPanel();
+        break;
+      case 'dmaic':
+        renderDmaic();
+        break;
+      case 'meet':
+        renderMeetingsPanel();
+        break;
+      case 'charter':
+        renderCharter();
+        break;
+      case 'claim':
+        renderClaimPanel();
+        break;
+      case 'photos':
+        renderPhotosPanel();
+        break;
+      default:
+        break;
+    }
+  }
 
   // Project Photos panel (B11, 5.7). The panel's DOM, quota bar and upload
   // form all belong to js/cloud/photos-ui.js, which needs the cloud module;
@@ -1906,7 +2329,8 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  function showSection(section, btn) {
+  function showSection(section, btn, opts) {
+    opts = opts || {};
     // EDITOR-SCOPE (mmgr-cloud.js applyEditorScope/isSectionBlocked): a scoped
     // editor code must not open a writable section outside its grant. The nav
     // grey-out (pointer-events:none + disabled) blocks mouse and keyboard on
@@ -1928,7 +2352,7 @@ var MMGR = window.MMGR || {};
         ? window.MMGR.Cloud.clientFirstSection()
         : 'dash';
       const fbBtn = document.querySelector('.sec-btn[data-section="' + fb + '"]');
-      showSection(fb, fbBtn);
+      showSection(fb, fbBtn, opts);
       return;
     }
     if (
@@ -1967,11 +2391,8 @@ var MMGR = window.MMGR || {};
     if (panel) {
       panel.classList.add('active');
     }
-    // Render section-specific content
-    const renderer = SECTION_RENDERERS[section];
-    if (renderer) {
-      renderer();
-    }
+    // Render section-specific content through the explicit dispatcher.
+    renderSectionBody(section);
     // DIR-7a: give the freshly rendered table inputs their accessible names.
     labelDynamicFields();
     // Rank 3.4: viewport-aware layout detection, offer the one-time
@@ -1985,6 +2406,12 @@ var MMGR = window.MMGR || {};
     // so a resize/switch into a narrow view never leaves a heavy engine on.
     if (ns.Glass && ns.Glass.sync) {
       ns.Glass.sync();
+    }
+    // UX-2026-11-19 B5: every switch is a history entry, so Back returns to
+    // where the user came from. Nav.go suppresses this while it pushes its
+    // own entry (which also carries the filter and record).
+    if (ns.Nav && typeof ns.Nav.sectionShown === 'function') {
+      ns.Nav.sectionShown(section);
     }
   }
 
@@ -2152,6 +2579,158 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // ---- UX-2026-11-19 B5: the WBS view filter -----------------------------
+  // Arriving from a dashboard number ("7 overdue") must land on those rows,
+  // and a filtered list must SAY it is filtered - a hidden filter is a trap
+  // that looks like lost data. View state only: it is never written to the
+  // project, and it is cleared by the banner's own Clear button.
+  let wbsFilter = '';
+
+  function weekBounds() {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return { start: start, end: end };
+  }
+
+  function wbsFilterSpec(key) {
+    const k = String(key || '');
+    if (!k) {
+      return null;
+    }
+    if (k.indexOf('ids:') === 0) {
+      const ids = k
+        .slice(4)
+        .split(',')
+        .map(function (x) {
+          return String(x).trim();
+        })
+        .filter(Boolean);
+      const set = {};
+      ids.forEach(function (id) {
+        set[id] = 1;
+      });
+      return {
+        label: 'Weather-affected tasks',
+        test: function (t) {
+          return !!set[String(t.id)];
+        }
+      };
+    }
+    if (k === 'overdue') {
+      return {
+        label: 'Overdue',
+        test: function (t) {
+          return t.status !== 'completed' && U.isOverdue(t.endDate);
+        }
+      };
+    }
+    if (k === 'atrisk') {
+      return {
+        label: 'Due within 3 days',
+        test: function (t) {
+          return t.status !== 'completed' && U.isDueSoon(t.endDate, 3);
+        }
+      };
+    }
+    if (k === 'blocked') {
+      return {
+        label: 'Blocked',
+        test: function (t) {
+          return t.status === 'blocked';
+        }
+      };
+    }
+    if (k === 'done') {
+      return {
+        label: 'Completed',
+        test: function (t) {
+          return t.status === 'completed';
+        }
+      };
+    }
+    if (k === 'inprogress') {
+      return {
+        label: 'In progress',
+        test: function (t) {
+          return t.status === 'inprogress';
+        }
+      };
+    }
+    if (k === 'week-planned') {
+      return {
+        label: 'Planned this week',
+        test: function (t) {
+          if (t.status === 'completed' || !t.endDate) {
+            return false;
+          }
+          const w = weekBounds();
+          const d = new Date(t.endDate);
+          return d >= w.start && d < w.end;
+        }
+      };
+    }
+    if (k === 'week-done') {
+      return {
+        label: 'Completed this week',
+        test: function (t) {
+          if (t.status !== 'completed' || !t.endDate) {
+            return false;
+          }
+          const w = weekBounds();
+          const d = new Date(t.endDate);
+          return d >= w.start && d < w.end;
+        }
+      };
+    }
+    if (k === 'carryover') {
+      return {
+        label: 'Carryover (past due)',
+        test: function (t) {
+          const w = weekBounds();
+          return t.status !== 'completed' && !!t.endDate && new Date(t.endDate) < w.start;
+        }
+      };
+    }
+    return null;
+  }
+
+  function setWbsFilter(key) {
+    const next = String(key || '');
+    wbsFilter = wbsFilterSpec(next) ? next : '';
+    const panel = document.getElementById('panel-wbs');
+    if (panel && panel.classList.contains('active')) {
+      renderWbs();
+    }
+  }
+
+  function renderWbsViewBar(count) {
+    const bar = document.getElementById('wbs-view-bar');
+    if (!bar) {
+      return;
+    }
+    const spec = wbsFilterSpec(wbsFilter);
+    if (!spec) {
+      bar.hidden = true;
+      bar.innerHTML = '';
+      return;
+    }
+    // ok: the label is one of the fixed strings above, the count is a number
+    bar.innerHTML =
+      '<span class="wvb-txt">Showing <strong>' +
+      U.escapeHtml(spec.label) +
+      '</strong> &middot; ' +
+      Number(count) +
+      ' task' +
+      (count === 1 ? '' : 's') +
+      '</span>' +
+      '<button type="button" class="btn btn-n btn-s" data-action="wbsClearFilter">Show all tasks</button>';
+    bar.hidden = false;
+  }
+
   function renderWbs() {
     const s = S();
     if (!s) {
@@ -2169,6 +2748,7 @@ var MMGR = window.MMGR || {};
     const tasks = s.tasks || [];
     const defExpanded = s.defExpanded || {};
     if (tasks.length === 0) {
+      renderWbsViewBar(0);
       const cfCols = ns.CustomFields ? ns.CustomFields.visible(s, 'wbs').length : 0;
       body.innerHTML =
         '<tr><td colspan="' +
@@ -2206,23 +2786,44 @@ var MMGR = window.MMGR || {};
         visibleTasks.push(t);
       }
     }
+    // B5: a filter draws a flat list of every match (collapse state is a
+    // browsing aid, not a filter of its own, so it must not hide a match).
+    const filterSpec = wbsFilterSpec(wbsFilter);
+    const drawn = filterSpec ? tasks.filter(filterSpec.test) : visibleTasks;
+    renderWbsViewBar(filterSpec ? drawn.length : 0);
     // Task 4 (2026-09-19): parallel groups computed ONCE per render (the
     // pairwise overlap predicate matches audit() exactly). Badge markup is
     // rendered per-row from this map.
     const parGroups =
-      ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(visibleTasks) : null;
-    body.innerHTML = visibleTasks
+      ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(drawn) : null;
+    if (filterSpec && !drawn.length) {
+      const cfCols0 = ns.CustomFields ? ns.CustomFields.visible(s, 'wbs').length : 0;
+      body.innerHTML =
+        '<tr><td colspan="' +
+        (8 + cfCols0) +
+        '" class="wbs-empty"><div>No tasks match this filter.</div><div style="display:flex;gap:6px;justify-content:center"><button class="btn btn-n btn-s" data-action="wbsClearFilter">Show all tasks</button></div></td></tr>';
+      return;
+    }
+    // B6: the row marker - the same slot colour as the ring arc and the
+    // Gantt bar, carried as a custom property so themes re-tint it.
+    const majorOf =
+      ns.MajorTasks && ns.MajorTasks.assignments ? ns.MajorTasks.assignments(s) : null;
+    body.innerHTML = drawn
       .map(t => {
         const level = t.level || 0;
         const isPhase = t.isPhase || level === 0;
         const indent = t.indent !== undefined ? t.indent : level;
         const cls = 'wl' + Math.min(indent, 3);
+        // ok: slot is a 1..8 number assigned by MajorTasks.withColors, never text
+        const slot = majorOf ? majorOf[String(t.id)] : 0;
+        // The <tr> carries no other style, so one attribute is enough here.
+        const majorAttr = slot ? ' data-major="' + slot + '"' : '';
         const overdue = t.status !== 'completed' && U.isOverdue(t.endDate) ? 'overdue' : '';
         const lowConf = t.confidence === 'low' ? 'wbs-lowconf' : '';
         const chainRisk = (t.predecessors || []).some(p => overdueIds.has(String(p)));
         // Apply collapse state from defExpanded
         const collapsed = defExpanded[t.id] === false ? 'collapsed' : '';
-        return `<tr class="wbs-row ${cls} ${overdue} ${lowConf} ${collapsed}" data-id="${U.escapeHtml(t.id)}" tabindex="0">
+        return `<tr class="wbs-row ${cls} ${overdue} ${lowConf} ${collapsed}" data-id="${U.escapeHtml(t.id)}"${majorAttr} tabindex="0">
         <td>${U.escapeHtml(t.id || '')}</td>
         <td>
           <button class="cbtn ${isPhase ? '' : 'cls'}" data-action="tglPhase" data-id="${U.escapeHtml(t.id)}">&#9660;</button>
@@ -2558,6 +3159,9 @@ var MMGR = window.MMGR || {};
     if (!gc) {
       return;
     }
+    // B6: one lookup for the whole chart - the bar's 4px accent.
+    const majorOf =
+      ns.MajorTasks && ns.MajorTasks.assignments ? ns.MajorTasks.assignments(s) : null;
 
     // OWNER 2026-09-28: a re-render swaps the bar the pointer may be over;
     // no mouseout ever fires for a removed node, so the hover tip would
@@ -2896,9 +3500,14 @@ var MMGR = window.MMGR || {};
       // C3: milestones render as diamonds, not one-day rectangles; click-only
       // (date edits via the task detail) - drag handlers key on .gb and the
       // diamond is a different class, so no ambiguous drag on a diamond.
+      // B6: the major's colour rides on the bar as a 4px accent. The token is
+      // set as a custom property, so the stripe follows the theme exactly like
+      // the ring slot it matches.
+      const majorSlot = majorOf ? majorOf[String(t.id)] : 0;
+      const majorAttr = majorSlot ? ' data-major="' + majorSlot + '"' : '';
       const barInner = isMs
         ? `<div class="gb-milestone${isGate ? ' gate' : ''} ${t.critical ? 'crit' : ''}" data-id="${U.escapeHtml(t.id)}" style="left:${left + width / 2 - 8}px" title="${U.escapeHtml(t.name)} [${isGate ? 'Phase gate' : 'Milestone'}]${t.critical ? ' [Critical Path]' : ''}"></div>${msLabel}`
-        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}${
+        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}"${majorAttr} style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}${
             parGroups && parGroups.has(t.id)
               ? ' [Parallel with: ' +
                 U.escapeHtml(
@@ -3406,7 +4015,7 @@ var MMGR = window.MMGR || {};
   // ---- DMAIC ----
   // Full interactive renderer lives in js/mmgr-dmaic.js (feature 8); this
   // Charter is data-filled from live state on every entry (no event binding),
-  // so a shim keeps SECTION_RENDERERS wiring stable, switching back to the
+  // so a shim keeps the section dispatcher wiring stable, switching back to the
   // Charter tab re-reads state, so linked KPIs show current values.
   // Safe to call on every renderAll: updCharter saves on each input keystroke,
   // so the refill always reads state that already contains the user's edits.
@@ -3416,7 +4025,7 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  // shim keeps SECTION_RENDERERS wiring stable.
+  // shim keeps the section dispatcher wiring stable.
   function renderDmaic() {
     if (ns.Dmaic && ns.Dmaic.render) {
       ns.Dmaic.render();
@@ -3741,12 +4350,14 @@ var MMGR = window.MMGR || {};
     renderFlags();
     renderPacks();
     syncPackChips();
-    // Re-render the currently active section so state changes show immediately
+    // Re-render the currently active section so state changes show immediately.
+    // Dash is already rendered above, so skip it here (same as the old map's
+    // `renderer !== renderDash` guard).
     const active = document.querySelector('.panel.active');
     if (active) {
-      const renderer = SECTION_RENDERERS[active.id.replace('panel-', '')];
-      if (renderer && renderer !== renderDash) {
-        renderer();
+      const activeSection = active.id.replace('panel-', '');
+      if (activeSection !== 'dash') {
+        renderSectionBody(activeSection);
       }
     }
     // DIR-7a: label any inputs the re-render just (re)created.
@@ -4279,6 +4890,10 @@ var MMGR = window.MMGR || {};
     scheduleRender: scheduleRender,
     renderAll: renderAll,
     renderDash: renderDash,
+    toggleMajorList: toggleMajorList,
+    setWbsFilter: setWbsFilter,
+    navLinkOpen: navLinkOpen,
+    NAV_CHEV: NAV_CHEV,
     renderWbs: renderWbs,
     renderGantt: renderGantt,
     renderKanban: renderKanban,

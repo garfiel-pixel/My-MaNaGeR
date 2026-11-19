@@ -771,14 +771,29 @@
     renderSigninSignedOutTriggers();
   }
 
-  if (signinBtns.length && signinSheet && GA) {
-    var signinOut = document.getElementById('signin-out');
-    if (signinOut) {
-      signinOut.addEventListener('click', function () {
+  /* UX-2026-11-19 A5: the sheet's Sign out button is wired on its own, NOT
+     inside the trigger block below. The trigger block needs a .signin-trigger
+     element, and the marketing pages carry the sheet markup without one - so
+     nesting this handler there left the button dead wherever the sheet was
+     shown some other way. The sheet + the auth module are the only
+     requirements. */
+  var signinOut = document.getElementById('signin-out');
+  if (signinOut && GA && signinOut.getAttribute('data-wired') !== '1') {
+    signinOut.setAttribute('data-wired', '1');
+    signinOut.addEventListener('click', function () {
+      /* Ask before signing out. The shared dialog lives in
+         mmgr-google-auth.js so every entry point behaves the same. */
+      if (typeof GA.confirmSignOut === 'function') {
+        GA.confirmSignOut(function () {
+          GA.signOut();
+        });
+      } else {
         GA.signOut();
-      });
-    }
+      }
+    });
+  }
 
+  if (signinBtns.length && signinSheet && GA) {
     signinBtns.forEach(function (b) {
       b.addEventListener('click', function () {
         setSigninOpen(signinSheet.hidden);
@@ -1516,16 +1531,22 @@
      Elements unobserve themselves once revealed. Never throws. */
   var rvTargets = Array.prototype.slice.call(
     document.querySelectorAll(
-      '.fcard, .aud-item, .step, .section-head, .guide-band, .pb-content, .hero-inner'
+      '.fcard, .aud-item, .step, .sol-card, .why-card, .section-head, .guide-band, .pb-content, .hero-inner'
     )
   );
   if (rvTargets.length) {
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
     var perfMode = document.documentElement.getAttribute('data-perf') === 'on';
     if (!(reduceMotion && reduceMotion.matches) && !perfMode && 'IntersectionObserver' in window) {
-      rvTargets.forEach(function (el, i) {
+      /* UX-2026-11-19 C2: the stagger is per ROW, not per page. The old index
+         was global and capped at 8, so a card four rows down waited 720ms
+         behind cards the visitor could already see. Each card now counts its
+         own position among its siblings, so a row of four goes 0,1,2,3. */
+      rvTargets.forEach(function (el) {
         el.classList.add('rv');
-        el.style.setProperty('--rv-i', String(i > 8 ? 8 : i));
+        var p = el.parentNode;
+        var n = (p.__rvN = (p.__rvN || 0) + 1) - 1;
+        el.style.setProperty('--rv-i', String(n > 6 ? 6 : n));
       });
       var rvIO = new IntersectionObserver(
         function (entries) {
@@ -1534,6 +1555,11 @@
             if (en.isIntersecting) {
               el.classList.remove('rv-out');
               el.classList.add('rv-in');
+              // C2: once the entrance has played, hand the element back to the
+              // short hover transition (see .rv-done in the stylesheet).
+              setTimeout(function () {
+                el.classList.add('rv-done');
+              }, 900);
             } else if (en.boundingClientRect.top < 0) {
               // OWNER 2026-11-10: scrolling back up used to snap the element
               // away. A 400ms exit keeps the same movement in reverse.
@@ -1559,6 +1585,212 @@
       });
     }
   }
+
+  /* ---- CARD MOTION (UX-2026-11-19 C2) ----
+     One treatment for the four card rows (steps, account-optional, solutions,
+     why): the lift and the icon scale are pure CSS; the pointer tilt is the
+     only JS, and it is deliberately small and disposable.
+
+     The handler is attached to ONE card at a time, on pointerenter, and
+     removed on pointerleave - so a page with thirteen cards still has at most
+     one pointermove listener alive. The transform is written once per frame
+     inside a rAF, never per event. Coarse pointers, reduced motion and
+     Performance Mode never attach it at all (the CSS also refuses to tilt, so
+     a stale attribute can never move a card). Never throws. */
+  function wireCardMotion() {
+    var cards = Array.prototype.slice.call(document.querySelectorAll('[data-motion="card"]'));
+    if (!cards.length) {
+      return;
+    }
+    var fine = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!fine || !fine.matches || (reduce && reduce.matches)) {
+      return;
+    }
+    if (document.documentElement.getAttribute('data-perf') === 'on') {
+      return;
+    }
+    var MAX = 3; // degrees; the directive's ceiling
+    cards.forEach(function (card) {
+      var raf = 0;
+      var px = 0;
+      var py = 0;
+      function paint() {
+        raf = 0;
+        var r = card.getBoundingClientRect();
+        if (!r.width || !r.height) {
+          return;
+        }
+        var dx = (px - (r.left + r.width / 2)) / (r.width / 2);
+        var dy = (py - (r.top + r.height / 2)) / (r.height / 2);
+        var clamp = function (v) {
+          return Math.max(-1, Math.min(1, v));
+        };
+        card.style.setProperty('--tilt-y', (clamp(dx) * MAX).toFixed(2) + 'deg');
+        card.style.setProperty('--tilt-x', (clamp(-dy) * MAX).toFixed(2) + 'deg');
+      }
+      function onMove(e) {
+        px = e.clientX;
+        py = e.clientY;
+        if (!raf) {
+          raf = requestAnimationFrame(paint);
+        }
+      }
+      function onLeave() {
+        if (raf) {
+          cancelAnimationFrame(raf);
+          raf = 0;
+        }
+        card.removeEventListener('pointermove', onMove);
+        card.removeEventListener('pointerleave', onLeave);
+        card.style.removeProperty('--tilt-x');
+        card.style.removeProperty('--tilt-y');
+      }
+      card.addEventListener('pointerenter', function () {
+        card.addEventListener('pointermove', onMove);
+        card.addEventListener('pointerleave', onLeave);
+      });
+    });
+  }
+  wireCardMotion();
+
+  /* ---- ROLE CARDS (UX-2026-11-19 C3) ----
+     The four "one tool for everyone" cards open a detail area. The card is a
+     real <button aria-expanded>, so Enter and Space are native; this only
+     wires the state. One open at a time, Escape closes, and a fine pointer
+     opens on hover (the owner asked for hover, focus and tap to all work).
+     The description is in the DOM in every state - the closed card is clipped,
+     never emptied - so a screen reader and a search engine both see it.
+
+     The 3D figures live in their own bundle. It is injected only when the
+     Built For section comes within one viewport of the screen, so nothing
+     loads before first paint and nothing competes with the hero. The inline
+     SVG silhouette is the fallback and stays the figure unless that bundle
+     replaces it. Never throws. */
+  function wireRoleCards() {
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.role-card'));
+    if (!cards.length) {
+      return;
+    }
+    var lastBtn = null;
+    function open(card) {
+      if (card.classList.contains('is-open')) {
+        return;
+      }
+      cards.forEach(function (c) {
+        if (c !== card && c.classList.contains('is-open')) {
+          c.classList.remove('is-open');
+          c.removeAttribute('data-hover-open');
+          var b = c.querySelector('.role-btn');
+          if (b) {
+            b.setAttribute('aria-expanded', 'false');
+          }
+        }
+      });
+      card.classList.add('is-open');
+      var btn = card.querySelector('.role-btn');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'true');
+        lastBtn = btn;
+      }
+      try {
+        card.dispatchEvent(new CustomEvent('mmgr:roleopen', { bubbles: true }));
+      } catch (e) {}
+    }
+    function close(card) {
+      if (!card.classList.contains('is-open')) {
+        return;
+      }
+      card.classList.remove('is-open');
+      card.removeAttribute('data-hover-open');
+      var btn = card.querySelector('.role-btn');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+      }
+      try {
+        card.dispatchEvent(new CustomEvent('mmgr:roleclose', { bubbles: true }));
+      } catch (e) {}
+    }
+    var fine = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)');
+    cards.forEach(function (card) {
+      var btn = card.querySelector('.role-btn');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          /* A fine pointer opens the card on hover, so the click that follows
+             must not immediately close what the pointer just opened. The first
+             click after a hover-open is absorbed; the next one toggles. */
+          if (card.classList.contains('is-open') && card.getAttribute('data-hover-open') === '1') {
+            card.removeAttribute('data-hover-open');
+            return;
+          }
+          if (card.classList.contains('is-open')) {
+            close(card);
+          } else {
+            open(card);
+          }
+        });
+      }
+      if (fine && fine.matches) {
+        card.addEventListener('pointerenter', function () {
+          if (!card.classList.contains('is-open')) {
+            card.setAttribute('data-hover-open', '1');
+            open(card);
+          }
+        });
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') {
+        return;
+      }
+      cards.forEach(close);
+      if (lastBtn) {
+        lastBtn.focus();
+        lastBtn = null;
+      }
+    });
+  }
+  wireRoleCards();
+
+  /* Load the 3D figures when the Built For section is nearly on screen. One
+     observer, disconnected as soon as it fires - the module decides for
+     itself whether it can draw (WebGL, reduced motion, Performance Mode, save
+     data) and leaves the SVG silhouettes alone when it cannot. */
+  (function loadRoleFigures() {
+    var section = document.getElementById('builtfor');
+    if (!section || !('IntersectionObserver' in window)) {
+      return;
+    }
+    if (document.documentElement.getAttribute('data-perf') === 'on') {
+      return;
+    }
+    var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (rm && rm.matches) {
+      return;
+    }
+    var io = new IntersectionObserver(
+      function (entries) {
+        if (
+          !entries.some(function (e) {
+            return e.isIntersecting;
+          })
+        ) {
+          return;
+        }
+        io.disconnect();
+        var s = document.createElement('script');
+        s.src = 'dist/marketing-roles.js';
+        s.onerror = function () {
+          var t = document.createElement('script');
+          t.src = 'js/marketing-roles.js';
+          document.body.appendChild(t);
+        };
+        document.body.appendChild(s);
+      },
+      { rootMargin: '100% 0px' }
+    );
+    io.observe(section);
+  })();
 
   /* ---- FEATURE PANELS (U-12, 2026-10-30) ----
      The auto-ticking carousel is GONE. It cloned five cards to fake a
@@ -1895,39 +2127,6 @@
     var lastY = window.pageYOffset || document.documentElement.scrollTop || 0;
     var HIDE_AFTER = 120; // never hide in the first screen
     var DELTA = 6; // ignore tiny jitter so the bar does not flap
-    // I-5a: each band seam carries its own travelling gold light. The glow must
-    // track the SEAM'S position in the viewport, not the whole-document scroll
-    // fraction - otherwise the light sits at the far left while the seam is on
-    // screen and only moves once the seam has scrolled away. Per-seam progress:
-    // 0 as the seam enters the bottom, 1 as it exits the top.
-    var seams = Array.prototype.slice.call(document.querySelectorAll('.band-seam'));
-    var seamState = seams.map(function (s) {
-      return { el: s, shown: 0 };
-    });
-    function seamTarget(s) {
-      var rect = s.getBoundingClientRect();
-      var vh = window.innerHeight || 1;
-      var p = (vh - rect.top) / (vh + rect.height);
-      return p < 0 ? 0 : p > 1 ? 1 : p;
-    }
-    var progressRaf = 0;
-    function paintSeams() {
-      progressRaf = 0;
-      var moving = false;
-      seamState.forEach(function (st) {
-        var target = seamTarget(st.el);
-        st.shown += (target - st.shown) * 0.18;
-        if (Math.abs(target - st.shown) < 0.0006) {
-          st.shown = target;
-        } else {
-          moving = true;
-        }
-        st.el.style.setProperty('--page-progress', st.shown.toFixed(4));
-      });
-      if (moving) {
-        progressRaf = requestAnimationFrame(paintSeams);
-      }
-    }
     function apply() {
       queued = false;
       var y = window.pageYOffset || document.documentElement.scrollTop || 0;
@@ -1942,9 +2141,6 @@
         hdr.setAttribute('data-hidden', 'false');
       }
       lastY = y;
-      if (!progressRaf) {
-        progressRaf = requestAnimationFrame(paintSeams);
-      }
     }
     window.addEventListener(
       'scroll',

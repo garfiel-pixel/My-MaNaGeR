@@ -370,3 +370,125 @@ proposal actually apply instead of returning "No budget changes to apply."
 - `test/apply-ops.test.mjs` — the pure accept engine, 16/16 (cycle rollback,
   bad-enum, scope, delete guards, derived-field nulling).
 
+
+## 5. Dashboard, colour and landing conventions (UX-2026-11-19)
+
+Everything in this section is load-bearing for a hard gate. Read it before
+touching the dashboard ring, the WBS/Gantt/Kanban renderers, `js/marketing.js`
+or `css/marketing.css`.
+
+### 5.1 The major task, defined once
+
+A **major task** is a top-level work item: a task with no parent, or the item a
+group of children rolls up to. `MMGR.MajorTasks` (`js/mmgr-major-tasks.js`) is
+the ONLY definition of it and of the groups they form. Do not re-derive "is
+this a major" anywhere else.
+
+- `getMajorGroups(state)` returns `{ grouped, groups }`. `grouped: false` means
+  the project declares no majors at all - a real state, not an error, and the
+  ring draws nothing for it.
+- A group carries `members` (the task ids it contains). More than eight groups
+  collapse into one "Other" group that concatenates every member - no task is
+  ever dropped by the collapse.
+- `assignments(state)` returns `task id -> slot number`, or `null` when the
+  project is ungrouped. The slot is the one `withColors()` gave the group, so a
+  task's stripe and its ring arc can never disagree.
+
+**The one metric.** The dashboard's completion figure is computed from the
+same group list: each major contributes its own share, weighted by its work,
+and the ring's arc length is that share. If you need a second percentage,
+compute it from `getMajorGroups` too rather than inventing a parallel count.
+
+### 5.2 Ring and colour rules
+
+- Geometry: `r = 39`, circumference `245`, stroke `14.4px`, SVG rotated
+  `-90deg`. The ring lives in `js/render/dashboard.js`.
+- Slots: `withColors()` assigns chart slots by FNV-1a hash of the group key with
+  first-fit collision avoidance, so a group keeps its colour when others are
+  added or removed.
+- The colour reaches the rest of the app as `data-major="<slot>"` on the
+  element, and the stylesheet maps the slot to a token:
+  `[data-major='N'] { --major-row: var(--major-N); }`. Never emit an inline
+  custom property for this - `qa-full` check 38 caps `[style]` at 200 and
+  `project.html` must have zero (check 37).
+- Every slot colour must clear 3:1 on its own card in all nine themes and all
+  eight skins; `tools/verify-major-colors.cjs` is the gate.
+- The accents are 4px and one-sided: the WBS row's first cell gets an inset
+  box-shadow, the Gantt bar a `::before` stripe (so it does not fight the
+  lead-time gradient), the Kanban card a top border.
+
+### 5.3 The navigation helper and the link inventory
+
+`MMGR.Nav` (`js/mmgr-utils.js`) is the ONE in-app navigator. Never write a
+second one, and never build a `data-action` handler that switches panels
+by hand.
+
+- `Nav.go(url, opts)` takes either a URL or an object
+  `{ panel, recordId, filter, col, anchor }`. `showSection()` calls
+  `Nav.sectionShown()` at the end so the history entry and the URL hash stay
+  in step.
+- Deep links: `Nav.fromHash()` maps a hash to a section; `Nav.start()` restores
+  the entry's panel and scroll position on `popstate`.
+- A miss (`Nav.miss`) inserts a one-line notice at the top of the panel for 6s
+  instead of silently doing nothing - a dead link must be visible.
+- The link inventory is `qa-dashboard-links.cjs`'s fixture: every number on the
+  dashboard that opens records. If you add a counter, add it there.
+- Markup contract: `data-nav="1"` plus `data-nav-panel` / `-id` / `-filter` /
+  `-col` / `-anchor`. `wireDashNav()` in `js/mmgr-app.js` is the single
+  delegated listener.
+- Filters are keys into `wbsFilterSpec()` in `js/mmgr-render.js`:
+  `overdue`, `atrisk`, `blocked`, `done`, `inprogress`, `week-planned`,
+  `week-done`, `carryover`, and `ids:a,b,c`. Add a filter by adding a branch
+  there, not by passing a predicate through the DOM.
+
+### 5.4 The landing seam is a wave, not a gradient
+
+`css/marketing.css` -> "BAND-TRANSITION SEAM". Each `.band-seam` is the UPPER
+band's flat colour, with `::before` masked by an inline-SVG wave
+(`--seam-wave`) filled with the LOWER band's colour, and `::after` masked by a
+2px cream stroke (`--seam-line`) drawn out of phase. Both layers are 200% wide
+and drift on `transform` only (`seam-drift` 30s, `seam-drift-back` 42s,
+opposite directions).
+
+- Never reintroduce `--page-progress` or any scroll coupling. Reduced motion
+  and `[data-perf='on']` stop the drift and KEEP the drawing.
+- Heights are fixed (64px desktop, 48px phone) so the seam contributes no
+  layout shift.
+- `qa-landing-motion.cjs` (S1-S8) is the gate; `qa-band-seam.cjs` proves the
+  structure and the cheapness.
+
+### 5.5 Card motion
+
+`data-motion="card"` opts a card into the shared treatment: the existing `.rv`
+reveal (staggered per row via `--rv-i`), then a 180ms hover/focus lift of 4px,
+a deeper shadow, and an icon scale of 1.06. On a fine pointer a small
+`pointermove` handler tilts it up to 3 degrees; that handler exists only while
+the pointer is over that card. Only `transform` and the paint properties
+animate - never a box property.
+
+`.rv-done` is added 900ms after the reveal and hands the card the short
+transition. `.aud-item` keeps its own 0.7s ring timings (`qa-landing-ui` L-07
+is a hard gate) - if you change the shared transition, re-run that harness.
+
+### 5.6 Role cards and the 3D fallback
+
+The four "one tool for everyone" cards are `<button aria-expanded
+aria-controls>` disclosures. The description is in the DOM in every state;
+collapsed only clips it. One open at a time, Escape closes, hover opens on a
+fine pointer, tap toggles on touch.
+
+The figure ships as an inline SVG silhouette. `js/marketing-roles.js` may
+replace it with a three.js figure in the open card, and that is optional by
+design:
+
+- one canvas, one renderer, moved between cards - never a second WebGL context;
+- the vendored r160 at `/vendor/three/three.module.js` only
+  (`verify-three-revision.cjs` pins it);
+- at most 1,500 triangles per figure, a 150 x 214 CSS box, DPR capped at 1.5;
+- render on demand: a ~1.2s pop, one frame per pointer move, then nothing -
+  `window.__mmgrRoleFigures.frames()` must not advance while idle;
+- loaded only when `#builtfor` comes within one viewport, and the preference
+  checks (Performance Mode, reduced motion, save-data) are re-read on every
+  open, so turning Performance Mode on stops the figure.
+
+The SVG path is the product. Never make the 3D required for the card to work.

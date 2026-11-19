@@ -1332,6 +1332,25 @@ jobs:
         id: qa-appshell
         run: node tools/qa-appshell.cjs
 
+      - name: "T4: Every dashboard number is a door (qa-dashboard-links)"
+        id: qa-dashboard-links
+        run: node tools/qa-dashboard-links.cjs
+
+      - name: "T4: The completion ring and its contributors (qa-dashboard-ring)"
+        id: qa-dashboard-ring
+        run: node tools/qa-dashboard-ring.cjs
+
+      # UX-2026-11-19 A1-A5: short screens, landscape phones, the tour card,
+      # touch targets and the sign-out confirmation. Registered as CI since
+      # the A wave but never actually wired - D1 closed that gap.
+      - name: "T4: Short screens and landscape (qa-ux-landscape)"
+        id: qa-ux-landscape
+        run: node tools/qa-ux-landscape.cjs
+
+      - name: "T4: Sign out asks first (qa-signout-confirm)"
+        id: qa-signout-confirm
+        run: node tools/qa-signout-confirm.cjs
+
       - name: "T4: First-load shell - flat + one-shot rail demo (qa-shell-first-load)"
         id: qa-shell-first-load
         run: node tools/qa-shell-first-load.cjs
@@ -1357,6 +1376,14 @@ jobs:
       - name: "T4: Band-transition seam is cheap and off under reduced motion (qa-band-seam)"
         id: qa-band-seam
         run: node tools/qa-band-seam.cjs
+
+      # UX-2026-11-19 C1: the seam is a drifting wave, not a scroll-tracked
+      # gradient. Proves the keyframes touch only transform, the drift runs in
+      # both directions, and reduced motion / Performance Mode stop it while
+      # the drawing stays.
+      - name: "T4: Seam wave motion contract (qa-landing-motion)"
+        id: qa-landing-motion
+        run: node tools/qa-landing-motion.cjs
 
       - name: "T4: Landing AI is lazy, waits, answers, offline fallback (qa-landing-ai)"
         id: qa-landing-ai

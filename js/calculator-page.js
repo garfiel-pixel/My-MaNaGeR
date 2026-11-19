@@ -12410,7 +12410,7 @@
     } catch (e) {}
     if (tEl) {
       try {
-        tEl.scrollIntoView({ block: 'center' });
+        tourVisibleBox(tEl).scrollIntoView({ block: 'center' });
       } catch (e) {}
       pop.setAttribute('data-anchor', st.sel);
       // Position AFTER the scroll settles: scrollIntoView is async-ish in
@@ -12422,8 +12422,9 @@
           if (tourIdx < 0 || TOUR_STEPS[tourIdx] !== st) {
             return;
           }
-          positionTourPop(tEl);
-          positionTourSpot(tEl);
+          const box = tourVisibleBox(tEl);
+          positionTourPop(box);
+          positionTourSpot(box);
         });
       });
     } else {
@@ -12447,12 +12448,44 @@
     if (!spot) {
       return;
     }
-    spot.hidden = false;
     const r = target.getBoundingClientRect();
+    if (tourHuge(r)) {
+      spot.hidden = true;
+      return;
+    }
+    spot.hidden = false;
     spot.style.left = r.left - 6 + 'px';
     spot.style.top = r.top - 6 + 'px';
     spot.style.width = r.width + 12 + 'px';
     spot.style.height = r.height + 12 + 'px';
+  }
+  // UX-2026-11-19 A3: the card used to try "below" then "above" and clamp to
+  // the viewport, so on a landscape phone both candidates collided with the
+  // control being explained (probe at 740x360: card 12..167, spotlight
+  // 156..241). Placement is now a scored choice over all four sides with a
+  // hard clearance, and a short viewport docks the card to a side edge so it
+  // stops eating the height.
+  const TOUR_GAP = 10; // card edge to spotlight edge (spotlight already +6)
+  const TOUR_PAD = 8; // the directive's required clearance around the spot
+  function tourVisibleBox(el) {
+    // #calc-work is a hidden native select behind the custom picker: its own
+    // rect is 0x0 at the origin, so the cutout highlighted nothing. Walk up to
+    // the first ancestor with a real box - the .bcp-field wrapper.
+    let n = el;
+    while (n && n !== document.body) {
+      const r = n.getBoundingClientRect();
+      if (r.width >= 8 && r.height >= 8) {
+        return n;
+      }
+      n = n.parentElement;
+    }
+    return el;
+  }
+  // A target that fills the viewport (a whole card at 740x360) cannot be
+  // cleared by any placement. Rather than break the clearance rule, drop the
+  // cutout for that step and dock the card as a side panel.
+  function tourHuge(r) {
+    return r.width >= window.innerWidth * 0.85 && r.height >= window.innerHeight * 0.85;
   }
   function positionTourPop(target) {
     const pop = $('calc-tour-pop');
@@ -12460,12 +12493,96 @@
       return;
     }
     pop.style.transform = 'none';
+    // Measure the NATURAL height: a cap left over from the previous step
+    // would make the card look smaller than it is and the next placement
+    // would clear the cap and grow straight into the spotlight.
+    pop.style.maxHeight = '';
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const short = vh <= 500;
     const r = target.getBoundingClientRect();
+    const spot = { top: r.top - 6, bottom: r.bottom + 6, left: r.left - 6, right: r.right + 6 };
     const pr = pop.getBoundingClientRect();
-    const pw = Math.min(pr.width || 320, window.innerWidth - 24);
-    const below = r.bottom + 12 + pr.height < window.innerHeight;
-    pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12)) + 'px';
-    pop.style.top = (below ? r.bottom + 12 : Math.max(12, r.top - pr.height - 12)) + 'px';
+    const pw = Math.min(pr.width || 320, short ? 280 : 340);
+    const ph = pr.height || 160;
+    if (tourHuge(r)) {
+      const h = Math.min(ph, vh - 24);
+      pop.style.maxWidth = '280px';
+      pop.style.maxHeight = h + 'px';
+      pop.style.left = (short ? 12 : clampX(r.left)) + 'px';
+      pop.style.top = Math.max(12, Math.min((vh - h) / 2, vh - h - 12)) + 'px';
+      return;
+    }
+    const clampX = x => Math.max(12, Math.min(x, vw - pw - 12));
+    const clampY = y => Math.max(12, Math.min(y, vh - ph - 12));
+    const room = {
+      below: vh - (spot.bottom + TOUR_PAD) - 12,
+      above: spot.top - TOUR_PAD - 12,
+      left: spot.left - TOUR_PAD - 12,
+      right: vw - (spot.right + TOUR_PAD) - 12
+    };
+    // Preference: below, above, then the side with more room. A short
+    // viewport always prefers a side - a full-width card is what left the
+    // "thin strip" of page.
+    const order = short ? ['right', 'left', 'below', 'above'] : ['below', 'above', 'right', 'left'];
+    let side = null;
+    for (let i = 0; i < order.length; i++) {
+      const k = order[i];
+      const need = k === 'below' || k === 'above' ? ph : Math.min(pw, 280);
+      const avail = k === 'below' || k === 'above' ? room[k] : room[k];
+      if (avail >= need) {
+        side = k;
+        break;
+      }
+    }
+    // Cap-and-place: shrink the card to the space actually free and let its
+    // copy scroll inside. This is what keeps the clearance rule on a tall,
+    // full-width target (a whole card) in a 360px viewport, where no side has
+    // room and the card's natural height does not fit either.
+    const capAt = rect => {
+      const below = vh - (rect.bottom + 6 + TOUR_PAD) - 12;
+      const above = rect.top - 6 - TOUR_PAD - 12;
+      const useBelow = below >= above;
+      const space = Math.min(Math.max(96, useBelow ? below : above), vh - 24);
+      pop.style.maxWidth = short ? '280px' : '';
+      pop.style.maxHeight = space + 'px';
+      // A short viewport docks to the left edge; a tall one follows the
+      // target's own left edge.
+      pop.style.left = (short ? 12 : clampX(rect.left)) + 'px';
+      pop.style.top =
+        (useBelow
+          ? Math.max(12, rect.bottom + 6 + TOUR_GAP)
+          : Math.max(12, rect.top - 6 - TOUR_GAP - space)) + 'px';
+    };
+    if (!side) {
+      // Only scroll when even a capped card cannot clear the target.
+      if (Math.max(room.below, room.above) < 96) {
+        try {
+          target.scrollIntoView({ block: 'start' });
+        } catch (e) {}
+      }
+      capAt(target.getBoundingClientRect());
+      return;
+    }
+    pop.style.maxWidth = short ? '280px' : '';
+    pop.style.maxHeight = '';
+    // In a short viewport every placement docks to a side edge, so the card
+    // reads as a side panel and never spans the screen.
+    const dockX = rect =>
+      short ? (rect.left + pw / 2 < vw / 2 ? 12 : vw - pw - 12) : clampX(rect.left);
+    if (side === 'below') {
+      pop.style.left = dockX(r) + 'px';
+      pop.style.top = Math.max(12, spot.bottom + TOUR_GAP) + 'px';
+    } else if (side === 'above') {
+      pop.style.left = dockX(r) + 'px';
+      pop.style.top = clampY(spot.top - TOUR_GAP - ph) + 'px';
+    } else if (side === 'right') {
+      pop.style.left = (short ? vw - pw - 12 : Math.max(12, spot.right + TOUR_GAP)) + 'px';
+      pop.style.top = clampY(r.top + r.height / 2 - ph / 2) + 'px';
+    } else {
+      pop.style.left = (short ? 12 : Math.max(12, spot.left - TOUR_GAP - pw)) + 'px';
+      pop.style.top = clampY(r.top + r.height / 2 - ph / 2) + 'px';
+    }
   }
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && tourIdx >= 0) {
@@ -12479,8 +12596,9 @@
     const st = TOUR_STEPS[tourIdx];
     const t = st && st.sel ? document.querySelector(st.sel) : null;
     if (t) {
-      positionTourPop(t);
-      positionTourSpot(t);
+      const box = tourVisibleBox(t);
+      positionTourPop(box);
+      positionTourSpot(box);
       return;
     }
     // Final card: keep the ring glued to the centered pop across resizes.
@@ -12499,8 +12617,9 @@
       const st = TOUR_STEPS[tourIdx];
       const t = st && st.sel ? document.querySelector(st.sel) : null;
       if (t) {
-        positionTourPop(t);
-        positionTourSpot(t);
+        const box = tourVisibleBox(t);
+        positionTourPop(box);
+        positionTourSpot(box);
       }
     },
     { passive: true }

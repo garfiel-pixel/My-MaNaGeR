@@ -70,13 +70,45 @@ const EXACT = {
   // built css/mmgr.css (612470 bytes measured). Both live in the isolated
   // css/src/37-mcp-admin.css layer already; this raise tracks the real file,
   // leaving ~3.5 KB headroom. The next CSS wave should split a layer first.
-  'css/mmgr.css': 616000,
+  // 2026-11-19 (chrome-truth): raised 616000 -> 620000. The drawer containment
+  // + wide-viewport width, the mobile skeleton collapse and the skin bands add
+  // 6.6 KB of built CSS (619109 bytes measured). ~1 KB headroom only: the next
+  // CSS wave should SPLIT a layer rather than raise this again.
+  // 2026-11-19 (ux A2): 620000 -> 624000 for the short-screen block - slim
+  // headers, a 41px Estimate bar, dvh dialogs and safe-area insets
+  // (623735 measured). One shared block, not per-page hacks.
+  // 2026-11-19 (ux A4): 624000 -> 627000 for the coarse-pointer touch-target
+  // block - one rule set, hit areas only, no layout (626087 measured).
+  // 2026-11-19 (ux A5): 627000 -> 631000 for the sign-out confirm dialog
+  // (overlay, card, three-button row, short-landscape and coarse-pointer
+  // rules) in css/src/87-signin-polish.css (629248 measured).
+  // 2026-11-19 (ux B2): 631000 -> 634000 for the eight chart-slot tokens and
+  // their dark / departure / obsidian / guild re-points (632054 measured).
+  // 2026-11-19 (ux B5): 637000 -> 640000 for the dashboard link styles (44px
+  // rows, chevron, focus ring), the section anchors and the WBS view-filter
+  // banner (638434 measured).
+  // 2026-11-19 (ux B4): 634000 -> 637000 for the "What is driving completion"
+  // list - row grid, dot, thin bar, points, empty line and the 520px
+  // breakpoint, plus the hot-row wash that links it to the ring arcs
+  // (635054 measured).
+  // 2026-11-19 (ux B6): 640000 -> 642000 for the eight [data-major] token
+  // rules and the three carry-through accents - WBS row marker, Gantt bar
+  // stripe, Kanban card stripe (640329 measured).
+  'css/mmgr.css': 642000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
   // continuous-loop transition (border/box-shadow/colour eased at 0.7s), the
   // softer band-seam glow and the reduced-motion cross-fade rules.
-  'css/marketing.css': 166000,
+  // 2026-11-19 (ux A5): 166000 -> 169000. The marketing pages link their own
+  // stylesheet, so the sign-out confirm dialog is a deliberate twin of the
+  // app block (167637 measured) - identical rules, both files.
+  // 2026-11-19 (ux C1+C2): 169000 -> 176000. C1 rewrote the six band seams as
+  // two masked layers with their SVG data URIs (the wave and the stroke paths
+  // live in the stylesheet, so the markup stays unchanged) and C2 added the
+  // shared card-motion block plus the numeral/glyph corner fixes
+  // (172805 measured).
+  'css/marketing.css': 176000,
   // 2026-11-17 (rate book, user's own book): raised 600000 -> 610000. The
   // file readers were SPLIT OUT into js/book-import.js first (288 lines), so
   // this raise covers only what stayed: the per-line rate identity, the
@@ -92,7 +124,13 @@ const EXACT = {
   // its four-item popover and the "Close snapshot" row in the backup popover
   // (~1.6 KB). The chip is the only new header control; the next markup wave
   // should move a panel out of this file rather than raise it again.
-  'project.html': 226000,
+  // 2026-11-19 (data-truth): raised 226000 -> 227000 for the Risk panel's
+  // "Discuss with AI" header button (~170 bytes, 226169 measured). Static
+  // markup only; the risk table itself is rendered by js/render/risks.js.
+  // 2026-11-19 (ux B5): 227000 -> 230000. The seven health counters became
+  // links, the EVM tiles became links, four panels gained their #section
+  // anchor and the WBS gained its view-filter bar (228995 measured).
+  'project.html': 230000,
   'calculator.html': 80000,
   // 2026-11-10 (Theme pack): raised 140000 -> 143000 for the Customize modal
   // markup (themes grid, appearance/performance rows, account section) added to
@@ -110,7 +148,12 @@ const EXACT = {
   // menu entries and the two footer links (~3.4 KB). The band is the only
   // new marketing section this year; if the next wave grows index.html again,
   // move a band to its own page rather than raising this.
-  'index.html': 54000
+  // 2026-11-19 (ux C3): 54000 -> 60000. The four role cards became buttons
+  // with a detail area and a silhouette figure, and the figures are INLINE by
+  // requirement - the fallback must render with no extra request, so it
+  // cannot be an external SVG file (58365 measured). This is not a new band;
+  // the "move a band" note above still stands for the next content growth.
+  'index.html': 60000
 };
 
 /* Per-directory defaults for everything else. */
@@ -122,7 +165,27 @@ const DIRS = {
   // 2026-11-12 (status menu placement): 305000 -> 307000 for the [popover]
   // anchoring helper (~1 KB). The menu opened at the viewport origin; this is
   // the fix, and the file remains the next split candidate.
-  js: 307000,
+  // 2026-11-19 (chrome-truth): 307000 -> 309000. The three skeleton wrappers
+  // were reading export names the module does not have (`.html/.paint/
+  // .sections` vs `skeletonHtml/skeletonPaint/skeletonSections`), so all
+  // eleven templates were dead. Naming them correctly costs ~270 bytes
+  // (307269 measured); the rest of the headroom is the comment that stops the
+  // next reader re-breaking it. This file is STILL the split candidate.
+  // 2026-11-19 (data-truth): 309000 -> 310000 for openDrwToBaseline (the
+  // Dashboard baseline card's deep link, ~1.2 KB with its comment) and the
+  // askAboutRisk action entry (309319 measured).
+  // 2026-11-19 (ux A6/B4): 310000 -> 312000. A6 added aiRun/aiRunPreset to
+  // the view-only safe list (the assistant answers without writing a project
+  // record) and B4 added the majorShowAll view-state action; both are one
+  // entry plus the comment that explains why they are safe (310028 measured).
+  // This file is STILL the split candidate - the next wave should split it
+  // rather than raise this again.
+  // 2026-11-19 (ux B5): 312000 -> 315000. The one delegated [data-nav]
+  // handler, the boot call that seeds the history entry, the clearWbsFilter
+  // action and its export (312344 measured). Navigation is app-level wiring,
+  // so it belongs here; the 3 KB headroom is deliberate - the next growth
+  // should be the split, not another raise.
+  js: 315000,
   css: 160000,
   src: 300000
 };

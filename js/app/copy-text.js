@@ -167,7 +167,8 @@ var MMGR = window.MMGR || {};
           text += '\u2022 ' + n + '\n';
         });
       } else {
-        text += 'No baseline captured yet , Settings > Controls > Save Baseline.\n';
+        text +=
+          'No baseline captured yet , Settings \u25b8 Controls \u25b8 Your Data \u25b8 Backup & Transfer \u25b8 Save Baseline (Snapshot).\n';
       }
       text += '\nCURRENT PLAN (tasks)\n' + '='.repeat(40) + '\n';
       (Array.isArray(s && s.tasks) ? s.tasks : []).forEach(function (t) {

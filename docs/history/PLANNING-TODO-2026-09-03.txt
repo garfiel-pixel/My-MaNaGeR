@@ -2880,3 +2880,36 @@ narrower reading of §14.3).
   the resting state is deterministic (code-entry-in at y771, strip at y852, no
   overlap) instead of a 15px-clearance race. qa-appshell 97/97 x4, qa-team-
   loading 11/11, qa-team-ui 25/25, npm run verify 0. sw.js v662 -> v666.
+
+- PR 22 CI REPAIR 2026-11-19 (ux-refinement, first pull_request run):
+  three red jobs, two stale harness contracts and one CodeQL alert.
+  (1) browser-app qa-p1 check 5 asserted #tc === state.tasks.length;
+      UX B3 redefined the dash figure as the ring's work-item total for
+      grouped projects (phases excluded). Re-baselined to derive the
+      expectation from MMGR.Kanban.workItems / MajorTasks.getMajorGroups.
+  (2) browser-calc qa-custom-fields C8 crashed "Element is not visible"
+      after reload; UX B5 Nav.start() deep-link restore meant a parse-time
+      wait (MMGR.CustomFields) raced init(), so the showSec click was dropped
+      and openFields hit a hidden panel. Now waits MMGR.App + .panel.active
+      and verifies each section switch. Both were CI-only (npm run verify
+      cannot run browser harnesses).
+  (3) CodeQL js/unvalidated-dynamic-method-call on js/mmgr-render.js: the
+      SECTION_RENDERERS[section]() lookup is tainted by the URL hash; the
+      hasOwnProperty guard was not a recognised sanitizer. Replaced the map
+      and both call sites with an explicit renderSectionBody() switch of
+      direct named calls. No dynamic dispatch left.
+  Qa-p1 PASS, qa-custom-fields 9/9, npm run verify exit 0, 613 PASS.
+  sw.js shell cache v677 -> v678 (project bundle changed). Durable guards
+  added to the local skeptical-code-audit skill (contract-drift section),
+  re-hashed in skills-lock.json. Registry rows updated.
+
+- PR 22 CI REPAIR 2026-11-19 (second pull_request run, browser-calc):
+  qa-custom-fields C8 was now green (that fix unmasked the next step).
+  verify-calc-s2 X-2 failed "under 25 blur-applying backdrop-filter rules
+  (found 25)". The +1 was the A5 sign-out confirm's .soc-backdrop full-viewport
+  blur(2px) (css/src/87-signin-polish.css). X-2's 2026-10-25 re-baseline
+  deliberately fixed the COUNT to stay under 25 rather than raise the cap, so
+  the right fix was to remove the expensive blur from the confirm overlay:
+  its card is fully opaque and the rgba dim already separates it. Dropped the
+  backdrop-filter, count back to 24. qa-signout-confirm 42/42, qa-a11y-axe
+  7/7, qa-controls-ia 12/12, npm run verify exit 0. sw.js v678 -> v679.

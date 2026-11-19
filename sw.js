@@ -776,7 +776,12 @@
 // the applied / skipped / conflict / derived summary after a set accept.
 // project.html, the project bundle, admin.html, the admin bundle, the owner
 // review module and css/mmgr.css are shell assets.
-const CACHE = 'mmgr-shell-v670';
+// v678 - CI repair 2026-11-19: js/mmgr-render.js's section dispatch became an
+// explicit switch (CodeQL js/unvalidated-dynamic-method-call), and js/mmgr-app.js's
+// nav note was updated; both ride in the project bundle, so refresh the cache.
+// v679 - CI repair 2026-11-19: dropped the sign-out confirm's full-viewport
+// backdrop blur (css/mmgr.css) so X-2 stays under 25 blur rules; css is a shell asset.
+const CACHE = 'mmgr-shell-v679';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

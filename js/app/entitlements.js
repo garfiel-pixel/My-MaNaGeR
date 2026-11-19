@@ -25,33 +25,63 @@
      control was suppressed for a paying account. The endpoint is
      session-gated: anonymous, unconfigured and offline loads all leave the
      tier at 'free', which is the same answer the gates gave before. */
+  /* OWNER 2026-11-19 (chrome-truth): the launcher used to issue its OWN
+     /api/billing/status request, so one page load could make up to five of
+     them (DOMContentLoaded, signed-in, user-changed, plan-changed, plus the
+     header chip's refreshPlan) and every one of them could fail
+     independently - which is how a paying account kept falling back to
+     "Upgrade to Premium". status() is the single request for the page, and
+     unlike hydrate() it keeps the HTTP shape (ok + status code + body),
+     because the callers must tell a 403 (session gone) from a 500 (server
+     having a bad minute) from an authoritative "this account is free". */
+  var _status = null;
+  function status() {
+    if (_status) {
+      return _status;
+    }
+    _status = (function () {
+      var call;
+      try {
+        call = fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
+      } catch (e) {
+        return Promise.resolve({ ok: false, code: 0, data: null });
+      }
+      return Promise.resolve(call).then(
+        function (res) {
+          var code = res ? res.status : 0;
+          var ok = !!(res && res.ok);
+          return Promise.resolve(res ? res.json() : null).then(
+            function (data) {
+              return { ok: ok, code: code, data: data };
+            },
+            function () {
+              return { ok: ok, code: code, data: null };
+            }
+          );
+        },
+        function () {
+          return { ok: false, code: 0, data: null };
+        }
+      );
+    })();
+    return _status;
+  }
+
   var _hydrate = null; // one request per page, shared by every caller
   function hydrate() {
     if (_hydrate) {
       return _hydrate;
     }
-    _hydrate = (function () {
-      var done = function (d) {
-        // Never stomp an answer a caller already adopted (the launcher's
-        // sign-in path and the billing panel both call setBillingTier); this
-        // request exists only for pages where nobody else asks.
-        if (!_adopted && d && d.ok && d.configured) {
-          _tier = typeof d.plan === 'string' && d.plan ? d.plan : 'free';
-        }
-        return _tier;
-      };
-      try {
-        return fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' })
-          .then(function (res) {
-            return res && res.ok ? res.json() : null;
-          })
-          .then(done, function () {
-            return done(null);
-          });
-      } catch (e) {
-        return Promise.resolve(done(null));
+    _hydrate = status().then(function (r) {
+      var d = r && r.data;
+      // Never stomp an answer a caller already adopted (the launcher's
+      // sign-in path and the billing panel both call setBillingTier); this
+      // request exists only for pages where nobody else asks.
+      if (!_adopted && d && d.ok && d.configured) {
+        _tier = typeof d.plan === 'string' && d.plan ? d.plan : 'free';
       }
-    })();
+      return _tier;
+    });
     return _hydrate;
   }
 
@@ -161,6 +191,7 @@
 
   ns.Entitlements = {
     setBillingTier: setBillingTier,
+    status: status,
     hydrate: hydrate,
     ensureSession: ensureSession,
     signedIn: signedIn,

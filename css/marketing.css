@@ -597,64 +597,80 @@ main {
   background: var(--bg-warm);
 }
 
-/* ---------- 4c. BAND-TRANSITION SEAM (owner C1, 2026-11-01) ----------
-   One deliberate treatment where two bands of different tone meet. The seam
-   is a full-bleed gradient that blends the upper band's colour into the lower
-   band's colour, with a construction survey mark on the join. It is a direct
-   child of <main>, so it paints edge to edge like every other band.
+/* ---------- 4c. BAND-TRANSITION SEAM (UX-2026-11-19 C1) ----------
+   A calm wave, not a black gradient with a gold line. The seam's own
+   background is the UPPER band's colour; a masked layer filled with the
+   LOWER band's colour forms the boundary; one thin cream stroke undulates
+   just inside the dark side, out of phase with the edge.
 
-   Cheap by construction: the mark is inline SVG and the grid is a CSS
-   background, so there is no JS, no canvas and no rAF loop. It sits after the
-   hero in the DOM and cannot delay first paint or LCP. Under
-   prefers-reduced-motion the decoration is switched off and only the smooth
-   gradient blend remains. */
+   Motion is independent of scrolling and costs no paint: both layers are
+   twice the seam's width and drift sideways on transform only (30s for the
+   edge, 42s for the stroke, opposite directions). No JS, no rAF, no
+   --page-progress. Reduced motion and Performance Mode keep the wave and
+   the stroke exactly as drawn and stop the drift. */
 .band-seam {
   position: relative;
   width: 100%;
-  height: 56px;
+  height: 64px;
   overflow: hidden;
+  --seam-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 64' preserveAspectRatio='none'%3E%3Cpath d='M0 38 Q150 18 300 38 T600 38 T900 38 T1200 38 L1200 64 L0 64 Z' fill='%23000'/%3E%3C/svg%3E");
+  --seam-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 64' preserveAspectRatio='none'%3E%3Cpath d='M0 24 Q150 34 300 24 T600 24 T900 24 T1200 24' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E");
 }
 .band-seam[data-seam='dl'] {
-  background: linear-gradient(to bottom, var(--header-navy) 0%, var(--bg) 100%);
+  background: var(--header-navy);
+  --seam-lower: var(--bg);
 }
 .band-seam[data-seam='wd'] {
-  background: linear-gradient(to bottom, var(--bg-warm) 0%, var(--header-navy) 100%);
+  background: var(--bg-warm);
+  --seam-lower: var(--header-navy);
 }
-/* I-5a (2026-11): the static join line, blueprint grid and centre diamond are
-   replaced by a gold light that travels along the seam with the page scroll.
-   --page-progress (0..1) is set once per scroll frame in js/marketing.js, so
-   the glow moves monotonically and never flickers. */
-.band-seam::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 2px;
-  transform: translateY(-1px);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent calc(var(--page-progress, 0) * 100% - 16%),
-    color-mix(in srgb, var(--gold) 78%, transparent) calc(var(--page-progress, 0) * 100%),
-    transparent calc(var(--page-progress, 0) * 100% + 16%),
-    transparent 100%
-  );
-}
-/* soft gold halo travelling with the line */
+.band-seam::before,
 .band-seam::after {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
   pointer-events: none;
-  background: radial-gradient(
-    42% 140% at calc(var(--page-progress, 0) * 100%) 50%,
-    color-mix(in srgb, var(--gold) 24%, transparent),
-    transparent 70%
-  );
+  will-change: transform;
+  -webkit-mask-size: 50% 100%;
+  mask-size: 50% 100%;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+}
+/* the lower band, cut by the wave */
+.band-seam::before {
+  background: var(--seam-lower, var(--bg));
+  -webkit-mask-image: var(--seam-wave);
+  mask-image: var(--seam-wave);
+  animation: seam-drift 30s linear infinite;
+}
+/* one thin cream stroke, out of phase, drifting the other way */
+.band-seam::after {
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  -webkit-mask-image: var(--seam-line);
+  mask-image: var(--seam-line);
+  animation: seam-drift-back 42s linear infinite;
+}
+@keyframes seam-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+@keyframes seam-drift-back {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
 }
 /* the diamond mark is retired (I-5a); the markup is kept on the pages so a
-   no-JS or reduced-motion page still renders the seam band itself. */
+   no-JS page still renders the seam band itself. */
 .seam-mark {
   display: none;
 }
@@ -686,14 +702,18 @@ main {
     transition: none !important;
   }
 }
-@media (prefers-reduced-motion: reduce) {
+/* phones get a shorter seam; the same SVG scales, so the amplitude
+   shrinks with it (about 8px) and the wave keeps its shape */
+@media (max-width: 720px) {
   .band-seam {
-    height: 40px;
+    height: 48px;
   }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* the wave and the stroke stay - only the drift stops */
   .band-seam::before,
-  .band-seam::after,
-  .seam-mark {
-    display: none;
+  .band-seam::after {
+    animation: none;
   }
 }
 .eyebrow {
@@ -1403,6 +1423,130 @@ body.dark-mode .nav-dd-col.is-platform {
   }
   .dd-flash {
     animation-duration: 1.4s;
+  }
+}
+
+/* ---- SIGN-OUT CONFIRM (UX-2026-11-19 A5) ------------------------------
+   The marketing pages link dist/marketing.min.css, not the app stylesheet,
+   so this dialog carries its own rules here as well as in
+   css/src/87-signin-polish.css. The two blocks are identical: the dialog is
+   built once by js/mmgr-google-auth.js and must look the same everywhere.
+   Buttons use .soc-btn rather than a page's button system. */
+#soc {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+#soc[hidden] {
+  display: none;
+}
+.soc-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 22, 33, 0.46);
+  backdrop-filter: blur(2px);
+}
+.soc-card {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid var(--border, #e3e7ec);
+  border-radius: 16px;
+  background: var(--card, #ffffff);
+  color: var(--text, #1d2733);
+  box-shadow: 0 24px 70px rgba(12, 18, 28, 0.34);
+}
+.soc-title {
+  margin: 0 0 8px;
+  font: 600 1.05rem/1.25 var(--font-head, inherit);
+}
+.soc-body {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text, #1d2733);
+}
+.soc-note {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--danger, #b91c1c);
+}
+.soc-note[hidden] {
+  display: none;
+}
+.soc-acts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.soc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--border, #e3e7ec);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text, #1d2733);
+  font: 600 0.85rem/1.2 inherit;
+  cursor: pointer;
+}
+.soc-btn[hidden] {
+  display: none;
+}
+.soc-btn:hover {
+  background: rgba(15, 22, 33, 0.06);
+}
+.soc-btn:focus-visible {
+  outline: 2px solid var(--focus-ring, currentColor);
+  outline-offset: 2px;
+}
+.soc-btn-primary {
+  border-color: transparent;
+  background: var(--gold, #d4af37);
+  color: var(--on-gold, #1c1917);
+}
+.soc-btn-primary:hover {
+  background: var(--gold, #d4af37);
+  filter: brightness(0.94);
+}
+.soc-btn-danger {
+  border-color: rgba(198, 40, 40, 0.35);
+  color: var(--danger, #c62828);
+}
+.soc-btn-danger:hover {
+  background: rgba(198, 40, 40, 0.08);
+  border-color: var(--danger, #c62828);
+}
+@media (max-width: 420px) {
+  .soc-acts .soc-btn {
+    flex: 1 1 100%;
+  }
+}
+@media (max-height: 500px) {
+  .soc-card {
+    max-height: calc(100dvh - 16px);
+    padding: 14px 16px;
+  }
+  .soc-acts {
+    margin-top: 12px;
+  }
+}
+@media (pointer: coarse) {
+  .soc-btn {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 
@@ -2227,17 +2371,22 @@ body.dark-mode .nav-dd-col.is-platform {
 /* OWNER 2026-11-01: "we could add some more SVG ... a simple background SVG,
    nothing crazy". Each card carries the same symbol it already uses, at
    watermark scale behind the copy: one sprite reference per card, no
-   duplicated paths, and the ranked icon stays the crisp one. */
+   duplicated paths, and the ranked icon stays the crisp one.
+
+   UX-2026-11-19 C2: the watermark used to be 92px at the bottom-right corner
+   at 12% opacity, so it ran straight through the body copy. It now lives in a
+   reserved top-right corner, small enough to clear the centred icon and the
+   first line of text, at no more than 6% - a texture, not a second icon. */
 .aud-item .aud-art {
   position: absolute;
-  right: -10px;
-  bottom: -14px;
-  width: 92px;
-  height: 92px;
+  top: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
   /* --gold-deep, not --gold: this is the ICON tone the ranked mark already uses
      (verify-gold forbids the gold FILL token on anything that carries words). */
   color: var(--gold-deep);
-  opacity: 0.12;
+  opacity: 0.06;
   pointer-events: none;
   z-index: 0;
 }
@@ -2249,9 +2398,9 @@ body.dark-mode .nav-dd-col.is-platform {
 }
 @media (max-width: 639px) {
   .aud-item .aud-art {
-    width: 68px;
-    height: 68px;
-    opacity: 0.1;
+    width: 32px;
+    height: 32px;
+    opacity: 0.06;
   }
 }
 .aud-item:hover {
@@ -2276,7 +2425,7 @@ body.dark-mode .nav-dd-col.is-platform {
   color: var(--gold-deep);
 }
 .aud-item.is-live .aud-art {
-  opacity: 0.2;
+  opacity: 0.06;
 }
 /* OWNER 2026-11-10: the ring must GLIDE from one card to the next, not snap.
    The reveal's .rv rule sets transition: opacity, transform only, which wipes
@@ -2590,13 +2739,17 @@ body.dark-mode #f-voice {
   counter-increment: step;
   content: counter(step, decimal-leading-zero);
   position: absolute;
-  top: -16px;
-  right: 22px;
-  font-size: 3rem;
+  /* UX-2026-11-19 C2: the numeral used to sit at top: -16px, hanging over the
+     card's top edge, and the section clipped it. It is now fully inside the
+     card, opposite the icon. */
+  top: 12px;
+  right: 18px;
+  font-size: 2.5rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
   color: rgba(var(--gold-rgb), 0.22);
+  pointer-events: none;
 }
 .step .st-icon {
   width: 40px;
@@ -5572,10 +5725,10 @@ body.dark-mode .consent-table td {
 [data-perf='on'] .magnet-field {
   display: none !important;
 }
-/* I-5: Performance Mode disables the scroll-driven gold light and the reveal. */
+/* I-5/C1: Performance Mode stops the seam drift and keeps the wave drawn. */
 [data-perf='on'] .band-seam::before,
 [data-perf='on'] .band-seam::after {
-  display: none !important;
+  animation: none !important;
 }
 [data-perf='on'] .rv {
   opacity: 1 !important;
@@ -6234,4 +6387,219 @@ html body.dark-mode .btn-gold:disabled {
   .bento-wide {
     grid-area: auto;
   }
+}
+
+/* ============================================================
+   C2 - CARD MOTION (UX-2026-11-19)
+   One treatment for the four card rows: the four step cards, the
+   "an account is optional" cards, the solution cards and the why cards. They
+   opt in with data-motion="card"; nothing here is applied by class name, so a
+   new card row joins by adding the attribute.
+
+   Rules: the entrance is the EXISTING .rv system (no second one). Hover and
+   keyboard focus lift 4px, deepen the shadow and scale the icon to 1.06 over
+   180ms. On a fine pointer only, the card also tilts up to 3 degrees toward
+   the pointer - the angle arrives as --tilt-x / --tilt-y from one small
+   pointermove handler that only exists while the pointer is on that card.
+   Only transform and opacity animate. Reduced motion and Performance Mode
+   keep the border/shadow change and drop the movement.
+
+   This block sits at the end of the file on purpose: it has to outrank the
+   older .step:hover / .aud-item:hover / .why-card:hover rules, which it ties
+   on specificity.
+   ============================================================ */
+[data-motion='card'] {
+  will-change: transform;
+}
+/* After the entrance has played, the card gets the short transition back.
+   .rv-done is added by js/marketing.js 900ms after .rv-in lands. */
+[data-motion='card'].rv-done,
+[data-motion='card']:not(.rv) {
+  transition:
+    transform 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out);
+}
+/* The audience cards carry a second motion: the gold ring that takes turns
+   between them (owner 2026-11-10) glides at 0.7s, and qa-landing-ui L-07 is a
+   hard gate on that. The card's 180ms lift must not shorten the ring, so the
+   ring keeps its own timings here - transform stays short, paint stays slow. */
+[data-motion='card'].aud-item.rv-done {
+  transition:
+    transform 180ms var(--ease-out),
+    opacity 0.5s var(--ease-out),
+    border-color 0.7s var(--ease-out),
+    box-shadow 0.7s var(--ease-out);
+}
+[data-motion='card']:hover,
+[data-motion='card']:focus-visible {
+  transform: perspective(900px) translateY(-4px) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  border-color: rgba(var(--gold-rgb), 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(61, 46, 6, 0.06),
+    0 18px 36px -18px rgba(61, 46, 6, 0.34);
+}
+[data-motion='card']:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 3px;
+}
+[data-motion='card'] .st-icon .ico,
+[data-motion='card'] .sol-ico .ico,
+[data-motion='card'] > .ico {
+  transition: transform 180ms var(--ease-out);
+}
+[data-motion='card']:hover .st-icon .ico,
+[data-motion='card']:focus-visible .st-icon .ico,
+[data-motion='card']:hover .sol-ico .ico,
+[data-motion='card']:focus-visible .sol-ico .ico,
+[data-motion='card']:hover > .ico,
+[data-motion='card']:focus-visible > .ico {
+  transform: scale(1.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-motion='card']:hover,
+  [data-motion='card']:focus-visible {
+    transform: none;
+  }
+  [data-motion='card']:hover .st-icon .ico,
+  [data-motion='card']:focus-visible .st-icon .ico,
+  [data-motion='card']:hover .sol-ico .ico,
+  [data-motion='card']:focus-visible .sol-ico .ico,
+  [data-motion='card']:hover > .ico,
+  [data-motion='card']:focus-visible > .ico {
+    transform: none;
+  }
+  [data-motion='card'] .st-icon .ico,
+  [data-motion='card'] .sol-ico .ico,
+  [data-motion='card'] > .ico {
+    transition: none;
+  }
+}
+[data-perf='on'] [data-motion='card']:hover,
+[data-perf='on'] [data-motion='card']:focus-visible {
+  transform: none;
+}
+[data-perf='on'] [data-motion='card']:hover .st-icon .ico,
+[data-perf='on'] [data-motion='card']:focus-visible .st-icon .ico,
+[data-perf='on'] [data-motion='card']:hover .sol-ico .ico,
+[data-perf='on'] [data-motion='card']:focus-visible .sol-ico .ico,
+[data-perf='on'] [data-motion='card']:hover > .ico,
+[data-perf='on'] [data-motion='card']:focus-visible > .ico {
+  transform: none;
+}
+
+/* ============================================================
+   C3 - ROLE CARDS (UX-2026-11-19)
+   The four "one tool for everyone" cards open into a detail area: the role
+   name, its two-sentence description and a silhouette figure. The card is a
+   real button (aria-expanded / aria-controls), so Enter and Space work for
+   free and the state is announced.
+
+   The figure ships as an inline SVG silhouette in the HTML - that is the
+   complete, no-JS, no-WebGL, reduced-motion and Performance-Mode experience.
+   js/marketing-roles.js may later replace it with a three.js figure in the
+   same box; the box never changes size, so nothing shifts when it does.
+   ============================================================ */
+.audience.role-row {
+  align-items: start;
+}
+.aud-item.role-card {
+  padding: 0;
+  text-align: center;
+}
+.role-btn {
+  display: block;
+  width: 100%;
+  padding: 24px 20px 18px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.role-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: -2px;
+}
+.role-btn > .ico,
+.role-btn > b,
+.role-btn > span {
+  position: relative;
+  z-index: 1;
+}
+.role-detail {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 18px;
+  transition:
+    max-height 320ms var(--ease-out),
+    opacity 220ms var(--ease-out),
+    padding 320ms var(--ease-out);
+}
+.role-card.is-open .role-detail {
+  max-height: 420px;
+  opacity: 1;
+  padding: 0 18px 20px;
+}
+.role-fig {
+  display: block;
+  width: 150px;
+  height: 214px;
+  margin: 0 auto 8px;
+  color: var(--ink);
+  font-size: 0;
+  line-height: 0;
+}
+.role-svg,
+.role-fig canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.role-svg {
+  fill: currentColor;
+  filter: drop-shadow(0 0 1px rgba(var(--gold-rgb), 0.55));
+}
+.role-name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.role-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+/* The pop: the card rises and swells a little when it opens. It composes with
+   the C2 hover tilt through the same custom properties. */
+.aud-item.role-card.is-open {
+  transform: perspective(900px) translateY(-4px) scale(1.06) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  border-color: rgba(var(--gold-rgb), 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(61, 46, 6, 0.06),
+    0 20px 40px -18px rgba(61, 46, 6, 0.34);
+  z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .role-detail {
+    transition: none;
+  }
+  .aud-item.role-card.is-open {
+    transform: none;
+  }
+}
+[data-perf='on'] .role-detail {
+  transition: none;
+}
+[data-perf='on'] .aud-item.role-card.is-open {
+  transform: none;
 }

@@ -176,6 +176,23 @@ svg.ico use {
   --dot-yellow-rgb: 230, 81, 0;
   --dot-green-rgb: 46, 125, 50;
   --dot-blue-rgb: 21, 101, 192;
+  /* -- Major-task chart slots (UX-2026-11-19 B2) -------------------------
+     Eight colours for the dashboard ring and the "What is driving
+     completion" list. Every value already ships in this palette (status
+     hues, the theme accents and their deep steps) - no new hue is
+     introduced. These are non-text graphics drawn on a CARD, so 3:1 is the
+     floor, not 4.5:1. Dark mode and the two dark skins re-point the same
+     eight names; guild deepens four of them for its parchment card.
+     tools/verify-major-colors.cjs proves every theme. */
+  --major-1: #17633f; /* forest - the bento brand green */
+  --major-2: #075aa7; /* blue - departure's link blue */
+  --major-3: #d63a3a; /* red - --danger */
+  --major-4: #e65100; /* amber - --warning */
+  --major-5: #7a5a0b; /* bronze - --gold-ink */
+  --major-6: #8b5cf6; /* purple - --purple */
+  --major-7: #00838f; /* teal - the cyan accent's text step */
+  --major-8: #5f6860; /* sage - the pegboard/guild neutral */
+  --major-other: #666666; /* --text-muted: the merged "Other" slot */
   /* -- Legacy aliases (kept for backward compat, migrate to semantic) -- */
   --green: #2e7d32;
   --amber: #e65100;
@@ -325,6 +342,17 @@ body.dark-mode {
   --dot-yellow-rgb: 255, 197, 61;
   --dot-green-rgb: 61, 220, 132;
   --dot-blue-rgb: 109, 179, 255;
+  /* Major-task chart slots: the dark steps of the same hues, each at or
+     above 3:1 on the #151518 card (UX-2026-11-19 B2). */
+  --major-1: #3ddc84;
+  --major-2: #6db3ff;
+  --major-3: #ff5f56;
+  --major-4: #ffc53d;
+  --major-5: #e6b85f;
+  --major-6: #c9c9cf;
+  --major-7: #50e8f4;
+  --major-8: #aeb8ad;
+  --major-other: #8f8f97;
   --purple: #c9c9cf;
   --purple-rgb: 201, 201, 207;
   --amber-rgb: 255, 255, 255;
@@ -2755,7 +2783,10 @@ body.sidebar-open .sb-close .ico {
   padding: 4px 2px;
   line-height: 1.45;
 }
-.n3 li > span {
+/* B5: the row's text now sits inside the link, so the ellipsis rule follows
+   it there - a long priority name still cannot break the 33px rhythm. */
+.n3 li > span,
+.n3 li > a > span {
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -2829,6 +2860,125 @@ body.sidebar-open .sb-close .ico {
   }
   .pring svg .ring-fill {
     filter: none;
+  }
+}
+/* UX-2026-11-19 B4: "What is driving completion" under the ring. One row
+   per major group - colour dot, name, done-of-total, its own thin bar and the
+   points it contributes. The whole row is the link (B5), so it is a 44px
+   target with a chevron at the end. */
+.major-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.major-list[hidden] {
+  display: none;
+}
+.major-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto 64px auto 14px;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.78rem;
+  transition: background 0.15s ease;
+}
+.major-row:hover,
+.major-row:focus-visible {
+  background: var(--tile-bg);
+  text-decoration: none;
+}
+.major-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.major-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.major-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.major-count {
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.major-bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track-bg);
+  overflow: hidden;
+}
+.major-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+.major-pts {
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.major-chev {
+  width: 14px;
+  height: 14px;
+  color: var(--slate);
+  opacity: 0.7;
+}
+.major-empty {
+  margin: 2px 0 6px;
+  font-size: 0.78rem;
+  color: var(--slate);
+}
+.major-more {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+@media (max-width: 520px) {
+  /* Narrow card: the bar is the first thing to go, the numbers stay. */
+  .major-row {
+    grid-template-columns: 10px minmax(0, 1fr) auto auto 14px;
+  }
+  .major-bar {
+    display: none;
+  }
+}
+/* UX-2026-11-19 B3: one arc per major group, drawn over the ring's own
+   geometry (r=39, 14.4px stroke, the whole SVG rotated -90 so 0 is 12
+   o'clock). These rules add only the affordance - the slot colours come
+   from the --major-N tokens, set inline by the renderer. */
+.pring .ring-slots .ring-slot {
+  cursor: pointer;
+  transition:
+    stroke-width 0.15s ease,
+    opacity 0.15s ease;
+}
+.pring .ring-slots .ring-slot:hover,
+.pring .ring-slots .ring-slot.is-hot {
+  stroke-width: 16.4;
+}
+/* The list under the ring is the text version of the same data, so a hover
+   on either side lights the other. */
+.major-row.is-hot {
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pring .ring-slots .ring-slot {
+    transition: none;
   }
 }
 .ring-txt {
@@ -6225,6 +6375,10 @@ button.rel-badge {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg, 16px);
+  /* OWNER 2026-11-19 (chrome-truth): a grid/flex child defaults to
+     min-width:auto, so a long placeholder line could push the column wider
+     than its track and overflow the panel on a phone. */
+  min-width: 0;
 }
 .skel-cards {
   display: grid;
@@ -6235,6 +6389,26 @@ button.rel-badge {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+/* OWNER 2026-11-19 (chrome-truth): one skeleton system, correct on a phone.
+   The card grid's 220px minimum and the 3-column board/grid were both wider
+   than a 390px content column once padding is counted, so the placeholders
+   ran off the edge. Collapse to one column and let rows wrap instead. */
+@media (max-width: 420px) {
+  .skel-cards {
+    grid-template-columns: 1fr;
+  }
+  .skel-board,
+  .skel-grid {
+    grid-template-columns: 1fr;
+  }
+  .skel-tr,
+  .skel-li {
+    flex-wrap: wrap;
+  }
+  .skel-tall {
+    height: 112px;
+  }
 }
 .skel-list {
   display: flex;
@@ -7786,6 +7960,48 @@ body.dark-mode .team-link-danger {
 .ag-hit {
   animation: ag-flash 1.6s ease-out;
 }
+@media (prefers-reduced-motion: reduce) {
+  /* UX-2026-11-19 B5: the jump still happens, the pulse does not. */
+  .ag-hit {
+    animation: none;
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
+/* A dead link still lands on the panel; this line says why the record is
+   not there, instead of leaving the user on an empty-looking screen. */
+.nav-miss {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  border-radius: 8px;
+  background: var(--tile-bg);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+/* The WBS view filter's own banner: what is shown, how many, and the way
+   back to everything. A filter nobody can see reads as lost data. */
+.wbs-view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  background: var(--tile-bg);
+  font-size: 0.8rem;
+}
+.wbs-view-bar[hidden] {
+  display: none;
+}
+.wbs-view-bar .wvb-txt {
+  color: var(--text);
+}
 @keyframes ag-flash {
   0% {
     box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.55);
@@ -7802,6 +8018,54 @@ body.dark-mode .team-link-danger {
   }
 }
 
+/* UX-2026-11-19 B6: colour carry-through. A task that belongs to a major
+   carries that major's slot colour as a 4px accent on its Gantt bar and a
+   4px marker on its WBS row, so the same task reads the same everywhere it
+   appears. Nothing else is restyled; with no groups neither attribute is
+   emitted, so nothing changes. */
+/* The slot number maps to its token in CSS, not in an inline style: eight
+   fixed rules keep the DOM census clean and let every theme re-tint the
+   accent with no JavaScript involved. */
+[data-major='1'] {
+  --major-row: var(--major-1);
+}
+[data-major='2'] {
+  --major-row: var(--major-2);
+}
+[data-major='3'] {
+  --major-row: var(--major-3);
+}
+[data-major='4'] {
+  --major-row: var(--major-4);
+}
+[data-major='5'] {
+  --major-row: var(--major-5);
+}
+[data-major='6'] {
+  --major-row: var(--major-6);
+}
+[data-major='7'] {
+  --major-row: var(--major-7);
+}
+[data-major='8'] {
+  --major-row: var(--major-8);
+}
+.gb[data-major]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--major-row);
+  pointer-events: none;
+}
+.gb[data-major] {
+  padding-left: 10px;
+}
+.wbs-row[data-major] > td:first-child {
+  box-shadow: inset 4px 0 0 var(--major-row);
+}
 /* ---- Project book: page tree + block body (AppFlowy-inspired) ----
    Pages are a flat array rendered as an indented tree; a body is a list of
    typed blocks. Formatting is the block type, never tags inside the text. */
@@ -8973,6 +9237,12 @@ body.readonly-mode
 .kc:hover {
   background: var(--lit-fog);
 }
+/* UX-2026-11-19 B6: the major's slot colour as a top stripe, so a card reads
+   the same as its ring arc, Gantt bar and WBS row. Absent when the project
+   has no groups, so nothing changes for an ungrouped project. */
+.kc[data-major] {
+  border-top: 4px solid var(--major-row);
+}
 .kc.pls {
   border-left-color: var(--amber);
 }
@@ -9152,9 +9422,17 @@ body.dark-mode .kqa-in {
 #drw {
   position: fixed;
   top: 0;
-  right: -430px;
-  width: 410px;
+  /* OWNER 2026-11-19 (chrome-truth): the panel is a reading surface, not a
+     phone-width sheet. 410px was cramped on a wide screen - the Settings
+     groups had room to breathe but not to be read - so the width is a custom
+     property with one wide-viewport step. The right offset is derived from it
+     (the 20px overshoot keeps the outer drop-shadow off-canvas when closed),
+     so the two can never drift apart. */
+  --drw-w: 410px;
+  width: var(--drw-w);
+  right: calc(-1 * var(--drw-w) - 20px);
   height: 100vh;
+  height: 100dvh;
   z-index: 1000;
   transition: right 0.3s ease;
   overflow: hidden;
@@ -9162,6 +9440,11 @@ body.dark-mode .kqa-in {
      ROUNDED silhouette of the child .drw-sheet (left corners rounded on      desktop - a box-shadow on the child would be clipped by its own
      overflow:hidden). */
   filter: drop-shadow(-8px 0 24px rgba(15, 23, 42, 0.14));
+}
+@media (min-width: 1440px) {
+  #drw {
+    --drw-w: 480px;
+  }
 }
 #drw.open {
   right: 0;
@@ -9173,6 +9456,15 @@ body.dark-mode .kqa-in {
   overflow: hidden;
   background: var(--card);
   border-left: 1px solid var(--border);
+  /* OWNER 2026-11-19 (chrome-truth): the panel used to arrive as a bare
+     slide. A short fade on the CONTENT gives it weight without touching the
+     slide itself - opacity only, because a transform here would create a
+     containing block for any fixed child (the float-mode drawer, popovers). */
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+#drw:not(.open) .drw-sheet {
+  opacity: 0;
 }
 .dh {
   padding: 18px;
@@ -9227,23 +9519,30 @@ body.dark-mode .kqa-in {
 .db {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
+  padding: 16px;
+  /* OWNER 2026-11-19 (chrome-truth): wheeling past the end of the settings
+     list dragged the PAGE behind the panel - a destructive surprise, because
+     the reader then closed the drawer onto a document that had scrolled away
+     from where they left it. `contain` stops the scroll chain at the panel;
+     it is the same rule #app-sidebar and .sec-nav already use. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .fi {
-  padding: 11px;
+  padding: 13px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  margin-bottom: 7px;
+  margin-bottom: 9px;
 }
 .fn {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 .fd {
   font-size: 0.78rem;
-  line-height: 1.45;
+  line-height: 1.55;
   color: var(--slate);
 }
 
@@ -10977,6 +11276,15 @@ body.dark-mode .wbs-alert-item {
   .nav-btn {
     display: inline-flex;
   }
+  /* OWNER 2026-11-19 (chrome-truth): on a phone the settings drawer covers the
+     whole width, so a page that scrolls underneath it reads as the drawer
+     itself scrolling - and closing it lands somewhere else. `contain` on .db
+     stops the wheel chain; this stops the touch chain at the document. `:has`
+     is already used in this file, so no JS bookkeeping across open / close /
+     float-mode / tour. */
+  body:has(#drw.open) {
+    overflow: hidden;
+  }
   /* The desktop sidebar is mobile-hidden: the off-canvas .sec-nav drawer is
      the ONLY mobile nav, and the sidebar's 240px margin must never apply. */
   #app-sidebar {
@@ -11179,6 +11487,109 @@ body.dark-mode .wbs-alert-item {
   justify-content: space-between;
   align-items: center;
   font-size: 0.78rem;
+}
+/* A named anchor at the top of a panel: #wbs, #risk, #stk and #dash are the
+   hash convention the navigator writes, and a plain <a href="#wbs"> must
+   resolve even with JavaScript off (verify-navigation-anchors enforces it).
+   Zero height, so it can never affect layout. */
+.sec-anchor {
+  display: block;
+  height: 0;
+  overflow: hidden;
+  scroll-margin-top: 12px;
+}
+/* UX-2026-11-19 B5: a dashboard row that is also a link. 44px is the touch
+   floor, and the chevron is the only new ink - the number keeps its dot. */
+.dash-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 2px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+.dash-link:hover,
+.dash-link:focus-visible {
+  background: var(--tile-bg);
+  text-decoration: none;
+}
+.dash-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.dash-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.dash-chev {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--slate);
+  opacity: 0.6;
+}
+.dash-link:hover .dash-chev,
+.dash-link:focus-visible .dash-chev {
+  opacity: 1;
+}
+/* A table cell that is a link: same ink, a chevron, no layout shift. */
+.tbl-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  min-height: 32px;
+}
+.tbl-link:hover,
+.tbl-link:focus-visible {
+  color: var(--gold-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tbl-link .dash-chev {
+  width: 12px;
+  height: 12px;
+}
+/* The Next 3 row's link fills the list row. The row keeps the list's own
+   33px rhythm (qa-rhythm R03 is a hard gate); the link adds no height. */
+.n3-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  /* .dash-link's 44px floor and inset belong to the stacked rows, not here */
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.n3-link:hover,
+.n3-link:focus-visible {
+  color: var(--gold-ink);
+  text-decoration: none;
+}
+.n3-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* The EVM tile keeps its centred column; only the ink changes. */
+.evm-tile-link {
+  color: inherit;
+  text-decoration: none;
+}
+.evm-tile-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .fb-top {
   display: flex;
@@ -12070,6 +12481,15 @@ body.dark-mode .pc-status {
   .sb-close .ico {
     transition: none !important;
     transform: none !important;
+  }
+  /* OWNER 2026-11-19 (chrome-truth): the drawer's content fade is an
+     affordance, not information - under reduced motion the panel simply
+     appears. The slide is already instant for the sidebar above; the drawer's
+     `right` transition is left alone here on purpose (it is the open/close
+     state, not decoration) but the sheet's opacity is removed. */
+  .drw-sheet {
+    transition: none !important;
+    opacity: 1 !important;
   }
   .pcard:hover {
     transform: none;
@@ -13045,14 +13465,14 @@ body.dark-mode .ltr-roll td {
   height: 54px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: var(--lit-coal);
+  background: linear-gradient(135deg, var(--gold), var(--gold-ink, var(--gold)));
+  color: var(--on-gold, var(--lit-coal));
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow:
-    0 8px 24px rgba(217, 119, 6, 0.4),
+    0 8px 24px rgba(var(--gold-rgb, 212, 175, 55), 0.4),
     inset 0 1px 0 var(--lit-white-35);
   transition:
     transform var(--tr),
@@ -13066,20 +13486,20 @@ body.dark-mode .ltr-roll td {
 }
 .ai-fab:hover {
   transform: translateY(-2px) scale(1.06);
-  box-shadow: 0 12px 30px rgba(217, 119, 6, 0.6);
+  box-shadow: 0 12px 30px rgba(var(--gold-rgb, 212, 175, 55), 0.6);
   filter: brightness(1.1);
 }
 @keyframes ai-glow {
   0%,
   100% {
     box-shadow:
-      0 8px 24px rgba(217, 119, 6, 0.4),
+      0 8px 24px rgba(var(--gold-rgb, 212, 175, 55), 0.4),
       inset 0 1px 0 var(--lit-white-35);
   }
   50% {
     box-shadow:
-      0 8px 32px rgba(217, 119, 6, 0.6),
-      0 0 16px rgba(245, 158, 11, 0.15),
+      0 8px 32px rgba(var(--gold-rgb, 212, 175, 55), 0.6),
+      0 0 16px rgba(var(--gold-rgb, 212, 175, 55), 0.15),
       inset 0 1px 0 var(--lit-white-35);
   }
 }
@@ -13291,7 +13711,7 @@ body.drw-float-open::after {
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
-  background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), transparent);
+  background: linear-gradient(180deg, rgba(var(--gold-rgb, 212, 175, 55), 0.08), transparent);
 }
 .ai-head .mt {
   display: inline-flex;
@@ -13604,7 +14024,7 @@ body.dark-mode .ai-api-pill[data-state='error'] {
 }
 .ai-seg-btn:hover {
   color: var(--gold-text);
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(var(--gold-rgb, 212, 175, 55), 0.08);
 }
 .ai-seg-btn.is-on {
   color: var(--gold-text);
@@ -13670,12 +14090,12 @@ body.dark-mode .ai-seg-btn.is-on {
 }
 .ai-user {
   align-self: flex-end;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: var(--lit-coal);
+  background: linear-gradient(135deg, var(--gold), var(--gold-ink, var(--gold)));
+  color: var(--on-gold, var(--lit-coal));
   font-weight: 600;
   border-bottom-right-radius: 5px;
   white-space: pre-wrap;
-  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.25);
+  box-shadow: 0 2px 8px rgba(var(--gold-rgb, 212, 175, 55), 0.25);
 }
 .ai-bot {
   align-self: flex-start;
@@ -13693,12 +14113,12 @@ body.dark-mode .ai-seg-btn.is-on {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: var(--lit-coal);
+  background: linear-gradient(135deg, var(--gold), var(--gold-ink, var(--gold)));
+  color: var(--on-gold, var(--lit-coal));
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 2px 10px rgba(var(--gold-rgb, 212, 175, 55), 0.35);
 }
 /* Wave 4d: the AI actions review card. A quiet surface that sits in the thread
    like any bot bubble; the preview table and the report are built with
@@ -14258,7 +14678,7 @@ body.dark-mode .ai-byo-pop {
   box-shadow: 0 0 6px var(--gold);
 }
 body.dark-mode .ai-byo-status[data-state='untested'] {
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(var(--gold-rgb, 212, 175, 55), 0.08);
 }
 .ai-byo-key {
   width: 190px;
@@ -15560,11 +15980,24 @@ html.mmgr-tour-active .bcp-tour-nudge {
 .bcp-tour-text {
   font-size: 0.88rem;
   line-height: 1.5;
+  /* UX-2026-11-19 A3: when the card is height-capped to clear a tall target
+     on a short screen, the copy scrolls inside it rather than overflowing. */
+  overflow-y: auto;
+  min-height: 0;
 }
 .bcp-tour-btns {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+/* UX-2026-11-19 A3/A4: Back, Skip and Next measured 28px high on a coarse
+   pointer, under the 44px target the directive sets. The tour is the one
+   place where a mis-tap costs the reader their place in the walkthrough. */
+@media (pointer: coarse) {
+  .bcp-tour-btns .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 @media (max-width: 600px) {
   .bcp-tour-pop {
@@ -17206,7 +17639,9 @@ body.ai-sheet .ai-inputbar {
 
 /* dark mode */
 body.dark-mode .ai-user {
-  background: linear-gradient(135deg, #f59e0b, #b45309);
+  /* UX-2026-11-19 A8: the accent is a token in dark mode too (white there,
+     by the owner's dark identity), so the bubble cannot stay amber. */
+  background: linear-gradient(135deg, var(--gold), var(--gold-ink, var(--gold)));
 }
 body.dark-mode .ai-bot-body {
   background: var(--lit-white-05);
@@ -17727,6 +18162,19 @@ body.glass-premium.dark-mode .mouse-glow {
 body.dark-mode .sync-suggest {
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(245, 158, 11, 0.4);
+}
+
+/* Baseline Variance empty state (data-truth PR): the card now carries the
+   capture action itself instead of naming a control four levels deep in the
+   drawer. The row wraps on narrow cards so two buttons never overflow. */
+.dw-base-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.dw-base-act .btn {
+  flex: 0 1 auto;
 }
 /* DASHBOARD-UI-REFRESH-SPEC - dark dashboard treatment (app.html ONLY) */
 .db-side,
@@ -21640,6 +22088,17 @@ body.view-3d .view-deck {
   animation-iteration-count: 1 !important;
   scroll-behavior: auto !important;
 }
+/* OWNER 2026-11-19 (chrome-truth): the settings drawer's content fade is
+   decoration - Performance Mode turns it off and shows the panel at once. */
+/* UX-2026-11-19 B3: the ring's quarter-turn entry sweep is decoration, so
+   Performance Mode shows the finished ring at once. */
+[data-perf='on'] .pring.ring-in svg {
+  animation: none !important;
+}
+[data-perf='on'] .drw-sheet {
+  transition: none !important;
+  opacity: 1 !important;
+}
 [data-perf='on'] [class*='glass'],
 [data-perf='on'] .card,
 [data-perf='on'] .top,
@@ -21912,6 +22371,17 @@ body.db-page[data-skin='departure'],
 .theme-preview[data-skin='departure'] {
   --canvas: #101214;
   --surface: #181b1e;
+  /* Major-task chart slots: this skin's card is dark, so it takes the dark
+     steps of the same eight hues (UX-2026-11-19 B2). */
+  --major-1: #3ddc84;
+  --major-2: #6db3ff;
+  --major-3: #ff5f56;
+  --major-4: #ffc53d;
+  --major-5: #e6b85f;
+  --major-6: #c9c9cf;
+  --major-7: #50e8f4;
+  --major-8: #aeb8ad;
+  --major-other: #8f8f97;
   --card: #181b1e;
   --surface-raised: #1d2124;
   --border: #2a2f33;
@@ -22166,6 +22636,12 @@ body.db-page[data-skin='guild'],
 .theme-preview[data-skin='guild'] {
   --canvas: #1f3a2e;
   --surface: #3a2818;
+  /* Major-task chart slots on the parchment card: four of the light steps
+     fall under 3:1 here, so those four take the deep step of the SAME hue
+     (UX-2026-11-19 B2). */
+  --major-4: #c24700;
+  --major-6: #7a6b72;
+  --major-other: #555555;
   --card: #e8d5a8;
   --surface-raised: #4a3322;
   --border: #2a1d12;
@@ -22517,6 +22993,17 @@ body.db-page[data-skin='obsidian'],
 .theme-preview[data-skin='obsidian'] {
   --canvas: #0c1015;
   --surface: rgba(18, 24, 31, 0.82);
+  /* Major-task chart slots: this skin's card is dark, so it takes the dark
+     steps of the same eight hues (UX-2026-11-19 B2). */
+  --major-1: #3ddc84;
+  --major-2: #6db3ff;
+  --major-3: #ff5f56;
+  --major-4: #ffc53d;
+  --major-5: #e6b85f;
+  --major-6: #c9c9cf;
+  --major-7: #50e8f4;
+  --major-8: #aeb8ad;
+  --major-other: #8f8f97;
   --card: rgba(22, 29, 37, 0.9);
   --surface-raised: rgba(28, 36, 46, 0.9);
   --border: rgba(212, 162, 76, 0.45);
@@ -22955,6 +23442,136 @@ body.db-page[data-skin='vellum'] textarea {
 }
 .auth-legal a:hover {
   color: var(--text);
+}
+
+/* ---- SIGN-OUT CONFIRM (UX-2026-11-19 A5) ------------------------------
+   One dialog for every sign-out entry point (account row, marketing sheet,
+   sign-in confirmation, sync panel). The host is built by
+   js/mmgr-google-auth.js, so these rules must not assume any one page's
+   layout, and the buttons carry their own .soc-btn class rather than
+   relying on a page's button system. z-index sits above the toast layer so
+   the question is never painted under a notification.
+   TWIN: the same block lives in css/marketing.css (the marketing pages link
+   dist/marketing.min.css, not the app stylesheet). Keep the two identical. */
+#soc {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+#soc[hidden] {
+  display: none;
+}
+.soc-backdrop {
+  position: absolute;
+  inset: 0;
+  /* X-2 paint cost: a confirm dialog's card is fully opaque and the dim
+     below is enough to separate it, so no full-viewport blur layer here. */
+  background: rgba(15, 22, 33, 0.46);
+}
+.soc-card {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid var(--border, #e3e7ec);
+  border-radius: 16px;
+  background: var(--card, #ffffff);
+  color: var(--text, #1d2733);
+  box-shadow: 0 24px 70px rgba(12, 18, 28, 0.34);
+}
+.soc-title {
+  margin: 0 0 8px;
+  font: 600 1.05rem/1.25 var(--font-head, inherit);
+}
+.soc-body {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text, #1d2733);
+}
+.soc-note {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--danger, #b91c1c);
+}
+.soc-note[hidden] {
+  display: none;
+}
+.soc-acts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.soc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--border, #e3e7ec);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text, #1d2733);
+  font: 600 0.85rem/1.2 inherit;
+  cursor: pointer;
+}
+.soc-btn[hidden] {
+  display: none;
+}
+.soc-btn:hover {
+  background: rgba(15, 22, 33, 0.06);
+}
+.soc-btn:focus-visible {
+  outline: 2px solid var(--focus-ring, currentColor);
+  outline-offset: 2px;
+}
+.soc-btn-primary {
+  border-color: transparent;
+  background: var(--gold, #d4af37);
+  color: var(--on-gold, #1c1917);
+}
+.soc-btn-primary:hover {
+  background: var(--gold, #d4af37);
+  filter: brightness(0.94);
+}
+.soc-btn-danger {
+  border-color: rgba(198, 40, 40, 0.35);
+  color: var(--danger, #c62828);
+}
+.soc-btn-danger:hover {
+  background: rgba(198, 40, 40, 0.08);
+  border-color: var(--danger, #c62828);
+}
+@media (max-width: 420px) {
+  .soc-acts .soc-btn {
+    flex: 1 1 100%;
+  }
+}
+/* Short landscape (A2): the dialog must fit the 360px-tall viewport without
+   the page behind it scrolling. */
+@media (max-height: 500px) {
+  .soc-card {
+    max-height: calc(100dvh - 16px);
+    padding: 14px 16px;
+  }
+  .soc-acts {
+    margin-top: 12px;
+  }
+}
+@media (pointer: coarse) {
+  .soc-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 /* ============================================================
    DARK BUTTON LANGUAGE (owner 2026-09-20) , project pages only
@@ -24870,6 +25487,70 @@ body.dark-mode .dashboard-card {
   position: relative;
   z-index: 1;
 }
+
+/* ============================================================
+   TOUCH TARGETS - 44 x 44 on every coarse pointer
+   (UX-2026-11-19 A4)
+   ------------------------------------------------------------
+   Testers said some controls were small to tap (the Performance Mode
+   switch, drawer items, the tour buttons) and that text was "almost cut
+   off". The tour buttons get a real 44px height in the calculator layer;
+   everywhere else the visual must stay compact - the header is capped at
+   44px on short screens - so the hit area is EXTENDED with a transparent
+   ::after box centred on the control. It paints nothing, adds no layout,
+   and takes no part in the flex/grid sizing.
+
+   Only controls whose ::after is free are listed: `.btn` and friends never
+   define one, and `.tgl`'s knob lives on `.tsl::before`. Inline links
+   inside a paragraph are deliberately exempt (the directive's own rule).
+   ============================================================ */
+@media (pointer: coarse) {
+  .btn,
+  .tab-btn,
+  .dtab,
+  .db-link,
+  .db-quick,
+  .db-hamb,
+  .settings-btn,
+  .status-chip,
+  .nav-btn,
+  .chip,
+  .pill,
+  .bcp-seg button,
+  .bcp-seg label,
+  .bcp-iconbtn,
+  .cm-close,
+  .tgl {
+    position: relative;
+  }
+  .btn::after,
+  .tab-btn::after,
+  .dtab::after,
+  .db-link::after,
+  .db-quick::after,
+  .db-hamb::after,
+  .settings-btn::after,
+  .status-chip::after,
+  .nav-btn::after,
+  .chip::after,
+  .pill::after,
+  .bcp-seg button::after,
+  .bcp-seg label::after,
+  .bcp-iconbtn::after,
+  .cm-close::after,
+  .tgl::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+    /* Purely a hit area: no paint, no layout contribution. */
+    background: none;
+    pointer-events: auto;
+  }
+}
 /* ============================================================
    PART H (owner 2026-10-16): Procurement tab - supplier price
    book + AI quote panel. Token-driven: body.dark-mode re-maps
@@ -25166,6 +25847,158 @@ textarea.pv-in {
 #gantt-export-modal .gx-opt input {
   accent-color: var(--gold);
   flex: none;
+}
+
+/* ============================================================
+   SHORT SCREENS - landscape phones and any viewport under 500px high
+   (UX-2026-11-19 A2)
+   ------------------------------------------------------------
+   The usability test turned the phone sideways and the header, the sticky
+   Estimate bar and the tour card together left a strip of page. The
+   stylesheet had no orientation or max-height rule at all.
+
+   The rule is compression, not removal: every bar becomes ONE slim line
+   capped at 44px, so header + total bar can never exceed 24% of a 360px
+   screen (88 / 360) - well inside the 35% budget the directive sets, which
+   is why the bar never has to be un-stuck.
+
+   Applies to every served page (this layer loads after the shell, the
+   panels, the calculator and the chrome layers, so it wins on equal
+   specificity). Safe-area insets are honoured on all four sides: a phone
+   held sideways puts the notch on the left or right edge.
+   ============================================================ */
+@media (max-height: 500px) {
+  /* ---- Project / launcher header: one line, max 44px ---- */
+  #app-header {
+    flex-wrap: nowrap;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: max(10px, env(safe-area-inset-left, 0px));
+    padding-right: max(10px, env(safe-area-inset-right, 0px));
+    gap: 10px;
+    min-height: 0;
+  }
+  #app-header .hdr-left,
+  #app-header .hdr-right {
+    flex-wrap: nowrap;
+    row-gap: 0;
+    gap: 8px;
+    min-width: 0;
+  }
+  /* The greeting is the only header element with no action behind it, so it
+     is the one that gives way. max-width (not display:none) keeps it in the
+     accessibility tree at every height. */
+  #app-header .greeting {
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  #app-header .btn,
+  #app-header .nav-btn,
+  #app-header .status-chip,
+  #app-header .tab-btn {
+    min-height: 32px;
+  }
+
+  /* ---- Calculator header: same treatment ---- */
+  .bcp-top {
+    flex-wrap: nowrap;
+    row-gap: 0;
+    padding: 4px max(10px, env(safe-area-inset-right, 0px)) 4px
+      max(10px, env(safe-area-inset-left, 0px));
+    min-height: 0;
+  }
+  .bcp-top-right {
+    flex: 0 0 auto;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .bcp-top .btn,
+  .bcp-top .bcp-iconbtn {
+    min-height: 32px;
+  }
+
+  /* ---- The sticky Estimate bar: one slim line ---- */
+  .bcp-totalbar {
+    padding: 4px max(12px, env(safe-area-inset-right, 0px))
+      calc(4px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+    min-height: 0;
+    font-size: 0.8rem;
+  }
+  .bcp-totalbar-show {
+    min-height: 32px;
+    padding: 4px 12px;
+  }
+
+  /* ---- Hard height cap on the two sticky headers. Their tallest children
+     (the section hamburger and the methodology pill row) are 38-40px; capping
+     the children is what gets the bar to 44px without hiding a control. ---- */
+  #app-header {
+    max-height: 44px;
+  }
+  #app-header .hdr-left,
+  #app-header .hdr-right {
+    max-height: 34px;
+  }
+  #app-header .nav-btn {
+    width: 32px;
+    height: 32px;
+    min-height: 0;
+    padding: 0;
+  }
+  #app-header .tab-ctrl {
+    height: 32px;
+    align-items: center;
+  }
+  #app-header .tab-btn {
+    height: 28px;
+    min-height: 0;
+    padding: 0 8px;
+  }
+  #app-header .status-chip {
+    height: 30px;
+  }
+  #app-header .settings-btn,
+  #app-header .dirty-ind,
+  #app-header .bk-anchor {
+    max-height: 32px;
+  }
+  .bcp-top {
+    max-height: 44px;
+  }
+  .bcp-top .btn,
+  .bcp-top .bcp-iconbtn {
+    height: 32px;
+    min-height: 0;
+  }
+
+  /* ---- Dialogs and sheets: never taller than the dynamic viewport, with
+     the header and the Done button always on screen ---- */
+  .cm-dialog {
+    max-height: calc(
+      100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 8px
+    );
+  }
+  .cm-head {
+    padding: 8px 14px;
+  }
+  .cm-body {
+    min-height: 0;
+    padding: 12px 14px;
+  }
+  .cm-foot {
+    padding: 8px 14px;
+  }
+
+  /* ---- Drawer: full height of the dynamic viewport, safe areas included,
+     and every row reachable by scrolling inside it ---- */
+  #drw {
+    max-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  #drw .db {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  }
 }
 /* ---- Procurement P2/P3/P4 (2026-10-20): price-history sparkline,
    import dry-run panel, compare matrix. ---- */

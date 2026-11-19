@@ -255,3 +255,40 @@ Gate: `tools/qa-ai-theme.cjs` **8/8** (new, 54 combinations, proven to bite);
 `verify-contrast` at the 2-failure baseline; `qa-bento-gate` 10/10.
 
 Commit: `fix(ui): the AI accent follows the chosen theme`.
+
+### A9 - Part A close
+
+Standard battery, every harness run locally against `serve.cjs`:
+
+| Harness | Result | Baseline |
+|---|---|---|
+| `npm run verify` (CSP, SW, sizes, EOL, prettier, registry, typecheck) | PASS | PASS |
+| `qa-full` | 194/194 | 194/194 |
+| `qa-controls-ia` | 12/12 | 12/12 |
+| `qa-dashboard-spec` | 104/104 | 104/104 |
+| `qa-ux-landscape` (the A1 harness) | 58/58 | 58/58 |
+| `qa-signout-confirm` (new, A5) | 42/42 | - |
+| `qa-ai-viewonly` (new, A6) | 7/7 | - |
+| `qa-ai-theme` (new, A8) | 8/8 | - |
+| `qa-ai-win` | 27/27 | 27/27 |
+| `qa-ai-actions` | 13/13 | 13/13 |
+| `qa-ai-relay` | RELAY_GATE PASS | PASS |
+| `qa-cloud-phase1` | 29/29 | 29/29 |
+| `qa-cloud-phase2` | 93/93 | 93/93 |
+| `qa-api-keys` | ALL PASSED | PASSED |
+| `qa-calculator-page` | 256/256 | 256/256 |
+| `qa-a11y-axe` | 7/7 | 7/7 |
+| `qa-bento-gate` | 10/10 | 10/10 |
+| `qa-oauth` | 11/3 failed | 3 failed (TRIAGE) |
+| `verify-contrast` | 16/2 failed | 2 failed (pre-existing) |
+
+Nothing is worse than baseline, and A1's harness is fully green (58/58).
+
+One carry-over: `qa-dashboard-spec` arrived at 102/104 because its two
+skeleton checks had been re-baselined on `feat/chrome-truth` (commit
+`7c6a59d`, harness + registry only) and that branch is not merged here. The
+commit was cherry-picked onto this branch so the battery closes green; the
+two branches now carry an identical harness change.
+
+Part A complete: A1 `1898da3`, A2 `d27f133`, A3 `232a67f`, A4 `75ac0c7`,
+A5 `b561da9`, A6 `f3d1d10`, A7 `6e6678c`, A8 `431245b`, A9 this entry.

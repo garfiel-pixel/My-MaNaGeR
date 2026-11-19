@@ -176,6 +176,23 @@ svg.ico use {
   --dot-yellow-rgb: 230, 81, 0;
   --dot-green-rgb: 46, 125, 50;
   --dot-blue-rgb: 21, 101, 192;
+  /* -- Major-task chart slots (UX-2026-11-19 B2) -------------------------
+     Eight colours for the dashboard ring and the "What is driving
+     completion" list. Every value already ships in this palette (status
+     hues, the theme accents and their deep steps) - no new hue is
+     introduced. These are non-text graphics drawn on a CARD, so 3:1 is the
+     floor, not 4.5:1. Dark mode and the two dark skins re-point the same
+     eight names; guild deepens four of them for its parchment card.
+     tools/verify-major-colors.cjs proves every theme. */
+  --major-1: #17633f; /* forest - the bento brand green */
+  --major-2: #075aa7; /* blue - departure's link blue */
+  --major-3: #d63a3a; /* red - --danger */
+  --major-4: #e65100; /* amber - --warning */
+  --major-5: #7a5a0b; /* bronze - --gold-ink */
+  --major-6: #8b5cf6; /* purple - --purple */
+  --major-7: #00838f; /* teal - the cyan accent's text step */
+  --major-8: #5f6860; /* sage - the pegboard/guild neutral */
+  --major-other: #666666; /* --text-muted: the merged "Other" slot */
   /* -- Legacy aliases (kept for backward compat, migrate to semantic) -- */
   --green: #2e7d32;
   --amber: #e65100;
@@ -325,6 +342,17 @@ body.dark-mode {
   --dot-yellow-rgb: 255, 197, 61;
   --dot-green-rgb: 61, 220, 132;
   --dot-blue-rgb: 109, 179, 255;
+  /* Major-task chart slots: the dark steps of the same hues, each at or
+     above 3:1 on the #151518 card (UX-2026-11-19 B2). */
+  --major-1: #3ddc84;
+  --major-2: #6db3ff;
+  --major-3: #ff5f56;
+  --major-4: #ffc53d;
+  --major-5: #e6b85f;
+  --major-6: #c9c9cf;
+  --major-7: #50e8f4;
+  --major-8: #aeb8ad;
+  --major-other: #8f8f97;
   --purple: #c9c9cf;
   --purple-rgb: 201, 201, 207;
   --amber-rgb: 255, 255, 255;
@@ -22017,6 +22045,17 @@ body.db-page[data-skin='departure'],
 .theme-preview[data-skin='departure'] {
   --canvas: #101214;
   --surface: #181b1e;
+  /* Major-task chart slots: this skin's card is dark, so it takes the dark
+     steps of the same eight hues (UX-2026-11-19 B2). */
+  --major-1: #3ddc84;
+  --major-2: #6db3ff;
+  --major-3: #ff5f56;
+  --major-4: #ffc53d;
+  --major-5: #e6b85f;
+  --major-6: #c9c9cf;
+  --major-7: #50e8f4;
+  --major-8: #aeb8ad;
+  --major-other: #8f8f97;
   --card: #181b1e;
   --surface-raised: #1d2124;
   --border: #2a2f33;
@@ -22271,6 +22310,12 @@ body.db-page[data-skin='guild'],
 .theme-preview[data-skin='guild'] {
   --canvas: #1f3a2e;
   --surface: #3a2818;
+  /* Major-task chart slots on the parchment card: four of the light steps
+     fall under 3:1 here, so those four take the deep step of the SAME hue
+     (UX-2026-11-19 B2). */
+  --major-4: #c24700;
+  --major-6: #7a6b72;
+  --major-other: #555555;
   --card: #e8d5a8;
   --surface-raised: #4a3322;
   --border: #2a1d12;
@@ -22622,6 +22667,17 @@ body.db-page[data-skin='obsidian'],
 .theme-preview[data-skin='obsidian'] {
   --canvas: #0c1015;
   --surface: rgba(18, 24, 31, 0.82);
+  /* Major-task chart slots: this skin's card is dark, so it takes the dark
+     steps of the same eight hues (UX-2026-11-19 B2). */
+  --major-1: #3ddc84;
+  --major-2: #6db3ff;
+  --major-3: #ff5f56;
+  --major-4: #ffc53d;
+  --major-5: #e6b85f;
+  --major-6: #c9c9cf;
+  --major-7: #50e8f4;
+  --major-8: #aeb8ad;
+  --major-other: #8f8f97;
   --card: rgba(22, 29, 37, 0.9);
   --surface-raised: rgba(28, 36, 46, 0.9);
   --border: rgba(212, 162, 76, 0.45);

@@ -206,8 +206,89 @@ var MMGR = window.MMGR || {};
     };
   }
 
+  // ---- B2: stable chart slots -------------------------------------------
+  // Eight slots, one per --major-N token. A group's slot comes from a hash of
+  // its id, so it does not move when tasks are reordered or renumbered; a
+  // collision takes the next free slot (first-fit), so two groups never share
+  // a colour while slots remain.
+  const SLOTS = 8;
+  const OTHER_ID = 'group:other';
+
+  function hashId(id) {
+    const s = String(id == null ? '' : id);
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  // More than eight majors: the seven largest keep a colour and everything
+  // else merges into one neutral "Other" slot. Merging preserves the totals,
+  // so the points still sum to the centre percentage.
+  function mergeOther(groups) {
+    if (groups.length <= SLOTS) {
+      return groups;
+    }
+    const order = groups.map(function (g, i) {
+      return { g: g, i: i };
+    });
+    order.sort(function (a, b) {
+      return b.g.points - a.g.points || a.i - b.i;
+    });
+    const keep = order
+      .slice(0, SLOTS - 1)
+      .sort(function (a, b) {
+        return a.i - b.i;
+      })
+      .map(function (x) {
+        return x.g;
+      });
+    const rest = order.slice(SLOTS - 1).map(function (x) {
+      return x.g;
+    });
+    const other = {
+      id: OTHER_ID,
+      name: 'Other',
+      total: 0,
+      completed: 0,
+      fraction: 0,
+      share: 0,
+      points: 0
+    };
+    rest.forEach(function (g) {
+      other.total += g.total;
+      other.completed += g.completed;
+      other.share += g.share;
+      other.points += g.points;
+    });
+    other.fraction = other.total ? other.completed / other.total : 0;
+    return keep.concat([other]);
+  }
+
+  function withColors(groups) {
+    const kept = mergeOther(groups || []);
+    const used = Object.create(null);
+    return kept.map(function (g) {
+      if (g.id === OTHER_ID) {
+        return Object.assign({}, g, { color: 0 });
+      }
+      let slot = hashId(g.id) % SLOTS;
+      for (let n = 0; n < SLOTS && used[slot]; n++) {
+        slot = (slot + 1) % SLOTS;
+      }
+      used[slot] = 1;
+      return Object.assign({}, g, { color: slot + 1 });
+    });
+  }
+
   ns.MajorTasks = {
     getMajorGroups: getMajorGroups,
+    withColors: withColors,
+    hashId: hashId,
+    SLOTS: SLOTS,
+    OTHER_ID: OTHER_ID,
     UNASSIGNED_ID: UNASSIGNED_ID,
     UNASSIGNED_NAME: UNASSIGNED_NAME
   };

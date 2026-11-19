@@ -326,3 +326,43 @@ module counts what `Kanban.workItems` counts (a level-0 roll-up parent is
 excluded). The suite runs in `npm run verify` (468 tests, all passing).
 
 Commit: `feat(dashboard): one definition of a major task`.
+
+### B2 - stable colours for the chart slots
+
+Eight chart tokens plus a neutral "Other" slot, all reusing colours the app
+already ships (the harness proves it by searching the rest of `css/src` with
+the token declarations stripped out):
+
+| Token | Light | Dark | Guild (parchment) |
+|---|---|---|---|
+| `--major-1` | `#17633f` forest | `#3ddc84` | - |
+| `--major-2` | `#075aa7` blue | `#6db3ff` | - |
+| `--major-3` | `#d63a3a` red | `#ff5f56` | - |
+| `--major-4` | `#e65100` amber | `#ffc53d` | `#c24700` |
+| `--major-5` | `#7a5a0b` bronze | `#e6b85f` | - |
+| `--major-6` | `#8b5cf6` purple | `#c9c9cf` | `#7a6b72` |
+| `--major-7` | `#00838f` teal | `#50e8f4` | - |
+| `--major-8` | `#5f6860` sage | `#aeb8ad` | - |
+| `--major-other` | `#666666` | `#8f8f97` | `#555555` |
+
+The dark set lives in the `body.dark-mode` block; departure and obsidian are
+light-mode skins with dark cards, so they re-declare the same dark steps.
+Guild's parchment card (`#e8d5a8`) drops four of the light steps under 3:1,
+so it deepens exactly those (amber -> `#c24700`, purple -> `#7a6b72`, Other ->
+`#555555`; sage already clears).
+
+Assignment (`MMGR.MajorTasks.withColors`): the slot comes from an FNV-1a hash
+of the group id, so reordering tasks or renumbering rows never moves a
+colour; a collision takes the next free slot, so eight groups never share one.
+More than eight majors: the seven largest by points keep a colour and the
+rest merge into Other, which preserves the totals and therefore the sum
+invariant.
+
+Gate: `tools/verify-major-colors.cjs` **19/19**, wired into `npm run verify`
+(and therefore into CI's static job). It checks both sets declare all nine,
+that no hue is new, 3:1 for all nine on every theme's own card, and that the
+three non-default skins really re-point their slots. Proven to bite: pale
+`#ffe082` on `--major-4` fails six themes. Unit tests 12/12 (colour stability
+under reordering, no shared slots, the Other merge).
+
+Commit: `feat(dashboard): stable chart colours for the major groups`.

@@ -82,7 +82,9 @@ const EXACT = {
   // 2026-11-19 (ux A5): 627000 -> 631000 for the sign-out confirm dialog
   // (overlay, card, three-button row, short-landscape and coarse-pointer
   // rules) in css/src/87-signin-polish.css (629248 measured).
-  'css/mmgr.css': 631000,
+  // 2026-11-19 (ux B2): 631000 -> 634000 for the eight chart-slot tokens and
+  // their dark / departure / obsidian / guild re-points (632054 measured).
+  'css/mmgr.css': 634000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

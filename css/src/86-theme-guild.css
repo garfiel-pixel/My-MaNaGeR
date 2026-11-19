@@ -10,6 +10,12 @@ body.db-page[data-skin='guild'],
 .theme-preview[data-skin='guild'] {
   --canvas: #1f3a2e;
   --surface: #3a2818;
+  /* Major-task chart slots on the parchment card: four of the light steps
+     fall under 3:1 here, so those four take the deep step of the SAME hue
+     (UX-2026-11-19 B2). */
+  --major-4: #c24700;
+  --major-6: #7a6b72;
+  --major-other: #555555;
   --card: #e8d5a8;
   --surface-raised: #4a3322;
   --border: #2a1d12;

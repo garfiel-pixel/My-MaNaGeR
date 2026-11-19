@@ -192,3 +192,78 @@ test('the rule follows the Kanban work-item definition, not a copy of it', () =>
   assert.deepEqual(plain(boardItems), ['Child']);
   assert.equal(out.total, 1);
 });
+
+// ---- B2. stable chart slots ---------------------------------------------
+test('a group keeps its colour when the tasks are reordered', () => {
+  const base = {
+    tasks: [
+      { id: 'p1', name: 'A', isPhase: true },
+      { id: 'p2', name: 'B', isPhase: true },
+      { id: 'p3', name: 'C', isPhase: true },
+      { id: 'p4', name: 'D', isPhase: true },
+      { id: 't1', name: 'a1', parentId: 'p1', status: 'completed' },
+      { id: 't2', name: 'b1', parentId: 'p2', status: 'todo' },
+      { id: 't3', name: 'c1', parentId: 'p3', status: 'todo' },
+      { id: 't4', name: 'd1', parentId: 'p4', status: 'todo' }
+    ]
+  };
+  const first = M.withColors(M.getMajorGroups(base).groups);
+  const map1 = {};
+  first.forEach(g => (map1[g.id] = g.color));
+
+  // Same rows, different order in the plan.
+  const shuffled = { tasks: base.tasks.slice().reverse() };
+  const second = M.withColors(M.getMajorGroups(shuffled).groups);
+  const map2 = {};
+  second.forEach(g => (map2[g.id] = g.color));
+
+  assert.deepEqual(plain(map2), plain(map1));
+  assert.ok(
+    first.every(g => g.color >= 1 && g.color <= 8),
+    'every slot is inside 1..8'
+  );
+});
+
+test('eight or fewer groups never share a colour', () => {
+  const groups = [];
+  for (let i = 0; i < 8; i++) {
+    groups.push({
+      id: 'g' + i,
+      name: 'G' + i,
+      total: 1,
+      completed: 1,
+      fraction: 1,
+      share: 1 / 8,
+      points: 12.5
+    });
+  }
+  const colored = M.withColors(groups);
+  const slots = colored.map(g => g.color);
+  assert.equal(new Set(slots).size, 8);
+});
+
+test('more than eight majors keep the seven largest and merge the rest into Other', () => {
+  const groups = [];
+  for (let i = 0; i < 10; i++) {
+    groups.push({
+      id: 'g' + i,
+      name: 'G' + i,
+      total: 2,
+      completed: i === 0 ? 2 : 0,
+      fraction: i === 0 ? 1 : 0,
+      share: 0.1,
+      points: i === 0 ? 20 : 0
+    });
+  }
+  const colored = M.withColors(groups);
+  assert.equal(colored.length, 8, 'seven majors plus Other');
+  const other = colored[colored.length - 1];
+  assert.equal(other.name, 'Other');
+  assert.equal(other.color, 0, 'Other is the neutral slot');
+  assert.equal(other.total, 6, 'three merged groups of two');
+  assert.equal(round(colored.reduce((n, g) => n + g.points, 0)), 20);
+  assert.ok(
+    colored.slice(0, 7).some(g => g.id === 'g0'),
+    'the largest group keeps its own slot'
+  );
+});

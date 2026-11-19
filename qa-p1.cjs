@@ -230,11 +230,20 @@ async function ev(expr) {
     var ganttLabels = document.getElementById('gantt-labels') ? document.getElementById('gantt-labels').children.length : -1;
     var hTc = document.getElementById('tc') ? document.getElementById('tc').textContent : null;
     var decisionBody = document.getElementById('today-decision-body') ? document.getElementById('today-decision-body').children.length : -1;
-    var ok = imp2.length === 3 && wbsRows && kanbanCards === todoExpected && ganttLabels >= 5 && decisionBody >= 0 && hTc === String(s.tasks.length);
+    // UX-2026-11-19 B3: for a grouped project the dash "of N tasks" figure is
+    // the ring's work-item total (phase rows are containers, not tasks), not
+    // the raw state.tasks.length. Mirror renderDash's grouped/ungrouped split
+    // using the app's OWN work-item rule so this check cannot drift from it.
+    var mg = MMGR.MajorTasks && MMGR.MajorTasks.getMajorGroups ? MMGR.MajorTasks.getMajorGroups(s) : null;
+    var useGroups = !!(mg && mg.grouped && mg.groups && mg.groups.length);
+    var expectedDash = (useGroups && MMGR.Kanban && MMGR.Kanban.workItems)
+      ? MMGR.Kanban.workItems(s).length
+      : s.tasks.length;
+    var ok = imp2.length === 3 && wbsRows && kanbanCards === todoExpected && ganttLabels >= 5 && decisionBody >= 0 && hTc === String(expectedDash);
     var s2 = MMGR.State.getState();
     s2.tasks = s2.tasks.filter(function(t){ return names.indexOf(t.name) === -1; });
     MMGR.Render.renderAll();
-    return { ok: ok, imported: imp2.length, wbsRows: wbsRows, kanbanCards: kanbanCards, todoExpected: todoExpected, ganttLabels: ganttLabels, dashTotal: hTc, decisions: decisionBody };
+    return { ok: ok, imported: imp2.length, wbsRows: wbsRows, kanbanCards: kanbanCards, todoExpected: todoExpected, ganttLabels: ganttLabels, dashTotal: hTc, expectedDash: expectedDash, decisions: decisionBody };
   })()`);
   check('5 import: WBS + Kanban + Gantt + Dash + Decisions all refresh', !!imp.ok, imp);
 

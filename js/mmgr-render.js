@@ -2200,33 +2200,87 @@ var MMGR = window.MMGR || {};
   });
 
   // ---- Sections ----
-  // Single lookup used by both showSection and renderAll so the active
-  // panel can be re-rendered after any state change.
-  const SECTION_RENDERERS = {
-    dash: renderDash,
-    def: renderDefs,
-    wbs: renderWbs,
-    gantt: renderGantt,
-    kan: renderKanban,
-    ideas: renderIdeas,
-    agenda: renderAgenda,
-    risk: renderRisks,
-    res: renderResources,
-    bud: renderBudget,
-    stk: renderStakeholders,
-    chg: renderChanges,
-    log: renderLog,
-    close: renderClosure,
-    raci: renderRaci,
-    comms: renderComms,
-    docs: renderDocuments,
-    proc: renderProcPanel,
-    dmaic: renderDmaic,
-    meet: renderMeetingsPanel,
-    charter: renderCharter,
-    claim: renderClaimPanel,
-    photos: renderPhotosPanel
-  };
+  // One explicit dispatcher used by both showSection and renderAll so the
+  // active panel can be re-rendered after any state change. This is a switch
+  // of direct named calls, not a `MAP[section]()` lookup: `section` can arrive
+  // from the URL hash (MMGR.Nav), and CodeQL's js/unvalidated-dynamic-method-call
+  // rightfully refuses a function selected by a tainted key. An unknown
+  // section simply renders nothing, so a bad hash cannot call anything.
+  function renderSectionBody(section) {
+    switch (section) {
+      case 'dash':
+        renderDash();
+        break;
+      case 'def':
+        renderDefs();
+        break;
+      case 'wbs':
+        renderWbs();
+        break;
+      case 'gantt':
+        renderGantt();
+        break;
+      case 'kan':
+        renderKanban();
+        break;
+      case 'ideas':
+        renderIdeas();
+        break;
+      case 'agenda':
+        renderAgenda();
+        break;
+      case 'risk':
+        renderRisks();
+        break;
+      case 'res':
+        renderResources();
+        break;
+      case 'bud':
+        renderBudget();
+        break;
+      case 'stk':
+        renderStakeholders();
+        break;
+      case 'chg':
+        renderChanges();
+        break;
+      case 'log':
+        renderLog();
+        break;
+      case 'close':
+        renderClosure();
+        break;
+      case 'raci':
+        renderRaci();
+        break;
+      case 'comms':
+        renderComms();
+        break;
+      case 'docs':
+        renderDocuments();
+        break;
+      case 'proc':
+        renderProcPanel();
+        break;
+      case 'dmaic':
+        renderDmaic();
+        break;
+      case 'meet':
+        renderMeetingsPanel();
+        break;
+      case 'charter':
+        renderCharter();
+        break;
+      case 'claim':
+        renderClaimPanel();
+        break;
+      case 'photos':
+        renderPhotosPanel();
+        break;
+      default:
+        break;
+    }
+  }
 
   // Project Photos panel (B11, 5.7). The panel's DOM, quota bar and upload
   // form all belong to js/cloud/photos-ui.js, which needs the cloud module;
@@ -2337,16 +2391,8 @@ var MMGR = window.MMGR || {};
     if (panel) {
       panel.classList.add('active');
     }
-    // Render section-specific content. `section` can arrive from the URL hash
-    // (MMGR.Nav), so the lookup is owned-and-typed: only a function stored
-    // under SECTION_RENDERERS' own key is ever called. CodeQL
-    // js/unvalidated-dynamic-method-call guards this shape.
-    const renderer = Object.prototype.hasOwnProperty.call(SECTION_RENDERERS, section)
-      ? SECTION_RENDERERS[section]
-      : null;
-    if (typeof renderer === 'function') {
-      renderer();
-    }
+    // Render section-specific content through the explicit dispatcher.
+    renderSectionBody(section);
     // DIR-7a: give the freshly rendered table inputs their accessible names.
     labelDynamicFields();
     // Rank 3.4: viewport-aware layout detection, offer the one-time
@@ -3969,7 +4015,7 @@ var MMGR = window.MMGR || {};
   // ---- DMAIC ----
   // Full interactive renderer lives in js/mmgr-dmaic.js (feature 8); this
   // Charter is data-filled from live state on every entry (no event binding),
-  // so a shim keeps SECTION_RENDERERS wiring stable, switching back to the
+  // so a shim keeps the section dispatcher wiring stable, switching back to the
   // Charter tab re-reads state, so linked KPIs show current values.
   // Safe to call on every renderAll: updCharter saves on each input keystroke,
   // so the refill always reads state that already contains the user's edits.
@@ -3979,7 +4025,7 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  // shim keeps SECTION_RENDERERS wiring stable.
+  // shim keeps the section dispatcher wiring stable.
   function renderDmaic() {
     if (ns.Dmaic && ns.Dmaic.render) {
       ns.Dmaic.render();
@@ -4304,12 +4350,14 @@ var MMGR = window.MMGR || {};
     renderFlags();
     renderPacks();
     syncPackChips();
-    // Re-render the currently active section so state changes show immediately
+    // Re-render the currently active section so state changes show immediately.
+    // Dash is already rendered above, so skip it here (same as the old map's
+    // `renderer !== renderDash` guard).
     const active = document.querySelector('.panel.active');
     if (active) {
-      const renderer = SECTION_RENDERERS[active.id.replace('panel-', '')];
-      if (renderer && renderer !== renderDash) {
-        renderer();
+      const activeSection = active.id.replace('panel-', '');
+      if (activeSection !== 'dash') {
+        renderSectionBody(activeSection);
       }
     }
     // DIR-7a: label any inputs the re-render just (re)created.

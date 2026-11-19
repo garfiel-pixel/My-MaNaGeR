@@ -4251,7 +4251,7 @@ var MMGR = window.MMGR || {};
   }
 
   // Jumping to the record is the whole point of the feed. The target panel
-  // renders first (showSec calls its SECTION_RENDERERS entry), then the
+  // renders first (showSec dispatches through renderSectionBody), then the
   // record is found inside it and flashed. The scan is by attribute value,
   // never by building a selector from the id: an id from an import can
   // carry a quote or a bracket, and a string-built selector would throw.

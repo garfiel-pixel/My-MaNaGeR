@@ -597,64 +597,80 @@ main {
   background: var(--bg-warm);
 }
 
-/* ---------- 4c. BAND-TRANSITION SEAM (owner C1, 2026-11-01) ----------
-   One deliberate treatment where two bands of different tone meet. The seam
-   is a full-bleed gradient that blends the upper band's colour into the lower
-   band's colour, with a construction survey mark on the join. It is a direct
-   child of <main>, so it paints edge to edge like every other band.
+/* ---------- 4c. BAND-TRANSITION SEAM (UX-2026-11-19 C1) ----------
+   A calm wave, not a black gradient with a gold line. The seam's own
+   background is the UPPER band's colour; a masked layer filled with the
+   LOWER band's colour forms the boundary; one thin cream stroke undulates
+   just inside the dark side, out of phase with the edge.
 
-   Cheap by construction: the mark is inline SVG and the grid is a CSS
-   background, so there is no JS, no canvas and no rAF loop. It sits after the
-   hero in the DOM and cannot delay first paint or LCP. Under
-   prefers-reduced-motion the decoration is switched off and only the smooth
-   gradient blend remains. */
+   Motion is independent of scrolling and costs no paint: both layers are
+   twice the seam's width and drift sideways on transform only (30s for the
+   edge, 42s for the stroke, opposite directions). No JS, no rAF, no
+   --page-progress. Reduced motion and Performance Mode keep the wave and
+   the stroke exactly as drawn and stop the drift. */
 .band-seam {
   position: relative;
   width: 100%;
-  height: 56px;
+  height: 64px;
   overflow: hidden;
+  --seam-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 64' preserveAspectRatio='none'%3E%3Cpath d='M0 38 Q150 18 300 38 T600 38 T900 38 T1200 38 L1200 64 L0 64 Z' fill='%23000'/%3E%3C/svg%3E");
+  --seam-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 64' preserveAspectRatio='none'%3E%3Cpath d='M0 24 Q150 34 300 24 T600 24 T900 24 T1200 24' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E");
 }
 .band-seam[data-seam='dl'] {
-  background: linear-gradient(to bottom, var(--header-navy) 0%, var(--bg) 100%);
+  background: var(--header-navy);
+  --seam-lower: var(--bg);
 }
 .band-seam[data-seam='wd'] {
-  background: linear-gradient(to bottom, var(--bg-warm) 0%, var(--header-navy) 100%);
+  background: var(--bg-warm);
+  --seam-lower: var(--header-navy);
 }
-/* I-5a (2026-11): the static join line, blueprint grid and centre diamond are
-   replaced by a gold light that travels along the seam with the page scroll.
-   --page-progress (0..1) is set once per scroll frame in js/marketing.js, so
-   the glow moves monotonically and never flickers. */
-.band-seam::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 2px;
-  transform: translateY(-1px);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent calc(var(--page-progress, 0) * 100% - 16%),
-    color-mix(in srgb, var(--gold) 78%, transparent) calc(var(--page-progress, 0) * 100%),
-    transparent calc(var(--page-progress, 0) * 100% + 16%),
-    transparent 100%
-  );
-}
-/* soft gold halo travelling with the line */
+.band-seam::before,
 .band-seam::after {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
   pointer-events: none;
-  background: radial-gradient(
-    42% 140% at calc(var(--page-progress, 0) * 100%) 50%,
-    color-mix(in srgb, var(--gold) 24%, transparent),
-    transparent 70%
-  );
+  will-change: transform;
+  -webkit-mask-size: 50% 100%;
+  mask-size: 50% 100%;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+}
+/* the lower band, cut by the wave */
+.band-seam::before {
+  background: var(--seam-lower, var(--bg));
+  -webkit-mask-image: var(--seam-wave);
+  mask-image: var(--seam-wave);
+  animation: seam-drift 30s linear infinite;
+}
+/* one thin cream stroke, out of phase, drifting the other way */
+.band-seam::after {
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  -webkit-mask-image: var(--seam-line);
+  mask-image: var(--seam-line);
+  animation: seam-drift-back 42s linear infinite;
+}
+@keyframes seam-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+@keyframes seam-drift-back {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
 }
 /* the diamond mark is retired (I-5a); the markup is kept on the pages so a
-   no-JS or reduced-motion page still renders the seam band itself. */
+   no-JS page still renders the seam band itself. */
 .seam-mark {
   display: none;
 }
@@ -686,14 +702,18 @@ main {
     transition: none !important;
   }
 }
-@media (prefers-reduced-motion: reduce) {
+/* phones get a shorter seam; the same SVG scales, so the amplitude
+   shrinks with it (about 8px) and the wave keeps its shape */
+@media (max-width: 720px) {
   .band-seam {
-    height: 40px;
+    height: 48px;
   }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* the wave and the stroke stay - only the drift stops */
   .band-seam::before,
-  .band-seam::after,
-  .seam-mark {
-    display: none;
+  .band-seam::after {
+    animation: none;
   }
 }
 .eyebrow {
@@ -5696,10 +5716,10 @@ body.dark-mode .consent-table td {
 [data-perf='on'] .magnet-field {
   display: none !important;
 }
-/* I-5: Performance Mode disables the scroll-driven gold light and the reveal. */
+/* I-5/C1: Performance Mode stops the seam drift and keeps the wave drawn. */
 [data-perf='on'] .band-seam::before,
 [data-perf='on'] .band-seam::after {
-  display: none !important;
+  animation: none !important;
 }
 [data-perf='on'] .rv {
   opacity: 1 !important;

@@ -598,3 +598,81 @@ QA_PORT=8789 node tools/qa-cloud-phase2.cjs
 
 No product change in this step; the gate is the point. Commit:
 `test(dashboard): Part B close - standard battery green`.
+
+---
+
+## PART C - landing page motion
+
+### C1 - the section seams became a calm drifting wave
+
+The six `.band-seam` dividers between landing bands were a gradient that faded
+through black, a straight gold line, a gold halo, and a `--page-progress`
+custom property written from a scroll listener in `js/marketing.js` so the
+whole thing slid as you scrolled. All of that is gone.
+
+What the seam is now:
+
+- **The band boundary is a wave.** The seam's own background is the UPPER
+  band's colour (`var(--header-navy)` on a `dl` seam, `var(--bg-warm)` on a
+  `wd` seam); `::before` is filled with the LOWER band's colour and masked by
+  an inline-SVG wave path (`--seam-wave`, `preserveAspectRatio="none"` so it
+  stretches to any width). Amplitude works out to 10-14px on desktop and about
+  8px on a phone, because the phone rule only shortens the box (64px -> 48px)
+  and the path scales with it. No gradient through black anywhere.
+- **One thin cream stroke** (`::after`, 2px, `color-mix(in srgb, var(--bg)
+  55%, transparent)`) undulates *just inside* the dark side, masked by a
+  second SVG path (`--seam-line`) drawn out of phase with the edge. It is a
+  quiet continuous line, not the dominant element - the gold line and the gold
+  halo are both retired.
+- **Motion is decoupled from scrolling.** Both layers are 200% wide and drift
+  sideways on `transform` alone - `seam-drift` 30s on the edge, `seam-drift-
+  back` 42s on the stroke, opposite directions, `linear infinite`. Compositor
+  only: no paint animation, no JS, no `rAF`, no listener. `--page-progress`
+  was read by nothing else, so the whole scroll-update block
+  (`paintSeams`, `seamTarget`, `seamState`, `progressRaf`) came out of
+  `wireHeaderState()`; the header hide/frost logic beside it is untouched.
+- **Reduced motion and Performance Mode keep the drawing and stop the drift.**
+  Both set `animation: none` on the two layers. Previously `[data-perf='on']`
+  set `display: none`, which deleted the band boundary and left the two
+  colours butted together - that is a rendering defect, not a motion
+  preference, so it now behaves like reduced motion instead.
+
+Nothing else on the marketing pages moved: the reveal system (`.rv`), the dot
+rail, the bento swaps, the audience ring and the lifecycle rail are all
+unchanged and still green.
+
+Gate - the directive's four assertions, all in `tools/qa-landing-motion.cjs`
+(new, **15/15**):
+
+| Assertion | Check |
+|---|---|
+| keyframes touch only `transform` | S2 - both `@keyframes` bodies contain no `width` / `left` / `margin` / `top` |
+| `animation-name` is `none` under reduced motion | S4 - `::before` and `::after` both read `none` |
+| `animation-name` is `none` under `data-perf="on"` | S5 - same, plus the band is still `display != none` and still masked |
+| no seam consumes `--page-progress` | S6 - absent from the DOM at two scroll positions *and* from the stylesheet |
+| layout shift from the seams is 0 | S7 - every seam is a fixed 64px / 48px box; measured shift 0 |
+
+S3 also proves the drift is real rather than declared: it reads the computed
+matrix twice, 700ms apart, and requires both layers to have moved, in opposite
+directions. S1 pins 64px desktop / 48px phone, S8 fails on any gold paint or
+any gradient that passes through black.
+
+Re-baselined, because they asserted the retired contract:
+
+- `tools/qa-band-seam.cjs` - "every seam paints a gradient blend" became
+  "paints its upper band colour" + "cuts a wave into the lower band" + "draws
+  the cream stroke"; the reduced-motion arm's "join line off / tick grid off /
+  gradient stays" became "wave drift stops / stroke drift stops / wave still
+  drawn / stroke still drawn". **19/19** (was 12/16 after the CSS change,
+  which is exactly what a stale contract looks like).
+- `tools/qa-landing-ui.cjs` L-08 - "the gold light tracks the seam's scroll
+  position" became "the seam is a drawn wave and a cream stroke, with no
+  scroll coupling". **70/70**.
+
+Full C1 battery: `qa-marketing-layout` PASS, `qa-landing-ui` **70/70**,
+`qa-landing-motion` **15/15**, `qa-band-seam` **19/19**,
+`verify-marketing-markup` PASS, `verify-perf-boot` PASS,
+`verify-test-registry` **240 harnesses**, `verify-ci-coverage` **12/12**,
+`npm run verify` exit 0.
+
+Commit: `feat(marketing): the seams are a calm drifting wave`.

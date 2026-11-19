@@ -286,6 +286,27 @@ const FLUSH_RAF = `new Promise(function (res) {
               { visible: g.visible, vh: g.vh, chrome: g.chrome }
             );
           }
+          if (vp.name.indexOf('landscape') === 0) {
+            const bars = await page.evaluate(() => {
+              const h = sel => {
+                const el = document.querySelector(sel);
+                if (!el || getComputedStyle(el).display === 'none') {
+                  return null;
+                }
+                return Math.round(el.getBoundingClientRect().height);
+              };
+              return {
+                header: h('#app-header') || h('.bcp-top'),
+                totalbar: h('.bcp-totalbar')
+              };
+            });
+            check(
+              'L2a ' + p.name + ' @' + vp.name + ': bars are one slim line (<=44px)',
+              (bars.header === null || bars.header <= 44) &&
+                (bars.totalbar === null || bars.totalbar <= 44),
+              bars
+            );
+          }
           const clip = await clipped(page);
           check(
             'L5 ' + p.name + ' @' + vp.name + ': no text clipped without ellipsis',

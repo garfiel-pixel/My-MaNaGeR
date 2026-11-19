@@ -25257,6 +25257,158 @@ textarea.pv-in {
   accent-color: var(--gold);
   flex: none;
 }
+
+/* ============================================================
+   SHORT SCREENS - landscape phones and any viewport under 500px high
+   (UX-2026-11-19 A2)
+   ------------------------------------------------------------
+   The usability test turned the phone sideways and the header, the sticky
+   Estimate bar and the tour card together left a strip of page. The
+   stylesheet had no orientation or max-height rule at all.
+
+   The rule is compression, not removal: every bar becomes ONE slim line
+   capped at 44px, so header + total bar can never exceed 24% of a 360px
+   screen (88 / 360) - well inside the 35% budget the directive sets, which
+   is why the bar never has to be un-stuck.
+
+   Applies to every served page (this layer loads after the shell, the
+   panels, the calculator and the chrome layers, so it wins on equal
+   specificity). Safe-area insets are honoured on all four sides: a phone
+   held sideways puts the notch on the left or right edge.
+   ============================================================ */
+@media (max-height: 500px) {
+  /* ---- Project / launcher header: one line, max 44px ---- */
+  #app-header {
+    flex-wrap: nowrap;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: max(10px, env(safe-area-inset-left, 0px));
+    padding-right: max(10px, env(safe-area-inset-right, 0px));
+    gap: 10px;
+    min-height: 0;
+  }
+  #app-header .hdr-left,
+  #app-header .hdr-right {
+    flex-wrap: nowrap;
+    row-gap: 0;
+    gap: 8px;
+    min-width: 0;
+  }
+  /* The greeting is the only header element with no action behind it, so it
+     is the one that gives way. max-width (not display:none) keeps it in the
+     accessibility tree at every height. */
+  #app-header .greeting {
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  #app-header .btn,
+  #app-header .nav-btn,
+  #app-header .status-chip,
+  #app-header .tab-btn {
+    min-height: 32px;
+  }
+
+  /* ---- Calculator header: same treatment ---- */
+  .bcp-top {
+    flex-wrap: nowrap;
+    row-gap: 0;
+    padding: 4px max(10px, env(safe-area-inset-right, 0px)) 4px
+      max(10px, env(safe-area-inset-left, 0px));
+    min-height: 0;
+  }
+  .bcp-top-right {
+    flex: 0 0 auto;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .bcp-top .btn,
+  .bcp-top .bcp-iconbtn {
+    min-height: 32px;
+  }
+
+  /* ---- The sticky Estimate bar: one slim line ---- */
+  .bcp-totalbar {
+    padding: 4px max(12px, env(safe-area-inset-right, 0px))
+      calc(4px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+    min-height: 0;
+    font-size: 0.8rem;
+  }
+  .bcp-totalbar-show {
+    min-height: 32px;
+    padding: 4px 12px;
+  }
+
+  /* ---- Hard height cap on the two sticky headers. Their tallest children
+     (the section hamburger and the methodology pill row) are 38-40px; capping
+     the children is what gets the bar to 44px without hiding a control. ---- */
+  #app-header {
+    max-height: 44px;
+  }
+  #app-header .hdr-left,
+  #app-header .hdr-right {
+    max-height: 34px;
+  }
+  #app-header .nav-btn {
+    width: 32px;
+    height: 32px;
+    min-height: 0;
+    padding: 0;
+  }
+  #app-header .tab-ctrl {
+    height: 32px;
+    align-items: center;
+  }
+  #app-header .tab-btn {
+    height: 28px;
+    min-height: 0;
+    padding: 0 8px;
+  }
+  #app-header .status-chip {
+    height: 30px;
+  }
+  #app-header .settings-btn,
+  #app-header .dirty-ind,
+  #app-header .bk-anchor {
+    max-height: 32px;
+  }
+  .bcp-top {
+    max-height: 44px;
+  }
+  .bcp-top .btn,
+  .bcp-top .bcp-iconbtn {
+    height: 32px;
+    min-height: 0;
+  }
+
+  /* ---- Dialogs and sheets: never taller than the dynamic viewport, with
+     the header and the Done button always on screen ---- */
+  .cm-dialog {
+    max-height: calc(
+      100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 8px
+    );
+  }
+  .cm-head {
+    padding: 8px 14px;
+  }
+  .cm-body {
+    min-height: 0;
+    padding: 12px 14px;
+  }
+  .cm-foot {
+    padding: 8px 14px;
+  }
+
+  /* ---- Drawer: full height of the dynamic viewport, safe areas included,
+     and every row reachable by scrolling inside it ---- */
+  #drw {
+    max-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  #drw .db {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  }
+}
 /* ---- Procurement P2/P3/P4 (2026-10-20): price-history sparkline,
    import dry-run panel, compare matrix. ---- */
 .ph-spark {

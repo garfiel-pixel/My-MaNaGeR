@@ -66,3 +66,29 @@ Measured failures:
 page and viewport, so the "thin strip" is the tour card, not the chrome alone.
 
 Commit: `test(ux): reproduce the landscape tour and short-screen defects`.
+
+### A2 - short-screen and landscape rules
+
+One shared block at the end of `css/src/93-wide-and-export.css` (loaded after
+the shell, panels, calculator and chrome layers, so it wins on equal
+specificity), scoped to `@media (max-height: 500px)`:
+
+- `#app-header` and `.bcp-top` are capped at **44px** by shrinking their
+  tallest children (the 38px hamburger, the 40px methodology pill row, the
+  34px settings cluster) - no control is hidden; the greeting alone collapses to
+  `max-width: 0` because it carries no action and stays in the a11y tree.
+- `.bcp-totalbar` drops to **41px** measured (was 57px).
+- Header + bar = 85px of 360 = **24%**, inside the 35% budget, so the bar never
+  needs un-sticking.
+- `.cm-dialog` uses `100dvh` minus safe areas with `.cm-body` scrolling inside;
+  `.cm-head` / `.cm-foot` stay on screen.
+- `#drw` and its `.db` body use `100dvh` and the bottom safe-area inset.
+- Safe-area insets on all four sides of both headers and the total bar.
+
+Measured after: header 41px (project), 41px (calculator), total bar 41px at
+740x360; visible content 89% at 740x360 (was 84%), 100% at 844x390.
+
+Gate: `L1`, `L2`, `L2a`, `L4`, `L5` all PASS. `L2b`/`L3` still fail - those are
+A3's.
+
+Commit: `fix(ux): one slim chrome line and dvh dialogs on short screens`.

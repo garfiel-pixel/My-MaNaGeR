@@ -74,7 +74,10 @@ const EXACT = {
   // + wide-viewport width, the mobile skeleton collapse and the skin bands add
   // 6.6 KB of built CSS (619109 bytes measured). ~1 KB headroom only: the next
   // CSS wave should SPLIT a layer rather than raise this again.
-  'css/mmgr.css': 620000,
+  // 2026-11-19 (ux A2): 620000 -> 624000 for the short-screen block - slim
+  // headers, a 41px Estimate bar, dvh dialogs and safe-area insets
+  // (623735 measured). One shared block, not per-page hacks.
+  'css/mmgr.css': 624000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

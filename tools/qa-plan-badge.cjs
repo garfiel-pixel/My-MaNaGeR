@@ -22,7 +22,15 @@
          blank where the upgrade button belongs
      P5  a stale cached page (no plan mount in the DOM at all) is self-healing:
          the script builds the mount instead of depending on the HTML version
-     P6  zero page errors through the walk
+     P6  a paid account on pricing.html is never invited to buy the plan it
+         already pays for: that card reads "Your current plan" and is disabled,
+         the other cards still invite a start, the page names the active plan,
+         and signing out puts every card back
+     P7  a free account sees the ordinary pricing page (no current marking)
+     P8  a paid account reads "Premium" on the rail, never "Upgrade"
+     P9  a confirmed paid plan paints from the device cache before the server
+         answers, so a reload never flashes the upgrade path at a paid account
+     P10 zero page errors through the walk
 
    Usage:  node tools/qa-plan-badge.cjs
    Registry: docs/CI-TEST-COVERAGE.md -> CI row (browser-app).
@@ -110,7 +118,7 @@ async function newContext(browser, width, height) {
         return json({
           ok: true,
           configured: true,
-          plan: 'premium',
+          plan: 'contractor',
           active: true,
           currentPeriodEnd: '2026-12-31T00:00:00.000Z'
         });
@@ -340,6 +348,163 @@ async function openApp(ctx, w, { open = true } = {}) {
         'P5d zero page errors through the walk',
         page.__errors.length === 0,
         page.__errors.slice(0, 3)
+      );
+      await ctx.close();
+    }
+
+    // ---- P6: the pricing page tells a paid account the truth ---------------
+    // Owner report 2026-11-17: "outside the app it says Upgrade while the
+    // account is paid". The card for the plan already being paid for must not
+    // invite a second purchase, and signing out must put every card back.
+    const PRICING_MEASURE = () => {
+      const btn = document.querySelector('[data-pricing-upgrade][data-tier="contractor"]');
+      const other = document.querySelector('[data-pricing-upgrade][data-tier="estimator"]');
+      const status = document.querySelector('[data-pricing-status]');
+      return {
+        text: btn ? btn.textContent.trim() : null,
+        disabled: btn ? btn.disabled : null,
+        aria: btn ? btn.getAttribute('aria-disabled') : null,
+        current: btn ? btn.classList.contains('is-current') : null,
+        otherText: other ? other.textContent.trim() : null,
+        otherDisabled: other ? other.disabled : null,
+        statusHidden: status ? status.hidden : null,
+        statusText: status ? status.textContent.trim() : null
+      };
+    };
+    async function openPricing(ctx) {
+      const page = await ctx.newPage();
+      const errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+      await page.goto(BASE + '/pricing.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForFunction(() => document.readyState === 'complete', null, {
+        timeout: 30000
+      });
+      await delay(900);
+      page.__errors = errors;
+      return page;
+    }
+    {
+      stub.signedIn = true;
+      stub.billing = 'active';
+      const ctx = await newContext(browser, 1280, 900);
+      const page = await openPricing(ctx);
+      const settled = await page
+        .waitForFunction(
+          () => {
+            const b = document.querySelector('[data-pricing-upgrade][data-tier="contractor"]');
+            return !!b && b.disabled === true;
+          },
+          null,
+          { timeout: 8000 }
+        )
+        .then(() => true)
+        .catch(() => false);
+      const m = await page.evaluate(PRICING_MEASURE);
+      check('P6a the paid plan card settles as the current plan', settled, m);
+      check(
+        'P6b it reads "Your current plan", is disabled and is marked current',
+        m.text === 'Your current plan' && m.disabled === true && m.current === true,
+        m
+      );
+      check(
+        'P6c the other cards still invite a start',
+        /^Start Estimator/.test(m.otherText || '') && m.otherDisabled === false,
+        m
+      );
+      check(
+        'P6d the page says which plan is active',
+        m.statusHidden === false && /Contractor/.test(m.statusText || ''),
+        m
+      );
+      await page.evaluate(() => {
+        document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
+      });
+      await delay(300);
+      const after = await page.evaluate(PRICING_MEASURE);
+      check(
+        'P6e signing out restores every card and clears the status line',
+        /^Start Contractor/.test(after.text || '') &&
+          after.disabled === false &&
+          after.current === false &&
+          after.statusHidden === true,
+        after
+      );
+      check('P6f zero page errors on the pricing walk', page.__errors.length === 0, page.__errors);
+      await ctx.close();
+    }
+
+    // ---- P7: a free account sees the ordinary pricing page -----------------
+    {
+      stub.signedIn = true;
+      stub.billing = 'free';
+      const ctx = await newContext(browser, 1280, 900);
+      const page = await openPricing(ctx);
+      const m = await page.evaluate(PRICING_MEASURE);
+      check(
+        'P7 a free account sees no "current plan" marking',
+        /^Start Contractor/.test(m.text || '') && m.disabled === false && m.statusHidden === true,
+        m
+      );
+      await ctx.close();
+    }
+
+    // ---- P8: a paid account reads "Premium" on the rail --------------------
+    {
+      stub.signedIn = true;
+      stub.billing = 'active';
+      const ctx = await newContext(browser, 1280, 900);
+      const page = await openApp(ctx, 1280);
+      const settled = await page
+        .waitForFunction(
+          () => {
+            const t = document.getElementById('plan-badge-text');
+            return !!t && t.textContent === 'Premium';
+          },
+          null,
+          { timeout: 8000 }
+        )
+        .then(() => true)
+        .catch(() => false);
+      const m = await page.evaluate(MEASURE);
+      check(
+        'P8 a paid account reads "Premium", never "Upgrade to Premium"',
+        settled && m.text === 'Premium' && m.hiddenAttr === false,
+        m
+      );
+      await ctx.close();
+    }
+
+    // ---- P9: the confirmed plan survives a reload before the answer --------
+    // Owner: "Premium status must ... persist across refresh". A paid account
+    // that reloads must not read "Upgrade" while the request is in flight, so
+    // the last CONFIRMED answer paints first. The billing route here never
+    // answers, which leaves only the cache to paint from.
+    {
+      const ctx = await newContext(browser, 1280, 900);
+      await ctx.addInitScript(() => {
+        try {
+          localStorage.setItem(
+            'mmgr_plan_cache',
+            JSON.stringify({
+              at: Date.now(),
+              active: true,
+              plan: 'contractor',
+              currentPeriodEnd: null,
+              canceling: false,
+              cancelAt: null
+            })
+          );
+        } catch (e) {}
+      });
+      await ctx.route('**/api/billing/status', () => {
+        /* deliberately never answers */
+      });
+      const page = await openApp(ctx, 1280);
+      const m = await page.evaluate(MEASURE);
+      check(
+        'P9 a confirmed paid plan paints from the cache before the server answers',
+        m.text === 'Premium' && m.hiddenAttr === false && m.inViewport === true,
+        m
       );
       await ctx.close();
     }

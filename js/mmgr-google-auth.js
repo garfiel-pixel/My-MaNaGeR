@@ -961,6 +961,15 @@ var MMGR = window.MMGR || {};
     // routes through, rather than in one page's listener where a second host
     // would miss it. No reload: the pill is cleared as the sign-out completes.
     clearPlanPills();
+    // The plan cache (js/mmgr-billing-manage.js) belongs to the account that
+    // just left. It is cleared HERE because every page routes sign-out through
+    // this one function; a page-local listener would leave the next person on
+    // the device reading the previous account's plan on a reload.
+    try {
+      localStorage.removeItem('mmgr_plan_cache');
+    } catch (e) {
+      /* storage may be blocked */
+    }
     document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
   }
 
@@ -3176,6 +3185,16 @@ var MMGR = window.MMGR || {};
     }
     wireHeaderChip();
     wireDriveControls();
+    /* OWNER 2026-11-17: the plan is a SESSION question, not a Google-script
+       question. It used to be asked only from showUser(), which waits for GIS
+       to initialise (and, when Google's script is blocked, slow or offline,
+       waits the 10s fallback poll first). A paid account therefore read the
+       ordinary "Start <tier>" pricing cards for up to ten seconds - the
+       "outside the app it says Upgrade" report. Ask now, in parallel; a
+       signed-out visitor just gets a refusal that changes nothing. */
+    if (document.querySelector('[data-plan-badge], [data-pricing-upgrade]')) {
+      refreshPlan();
+    }
     // The GIS script tag is async+defer in the page head, so it may still be
     // loading. Initialize the moment it's present; if it never loads
     // (offline / blocked), the button slot stays empty and nothing is gated.

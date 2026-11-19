@@ -2754,3 +2754,29 @@ narrower reading of §14.3).
   (recordId + beforeAbsent) when the section is absent, then appends from the
   submission as before; anything else still refuses as not_a_list. Unit test
   added; qa-api-keys re-run locally: ALL API-KEY GATES PASSED (P18a-e).
+
+- PLAN STATE 2026-11-18 (owner: "Premium status must be server-checked and
+  persist across refresh; outside the app it says Upgrade while the account
+  is paid"). Three causes, all client-side:
+  (1) js/mmgr-google-auth.js asked /api/billing/status only from showUser(),
+  which waits for Google's GIS loader (up to the 10s fallback poll when that
+  script is blocked, slow or offline). A paid account therefore read the
+  ordinary "Start <tier>" pricing cards for the whole window. The boot now
+  asks the plan question in parallel whenever the page carries
+  [data-plan-badge] or [data-pricing-upgrade]; the server still decides.
+  (2) pricing.html never reflected the paid tier: js/marketing.js now marks
+  the card for the plan already being paid for ("Your current plan",
+  disabled, aria-disabled, is-current), names the plan in
+  [data-pricing-status], restores every card on sign-out, and remembers each
+  card's original label in data-label so the restore is exact.
+  (3) A reload flashed "Upgrade" at a paid account while the request was in
+  flight. js/mmgr-billing-manage.js now paints the last CONFIRMED answer from
+  mmgr_plan_cache when the rail already shows a person, and js/mmgr-
+  google-auth.js signOut() deletes that key - the one path every page routes
+  through. Storage inventory row added.
+  Gates: qa-plan-badge P6 (paid pricing card, other cards, status line,
+  sign-out restore), P7 (free page untouched), P8 (paid rail reads Premium),
+  P9 (billing route never answers; the cache still paints Premium), 42/42.
+  The paid fixture is now `contractor`, a real tier. qa-consent 37/37.
+  app.html mmgr-billing-manage ?v=554, pricing.html marketing bundle ?v=372,
+  sw.js shell cache v652 -> v653.

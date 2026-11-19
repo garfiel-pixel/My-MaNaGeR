@@ -2337,9 +2337,14 @@ var MMGR = window.MMGR || {};
     if (panel) {
       panel.classList.add('active');
     }
-    // Render section-specific content
-    const renderer = SECTION_RENDERERS[section];
-    if (renderer) {
+    // Render section-specific content. `section` can arrive from the URL hash
+    // (MMGR.Nav), so the lookup is owned-and-typed: only a function stored
+    // under SECTION_RENDERERS' own key is ever called. CodeQL
+    // js/unvalidated-dynamic-method-call guards this shape.
+    const renderer = Object.prototype.hasOwnProperty.call(SECTION_RENDERERS, section)
+      ? SECTION_RENDERERS[section]
+      : null;
+    if (typeof renderer === 'function') {
       renderer();
     }
     // DIR-7a: give the freshly rendered table inputs their accessible names.

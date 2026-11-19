@@ -1053,21 +1053,32 @@ async function ev(expr) {
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
   await delay(4000);
   const r1 = await ev(`(async function(){
-    var before = MMGR.State.getState().aiOutputs ? JSON.stringify(MMGR.State.getState().aiOutputs) : '{}';
+    var st0 = MMGR.State.getState();
+    var beforeTasks = JSON.stringify(st0.tasks || []);
+    var beforeRisks = JSON.stringify(st0.risks || []);
     // The read-only gate lives in the click delegation (like every other
-    // mutating action) — drive the real button, not the API. The chips are
+    // mutating action) - drive the real button, not the API. The chips are
     // rendered lazily when the AI window opens, so open it first.
     document.querySelector('[data-action="openAiWin"]').click();
     await new Promise(function(r){ setTimeout(r, 300); });
     document.querySelector('[data-action="aiRunPreset"][data-type="report"]').click();
     await new Promise(function(r){ setTimeout(r, 400); });
-    var after = JSON.stringify(MMGR.State.getState().aiOutputs || {});
+    var st1 = MMGR.State.getState();
     var toast = document.querySelector('.toast');
-    return { same: before === after, blockedMsg: !!toast && toast.textContent.indexOf('View-only') > -1 };
+    return {
+      refused: !!toast && toast.textContent.indexOf('View-only') > -1,
+      projectUntouched:
+        beforeTasks === JSON.stringify(st1.tasks || []) &&
+        beforeRisks === JSON.stringify(st1.risks || [])
+    };
   })()`);
+  // UX-2026-11-19 A6 re-baseline: the assistant READS the project and writes
+  // only its own transcript, so a view-only visitor is allowed to run a
+  // preset. The contract this check holds now is the one the tester asked
+  // for: no refusal toast, and no project record touched.
   check(
-    'A14 readonly: runPreset click blocked, state unchanged, toast shown',
-    r1.same && r1.blockedMsg,
+    'A14 readonly: runPreset answers instead of refusing, and leaves project records alone',
+    !r1.refused && r1.projectUntouched,
     r1
   );
 

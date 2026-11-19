@@ -23469,8 +23469,9 @@ body.db-page[data-skin='vellum'] textarea {
 .soc-backdrop {
   position: absolute;
   inset: 0;
+  /* X-2 paint cost: a confirm dialog's card is fully opaque and the dim
+     below is enough to separate it, so no full-viewport blur layer here. */
   background: rgba(15, 22, 33, 0.46);
-  backdrop-filter: blur(2px);
 }
 .soc-card {
   position: relative;

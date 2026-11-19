@@ -2902,3 +2902,14 @@ narrower reading of §14.3).
   sw.js shell cache v677 -> v678 (project bundle changed). Durable guards
   added to the local skeptical-code-audit skill (contract-drift section),
   re-hashed in skills-lock.json. Registry rows updated.
+
+- PR 22 CI REPAIR 2026-11-19 (second pull_request run, browser-calc):
+  qa-custom-fields C8 was now green (that fix unmasked the next step).
+  verify-calc-s2 X-2 failed "under 25 blur-applying backdrop-filter rules
+  (found 25)". The +1 was the A5 sign-out confirm's .soc-backdrop full-viewport
+  blur(2px) (css/src/87-signin-polish.css). X-2's 2026-10-25 re-baseline
+  deliberately fixed the COUNT to stay under 25 rather than raise the cap, so
+  the right fix was to remove the expensive blur from the confirm overlay:
+  its card is fully opaque and the rgba dim already separates it. Dropped the
+  backdrop-filter, count back to 24. qa-signout-confirm 42/42, qa-a11y-axe
+  7/7, qa-controls-ia 12/12, npm run verify exit 0. sw.js v678 -> v679.

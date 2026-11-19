@@ -97,7 +97,13 @@ const EXACT = {
   // 2026-11-10 (Theme pack): raised 140000 -> 143000 for the Customize modal
   // markup (themes grid, appearance/performance rows, account section) added to
   // app.html. The modal is static HTML only (~0.3 KB).
-  'app.html': 143000,
+  // 2026-11-19 (surface-language): raised 143000 -> 146000 for the six rail
+  // group dropdowns - each heading becomes a [data-rail-toggle] button with a
+  // sprite caret and each group gains a .db-g-body wrapper (~2.5 KB of real
+  // markup across six groups). Nothing new was added; the old headings were
+  // plain <div> labels. The rail is now fully grouped, so the next wave should
+  // not need to grow app.html for navigation again.
+  'app.html': 146000,
   // 2026-11-10 (Wave L): raised 50000 -> 54000 for the "Who we are" band
   // (eyebrow, heading, lede, three identity cards with sprite icons), the
   // top-level Who we are nav item with its two-row dropdown, the two mobile

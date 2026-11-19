@@ -89,6 +89,8 @@ fails the gate.
 | `mmgr_autosave_cloud` | Cloud-project auto-backup preference (admin header backup panel, on unless the user turns it off; off is stored as '0'). A setting the owner asked to remember, so it is necessary and `INVENTORY_VERSION` stays 2 - same reasoning as `mmgr_rail_nudge`: re-asking every visitor for an unchanged question is not a privacy gain. | necessary |
 | `mmgr_drive_token` , `mmgr_drive_token_exp` , `mmgr_drive_auto` , `mmgr_drive_last` , `mmgr_drive_granted` , `mmgr_drive_enc` | Google Drive backup connection and its state. Opt-in feature; nothing is stored until you connect Drive. | necessary |
 | `mmgr_skin` | Selected launcher skin (e.g. `vellum`, `obsidian`). Applied at load so the launcher opens on your chosen look. | necessary |
+| `mmgr_rail_groups` | Which sidebar groups you collapsed, per person (`{ "<account>": { "rail-grp-tools": 0 } }`). A layout preference you set deliberately; every group is open until you close one. Necessary, and `INVENTORY_VERSION` does not move for it - same reasoning as `mmgr_autosave_cloud`: re-asking every visitor for an unchanged question is not a privacy gain. | necessary |
+| `mmgr_rail_scope` | Which account the `mmgr_rail_groups` entry belongs to, so a shared browser keeps each person's sidebar layout separate. Necessary, same reasoning as above. | necessary |
 | `mmgr_team_signedin` | Team-cloud sign-in flag for the shared workspace. | necessary |
 | `mmgr_at_<token>` | Opaque MCP access token issued to an authorised MCP client (app-wide server, OAuth 2.1). Short lived; presented as a bearer credential, never as a cookie. | necessary |
 | `mmgr_rt_<token>` | MCP refresh token that mints a new access token when the old one expires, without re-prompting. | necessary |

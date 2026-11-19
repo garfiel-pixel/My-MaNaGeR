@@ -1834,8 +1834,10 @@ var MMGR = window.MMGR || {};
     list.innerHTML = state.memberships
       .map(function (m) {
         var readOnly = m.role === 'view' || m.role === 'client';
-        var chip =
-          '<span class="cd-role">' + esc(readOnly ? 'Viewer (read-only)' : 'Editor') + '</span>';
+        /* OWNER 2026-11-19 (surface-language): the role is quiet text, not a
+           pill. A shared card's own copy already explains what the code
+           grants; the chip only names the role. */
+        var chip = '<span class="cd-role">' + esc(readOnly ? 'viewer' : 'editor') + '</span>';
         var status = String(m.status || 'active').toLowerCase();
         var statusLabel = status.replace('-', ' ');
         var statusDot = esc(
@@ -1847,7 +1849,10 @@ var MMGR = window.MMGR || {};
             ? '<div class="cd-meta">No snapshot saved yet. Ask the owner to save it once.</div>'
             : '';
         return (
-          '<div class="cd-card pcard" role="listitem">' +
+          // OWNER 2026-11-19 (surface-language): a shared card carries its
+          // accent band down the LEFT edge, so it reads as a different kind of
+          // card from a local one (top) or a cloud one (bottom) at a glance.
+          '<div class="cd-card pcard pc-band-l" role="listitem">' +
           '<button type="button" class="cd-hit" data-team-open="' +
           esc(m.projectId) +
           '" aria-label="Open ' +

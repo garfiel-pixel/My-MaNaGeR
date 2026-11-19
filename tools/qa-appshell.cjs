@@ -524,6 +524,98 @@ function overlaps(a, b) {
         }
       });
       await delay(400);
+
+      // OWNER 2026-11-19 (surface-language): the six rail headings are
+      // dropdowns, not static labels. This is the reason the walk below still
+      // works - every group starts OPEN, so the Tools row is reachable on a
+      // first visit - and the reason a collapsed group must come back on
+      // demand and be remembered (the choice is stored per person by
+      // js/app/launcher-rail.js).
+      //
+      // Persistence is proven by driving restoreGroups() rather than reloading
+      // the page: a reload leaves the rail mid-transition, and Playwright's
+      // actionability gate then waits on a moving bounding box for 30s and
+      // fails on the ANIMATION instead of the state. restoreGroups() is the
+      // exact function boot calls, so this asserts the same contract
+      // deterministically.
+      const GROUP_STATE = () => {
+        const b = document.querySelector('[data-rail-toggle="rail-grp-tools"]');
+        const p = document.getElementById('rail-grp-tools');
+        const link = document.querySelector('.db-link[href="calculator.html"]');
+        let saved = null;
+        try {
+          saved = (JSON.parse(localStorage.getItem('mmgr_rail_groups') || '{}') || {}).anon;
+        } catch (e) {
+          saved = null;
+        }
+        return {
+          groups: document.querySelectorAll('[data-rail-toggle^="rail-grp-"]').length,
+          hidden: !!(p && p.hidden),
+          aria: b ? b.getAttribute('aria-expanded') : null,
+          linkVisible: !!(link && link.offsetParent !== null),
+          saved: saved && typeof saved === 'object' ? saved['rail-grp-tools'] : undefined
+        };
+      };
+      const g0 = await page.evaluate(GROUP_STATE);
+      check('APP-2 the rail carries six collapsible group headings', g0.groups === 6, g0);
+      check(
+        'APP-2 every group starts open, so no destination is hidden on a first visit',
+        g0.hidden === false && g0.aria === 'true' && g0.linkVisible === true,
+        g0
+      );
+
+      // The group headings are driven through a delegated document listener,
+      // so a synthetic click on the button exercises the real path.
+      const clickGroup = () =>
+        page.evaluate(() => {
+          const b = document.querySelector('[data-rail-toggle="rail-grp-tools"]');
+          if (b) {
+            b.click();
+          }
+        });
+
+      await clickGroup();
+      await delay(200);
+      const g1 = await page.evaluate(GROUP_STATE);
+      check(
+        'APP-2 collapsing a rail group hides its rows',
+        g1.hidden === true && g1.aria === 'false' && g1.linkVisible === false,
+        g1
+      );
+      check(
+        'APP-2 the collapsed choice is written to this device',
+        g1.saved === 0,
+        g1 && { saved: g1.saved }
+      );
+
+      // Force the panel back open behind the module's back, then run the boot
+      // restore: the saved choice must win over the DOM state.
+      await page.evaluate(() => {
+        const p = document.getElementById('rail-grp-tools');
+        if (p) {
+          p.hidden = false;
+        }
+        if (window.MMGR && window.MMGR.LauncherRail && window.MMGR.LauncherRail.restoreGroups) {
+          window.MMGR.LauncherRail.restoreGroups();
+        }
+      });
+      await delay(100);
+      const g2 = await page.evaluate(GROUP_STATE);
+      check(
+        'APP-2 the boot restore re-applies a collapsed group',
+        g2.hidden === true && g2.aria === 'false' && g2.linkVisible === false,
+        g2
+      );
+
+      await clickGroup();
+      await delay(200);
+      const g3 = await page.evaluate(GROUP_STATE);
+      check(
+        'APP-2 re-expanding the group brings its rows back',
+        g3.hidden === false && g3.aria === 'true' && g3.linkVisible === true,
+        g3
+      );
+
       await page.click('.db-link[href="calculator.html"]');
       await page.waitForFunction(() => /calculator(\.html)?$/.test(location.pathname), null, {
         timeout: 30000

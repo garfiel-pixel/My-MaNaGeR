@@ -1256,9 +1256,17 @@ async function main() {
         if (!card) return false;
         var st = (window.MMGR && MMGR.TeamUI && MMGR.TeamUI._state) ? MMGR.TeamUI._state.memberships : [];
         var m = st.length ? st[0] : null;
+        var cs = getComputedStyle(card);
+        // The probe is a template literal, so every backslash that must reach
+        // the browser is doubled here (a single \\) is consumed by the literal).
+        var first = cs.boxShadow.split(/,(?![^(]*\\))/)[0].trim();
+        var bm = /(-?[\\d.]+)px\\s+(-?[\\d.]+)px/.exec(first);
         return {
           hit: !!card.querySelector('.cd-hit[data-team-open]'),
           roleChip: !!card.querySelector('.pc-title .cd-role'),
+          roleText: (card.querySelector('.pc-title .cd-role') || {}).textContent || '',
+          bandLeft: /inset/.test(first) && !!bm && Number(bm[1]) > 0 && Number(bm[2]) === 0,
+          bandShadow: cs.boxShadow,
           foot: !!card.querySelector('.pc-foot .pc-status .sdot'),
           cta: !!card.querySelector('.pc-cta'),
           pillIcon: !!card.querySelector('.db-project-ico'),
@@ -1283,6 +1291,22 @@ async function main() {
         cardShape.hasUpdated === true &&
         cardShape.hasSnapshotFlag === true,
       cardShape
+    );
+
+    // ---- G15b: the surface-language contract (owner 2026-11-19) ----------
+    // A shared card is now told apart by its BAND EDGE, not just its text:
+    // local cards keep the top band, cloud cards carry the bottom one, and a
+    // project shared with me carries the band down the LEFT edge. The role is
+    // quiet lowercase text in the same .cd-role slot, no longer a pill.
+    check(
+      'G15b a shared card carries its accent band on the LEFT edge',
+      !!cardShape && cardShape.bandLeft === true,
+      cardShape && { shadow: cardShape.bandShadow }
+    );
+    check(
+      'G15c the role reads as lowercase quiet text, not a pill',
+      !!cardShape && /^(editor|viewer)$/.test(String(cardShape.roleText || '').trim()),
+      cardShape && { roleText: cardShape.roleText }
     );
 
     // ---- G16: a reload paints the shared cards from the device cache ------

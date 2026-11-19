@@ -53,15 +53,16 @@ body.db-page[data-skin='editorial'] .db-hero-title {
 
 /* Cards become single-column list rows, no box, hairline divider. */
 body.db-page[data-skin='editorial'] .pcard {
+  --pc-band-color: var(--brand);
   border: none;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
-  box-shadow: none;
+  box-shadow: var(--pc-band);
   background: transparent;
   padding: 14px 4px;
 }
 body.db-page[data-skin='editorial'] .pcard.unlocked {
-  box-shadow: none;
+  box-shadow: var(--pc-band-strong);
 }
 body.db-page[data-skin='editorial'] .pcard:hover {
   transform: none;

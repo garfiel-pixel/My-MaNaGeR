@@ -2442,6 +2442,11 @@
     return !!root;
   }
 
+  // The rate-book upload path reads a PDF with the SAME extractor the
+  // attachment index uses (one implementation, one behaviour), so a PDF the
+  // assistant can read is also a PDF a rate book can be imported from.
+  window.MMGR_PDF_TEXT = extractPdfText;
+
   window.MMGR_CALC_AI = {
     version: VERSION,
     mount: mount,

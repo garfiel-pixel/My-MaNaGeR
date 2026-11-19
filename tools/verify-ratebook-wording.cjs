@@ -69,14 +69,32 @@ const check = (name, ok, detail) => {
     'wiring'
   );
 
-  // 3. Source line while the status is not rebuilt.
-  const status =
-    (read('src/data/ratebook.js').match(/status:\s*'([a-z-]+)'/) || [])[1] || 'unknown';
-  check('the provenance status is known', status === 'unresolved' || status === 'rebuilt', status);
-  if (status === 'rebuilt') {
+  // 3. Provenance. Owner 2026-11-17 settled the book as My MaNaGeR's OWN
+  //    first-party rates: no external source line, no third-party wording.
+  const data = read('src/data/ratebook.js');
+  const status = (data.match(/status:\s*'([a-z-]+)'/) || [])[1] || 'unknown';
+  check(
+    'the provenance status is known',
+    status === 'first-party' || status === 'rebuilt' || status === 'unresolved',
+    status
+  );
+  if (status === 'first-party') {
+    check(
+      'first-party provenance names My MaNaGeR as publisher',
+      /publisher:\s*'My MaNaGeR'/.test(data) && /RATEBOOK_STATUS = 'first-party'/.test(calc),
+      'first-party publisher'
+    );
+    check(
+      'first-party status shows no external source line or publisher wording',
+      calc.indexOf('Source data: ') === -1 &&
+        calc.indexOf('published Jamaican construction rate book') === -1 &&
+        calc.indexOf('RATEBOOK_SOURCE') === -1,
+      'source line'
+    );
+  } else if (status === 'rebuilt') {
     check(
       'rebuilt status removes the source line and drops the independence ban',
-      /RATEBOOK_STATUS === 'rebuilt'[\s\S]{0,200}: ''/.test(calc),
+      calc.indexOf('Source data: ') === -1,
       'source line'
     );
   } else {
@@ -86,12 +104,12 @@ const check = (name, ok, detail) => {
         calc.indexOf('published Jamaican construction rate book, 2025-2027 edition') > -1,
       'source line'
     );
-    check(
-      'no claim of independent production reaches a user surface',
-      !/independent(ly)? (proprietary )?estimates/i.test(calc + pricing),
-      'independence claim'
-    );
   }
+  check(
+    'no claim of independent production reaches a user surface',
+    !/independent(ly)? (proprietary )?estimates/i.test(calc + pricing),
+    'independence claim'
+  );
 
   // 4. The pricing page uses the name and the count is the real row count.
   check(
@@ -99,13 +117,18 @@ const check = (name, ok, detail) => {
     pricing.indexOf('My MaNaGeR Rate Book') > -1,
     'pricing name'
   );
-  const data = read('src/data/ratebook.js');
-  const rowCount = (data.match(/"t"/g) || []).length;
-  const claimed = (pricing.match(/My MaNaGeR Rate Book:\s*(\d+)\s*planning rates/) || [])[1];
+  // Owner 2026-11-17: the whole book is a trade secret. The pricing page must
+  // NOT claim a downloadable rate count; it offers planning rates + upload.
   check(
-    'the pricing rate count equals the rows in the data (' + rowCount + ')',
-    String(claimed) === String(rowCount),
-    { claimed, rowCount }
+    'the pricing page makes no whole-book rate-count claim',
+    !/\b\d+\s*planning rates?\s*\(sign in to open/i.test(pricing) &&
+      !/My MaNaGeR Rate Book:\s*\d+/.test(pricing),
+    'count claim'
+  );
+  check(
+    "the pricing page offers upload of the user's own rate book",
+    /upload your own rate book/i.test(pricing),
+    'upload offer'
   );
 
   // 5. ZERO OCCURRENCES of the old institution's initials, anywhere in code.

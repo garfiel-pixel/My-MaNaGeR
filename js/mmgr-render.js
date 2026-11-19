@@ -140,6 +140,165 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- Dashboard ----
+  // ---- UX-2026-11-19 B3: the completion ring, one arc per major group ----
+  // Geometry is unchanged (r=39, circ 245.04, the 14.4px stroke and the
+  // quarter-turn entry sweep), so the centre percentage reads exactly as it
+  // did. With no groups the original single #rf stroke is used, untouched.
+  const RING_R = 39;
+  const RING_CIRC = 2 * Math.PI * RING_R;
+  const RING_GAP_DEG = 2;
+
+  function ringData(state) {
+    const M = ns.MajorTasks;
+    if (!M || typeof M.getMajorGroups !== 'function') {
+      return null;
+    }
+    const out = M.getMajorGroups(state);
+    if (!out || !out.grouped || !out.groups || !out.groups.length) {
+      return null;
+    }
+    out.groups = M.withColors ? M.withColors(out.groups) : out.groups;
+    return out;
+  }
+
+  function svgEl(name, attrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+    Object.keys(attrs || {}).forEach(function (k) {
+      el.setAttribute(k, attrs[k]);
+    });
+    return el;
+  }
+
+  function renderRingSlots(state, precomputed) {
+    const pring = document.querySelector('.pring');
+    if (!pring) {
+      return;
+    }
+    const svg = pring.querySelector('svg');
+    if (!svg) {
+      return;
+    }
+    const fill = svg.querySelector('#rf');
+    let layer = svg.querySelector('.ring-slots');
+    const out = precomputed || ringData(state);
+    const groups = out ? out.groups : null;
+    if (!groups) {
+      if (layer) {
+        layer.remove();
+      }
+      if (fill) {
+        fill.style.display = '';
+      }
+      pring.removeAttribute('data-slots');
+      svg.removeAttribute('aria-label');
+      return;
+    }
+    if (!layer) {
+      layer = svgEl('g', { class: 'ring-slots' });
+      svg.appendChild(layer);
+    }
+    while (layer.firstChild) {
+      layer.removeChild(layer.firstChild);
+    }
+    if (fill) {
+      fill.style.display = 'none';
+    }
+    pring.setAttribute('data-slots', String(groups.length));
+
+    let cursor = 0;
+    groups.forEach(function (g) {
+      const share = Math.max(0, Math.min(1, g.share || 0));
+      const slot = Math.max(0, share * 360 - RING_GAP_DEG);
+      const trackLen = (slot / 360) * RING_CIRC;
+      const arcLen = (slot / 360) * RING_CIRC * Math.max(0, Math.min(1, g.fraction || 0));
+      const startLen = (cursor / 360) * RING_CIRC;
+      const token = g.color ? 'var(--major-' + g.color + ')' : 'var(--major-other)';
+      const common = {
+        cx: 48,
+        cy: 48,
+        r: RING_R,
+        fill: 'none',
+        'stroke-width': 14.4,
+        'stroke-linecap': 'butt'
+      };
+      // The faint track: the slot's own colour at about 22%.
+      const track = svgEl('circle', common);
+      track.setAttribute('class', 'ring-slot-track');
+      track.style.stroke = 'color-mix(in oklch, ' + token + ' 22%, transparent)';
+      track.setAttribute('stroke-dasharray', trackLen + ' ' + (RING_CIRC - trackLen));
+      track.setAttribute('stroke-dashoffset', String(-startLen));
+      layer.appendChild(track);
+      // The solid arc: the group's own completion inside its slot.
+      const arc = svgEl('circle', common);
+      arc.setAttribute('class', 'ring-slot');
+      arc.setAttribute('data-major-id', g.id);
+      arc.setAttribute('data-color', String(g.color || 0));
+      arc.setAttribute('data-points', String(Math.round(g.points * 10) / 10));
+      arc.setAttribute('data-completed', String(g.completed));
+      arc.setAttribute('data-total', String(g.total));
+      arc.style.stroke = token;
+      arc.setAttribute('stroke-dasharray', arcLen + ' ' + (RING_CIRC - arcLen));
+      arc.setAttribute('stroke-dashoffset', String(-startLen));
+      layer.appendChild(arc);
+      cursor += share * 360;
+    });
+
+    // Colour is never the only carrier: the label names the top three.
+    const top = (out.groups || [])
+      .slice()
+      .sort(function (a, b) {
+        return b.points - a.points;
+      })
+      .slice(0, 3)
+      .filter(function (g) {
+        return g.points > 0;
+      })
+      .map(function (g) {
+        return g.name + ' ' + Math.round(g.points) + '%';
+      });
+    svg.setAttribute('role', 'img');
+    svg.setAttribute(
+      'aria-label',
+      (out.overall || 0).toFixed(0) +
+        '% complete' +
+        (top.length ? '. Top contributors: ' + top.join(', ') : '')
+    );
+  }
+
+  // Hovering a slot lights the matching row under the ring and vice versa.
+  // Delegated once, because both surfaces are re-rendered on every pass.
+  let ringHoverWired = false;
+  function wireRingHover() {
+    if (ringHoverWired) {
+      return;
+    }
+    ringHoverWired = true;
+    function setHot(id, on) {
+      const els = document.querySelectorAll('[data-major-id]');
+      for (let i = 0; i < els.length; i++) {
+        if (els[i].getAttribute('data-major-id') === id) {
+          els[i].classList.toggle('is-hot', on);
+        }
+      }
+    }
+    function over(e) {
+      const el = e.target && e.target.closest ? e.target.closest('[data-major-id]') : null;
+      if (el) {
+        setHot(el.getAttribute('data-major-id'), true);
+      }
+    }
+    function out(e) {
+      const el = e.target && e.target.closest ? e.target.closest('[data-major-id]') : null;
+      if (el) {
+        setHot(el.getAttribute('data-major-id'), false);
+      }
+    }
+    document.addEventListener('pointerover', over, true);
+    document.addEventListener('pointerout', out, true);
+    document.addEventListener('focusin', over, true);
+    document.addEventListener('focusout', out, true);
+  }
+
   function renderDash() {
     const s = S();
     if (!s || !s.tasks) {
@@ -175,7 +334,19 @@ var MMGR = window.MMGR || {};
     // Ring (STRUCTURAL-IA §1: brand-new project != 0%, quiet the empty zero)
     // circ = 2pi*r with r=39, matches the ring markup (thicker 18px stroke,
     // owner 2026-08-15).
-    const pct = total ? Math.round((done / total) * 100) : 0;
+    // UX-2026-11-19 B3: when the project has major groups the ring and its
+    // stat speak in WORK ITEMS (phase rows are containers, not tasks), so the
+    // centre percentage is exactly the sum of the group points. Without
+    // groups nothing changes: today's all-tasks number.
+    const ringOut = ringData(s);
+    const useGroups = !!(ringOut && ringOut.grouped && ringOut.groups.length);
+    const baseTotal = useGroups ? ringOut.total : total;
+    const baseDone = useGroups ? ringOut.completed : done;
+    const pct = useGroups
+      ? Math.round(ringOut.overall)
+      : total
+        ? Math.round((done / total) * 100)
+        : 0;
     const circ = 245;
     const offset = circ - (circ * pct) / 100;
     const rf = $('rf');
@@ -188,23 +359,26 @@ var MMGR = window.MMGR || {};
     if (pringEl && !pringEl.classList.contains('ring-in')) {
       pringEl.classList.add('ring-in');
     }
+    // UX-2026-11-19 B3: draw the group arcs over the same geometry.
+    renderRingSlots(s, ringOut);
+    wireRingHover();
     const rt = $('rt');
     // OWNER 2026-09-12 (P2-12): ONLY the percentage lives inside the ring -
     // the word 'Completed' beside it (repeated three times around the title,
     // the ring, and the stat block) crowded the circle. The figure reads as
     // a percent naturally; the beside stat keeps its 'Completed' label.
     if (rt) {
-      rt.textContent = total === 0 ? '0%' : pct + '%';
+      rt.textContent = baseTotal === 0 ? '0%' : pct + '%';
     }
     const dc = $('dc');
     if (dc) {
-      dc.textContent = done;
-      dc.style.color = total === 0 ? 'var(--slate)' : '';
+      dc.textContent = baseDone;
+      dc.style.color = baseTotal === 0 ? 'var(--slate)' : '';
     }
     const tc = $('tc');
     if (tc) {
-      tc.textContent = total;
-      tc.style.color = total === 0 ? 'var(--slate)' : '';
+      tc.textContent = baseTotal;
+      tc.style.color = baseTotal === 0 ? 'var(--slate)' : '';
     }
 
     // Health

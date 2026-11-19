@@ -2859,6 +2859,30 @@ body.sidebar-open .sb-close .ico {
     filter: none;
   }
 }
+/* UX-2026-11-19 B3: one arc per major group, drawn over the ring's own
+   geometry (r=39, 14.4px stroke, the whole SVG rotated -90 so 0 is 12
+   o'clock). These rules add only the affordance - the slot colours come
+   from the --major-N tokens, set inline by the renderer. */
+.pring .ring-slots .ring-slot {
+  cursor: pointer;
+  transition:
+    stroke-width 0.15s ease,
+    opacity 0.15s ease;
+}
+.pring .ring-slots .ring-slot:hover,
+.pring .ring-slots .ring-slot.is-hot {
+  stroke-width: 16.4;
+}
+/* The list under the ring is the text version of the same data, so a hover
+   on either side lights the other. */
+.major-row.is-hot {
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pring .ring-slots .ring-slot {
+    transition: none;
+  }
+}
 .ring-txt {
   position: absolute;
   inset: 0;
@@ -21769,6 +21793,11 @@ body.view-3d .view-deck {
 }
 /* OWNER 2026-11-19 (chrome-truth): the settings drawer's content fade is
    decoration - Performance Mode turns it off and shows the panel at once. */
+/* UX-2026-11-19 B3: the ring's quarter-turn entry sweep is decoration, so
+   Performance Mode shows the finished ring at once. */
+[data-perf='on'] .pring.ring-in svg {
+  animation: none !important;
+}
 [data-perf='on'] .drw-sheet {
   transition: none !important;
   opacity: 1 !important;

@@ -366,3 +366,35 @@ three non-default skins really re-point their slots. Proven to bite: pale
 under reordering, no shared slots, the Other merge).
 
 Commit: `feat(dashboard): stable chart colours for the major groups`.
+
+### B3 - the ring, one arc per major group
+
+`js/mmgr-render.js` keeps the ring's geometry exactly (r=39, circ 245.04, the
+14.4px stroke, the `-90deg` SVG rotation and the one-shot `ring-in` sweep) and
+adds a `.ring-slots` layer inside the existing SVG: one faint track per group
+(its token at 22% via `color-mix`) and one solid arc whose length is the
+group's own completion inside a slot proportional to its share of the work,
+with a 2 degree gap between slots. No markup change in `project.html` - the
+layer is built with `createElementNS`, so no inline-script hash moves.
+
+Two decisions worth recording:
+
+1. The centre figure now counts WORK ITEMS when the project has groups. The
+   directive states the overall figure equals completed work items over total
+   work items and that today's ring already showed that number; in the code
+   the ring counted every task, phase rows included, so a phased project read
+   33% where its work items were 50%. Counting work items is what makes the
+   centre equal the sum of the points, and a phase row is a container, not a
+   task - so the centre, the `done` figure and the `of N` figure all switch
+   to the work-item basis when groups exist, and stay exactly as today when
+   they do not.
+2. The centre stays a percentage only (standing rule). Colour is never the
+   only carrier: the SVG is `role="img"` and its `aria-label` reads
+   "50% complete. Top contributors: Site preparation 25%, Foundation 25%".
+
+Performance Mode kills the sweep (`animation: none`); reduced motion drops the
+hover transition. Hovering an arc marks it hot - the list half arrives in B4.
+
+Gate: `tools/qa-dashboard-ring.cjs` **15/15**.
+
+Commit: `feat(dashboard): the completion ring is built from the major groups`.

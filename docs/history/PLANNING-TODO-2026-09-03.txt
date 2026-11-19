@@ -1,6 +1,5 @@
 MY MANAGER - PLANNING TRACKER (2026-09-03 session)
-===================================================
-Status legend: [ ] OPEN  [~] IN PROGRESS  [x] DONE  [?] NEEDS OWNER DECISION
+============================================Status legend: [ ] OPEN  [~] IN PROGRESS  [x] DONE  [?] NEEDS OWNER DECISION
 This is a PLANNING file - nothing here is executed without the owner's go.
 Owner rule for this session: planning only, read code, do not edit code.
 
@@ -2780,3 +2779,26 @@ narrower reading of §14.3).
   The paid fixture is now `contractor`, a real tier. qa-consent 37/37.
   app.html mmgr-billing-manage ?v=554, pricing.html marketing bundle ?v=372,
   sw.js shell cache v652 -> v653.
+- SHARED-PROJECT CARDS 2026-11-17 (owner: "if I refresh, the projects that
+  are shared with me don't instantly load up" + "shared-project cards must
+  match local/cloud cards"). Two causes, both client-side:
+  (1) js/cloud/team-ui.js revealed #shared-dash on the restored signed-in
+  marker but painted nothing from mmgr_team_cache, and refresh() awaited the
+  invitations read before it even started the memberships read, so the
+  section sat empty for two round trips on every reload. Fix: paintCached()
+  paints the last good memberships + invitation count before the first
+  fetch, refresh() issues both reads in parallel, a failed memberships read
+  falls back to the cache, and setSignedIn(false) deletes the cache (the
+  same sign-out rule the cloud list already followed).
+  (2) renderShared() still emitted the retired .cd-card-head /
+  .cd-card-title / .cd-card-meta / .cd-card-actions markup, none of which
+  has any CSS left, so shared cards rendered as plain blocks while every
+  other project card was a .pcard. Fix: the shared card is now the same
+  .pcard (gold band, title + .cd-role chip, .pc-foot status dot + label,
+  one whole-card .cd-hit hit layer, no pill icon). /api/team/memberships
+  now returns status (via the shared normaliseProjectStatus export),
+  updatedAt and hasSnapshot, so a member's card shows the owner's live
+  status and says when the owner has not saved a snapshot yet.
+  Gates: qa-team-ui G15 (card shape + payload fields) and G16 (fetch stubbed
+  to a promise that never resolves; the cards must still paint from cache),
+  25/25; qa-team-rbac 75/75 unchanged. sw.js shell cache v652 -> v661.

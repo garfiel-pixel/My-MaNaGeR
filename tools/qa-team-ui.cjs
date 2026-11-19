@@ -29,6 +29,10 @@
      G12 light, dark and 360px renders all produce a real screenshot
      G13 at 360px the header neither overflows nor changes height when
          the badge appears, and the bell stays inside the viewport
+     G15 a shared card is the same .pcard as an owner's cloud card: title
+         + role chip, status foot, one whole-card hit layer, no pill icon
+     G16 a reload paints the shared cards from the device cache before the
+         first network answer (the fetch is stubbed and never settles)
      G14 no console error and no uncaught exception for the whole run
 
    Ports: QA_PORT (default 8795) for the Worker, QA_CDP_PORT (default
@@ -1237,6 +1241,86 @@ async function main() {
       !!stillShared && stillShared.hasC === true && stillShared.hasB === false,
       stillShared
     );
+
+    // ---- G15: a shared card is the same card as an owner's cloud card -----
+    // OWNER 2026-11-17: "shared-project cards must match local/cloud cards".
+    // The card must be a .pcard with the title + role chip, the status foot
+    // and ONE whole-card hit layer; the retired .cd-card-head markup (which
+    // has no CSS at all) must be gone, and so must the pill icon.
+    const cardShape = await until(
+      cdp,
+      `(function(){
+        var list = document.getElementById('shared-list');
+        if (!list) return false;
+        var card = list.querySelector('.cd-card.pcard');
+        if (!card) return false;
+        var st = (window.MMGR && MMGR.TeamUI && MMGR.TeamUI._state) ? MMGR.TeamUI._state.memberships : [];
+        var m = st.length ? st[0] : null;
+        return {
+          hit: !!card.querySelector('.cd-hit[data-team-open]'),
+          roleChip: !!card.querySelector('.pc-title .cd-role'),
+          foot: !!card.querySelector('.pc-foot .pc-status .sdot'),
+          cta: !!card.querySelector('.pc-cta'),
+          pillIcon: !!card.querySelector('.db-project-ico'),
+          legacy: !!card.querySelector('.cd-card-head, .cd-card-actions'),
+          status: m ? m.status : '',
+          hasUpdated: !!(m && m.updatedAt),
+          hasSnapshotFlag: !!(m && typeof m.hasSnapshot === 'boolean')
+        };
+      })()`,
+      15000
+    );
+    check(
+      'G15 a shared card carries the owner-card shape, role chip and live status',
+      !!cardShape &&
+        cardShape.hit === true &&
+        cardShape.roleChip === true &&
+        cardShape.foot === true &&
+        cardShape.cta === true &&
+        cardShape.pillIcon === false &&
+        cardShape.legacy === false &&
+        /^(active|planning|on-hold|completed)$/.test(cardShape.status || '') &&
+        cardShape.hasUpdated === true &&
+        cardShape.hasSnapshotFlag === true,
+      cardShape
+    );
+
+    // ---- G16: a reload paints the shared cards from the device cache ------
+    // OWNER 2026-11-17: "if I refresh, the projects shared with me don't
+    // instantly load up". The list must paint from the last good answer before
+    // the first fetch settles. The fetch is stubbed to a promise that never
+    // resolves, so this gate proves the paint does not depend on the network.
+    const stub = await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
+      source:
+        '(function(){var f=window.fetch;window.fetch=function(u){' +
+        'if(String(u).indexOf("/api/team/")>-1){return new Promise(function(){});}' +
+        'return f.apply(this,arguments);};})();'
+    });
+    await nav(cdp, BASE + '/app.html', 1200);
+    const cachedPaint = await until(
+      cdp,
+      `(function(){
+        var wrap = document.getElementById('shared-dash');
+        var list = document.getElementById('shared-list');
+        if (!wrap || !list || wrap.hidden) return false;
+        var n = list.querySelectorAll('.cd-card.pcard').length;
+        if (!n) return false;
+        return { cards: n, text: list.textContent.replace(/\\s+/g, ' ').trim().slice(0, 140) };
+      })()`,
+      8000
+    );
+    check(
+      'G16 a reload paints the shared cards from the device cache before the network answers',
+      !!cachedPaint && cachedPaint.cards > 0,
+      cachedPaint
+    );
+    try {
+      await cdp.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: stub.identifier });
+    } catch (e) {
+      /* older CDP builds do not need the explicit removal */
+    }
+    // Back to a live page: the gates below click through the real list.
+    await nav(cdp, BASE + '/app.html', 4000);
 
     // ---- G12/G13: screenshots + 360px header ----------------------------
     // Land on the contractor project (accepted by link in G2) through the same

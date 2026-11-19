@@ -136,12 +136,12 @@ var MMGR = window.MMGR || {};
           '" style="width:60px">%</td>' +
           '<td><input type="number" value="' +
           (r.rate || 0) +
-          '" min="0" step="5" data-action="updField" data-module="Resources" data-field="rate" data-idx="' +
+          '" min="0" step="5" data-action="updField" data-module="Resources" data-field="rate" data-scrub="rate" data-scrub-min="0" data-idx="' +
           i +
           '" style="width:80px"></td>' +
           '<td><input type="number" value="' +
           (r.hoursAllocated || 0) +
-          '" min="0" data-action="updField" data-module="Resources" data-field="hoursAllocated" data-idx="' +
+          '" min="0" data-action="updField" data-module="Resources" data-field="hoursAllocated" data-scrub="hours" data-scrub-min="0" data-scrub-max="24" data-idx="' +
           i +
           '" style="width:80px"></td>' +
           '<td class="' +
@@ -268,7 +268,7 @@ var MMGR = window.MMGR || {};
           '"></td>' +
           '<td><input type="number" value="' +
           (x.hours || '') +
-          '" data-action="updField" data-module="TimeTracking" data-field="hours" data-idx="' +
+          '" data-action="updField" data-module="TimeTracking" data-field="hours" data-scrub="hours" data-scrub-step="0.25" data-scrub-min="0" data-scrub-max="24" data-scrub-presets="4,8,+0.5,clear" data-idx="' +
           i +
           '" style="width:60px" placeholder="Hrs" min="0" step="0.5"></td>' +
           '<td><input type="text" value="' +

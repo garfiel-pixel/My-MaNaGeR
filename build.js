@@ -220,6 +220,11 @@ const APP_MODULES = [
   // independent (it builds its own overlay and waits for #sec-nav), so it
   // sits here rather than in the core block.
   'js/mmgr-tour.js',
+  // ScrubNumber / SmartTime (owner 2026-11-19): opt-in progressive
+  // enhancement for numeric, clock and date fields. DOM-only at load time
+  // (it creates the shared live region and delegates pointer/key events), so
+  // it sits late and reads State/Perf only when a scrub actually starts.
+  'js/app/scrub-number.js',
   // bfcache sprite restore (2026-09-30): icons vanish after Back when
   // Chrome restores the page from the back/forward cache; load-order
   // independent, DOM-only, so it sits last.
@@ -288,6 +293,9 @@ const APP_LAUNCHER_MODULES = [
   // T-15 (UI-IA-AND-MCP 2026-11-11): the same search palette as the project
   // page, indexing this page's rail and projects. Reads DOM at open time only.
   'js/app/search.js',
+  // ScrubNumber / SmartTime: the launcher shares the same opt-in controls
+  // so a returning browser never gets a different entry contract.
+  'js/app/scrub-number.js',
   // bfcache sprite restore (2026-09-30): same module as the project
   // bundle - load-order independent, DOM-only, sits last.
   'js/mmgr-icon-restore.js'

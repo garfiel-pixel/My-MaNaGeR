@@ -2208,6 +2208,28 @@ Date: ____________  Focus: ____________</pre>
       <p><strong>If you are locked out.</strong> Five wrong passwords locks sign-in for two hours, and every further batch of mistakes doubles the wait, up to a day. A locked account is not a lost account: use Google sign-in, or request a reset email. Only one reset email can be sent per address per day, and the page will not tell you whether an account exists, so nobody can use it to discover who has one.</p>
     </section>
 
+    <!-- ============ A-36 SCRUB CONTROLS ============ -->
+    <section class="sheet" id="scrub-controls">
+      <div class="tblock">
+        <div class="tblock-left"><span class="sheet-no">A-36</span><h2>Scrub &amp; Smart Entry</h2></div>
+        <div class="tblock-right"><div><b>Scale</b>1 : 1 detail</div></div>
+      </div>
+      <span class="kicker">Faster numeric and time entry, with no extra library</span>
+      <p class="lede">Some fields accept a sideways drag instead of typing. Nothing is saved until you let go or press Enter, so a stray click can never change a number by accident.</p>
+
+      <p><strong>Which fields.</strong> Time tracking hours, resource hours and rates, task durations, the unit and labour calculator fields, and the planned start and end times above the meeting templates. Fields that accept quick values show a small dotted underline on hover.</p>
+
+      <p><strong>How to scrub.</strong> Press on a field and drag sideways. The first five pixels do nothing, so clicking to type stays safe. Drag farther to change the value. Hold Shift for fine steps, or Alt for coarse steps. Press Escape while dragging to put the original value back.</p>
+
+      <p><strong>Keyboard.</strong> Focus a field, then use the arrow keys for one step, Page Up or Page Down for ten steps, and Home or End for the lowest or highest value. A clock field steps fifteen minutes at a time, five with Shift and one hour with Alt.</p>
+
+      <p><strong>Quick values.</strong> Focus a field to open a small panel of common values. Hours offer 4, 8, add 0.5 and clear. Clocks offer Now, the quarter hours, and the usual start and finish times. Dates offer Today, Tomorrow, three days, one week, end of week, and a one day nudge either way. The teal chip is the live action, taking the current time or date.</p>
+
+      <p><strong>Linked end time.</strong> The planned end time follows the start time. Change the start and the end moves by the same amount, so the planned duration is preserved.</p>
+
+      <p><strong>Accessibility and performance.</strong> Each field reports its value to screen readers as it changes. Reduced motion and Performance Mode keep the behaviour and remove the decoration. The app still works with the keyboard alone and with no network.</p>
+    </section>
+
     <!-- ============ CLOSING CTA BAND ============ -->
     <!-- Local photo (completed kitchen) , the finished job. -->
     <div class="band reveal" style="min-height:420px">
@@ -2268,6 +2290,7 @@ Date: ____________  Focus: ____________</pre>
             <a href="#budget-boq">A-33 Budget from BOQ</a>
             <a href="#ideas">A-34 Intake &amp; Agenda</a>
             <a href="#signin">A-35 Signing In</a>
+            <a href="#scrub-controls">A-36 Scrub &amp; Smart Entry</a>
           </div>
           <div class="footer-col">
             <b>Site</b>

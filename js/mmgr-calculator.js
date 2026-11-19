@@ -518,8 +518,8 @@
       '<div class="calc-card">' +
       '<div class="calc-card-title">Unit Cost</div>' +
       '<div class="calc-field-row">' +
-      '<div class="calc-field"><label for="uc-qty">Quantity</label><input type="number" id="uc-qty" placeholder="0" step="any"></div>' +
-      '<div class="calc-field"><label for="uc-rate">Rate ($/unit)</label><input type="number" id="uc-rate" placeholder="0" step="any"></div>' +
+      '<div class="calc-field"><label for="uc-qty">Quantity</label><input type="number" id="uc-qty" placeholder="0" step="any" data-scrub="qty" data-scrub-min="0"></div>' +
+      '<div class="calc-field"><label for="uc-rate">Rate ($/unit)</label><input type="number" id="uc-rate" placeholder="0" step="any" data-scrub="rate" data-scrub-min="0"></div>' +
       '</div>' +
       '<button type="button" class="calc-action" data-calc-action="unit-cost">Calculate</button>' +
       '<div class="calc-result" id="uc-result" hidden></div>' +
@@ -527,8 +527,8 @@
       '<div class="calc-card">' +
       '<div class="calc-card-title">Labor Cost</div>' +
       '<div class="calc-field-row">' +
-      '<div class="calc-field"><label for="lc-hrs">Hours</label><input type="number" id="lc-hrs" placeholder="0" step="any"></div>' +
-      '<div class="calc-field"><label for="lc-rate">Rate ($/hr)</label><input type="number" id="lc-rate" placeholder="0" step="any"></div>' +
+      '<div class="calc-field"><label for="lc-hrs">Hours</label><input type="number" id="lc-hrs" placeholder="0" step="any" data-scrub="hours" data-scrub-step="0.25" data-scrub-min="0" data-scrub-max="24" data-scrub-presets="4,8,+0.5,clear"></div>' +
+      '<div class="calc-field"><label for="lc-rate">Rate ($/hr)</label><input type="number" id="lc-rate" placeholder="0" step="any" data-scrub="rate" data-scrub-min="0"></div>' +
       '</div>' +
       '<div class="calc-field-row">' +
       '<div class="calc-field"><label for="lc-people">Workers</label><input type="number" id="lc-people" placeholder="1" step="1" value="1"></div>' +
@@ -540,8 +540,8 @@
       '<div class="calc-card">' +
       '<div class="calc-card-title">Material Cost (with waste)</div>' +
       '<div class="calc-field-row">' +
-      '<div class="calc-field"><label for="mat-qty">Quantity</label><input type="number" id="mat-qty" placeholder="0" step="any"></div>' +
-      '<div class="calc-field"><label for="mat-rate">Rate ($/unit)</label><input type="number" id="mat-rate" placeholder="0" step="any"></div>' +
+      '<div class="calc-field"><label for="mat-qty">Quantity</label><input type="number" id="mat-qty" placeholder="0" step="any" data-scrub="qty" data-scrub-min="0"></div>' +
+      '<div class="calc-field"><label for="mat-rate">Rate ($/unit)</label><input type="number" id="mat-rate" placeholder="0" step="any" data-scrub="rate" data-scrub-min="0"></div>' +
       '</div>' +
       '<div class="calc-field"><label for="mat-waste">Waste %</label><input type="number" id="mat-waste" placeholder="10" step="any" value="10"></div>' +
       '<button type="button" class="calc-action" data-calc-action="material-cost">Calculate</button>' +

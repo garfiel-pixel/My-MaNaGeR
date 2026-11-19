@@ -117,7 +117,7 @@
       "source": "./local",
       "sourceType": "local",
       "skillPath": ".agents/skills/skeptical-code-audit/SKILL.md",
-      "computedHash": "58d5660879011c1bfc188838b0608bfbb4d632195b6fb0f44b5e1bcb8d1e03db"
+      "computedHash": "780c235afd0953109d9f15365bd1f56fa3651ecc3fc9286586d026da37a86d17"
     },
     "sleek-design-mobile-apps": {
       "source": "sleekdotdesign/agent-skills",

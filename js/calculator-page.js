@@ -7213,39 +7213,41 @@
       return r.tid === tid;
     });
     const prevR = rSel.value;
-    rSel.innerHTML = rows
-      .map(function (r) {
-        const unit = bookUnitFor(r, imp);
-        const rate = bookRateFor(r, imp);
-        const d = r.desc.length > 46 ? r.desc.slice(0, 43) + '...' : r.desc;
-        // A row from the user's own book speaks the book's own currency; the
-        // built-in rows are JMD (the planning baseline's money).
-        const ownCur = r.own ? (activeUbook() || {}).currency || '' : 'J$';
-        const money = ownCur
-          ? ownCur +
-            Number(rate).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })
-          : rrMoney(rate);
-        return (
-          '<option value="' +
-          esc(r.ref) +
-          '">' +
-          esc(r.ref) +
-          ' - ' +
-          esc(d) +
-          ' (' +
-          esc(unit) +
-          ' - ' +
-          money +
-          ')' +
-          (r.note ? ' - ' + esc(r.note) : '') +
-          (r.basis === 'C' && !imp ? ' [our conversion]' : '') +
-          '</option>'
-        );
-      })
-      .join('');
+    // Built as real option nodes, not markup: the description, unit and note
+    // come from a book the user may have uploaded, so they are set as text and
+    // can never be reinterpreted as HTML.
+    const frag = document.createDocumentFragment();
+    rows.forEach(function (r) {
+      const unit = bookUnitFor(r, imp);
+      const rate = bookRateFor(r, imp);
+      const d = r.desc.length > 46 ? r.desc.slice(0, 43) + '...' : r.desc;
+      // A row from the user's own book speaks the book's own currency; the
+      // built-in rows are JMD (the planning baseline's money).
+      const ownCur = r.own ? (activeUbook() || {}).currency || '' : 'J$';
+      const money = ownCur
+        ? ownCur +
+          Number(rate).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })
+        : rrMoney(rate);
+      const opt = document.createElement('option');
+      opt.value = r.ref;
+      opt.textContent =
+        r.ref +
+        ' - ' +
+        d +
+        ' (' +
+        unit +
+        ' - ' +
+        money +
+        ')' +
+        (r.note ? ' - ' + r.note : '') +
+        (r.basis === 'C' && !imp ? ' [our conversion]' : '');
+      frag.appendChild(opt);
+    });
+    rSel.textContent = '';
+    rSel.appendChild(frag);
     const hadRow = rows.some(function (r) {
       return r.ref === prevR;
     });

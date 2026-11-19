@@ -2754,3 +2754,24 @@ narrower reading of §14.3).
   (recordId + beforeAbsent) when the section is absent, then appends from the
   submission as before; anything else still refuses as not_a_list. Unit test
   added; qa-api-keys re-run locally: ALL API-KEY GATES PASSED (P18a-e).
+
+- PR 14 CI REPAIR 2026-11-18 (rate book, commit 0ab18aa, run 44191438462):
+  two reds. (1) browser-calc step 25 qa-calc-controls UI-5 [1100x800]
+  failed with spreadDx/spreadDy 0 but movedPx 60: the portal tracked
+  perfectly and the gate's own `moved >= 100` precondition was never met,
+  because scrollIntoView({block:'center'}) on the taller rate-book bar left
+  only 60px of scroll. Harness fixed, not the app: the pointer is parked
+  clear of the listbox (a wheel over the list scrolls the list) and a 600px
+  block is inserted below the card before centring, so the wheel run always
+  moves the control well past 100px. 95/95 locally, twice.
+  (2) CodeQL js/xss-through-dom alert 108 at js/calculator-page.js:7216 -
+  the row picker built <option> markup from the user's uploaded book and
+  escaped it with esc(). Escaped output is safe but CodeQL cannot see the
+  escaper, so the sink stayed live. Rebuilt as real option nodes
+  (value + textContent) in a DocumentFragment; the visible text is byte
+  identical. calculator.html script ?v=54 -> 55, sw.js shell cache
+  v662 -> v663, npm run verify 0. qa-calculator-page 256/256,
+  qa-calc-assistant 170/0, qa-ratebook 19/19.
+  Registry row for qa-calc-controls carries the re-baseline note; the
+  skeptical-code-audit skill gains items 13 (custom escaper is not a
+  sanitiser) and 14 (a harness precondition is not a test of the feature).

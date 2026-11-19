@@ -4641,14 +4641,21 @@ var MMGR = window.MMGR || {};
     }
   }
   // ---- Wave 5: skeletons ---- (extracted to js/app/skeleton.js)
+  // OWNER 2026-11-19 (chrome-truth): these three wrappers read `.html`,
+  // `.paint` and `.sections`, but the module exports `skeletonHtml`,
+  // `skeletonPaint` and `skeletonSections` - so every one of the eleven
+  // per-section templates was dead and the only skeleton that ever painted was
+  // the static boot splash. Name the exports that actually exist.
   function skeletonHtml(section) {
-    return ns.Skeleton && ns.Skeleton.html ? ns.Skeleton.html(section) : '';
+    return ns.Skeleton && ns.Skeleton.skeletonHtml ? ns.Skeleton.skeletonHtml(section) : '';
   }
   function skeletonPaint(section, target) {
-    return ns.Skeleton && ns.Skeleton.paint ? ns.Skeleton.paint(section, target) : function () {};
+    return ns.Skeleton && ns.Skeleton.skeletonPaint
+      ? ns.Skeleton.skeletonPaint(section, target)
+      : function () {};
   }
   function skeletonSections() {
-    return ns.Skeleton && ns.Skeleton.sections ? ns.Skeleton.sections : [];
+    return ns.Skeleton && ns.Skeleton.skeletonSections ? ns.Skeleton.skeletonSections : [];
   }
 
   function openDrwToPrompts(type) {

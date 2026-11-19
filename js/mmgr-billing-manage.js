@@ -312,8 +312,99 @@
       '<div class="t-xs lh18" role="status" style="color:var(--danger)">' + esc(msg) + '</div>';
   }
 
+  var _retried = false;
+
   var periodEnd = null;
   var planState = null;
+
+  /* OWNER 2026-11-19 (chrome-truth): ONE status request per page.
+     loadPlan() is wired to five lifecycle moments (DOMContentLoaded,
+     google-signed-in, user-changed, plan-changed and the header chip's own
+     refreshPlan), and each one used to issue its own fetch. Any single one of
+     them failing flipped a paying account to "Upgrade to Premium" - the
+     owner's report - because five independent chances to be wrong is not a
+     plan check. The promise is memoised for the page; a real plan CHANGE
+     arrives on mmgr:plan-changed with its own body, so it never needs a
+     refetch. */
+  var _statusPromise = null;
+  function statusOnce() {
+    if (_statusPromise) {
+      return _statusPromise;
+    }
+    var E = window.MMGR && window.MMGR.Entitlements;
+    if (E && typeof E.status === 'function') {
+      _statusPromise = E.status();
+      return _statusPromise;
+    }
+    _statusPromise = (function () {
+      var call;
+      try {
+        call = fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
+      } catch (e) {
+        return Promise.resolve({ ok: false, code: 0, data: null });
+      }
+      return Promise.resolve(call).then(
+        function (res) {
+          var code = res ? res.status : 0;
+          var ok = !!(res && res.ok);
+          return Promise.resolve(res ? res.json() : null).then(
+            function (data) {
+              return { ok: ok, code: code, data: data };
+            },
+            function () {
+              return { ok: ok, code: code, data: null };
+            }
+          );
+        },
+        function () {
+          return { ok: false, code: 0, data: null };
+        }
+      );
+    })();
+    return _statusPromise;
+  }
+
+  /* A transient failure - offline, a 5xx, a static host with no billing route,
+     an unparseable body - tells us NOTHING about the plan. The safe reading is
+     "keep whatever we already know": a paid account keeps its Premium badge
+     instead of being silently downgraded to an upgrade pitch it does not need.
+     Only an authoritative answer (200 with a plan, or 403) may move the
+     control. */
+  function keepKnownPlan(plan) {
+    var cached = readPlanCache();
+    if (railSignedIn() && cached && cached.active) {
+      setBadge(true);
+      if (plan) {
+        renderActive(plan, cached.currentPeriodEnd || null, cached);
+      }
+      return;
+    }
+    if (!$(BADGE) || !$(BADGE).classList.contains('on')) {
+      showFree(plan);
+    }
+  }
+
+  /* Apply an authoritative billing body - the tail loadPlan() always ran, and
+     the whole handler for mmgr:plan-changed, which already carries the body. */
+  function applyPlanData(data) {
+    var plan = $(PLAN);
+    if (!data || !data.ok) {
+      showFree(plan);
+      return;
+    }
+    if (!data.active) {
+      writePlanCache(data);
+      showFree(plan);
+      return;
+    }
+    writePlanCache(data);
+    setBadge(true);
+    planState = data;
+    periodEnd = data.currentPeriodEnd || null;
+    if (plan) {
+      renderActive(plan, periodEnd, data);
+    }
+  }
 
   async function loadPlan() {
     ensureMount();
@@ -333,25 +424,14 @@
         setBadge(!!cached.active);
       }
     }
-    var res;
-    try {
-      res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
-    } catch (e) {
-      /* OWNER 2026-11-08 fix: a network error, offline state, or a static host
-         with no billing route must NOT blank the control. We cannot know the
-         visitor is signed out, so the safe default is the free "Upgrade to
-         Premium" badge - it links to pricing.html, which works everywhere.
-         Only a definitive 403 (signed out) hides the badge. */
-      showFree(plan);
-      return;
-    }
-    /* 403 means the SERVER session is gone. Hiding the control is only right
-       when the page agrees the visitor is signed out: an expired cookie leaves
-       the stored profile (name + Sign out) in the rail, and blanking the
-       upgrade path under a visible name is exactly the "no upgrade button"
-       report the owner filed twice. Someone whose name is on screen can still
-       buy, so they keep the free badge. */
-    if (res.status === 403) {
+    var r = await statusOnce();
+    if (r && r.code === 403) {
+      /* 403 means the SERVER session is gone. Hiding the control is only right
+         when the page agrees the visitor is signed out: an expired cookie
+         leaves the stored profile (name + Sign out) in the rail, and blanking
+         the upgrade path under a visible name is exactly the "no upgrade
+         button" report the owner filed twice. Someone whose name is on screen
+         can still buy, so they keep the free badge. */
       if (railSignedIn()) {
         showFree(plan);
       } else {
@@ -359,40 +439,21 @@
       }
       return;
     }
-    if (!res.ok) {
-      /* Any other non-OK (404 on a static host, 500, etc.): we do not know the
-         plan, but we must not erase the control. Default to the free Upgrade
-         badge so the link is always reachable. */
-      showFree(plan);
+    if (!r || !r.ok) {
+      // Transient. One retry, then keep what we know.
+      if (!_retried) {
+        _retried = true;
+        _statusPromise = null;
+        setTimeout(function () {
+          loadPlan();
+        }, 1500);
+        return;
+      }
+      keepKnownPlan(plan);
       return;
     }
-    var data = null;
-    try {
-      data = await res.json();
-    } catch (e) {
-      showFree(plan);
-      return;
-    }
-    /* OWNER 2026-11-06: a SIGNED-IN person always sees their plan bar. The
-       status route answers ok only for a session, so ok === signed in. A free
-       account gets the Upgrade badge whether or not billing is configured;
-       a paid account gets the Premium badge + Manage subscription. */
-    if (!data || !data.ok) {
-      // Session answered but reports no plan: free account -> Upgrade badge.
-      showFree(plan);
-      return;
-    }
-    if (!data.active) {
-      // Free plan: the badge itself is the upgrade path (pricing.html).
-      writePlanCache(data);
-      showFree(plan);
-      return;
-    }
-    writePlanCache(data);
-    setBadge(true);
-    planState = data;
-    periodEnd = data.currentPeriodEnd || null;
-    renderActive(plan, periodEnd, data);
+    _retried = false;
+    applyPlanData(r.data);
   }
 
   async function cancelSubscription() {
@@ -510,9 +571,18 @@
   });
 
   /* A session can start or end in another tab. Keep the header truthful rather
-     than leaving a stale control that can only answer 403. */
-  document.addEventListener('mmgr:google-signed-in', loadPlan);
-  document.addEventListener('mmgr:google-signed-out', hidePlan);
+     than leaving a stale control that can only answer 403. The memoised
+     status promise is dropped on both edges, because the answer belongs to the
+     session that asked for it: without the reset a page that booted signed out
+     (a memoised 403) would keep hiding the badge after the person signed in. */
+  document.addEventListener('mmgr:google-signed-in', function () {
+    _statusPromise = null;
+    loadPlan();
+  });
+  document.addEventListener('mmgr:google-signed-out', function () {
+    _statusPromise = null;
+    hidePlan();
+  });
   /* The identity reaches the rail through mmgr:user-changed, and a restored
      session fires that WITHOUT mmgr:google-signed-in. Without this listener
      the first loadPlan ran against the static "Sign in" row, read the 403 an
@@ -521,8 +591,15 @@
      account row with no Upgrade button. */
   document.addEventListener('mmgr:user-changed', loadPlan);
   /* A plan change made from the checkout path (upgrade on the same
-     subscription) lands here, so the header updates without a reload. */
-  document.addEventListener('mmgr:plan-changed', loadPlan);
+     subscription) lands here WITH its body, so the header updates without a
+     reload and without a second request. */
+  document.addEventListener('mmgr:plan-changed', function (e) {
+    if (e && e.detail) {
+      applyPlanData(e.detail);
+    } else {
+      loadPlan();
+    }
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadPlan);

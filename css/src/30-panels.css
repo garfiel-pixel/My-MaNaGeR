@@ -3661,6 +3661,10 @@ button.rel-badge {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg, 16px);
+  /* OWNER 2026-11-19 (chrome-truth): a grid/flex child defaults to
+     min-width:auto, so a long placeholder line could push the column wider
+     than its track and overflow the panel on a phone. */
+  min-width: 0;
 }
 .skel-cards {
   display: grid;
@@ -3671,6 +3675,26 @@ button.rel-badge {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+/* OWNER 2026-11-19 (chrome-truth): one skeleton system, correct on a phone.
+   The card grid's 220px minimum and the 3-column board/grid were both wider
+   than a 390px content column once padding is counted, so the placeholders
+   ran off the edge. Collapse to one column and let rows wrap instead. */
+@media (max-width: 420px) {
+  .skel-cards {
+    grid-template-columns: 1fr;
+  }
+  .skel-board,
+  .skel-grid {
+    grid-template-columns: 1fr;
+  }
+  .skel-tr,
+  .skel-li {
+    flex-wrap: wrap;
+  }
+  .skel-tall {
+    height: 112px;
+  }
 }
 .skel-list {
   display: flex;

@@ -794,21 +794,33 @@ var MMGR = window.MMGR || {};
     // RETURNS the parsed status (or null) so the post-checkout return in
     // marketing.js can say what is actually true. Previously it returned
     // undefined and rendered the pill, which was all it was written for.
-    let res;
-    try {
-      res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
-    } catch (e) {
-      return null;
+    //
+    // OWNER 2026-11-19 (chrome-truth): ask through the entitlements seam, not
+    // a private fetch. On app.html this function and the rail's plan bar both
+    // wanted the same answer, and two independent requests meant two
+    // independent chances to fail - which is how a paying account kept
+    // falling back to "Upgrade to Premium". status() memoises the request for
+    // the page, so this costs nothing when the bar already asked.
+    let r = null;
+    const E = window.MMGR && window.MMGR.Entitlements;
+    if (E && typeof E.status === 'function') {
+      try {
+        r = await E.status();
+      } catch (e) {
+        r = null;
+      }
+    } else {
+      try {
+        const res = await fetch('/api/billing/status', {
+          method: 'GET',
+          credentials: 'same-origin'
+        });
+        r = res && res.ok ? { ok: true, code: res.status, data: await res.json() } : null;
+      } catch (e) {
+        r = null;
+      }
     }
-    if (!res.ok) {
-      return null;
-    }
-    let data = null;
-    try {
-      data = await res.json();
-    } catch (e) {
-      return null;
-    }
+    const data = r && r.ok ? r.data : null;
     if (!data || !data.ok || !data.configured) {
       return null;
     }

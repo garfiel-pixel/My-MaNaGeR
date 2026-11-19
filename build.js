@@ -248,6 +248,12 @@ const APP_LAUNCHER_MODULES = [
   'js/mmgr-utils.js',
   'js/mmgr-perf.js',
   'js/app/components.js',
+  // OWNER 2026-11-19 (chrome-truth): the entitlements seam carries the ONE
+  // /api/billing/status request for the page (status()). It used to live only
+  // in the project bundle, so the launcher's plan bar, the header chip and the
+  // billing panel each fetched their own copy and each could fail on its own -
+  // a paying account then read "Upgrade to Premium".
+  'js/app/entitlements.js',
   'js/mmgr-google-auth.js',
   'js/mmgr-cloud-dash.js',
   // OWNER 2026-11-06 (second report): the launcher's plan bar is deliberately
@@ -261,6 +267,12 @@ const APP_LAUNCHER_MODULES = [
   'js/cloud/team-ui.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
+  // OWNER 2026-11-19 (chrome-truth): ONE skeleton system. The launcher had its
+  // own dashSkeleton()/railSkeleton() plus a bare "Loading..." string in the
+  // shared list, while js/app/skeleton.js held eleven per-section templates
+  // that only the project bundle could reach. The module is DOM-only and
+  // reads nothing at load time, so the launcher can paint from the same set.
+  'js/app/skeleton.js',
   // Launcher rail: hover-peek (I-14) + one-shot first-load reveal (B7 parity).
   'js/app/launcher-rail.js',
   // T-15 (UI-IA-AND-MCP 2026-11-11): the same search palette as the project
@@ -277,6 +289,9 @@ const ADMIN_MODULES = [
   'js/mmgr-perf.js',
   'js/mmgr-viewport.js',
   'js/mmgr-glass.js',
+  // OWNER 2026-11-19 (chrome-truth): same single-request seam as the launcher
+  // bundle, so the admin rail's plan strip shares one status answer.
+  'js/app/entitlements.js',
   // Wave 8.10 (owner 2026-10-06): the admin rail's Manage-subscription strip.
   // Self-contained (delegated clicks, no inline script) so adding it changes
   // no CSP hash.

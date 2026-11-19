@@ -241,6 +241,24 @@ async function main() {
     cols
   );
 
+  // S9 (owner 2026-11-19, chrome-truth): the monolith wrappers read `.html`,
+  // `.paint` and `.sections`, but js/app/skeleton.js exports `skeletonHtml`,
+  // `skeletonPaint` and `skeletonSections`. Every call through MMGR.App
+  // therefore returned '' / a no-op / [], so all eleven templates were dead
+  // and only the static boot splash ever painted. This asserts the seam the
+  // app actually calls, not the module's own exports (S3 already covers those).
+  const seam = await page.evaluate(() => {
+    const A = window.MMGR && window.MMGR.App;
+    return {
+      html: A && typeof A.skeletonHtml === 'function' ? A.skeletonHtml('dash').length : -1,
+      sections: A && typeof A.skeletonSections === 'function' ? A.skeletonSections().length : -1,
+      paint: A && typeof A.skeletonPaint === 'function'
+    };
+  });
+  check('S9 MMGR.App.skeletonHtml returns a real template', seam.html > 100, seam);
+  check('S9 MMGR.App.skeletonSections lists the templates', seam.sections > 5, seam);
+  check('S9 MMGR.App.skeletonPaint is wired', seam.paint === true, seam);
+
   check('S8 no page error in the run', errs.length === 0, errs.slice(0, 3));
 
   await ctx.close();

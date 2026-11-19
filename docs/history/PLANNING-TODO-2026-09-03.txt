@@ -2778,3 +2778,26 @@ narrower reading of §14.3).
   Gates: qa-team-ui G15 (card shape + payload fields) and G16 (fetch stubbed
   to a promise that never resolves; the cards must still paint from cache),
   25/25; qa-team-rbac 75/75 unchanged. sw.js shell cache v652 -> v661.
+
+- UI 2026-11-18/19 (owner): (a) the app menu icon sat in a white plate in
+  light and a near-black plate in dark, with a gold glyph. It is now the icon
+  alone in the theme's secondary ink, the theme accent on hover with a soft
+  tint, no border, still 38px, still visible at every width. Edited the CSS
+  LAYER sources (css/src/82-launcher.css base + dark, css/src/70-chrome.css
+  mobile duplicates), never the generated css/mmgr.css. qa-chrome gains the
+  control in CONTROLS, 122/122 (C1 no box, C2 hover tint, C3 focus rule, both
+  themes, 390 + 1280); PROBE learned focusSel and color-mix alpha.
+  (b) "I open the role based access menu and it says I need connection, but
+  I am on the web page". A failed OR slow team read was reported as an
+  offline browser. js/cloud/team-ui.js now: setBusy() shows a 2px travelling
+  line (no spinner) in the panel and above Shared with me, with the sentence
+  "Loading the projects shared with you..."; noteReadFailure() shows
+  "Needs a connection" ONLY when navigator.onLine is false, and otherwise
+  says "The server has not answered yet. This list fills in by itself.";
+  refresh() wraps the reads in setBusy/finally; renderShared keeps the
+  section on screen with the loading sentence while busy and empty.
+  New harness tools/qa-team-loading.cjs (11/11) answers the team endpoints
+  at controlled speeds: slow shows the line and no connection claim, cards
+  arrive, 500-while-online keeps the note hidden, real offline still shows
+  it. Registered in docs/CI-TEST-COVERAGE.md and ci.yml (browser-app T4).
+  qa-team-ui 25/25 unchanged. sw.js shell cache v661 -> v662.

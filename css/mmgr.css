@@ -8769,6 +8769,46 @@ body.dark-mode .team-status.is-err {
   font-weight: 700;
   color: var(--danger);
 }
+/* OWNER 2026-11-19: a slow read shows a line travelling across, not a spinner
+   and not "Needs a connection". The same line sits above Shared with me on the
+   launcher, so a member sees their projects arriving rather than an empty gap. */
+.team-progress,
+.cd-progress {
+  position: relative;
+  height: 2px;
+  margin: 6px 0 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
+}
+.team-progress::after,
+.cd-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: 2px;
+  background: var(--gold);
+  animation: mmgr-line-run 1.15s var(--ease-ios, ease) infinite;
+}
+.team-progress[hidden],
+.cd-progress[hidden] {
+  display: none;
+}
+@keyframes mmgr-line-run {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(265%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-progress::after,
+  .cd-progress::after {
+    animation-duration: 2.6s;
+  }
+}
 .team-offline[hidden] {
   display: none;
 }
@@ -17838,10 +17878,10 @@ body.dark-mode.db-page .pcard:not(.unlocked) .pc-cta {
     justify-content: center;
     width: 38px;
     height: 38px;
-    border: 1px solid var(--db-border);
-    background: var(--db-surface);
-    color: var(--db-accent);
-    border-radius: var(--radius);
+    border: none;
+    background: transparent;
+    color: var(--db-text-secondary);
+    border-radius: var(--radius-control);
     cursor: pointer;
     flex-shrink: 0;
   }
@@ -18063,9 +18103,9 @@ body.db-page:not(.dark-mode) .db-link:focus-visible {
     justify-content: center;
     width: 38px;
     height: 38px;
-    border: 1px solid var(--border);
-    background: var(--card);
-    color: var(--gold-text);
+    border: none;
+    background: transparent;
+    color: var(--slate);
     border-radius: var(--radius-control);
     cursor: pointer;
     flex-shrink: 0;
@@ -18535,9 +18575,12 @@ body.db-page .db-hamb {
   justify-content: center;
   width: 38px;
   height: 38px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--gold-text);
+  /* OWNER 2026-11-18: no square, no gold or white plate. The icon alone sits
+     on the canvas in the theme's own secondary ink, and the theme's accent
+     answers a hover. Same treatment the moon/sun toggle already had. */
+  border: none;
+  background: transparent;
+  color: var(--slate);
   border-radius: var(--radius-control);
   cursor: pointer;
   flex-shrink: 0;
@@ -18545,6 +18588,13 @@ body.db-page .db-hamb {
   top: 12px;
   left: 12px;
   z-index: 2;
+  transition:
+    color var(--tr),
+    background var(--tr);
+}
+body.db-page .db-hamb:hover {
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 8%, transparent);
 }
 body.db-page .db-hamb .ico {
   width: 18px;
@@ -19306,9 +19356,13 @@ body.dark-mode.db-page #siom .mb {
 }
 /* ---- dark dashboard overrides (existing --db-* rail convention) ---- */
 body.dark-mode.db-page .db-hamb {
-  background: var(--db-surface);
-  border-color: var(--db-border);
+  background: transparent;
+  border: none;
+  color: var(--db-text-secondary);
+}
+body.dark-mode.db-page .db-hamb:hover {
   color: var(--db-accent);
+  background: color-mix(in oklch, var(--db-accent) 12%, transparent);
 }
 body.dark-mode.db-page .db-quick {
   background: transparent;

@@ -581,6 +581,9 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
       <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Shared with me</h2>
       <span class="cd-sub">Projects other owners gave you access to</span>
     </div>
+    <!-- A thin line travels here while the list is being read (owner
+         2026-11-19: a slow answer is not a lost connection). -->
+    <div class="cd-progress" id="shared-progress" role="progressbar" aria-label="Loading shared projects" hidden></div>
     <div class="cd-list" id="shared-list" role="list"></div>
   </div>
 

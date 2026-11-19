@@ -88,12 +88,19 @@ const CONTROLS = [
   { page: 'seed-test.html', sel: '.nav-btn', label: 'project menu control' },
   // OWNER 2026-11-01: the top-bar icons (notices, collaborators, settings) are
   // bare at rest and grow their ring only on hover or focus.
-  { page: 'seed-test.html', sel: '.settings-btn', label: 'top-bar icon control' }
+  { page: 'seed-test.html', sel: '.settings-btn', label: 'top-bar icon control' },
+  // OWNER 2026-11-18: the app menu icon sat in a white (light) or near-black
+  // (dark) rounded plate with a gold glyph. It is the icon alone now, in the
+  // theme's own ink, with the theme accent on hover. focusSel names the rule
+  // because the button is an id and the CSS targets the class.
+  { page: 'app.html', sel: '#db-nav-btn', focusSel: '.db-hamb', label: 'app menu (hamburger)' }
 ];
 
 // Returns the parsed computed style we gate on, plus whether the CSSOM has a
 // focus-visible rule that names this selector.
-const PROBE = sel => {
+const PROBE = arg => {
+  const opts = typeof arg === 'string' ? { sel: arg } : arg || {};
+  const sel = opts.sel;
   const el = document.querySelector(sel);
   if (!el) {
     return null;
@@ -104,14 +111,16 @@ const PROBE = sel => {
       return 0;
     }
     const m = s.match(/rgba?\(([^)]+)\)/);
-    if (!m) {
-      return 1;
+    if (m) {
+      const parts = m[1].split(',').map(x => x.trim());
+      return parts.length > 3 ? Number(parts[3]) : 1;
     }
-    const parts = m[1].split(',').map(x => x.trim());
-    return parts.length > 3 ? Number(parts[3]) : 1;
+    // color-mix() resolves to oklch(... / 0.08) or color(srgb ... / 0.08).
+    const slash = s.match(/\/\s*([0-9.]+)\s*\)/);
+    return slash ? Number(slash[1]) : 1;
   };
   let focusRule = false;
-  const wanted = sel.replace(/^\./, '');
+  const wanted = (opts.focusSel || sel).replace(/^\./, '');
   for (const sheet of Array.from(document.styleSheets)) {
     let rules = [];
     try {
@@ -183,7 +192,7 @@ const PROBE = sel => {
             if (!found) {
               continue;
             }
-            const rest = await page.evaluate(PROBE, c.sel);
+            const rest = await page.evaluate(PROBE, { sel: c.sel, focusSel: c.focusSel });
             check(
               'C1 ' + tag + ' has no box at rest',
               rest &&
@@ -196,7 +205,7 @@ const PROBE = sel => {
 
             await page.hover(c.sel, { timeout: 5000 }).catch(() => {});
             await delay(250);
-            const hover = await page.evaluate(PROBE, c.sel);
+            const hover = await page.evaluate(PROBE, { sel: c.sel, focusSel: c.focusSel });
             check('C2 ' + tag + ' shows a highlight on hover', hover && hover.bgAlpha > 0, hover);
 
             check(

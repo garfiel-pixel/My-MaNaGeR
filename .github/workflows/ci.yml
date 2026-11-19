@@ -1158,6 +1158,15 @@ jobs:
         id: qa-plan-badge
         run: node tools/qa-plan-badge.cjs
 
+      # SLOW IS NOT OFFLINE (owner report 2026-11-19): opening the role-based
+      # access panel claimed "Needs a connection" while the page was obviously
+      # online. This one answers the team endpoints at controlled speeds and
+      # proves the travelling line, the loading sentence, the cards arriving,
+      # and that "Needs a connection" appears only for a real offline browser.
+      - name: "T4: A slow answer is not a lost connection (qa-team-loading)"
+        id: qa-team-loading
+        run: node tools/qa-team-loading.cjs
+
       # SIGN-IN NONCE (owner report 2026-11-01): the client must post the nonce
       # the CREDENTIAL carries, not the newest one it fetched - posting the
       # latter refused every real Google sign-in with "did not finish".

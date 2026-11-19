@@ -73,7 +73,7 @@ headless Chrome against `serve.cjs` on :8765.
 
 | Harness | Status | Covers |
 |---|---|---|
-| `tools/qa-dashboard-spec.cjs` | CI | dashboard tokens, markup, icons, contrast (76 checks) |
+| `tools/qa-dashboard-spec.cjs` | CI | dashboard tokens, markup, icons, contrast (104 checks). 2026-11-19 (chrome-truth): the two skeleton checks were re-baselined from the retired `cd-skel` markup to the shared-module seam - `dashSkeleton` must delegate to `MMGR.Skeleton.skeletonHtml('cloud')`, and the bundle must carry the shared template |
 | `tools/qa-changelog-diffs.cjs` | CI | changelog before/after diff rendering + escaping |
 | `tools/qa-paddle-csp.cjs` | EXTENDED | Paddle checkout CSP + the `_ptxn` dead-checkout regression (29 checks: 24 static, 5 live-browser). CSP: `buy.paddle.com` in frame-src, paddle styles allowed, hash gate stays strict, pricing-scoped only. `_ptxn`: the source no longer strips it unconditionally, `handlePaddleReturn` never names it, module scope initialises Paddle BEFORE the return handler, the SHIPPED bundle carries no 4-key strip, and a live browser proves `?_ptxn=` survives a real page load (the exact symptom of the 2026-10-05 dead checkout). Static arm runs in CI; the live-browser arm needs the deployed site (and targets `/pricing.html` on a local origin, which serve.cjs actually serves) |
 | `tools/qa-auth-limits.cjs` | CI | auth hardening: 1 password reset per email per day, escalating failed-login ladder (5 fails = 2h, doubling, capped 24h), generic account-collision message that names no provider, reset endpoint still cannot enumerate accounts (E11) |

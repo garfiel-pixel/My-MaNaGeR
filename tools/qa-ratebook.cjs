@@ -8,21 +8,26 @@
    the service worker precached the rates for every visitor - so the
    sign-in gate on the rate-book card was a screen, not a lock.
 
+   OWNER 2026-11-17: the rate book is My MaNaGeR's OWN first-party data and a
+   TRADE SECRET. No endpoint returns the whole book. A signed-in session may
+   look up ONE rate by id (GET /api/ratebook/rate/:id); the old whole-book
+   route is retired. The browser caches only the single rates a line used,
+   under mmgr-ratebook-v2.
+
    T2 harness: starts a local wrangler dev on its own port and asks
    the questions the gate asks.
 
-     R1  signed-out GET /api/ratebook -> 401 and no book in the body
+     R1  signed-out per-id GET -> 401 and no rate in the body
      R2  signed-out GET /js/rates-full.js -> 404
      R3  signed-out GET of the old publisher PDF -> 404
      R4  a FORGED session cookie -> 401 (a cookie is not a session)
-     R5  signed-in GET -> 200, 811 rates, 11 trades
-     R6  the signed-in answer carries Cache-Control: private and never
-         serialises the provenance record
+     R5  the WHOLE-book route -> 404 (no path returns all rows)
+     R6  signed-in per-id GET -> 200 with exactly ONE row, Cache-Control:
+         private, no provenance serialised; unknown id -> 404
      R7  the service-worker shell lists no rate file, and the public
          data file is gone from disk
-     R8  the calculator loads the book from /api/ratebook and keeps an
-         offline copy in mmgr-ratebook-v1 (source contract: no script
-         injection of a rate file, cache read before network)
+     R8  the calculator uses /api/ratebook/rate/:id with per-id cache
+         mmgr-ratebook-v2 (no whole-book fetch, no whole-book copy)
 
    Usage: node tools/qa-ratebook.cjs
    Registry: docs/CI-TEST-COVERAGE.md -> CI row (T2 group in ci.yml).
@@ -194,19 +199,26 @@ function read(rel) {
     'R8a the calculator no longer injects a rate-data script',
     !/createElement\('script'\)[\s\S]{0,200}rates?-full/i.test(calc) && !/rates?-full/i.test(calc)
   );
-  check('R8b it fetches /api/ratebook', /RATEBOOK_URL\s*=\s*'\/api\/ratebook'/.test(calc));
   check(
-    'R8c it keeps the offline copy in mmgr-ratebook-v1',
-    /RATEBOOK_CACHE\s*=\s*'mmgr-ratebook-v1'/.test(calc)
+    'R8b it looks up a single rate at /api/ratebook/rate/:id',
+    /\/api\/ratebook\/rate\//.test(calc) && /function rrLookupRate/.test(calc)
   );
   check(
-    'R8d the cache is read BEFORE the network',
-    calc.indexOf('rrCacheRead()') > -1 &&
-      calc.indexOf('rrCacheRead()') < calc.indexOf('fetch(RATEBOOK_URL')
+    'R8c it keeps single-rate copies in mmgr-ratebook-v2, never v1',
+    /RATEBOOK_CACHE\s*=\s*'mmgr-ratebook-v2'/.test(calc) && calc.indexOf('mmgr-ratebook-v1') === -1
+  );
+  check(
+    'R8d the per-id cache is read BEFORE the network',
+    calc.indexOf('rrCacheRead(id)') > -1 &&
+      calc.indexOf('rrCacheRead(id)') < calc.indexOf('fetch(rateUrl(id)')
   );
   check(
     'R8e signing out clears the rate-book cache',
-    /caches\.delete\('mmgr-ratebook-v1'\)/.test(read('js/mmgr-google-auth.js'))
+    /caches\.delete\('mmgr-ratebook-v2'\)/.test(read('js/mmgr-google-auth.js'))
+  );
+  check(
+    'R8f no whole-book route or whole-book fetch remains',
+    calc.indexOf("fetch('/api/ratebook'") === -1 && calc.indexOf('fetch(RATEBOOK_URL') === -1
   );
 
   try {
@@ -217,12 +229,14 @@ function read(rel) {
   }
 
   try {
-    // R1: signed out, the data does not exist for you.
-    const r1 = await fetch(BASE + '/api/ratebook');
+    const RATE_URL = id => BASE + '/api/ratebook/rate/' + id;
+
+    // R1: signed out, a single rate does not exist for you either.
+    const r1 = await fetch(RATE_URL('excavation-1'));
     const b1 = await j(r1);
     check(
-      'R1 signed-out /api/ratebook -> 401 with no book',
-      r1.status === 401 && !b1.book && b1.ok === false,
+      'R1 signed-out per-id lookup -> 401 with no rate',
+      r1.status === 401 && !b1.rate && b1.ok === false,
       { status: r1.status, keys: Object.keys(b1) }
     );
 
@@ -234,11 +248,17 @@ function read(rel) {
     const r3 = await fetch(BASE + '/rate-book-2025-2027-imperial-metric.pdf');
     check('R3 old rate-book PDF path -> 404', r3.status === 404, { status: r3.status });
 
-    // R4: a cookie is not a session. Forged HMAC must not open the book.
-    const r4 = await fetch(BASE + '/api/ratebook', {
+    // R4: a cookie is not a session. Forged HMAC must not open a rate.
+    const r4 = await fetch(RATE_URL('excavation-1'), {
       headers: { Cookie: 'mmgr_session=forged.deadbeef' }
     });
     check('R4 forged cookie -> 401', r4.status === 401, { status: r4.status });
+
+    // R5: the WHOLE-book route is retired - no path returns all rows.
+    const r5whole = await fetch(BASE + '/api/ratebook');
+    check('R5a retired whole-book route -> 404', r5whole.status === 404, {
+      status: r5whole.status
+    });
 
     // A real session, minted the way the app mints one.
     const email = 'ratebook-' + Date.now().toString(36) + '@example.com';
@@ -266,26 +286,54 @@ function read(rel) {
       }
     }
     if (!cookie) {
-      check('R5 a session could be minted to test the signed-in path', false);
+      check('R6 a session could be minted to test the signed-in path', false);
     } else {
-      const r5 = await fetch(BASE + '/api/ratebook', {
+      const r6 = await fetch(RATE_URL('excavation-1'), {
         headers: { Cookie: 'mmgr_session=' + cookie }
       });
-      const b5 = await j(r5);
-      const book = b5.book || {};
+      const b6 = await j(r6);
+      const rate = b6.rate || {};
       check(
-        'R5 signed-in /api/ratebook -> 200 with 811 rates across 11 trades',
-        r5.status === 200 && book.rows && book.rows.length === 811 && book.trades.length === 11,
-        { status: r5.status, rows: (book.rows || []).length, trades: (book.trades || []).length }
+        'R6a signed-in per-id lookup -> 200 with EXACTLY one row (no list)',
+        r6.status === 200 &&
+          !!b6.ok &&
+          rate.id === 'excavation-1' &&
+          !b6.book &&
+          !b6.rows &&
+          !b6.rates,
+        { status: r6.status, keys: Object.keys(b6) }
       );
-      const cc = r5.headers.get('cache-control') || '';
-      check('R6a Cache-Control is private', /^private/.test(cc), { cacheControl: cc });
-      const raw = JSON.stringify(b5);
+      const cc = r6.headers.get('cache-control') || '';
+      const vary = r6.headers.get('vary') || '';
+      check('R6b Cache-Control is private', /^private/.test(cc), { cacheControl: cc });
+      check('R6c Vary includes Cookie', /cookie/i.test(vary), { vary });
+      const raw = JSON.stringify(b6);
       check(
-        'R6b the response never serialises the provenance record',
-        raw.indexOf('RATEBOOK_PROVENANCE') === -1 && raw.indexOf('JIC_Rate_Book') === -1,
+        'R6d the response never serialises the provenance record',
+        raw.indexOf('RATEBOOK_PROVENANCE') === -1 &&
+          raw.indexOf('JIC_Rate_Book') === -1 &&
+          raw.indexOf('publisher') === -1,
         { sample: raw.slice(0, 120) }
       );
+      // R6e: a signed-in unknown id is a clean 404, not a row and not a list.
+      const r6bad = await fetch(RATE_URL('no-such-trade-9999'), {
+        headers: { Cookie: 'mmgr_session=' + cookie }
+      });
+      check('R6e signed-in unknown id -> 404', r6bad.status === 404, { status: r6bad.status });
+
+      // R9: rate limiting. The general bucket allows 30/min; hammer the
+      // per-id route until one answer is 429. Placed LAST so the shared-IP
+      // counter cannot poison the gates above.
+      let saw429 = false;
+      for (let i = 0; i < 40 && !saw429; i++) {
+        const rr = await fetch(RATE_URL('excavation-1'), {
+          headers: { Cookie: 'mmgr_session=' + cookie }
+        });
+        if (rr.status === 429) {
+          saw429 = true;
+        }
+      }
+      check('R9 repeated per-id lookups are rate limited (429)', saw429);
     }
   } catch (e) {
     check('harness ran without throwing', false, e && e.message);

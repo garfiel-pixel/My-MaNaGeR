@@ -164,7 +164,7 @@ import {
 } from './reviews.js';
 import { handleContactCreate } from './contact.js';
 import { handleAiChat } from './ai-proxy.js';
-import { handleRatebook } from './ratebook.js';
+import { handleRatebookRate } from './ratebook.js';
 import { handleMcpServer } from './mcp/server.js';
 import {
   handleAppwideMcp,
@@ -1233,17 +1233,19 @@ export async function routeApi(request, env, url) {
       return handlePhotoMeta(request, env, cloudPhotoMetaMatch[1], cloudPhotoMetaMatch[2]);
     }
 
-    // 10. RATE BOOK (RB-1, 2026-10-25)
-    // The 811 planning rates are signed-in data, not a public file. The route
-    // sits AFTER the same-origin gate above, so a foreign Origin cannot read
-    // it even with a borrowed cookie. Rate-limited like every other read: the
-    // payload is ~100 KB and there is no reason to serve it in a loop.
-    if (path === '/api/ratebook' && request.method === 'GET') {
+    // 10. RATE BOOK (owner 2026-11-17: first-party, trade secret)
+    // NO endpoint returns the whole book. A signed-in session looks up ONE
+    // rate by stable id (trade + row number) so the current estimate line can
+    // show the rate it used. Sits AFTER the same-origin gate, so a foreign
+    // Origin cannot read it even with a borrowed cookie. Rate-limited like
+    // every other read to bound enumeration of ids.
+    const ratebookRateMatch = path.match(/^\/api\/ratebook\/rate\/([A-Za-z0-9_-]{1,32})$/);
+    if (ratebookRateMatch && request.method === 'GET') {
       const r = await rl(request, 'general', env);
       if (r) {
         return r;
       }
-      return handleRatebook(request, env);
+      return handleRatebookRate(request, env, ratebookRateMatch[1]);
     }
 
     // 10b. HEALTH PROBE

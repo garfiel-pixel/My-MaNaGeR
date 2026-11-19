@@ -71,7 +71,13 @@ const EXACT = {
   // continuous-loop transition (border/box-shadow/colour eased at 0.7s), the
   // softer band-seam glow and the reduced-motion cross-fade rules.
   'css/marketing.css': 166000,
-  'js/calculator-page.js': 600000,
+  // 2026-11-17 (rate book, user's own book): raised 600000 -> 610000. The
+  // file readers were SPLIT OUT into js/book-import.js first (288 lines), so
+  // this raise covers only what stayed: the per-line rate identity, the
+  // uploaded-book picker group, the upload/remove actions and the workspace
+  // section. The next calculator feature should split a render family rather
+  // than raise this again.
+  'js/calculator-page.js': 610000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.
   // 2026-11-08 (C3 Phase 1): raised 215000 -> 220000 for the Documents view

@@ -24,6 +24,14 @@
   var BADGE_ICO = 'plan-badge-ico';
   var POP = 'plan-pop';
   var PRICING_PAGE = 'pricing.html';
+  /* OWNER 2026-11-17: "Premium status must be server-checked and persist
+     across refresh". The badge is painted from the last CONFIRMED billing
+     answer the moment the rail already shows a signed-in person, so a paid
+     account never reads "Upgrade to Premium" for a second after a reload. The
+     server still answers every load and corrects the badge; the cache only
+     removes the flash. It is deleted on sign-out, so it never outlives the
+     session it belongs to. */
+  var PLAN_CACHE = 'mmgr_plan_cache';
   var busy = false;
 
   function $(id) {
@@ -138,6 +146,46 @@
     closePop();
   }
 
+  /* The last confirmed billing answer, stored on this device. Only the fields
+     the control renders are kept - never a token, a price id or a customer
+     id. */
+  function readPlanCache() {
+    try {
+      var raw = localStorage.getItem(PLAN_CACHE);
+      if (!raw) {
+        return null;
+      }
+      var p = JSON.parse(raw);
+      return p && typeof p === 'object' ? p : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function writePlanCache(data) {
+    try {
+      localStorage.setItem(
+        PLAN_CACHE,
+        JSON.stringify({
+          at: Date.now(),
+          active: !!data.active,
+          plan: data.plan || 'free',
+          currentPeriodEnd: data.currentPeriodEnd || null,
+          canceling: !!data.canceling,
+          cancelAt: data.cancelAt || null
+        })
+      );
+    } catch (e) {
+      /* storage may be blocked */
+    }
+  }
+  function clearPlanCache() {
+    try {
+      localStorage.removeItem(PLAN_CACHE);
+    } catch (e) {
+      /* storage may be blocked */
+    }
+  }
+
   function closePop() {
     var pop = $(POP);
     var badge = $(BADGE);
@@ -195,6 +243,9 @@
       badge.classList.remove('on');
     }
     closePop();
+    // Signing out is the one failure this cache must never outlive: the next
+    // person on the device must not be told this account is Premium.
+    clearPlanCache();
   }
 
   /* OWNER 2026-10-09: cancelling takes TWO deliberate acts - type the word, then
@@ -271,6 +322,17 @@
     if (!plan && !badge) {
       return;
     }
+    // Paint the last CONFIRMED plan first, so a paid account never reads
+    // "Upgrade to Premium" while the request is in flight. Only when the rail
+    // already shows a signed-in person: the cache belongs to that account, and
+    // a signed-out visitor must never inherit it. The fetch below still
+    // decides; this only removes the flash.
+    if (railSignedIn()) {
+      var cached = readPlanCache();
+      if (cached) {
+        setBadge(!!cached.active);
+      }
+    }
     var res;
     try {
       res = await fetch('/api/billing/status', { method: 'GET', credentials: 'same-origin' });
@@ -322,9 +384,11 @@
     }
     if (!data.active) {
       // Free plan: the badge itself is the upgrade path (pricing.html).
+      writePlanCache(data);
       showFree(plan);
       return;
     }
+    writePlanCache(data);
     setBadge(true);
     planState = data;
     periodEnd = data.currentPeriodEnd || null;

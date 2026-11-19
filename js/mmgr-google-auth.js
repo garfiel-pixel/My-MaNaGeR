@@ -961,6 +961,15 @@ var MMGR = window.MMGR || {};
     // routes through, rather than in one page's listener where a second host
     // would miss it. No reload: the pill is cleared as the sign-out completes.
     clearPlanPills();
+    // The plan cache (js/mmgr-billing-manage.js) belongs to the account that
+    // just left. It is cleared HERE because every page routes sign-out through
+    // this one function; a page-local listener would leave the next person on
+    // the device reading the previous account's plan on a reload.
+    try {
+      localStorage.removeItem('mmgr_plan_cache');
+    } catch (e) {
+      /* storage may be blocked */
+    }
     document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
   }
 
@@ -3176,38 +3185,41 @@ var MMGR = window.MMGR || {};
     }
     wireHeaderChip();
     wireDriveControls();
+    /* OWNER 2026-11-17 / CI 2026-11-18: the plan is a SESSION question, not
+       a Google-script question. Restore the session NOW - /api/auth/me does
+       not need GIS - so showUser() asks /api/billing/status at once for a
+       signed-in account (no 10s GIS wait before a paid account stops reading
+       the ordinary "Start <tier>" cards). A signed-out visitor makes NO
+       billing request at all: no 404 on the static dev server (qa-hero-globe)
+       and no 403/429 flood that rate-limits the Worker during the page-health
+       sweep. Asking every [data-plan-badge] page unconditionally was the bug. */
+    restoreSession();
     // The GIS script tag is async+defer in the page head, so it may still be
     // loading. Initialize the moment it's present; if it never loads
     // (offline / blocked), the button slot stays empty and nothing is gated.
     if (initGIS()) {
-      restoreSession();
       return;
     }
     const s = document.querySelector('script[src*="gsi/client"]');
     if (s && typeof s.addEventListener === 'function') {
       s.addEventListener('load', function () {
-        if (initGIS()) {
-          restoreSession();
-        }
+        initGIS();
       });
       s.addEventListener('error', function () {
         /* blocked/offline , fine */
       });
     }
     // Fallback poll: covers the case where a cached async script fired its
-    // load event before this listener attached. Also guarantees restoreSession
-    // still runs (~10s cap) so an existing session chip appears even if GIS
-    // never loads.
+    // load event before this listener attached (~10s cap). Session restore
+    // already ran above and does not wait on GIS, so this only waits for GIS
+    // to draw the sign-in button; it no longer gates the session chip.
     let tries = 0;
     const t = setInterval(function () {
       if (gisReady()) {
         clearInterval(t);
-        if (initGIS()) {
-          restoreSession();
-        }
+        initGIS();
       } else if (++tries > 40) {
         clearInterval(t);
-        restoreSession();
         showGoogleFallback();
       }
     }, 250);

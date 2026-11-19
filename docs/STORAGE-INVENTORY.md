@@ -67,6 +67,7 @@ fails the gate.
 | `mmgr_offline_copy_<id>` | Marks an offline copy of a cloud project. | necessary |
 | `mmgr_pool_pending_<id>` | Cloud writes waiting for the connection to return. | necessary |
 | `mmgr_team_cache` | Your pending invitations and your "Shared with me" projects, kept on this device so the bell count and the panel open straight away instead of waiting on a fresh load. Refreshed about once a minute while the app is open. | necessary |
+| `mmgr_plan_cache` | The last plan the server confirmed for the signed-in account (free or paid, and when the paid period ends), kept on this device so a reload paints the right badge instead of flashing "Upgrade" at a paid account. The server still answers every load and corrects it; the entry is deleted on sign-out. | necessary |
 | `mmgr_theme_backend` | Retired theme-sync flag, kept so old devices migrate cleanly. | necessary |
 | `mmgr_glass_mode` | Glass appearance preference. | necessary |
 | `mmgr_palette` | Colour palette choice (gold or rose). | necessary |

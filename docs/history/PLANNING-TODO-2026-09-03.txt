@@ -1,6 +1,5 @@
 MY MANAGER - PLANNING TRACKER (2026-09-03 session)
-===================================================
-Status legend: [ ] OPEN  [~] IN PROGRESS  [x] DONE  [?] NEEDS OWNER DECISION
+============================================Status legend: [ ] OPEN  [~] IN PROGRESS  [x] DONE  [?] NEEDS OWNER DECISION
 This is a PLANNING file - nothing here is executed without the owner's go.
 Owner rule for this session: planning only, read code, do not edit code.
 
@@ -2755,6 +2754,32 @@ narrower reading of §14.3).
   submission as before; anything else still refuses as not_a_list. Unit test
   added; qa-api-keys re-run locally: ALL API-KEY GATES PASSED (P18a-e).
 
+- PLAN STATE 2026-11-18 (owner: "Premium status must be server-checked and
+  persist across refresh; outside the app it says Upgrade while the account
+  is paid"). Three causes, all client-side:
+  (1) js/mmgr-google-auth.js asked /api/billing/status only from showUser(),
+  which waits for Google's GIS loader (up to the 10s fallback poll when that
+  script is blocked, slow or offline). A paid account therefore read the
+  ordinary "Start <tier>" pricing cards for the whole window. The boot now
+  asks the plan question in parallel whenever the page carries
+  [data-plan-badge] or [data-pricing-upgrade]; the server still decides.
+  (2) pricing.html never reflected the paid tier: js/marketing.js now marks
+  the card for the plan already being paid for ("Your current plan",
+  disabled, aria-disabled, is-current), names the plan in
+  [data-pricing-status], restores every card on sign-out, and remembers each
+  card's original label in data-label so the restore is exact.
+  (3) A reload flashed "Upgrade" at a paid account while the request was in
+  flight. js/mmgr-billing-manage.js now paints the last CONFIRMED answer from
+  mmgr_plan_cache when the rail already shows a person, and js/mmgr-
+  google-auth.js signOut() deletes that key - the one path every page routes
+  through. Storage inventory row added.
+  Gates: qa-plan-badge P6 (paid pricing card, other cards, status line,
+  sign-out restore), P7 (free page untouched), P8 (paid rail reads Premium),
+  P9 (billing route never answers; the cache still paints Premium), 42/42.
+  The paid fixture is now `contractor`, a real tier. qa-consent 37/37.
+  app.html mmgr-billing-manage ?v=554, pricing.html marketing bundle ?v=372,
+  sw.js shell cache v652 -> v653.
+
 - PR 14 CI REPAIR 2026-11-18 (rate book, commit 0ab18aa, run 44191438462):
   two reds. (1) browser-calc step 25 qa-calc-controls UI-5 [1100x800]
   failed with spreadDx/spreadDy 0 but movedPx 60: the portal tracked
@@ -2775,7 +2800,6 @@ narrower reading of §14.3).
   Registry row for qa-calc-controls carries the re-baseline note; the
   skeptical-code-audit skill gains items 13 (custom escaper is not a
   sanitiser) and 14 (a harness precondition is not a test of the feature).
-
 - SHARED-PROJECT CARDS 2026-11-17 (owner: "if I refresh, the projects that
   are shared with me don't instantly load up" + "shared-project cards must
   match local/cloud cards"). Two causes, both client-side:
@@ -2799,6 +2823,27 @@ narrower reading of §14.3).
   Gates: qa-team-ui G15 (card shape + payload fields) and G16 (fetch stubbed
   to a promise that never resolves; the cards must still paint from cache),
   25/25; qa-team-rbac 75/75 unchanged. sw.js shell cache v652 -> v661.
+- PLAN-STATE CI REPAIR 2026-11-19 (feat/plan-state-persist PR17 run 44436803485).
+  Merging plan-state into main made two CI jobs red from the same root cause:
+  the boot fix above asked /api/billing/status in parallel on EVERY page with
+  [data-plan-badge] or [data-pricing-upgrade] (~10 marketing pages), signed in
+  or not. Signed-out, that is a 404 on the static dev server (qa-hero-globe
+  G10a console error) and a 403-then-429 flood on the Worker. qa-health-sweep
+  whitelists /api/* 401/403 but NOT 429, so its LAST pages (admin.html,
+  seed-test.html) failed http>=400 while the first ones passed - a self-inflicted
+  request flood, not a slow server. Fix: js/mmgr-google-auth.js boot() no longer
+  calls refreshPlan() from a selector check. It calls restoreSession() FIRST -
+  /api/auth/me does not need GIS - and the signed-in branch showUser() asks the
+  plan question; a signed-out visitor makes zero billing calls. The GIS branches
+  no longer re-call restoreSession (the _restored guard made them no-ops) and no
+  longer gate the session chip on the 10s vendor fallback. Owner requirement kept:
+  server-checked plan, survives reload, no Upgrade flash, paid card marked current.
+  Gates: qa-hero-globe 16/16 (G10a clean), health-sweep 15/15 on wrangler after
+  applying D1 migrations locally (the auth_nonces 503 on an unmigrated local state
+  is environmental, not from this change), qa-plan-badge 42/42, qa-consent 37/37,
+  qa-chrome 106/106, npm run verify green. skeptical-code-audit checklist item 15
+  added (a mount is not a session; suspect 429 on last-swept pages = self flood).
+  sw.js shell cache v665 -> v667 (v666 is the nav-icon-search branch).
 
 - UI 2026-11-18/19 (owner): (a) the app menu icon sat in a white plate in
   light and a near-black plate in dark, with a gold glyph. It is now the icon

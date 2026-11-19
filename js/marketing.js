@@ -694,6 +694,63 @@
     });
   }
 
+  /* OWNER 2026-11-17: a paid account must never be invited to "Start" the plan
+     it already pays for. js/mmgr-google-auth.js fetches the authoritative plan
+     on every marketing page and announces it (mmgr:plan-changed); this marks
+     that tier card as the current plan and says so once, in the page's own
+     status line. The server remains the only source of truth - this only
+     reflects what it answered. Signing out restores every card, so the next
+     person on the device is never told a plan is already theirs. */
+  function restorePricing() {
+    var btns = document.querySelectorAll('[data-pricing-upgrade]');
+    for (var i = 0; i < btns.length; i++) {
+      var b = btns[i];
+      var label = b.getAttribute('data-label');
+      if (label) {
+        b.textContent = label;
+      }
+      b.disabled = false;
+      b.removeAttribute('aria-disabled');
+      b.classList.remove('is-current');
+    }
+    var status = document.querySelector('[data-pricing-status]');
+    if (status) {
+      status.hidden = true;
+      status.textContent = '';
+    }
+  }
+  function applyPlanToPricing(detail) {
+    restorePricing();
+    if (!detail || !detail.active) {
+      return;
+    }
+    var plan = String(detail.plan || '').toLowerCase();
+    if (!plan || plan === 'free') {
+      return;
+    }
+    var name = plan.charAt(0).toUpperCase() + plan.slice(1);
+    var btn = document.querySelector('[data-pricing-upgrade][data-tier="' + plan + '"]');
+    if (btn) {
+      // Remember what the card said, so a plan change (or sign-out) can put the
+      // exact label back instead of a guessed one.
+      if (!btn.getAttribute('data-label')) {
+        btn.setAttribute('data-label', btn.textContent);
+      }
+      btn.disabled = true;
+      btn.setAttribute('aria-disabled', 'true');
+      btn.classList.add('is-current');
+      btn.textContent = 'Your current plan';
+    }
+    var status = document.querySelector('[data-pricing-status]');
+    if (status) {
+      status.hidden = false;
+      status.textContent =
+        'You are on the ' +
+        name +
+        ' plan. Pick another card to change plan - you keep the time you already paid for.';
+    }
+  }
+
   function renderSigninSignedOut() {
     if (!signinSheet) {
       return;
@@ -1960,6 +2017,10 @@
   initPaddleWhenReady();
   handlePaddleReturn();
   wireUpgradeButtons();
+  document.addEventListener('mmgr:plan-changed', function (ev) {
+    applyPlanToPricing(ev.detail);
+  });
+  document.addEventListener('mmgr:google-signed-out', restorePricing);
   mountContactForm();
 })();
 

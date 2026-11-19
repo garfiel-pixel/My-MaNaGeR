@@ -51,7 +51,7 @@ const check = (name, ok, detail) => {
       'FAIL  ' +
         name +
         '  <-- ' +
-        JSON.stringify(detail === undefined ? null : detail).slice(0, 400)
+        JSON.stringify(detail === undefined ? null : detail).slice(0, 1000)
     );
   }
 };
@@ -398,6 +398,7 @@ const FLUSH_RAF = `new Promise(function (res) {
         let bad = 0;
         let seenSteps = 0;
         let maxShare = 0;
+        let docked = { w: 0, edge: false };
         for (let i = 0; i < 16; i++) {
           const m = await page.evaluate(() => {
             const pop = document.getElementById('calc-tour-pop');
@@ -432,7 +433,8 @@ const FLUSH_RAF = `new Promise(function (res) {
               pop: { top: p.top, bottom: p.bottom, left: p.left, right: p.right },
               spot: s ? { top: s.top, bottom: s.bottom, left: s.left, right: s.right } : null,
               btn: btn,
-              vh: window.innerHeight
+              vh: window.innerHeight,
+              vw: window.innerWidth
             };
           });
           if (!m) {
@@ -442,6 +444,12 @@ const FLUSH_RAF = `new Promise(function (res) {
           const sharePct = Math.round(((m.pop.bottom - m.pop.top) / m.vh) * 100);
           if (sharePct > maxShare) {
             maxShare = sharePct;
+          }
+          if (!m.final && (!docked.w || m.pop.right - m.pop.left >= docked.w)) {
+            docked = {
+              w: Math.round(m.pop.right - m.pop.left),
+              edge: m.pop.left <= 24 || m.pop.right >= m.vw - 24
+            };
           }
           // A spotlight smaller than 20px is not highlighting a control at
           // all (the target was off-screen when the cutout was measured).
@@ -500,13 +508,15 @@ const FLUSH_RAF = `new Promise(function (res) {
             break;
           }
         }
-        // L2b: in landscape the card must dock to a side, not eat the height.
-        // A full-width card over a 360-390px screen leaves a thin strip.
+        // L2b: in landscape the card docks to a side edge at 280px, so it
+        // never spans the screen. (The 44px button floor sets the card's
+        // height, so height share alone is not the right measure - the
+        // docked width is what stops the "thin strip of page".)
         if (vp.name.indexOf('landscape') === 0) {
           check(
-            'L2b tour @' + vp.name + ': card takes <= 35% of the height (' + maxShare + '%)',
-            maxShare > 0 && maxShare <= 35,
-            { maxShare: maxShare }
+            'L2b tour @' + vp.name + ': card docks to a side edge, max 280px',
+            docked.w > 0 && docked.w <= 280 && docked.edge,
+            docked
           );
         }
         check(

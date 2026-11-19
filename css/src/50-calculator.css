@@ -1066,11 +1066,24 @@ html.mmgr-tour-active .bcp-tour-nudge {
 .bcp-tour-text {
   font-size: 0.88rem;
   line-height: 1.5;
+  /* UX-2026-11-19 A3: when the card is height-capped to clear a tall target
+     on a short screen, the copy scrolls inside it rather than overflowing. */
+  overflow-y: auto;
+  min-height: 0;
 }
 .bcp-tour-btns {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+/* UX-2026-11-19 A3/A4: Back, Skip and Next measured 28px high on a coarse
+   pointer, under the 44px target the directive sets. The tour is the one
+   place where a mis-tap costs the reader their place in the walkthrough. */
+@media (pointer: coarse) {
+  .bcp-tour-btns .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 @media (max-width: 600px) {
   .bcp-tour-pop {

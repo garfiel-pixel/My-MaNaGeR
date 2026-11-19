@@ -820,3 +820,35 @@ no extra request - so this is the one growth the "move a band" note does not
 cover; it is recorded in `tools/verify-sizes.cjs` as such.
 
 Commit: `feat(marketing): the role cards open into a figure`.
+
+### C4 - Part C close
+
+Part C is complete. The landing page's six band seams are a drawn wave that
+drifts on its own, the four card rows share one restrained motion, and the
+role cards open into a figure - all three without taking a byte of the
+reader's attention away from the copy.
+
+Standard battery, run on the C3 tree:
+
+| Harness | Result |
+|---|---|
+| `qa-full.cjs` | **194 / 194** |
+| `tools/qa-controls-ia.cjs` | **12 / 12** |
+| `tools/qa-dashboard-spec.cjs` | **104 / 104** |
+| `tools/qa-ux-landscape.cjs` | **58 / 58** |
+| `tools/qa-calculator-page.cjs` | **256 / 256** |
+| `tools/qa-a11y-axe.cjs` | **7 / 7** |
+| `tools/qa-cloud-phase1.cjs` | **29 / 29** |
+| `tools/qa-cloud-phase2.cjs` | **93 / 93** |
+| `tools/qa-landing-motion.cjs` | **47 / 47** |
+| `tools/qa-landing-ui.cjs` | **70 / 70** |
+| `tools/qa-band-seam.cjs` | **19 / 19** |
+| `tools/qa-marketing-layout.cjs` | PASS |
+| `npm run verify` | **exit 0**, 613 PASS lines |
+
+Nothing in Part C is worse than the Part B baseline. The only metric that
+moved in the wrong direction is the marketing stylesheet's byte count, and
+that is recorded with its reason in `tools/verify-sizes.cjs` (169000 ->
+176000) along with `index.html` (54000 -> 60000).
+
+Commit: `test(marketing): Part C close - standard battery green`.

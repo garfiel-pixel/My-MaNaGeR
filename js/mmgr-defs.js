@@ -104,7 +104,7 @@ var MMGR = window.MMGR || {};
       group: 'Planning',
       meaning:
         'The formally approved version of the plan (schedule, cost, scope) used as the fixed reference for measuring performance.',
-      why: 'Save Baseline in Settings snapshots the plan, and every Baseline Variance card compares against it.'
+      why: 'Save Baseline (Settings ▸ Controls ▸ Your Data ▸ Backup & Transfer) snapshots the plan, and every Baseline Variance card compares against it.'
     },
 
     // ---- Scheduling ----

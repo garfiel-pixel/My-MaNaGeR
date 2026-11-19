@@ -15,10 +15,10 @@
    bump; `npm run verify:empty-state` fails when the file is stale.
    ============================================================ */
 
-export const EMPTY_STATE_SCHEMA = 31;
+export const EMPTY_STATE_SCHEMA = 32;
 
 const BASE = {
-    "schemaVersion": 31,
+    "schemaVersion": 32,
     "projectId": "default",
     "projectName": "",
     "status": "active",

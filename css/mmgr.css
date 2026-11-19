@@ -17799,6 +17799,19 @@ body.dark-mode .sync-suggest {
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(245, 158, 11, 0.4);
 }
+
+/* Baseline Variance empty state (data-truth PR): the card now carries the
+   capture action itself instead of naming a control four levels deep in the
+   drawer. The row wraps on narrow cards so two buttons never overflow. */
+.dw-base-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.dw-base-act .btn {
+  flex: 0 1 auto;
+}
 /* DASHBOARD-UI-REFRESH-SPEC - dark dashboard treatment (app.html ONLY) */
 .db-side,
 .db-hamb,

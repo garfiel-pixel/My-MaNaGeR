@@ -1394,7 +1394,11 @@ export const CLOUD_SECTIONS = {
     label: 'Charter',
     keys: ['projectName', 'methodology', 'methodologyLocked', 'charter']
   },
-  wbs: { label: 'WBS / Tasks', keys: ['tasks', 'projectDeadline'] },
+  // `baseline` rides with the schedule it snapshots: it is a top-level field
+  // in the client's FIELD_KEYS, and until 2026-11-19 it was in NO section, so
+  // a captured baseline never reached the cloud and a second device always
+  // reported "No baseline saved yet".
+  wbs: { label: 'WBS / Tasks', keys: ['tasks', 'projectDeadline', 'baseline'] },
   res: { label: 'Resources', keys: ['resources'] },
   bud: { label: 'Budget', keys: ['budgetLines', 'budgetEnvelope', 'spendLog', 'nspid'] },
   stk: { label: 'Stakeholders', keys: ['stakeholders'] },

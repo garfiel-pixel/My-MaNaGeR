@@ -428,8 +428,15 @@ var MMGR = window.MMGR || {};
       baseEl.textContent = '';
       baseEl.style.color = 'var(--slate)';
       if (baseSub) {
-        baseSub.textContent =
-          'No baseline yet - one is captured automatically once a task has dates and days, or use Save Baseline in Controls.';
+        // The empty state used to be prose pointing at a control four levels
+        // deep in the drawer. It now carries the capture button itself (the
+        // existing saveBaseline handler) plus a link that opens the drawer on
+        // that exact control - so "no baseline" is one click from fixed.
+        const hasTasks = Array.isArray(s.tasks) && s.tasks.length > 0;
+        // ok: static template string; the only branch is a literal, no data.
+        baseSub.innerHTML = hasTasks
+          ? 'No baseline yet. Capture one to start tracking drift.<span class="dw-base-act"><button type="button" class="btn btn-o btn-s" data-action="saveBaseline">Capture baseline now</button><button type="button" class="btn btn-n btn-s" data-action="openDrwToBaseline">Show me where</button></span>'
+          : 'No baseline yet. Add a task with dates, then capture a baseline to start tracking drift.<span class="dw-base-act"><button type="button" class="btn btn-n btn-s" data-action="openDrwToBaseline">Show me where</button></span>';
       }
       if (baseCard) {
         baseCard.classList.add('tier3');
@@ -511,7 +518,7 @@ var MMGR = window.MMGR || {};
         }
       } else {
         bvt.innerHTML =
-          '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">No baseline captured yet - one is captured automatically once a task has dates and days. Use Save Baseline in Controls to set one now.</td></tr>';
+          '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">No baseline captured yet - one is captured automatically once a task has dates and days. Use Save Baseline (Settings &gt; Controls &gt; Your Data &gt; Backup &amp; Transfer) to set one now.</td></tr>';
       }
       const costEl = $('base-var-cost');
       if (costEl) {
@@ -1604,7 +1611,7 @@ var MMGR = window.MMGR || {};
     const narr = computeBaselineNarrative();
     if (!narr) {
       el.innerHTML =
-        '<div class="es" style="padding:12px;font-size:.76rem">Save a baseline (Settings &gt; Controls &gt; Save Baseline) to see a plain-English week-over-week diff here, and copy it into reports via Copy All.</div>';
+        '<div class="es" style="padding:12px;font-size:.76rem">Save a baseline (Settings &gt; Controls &gt; Your Data &gt; Backup &amp; Transfer &gt; Save Baseline) to see a plain-English week-over-week diff here, and copy it into reports via Copy All.</div>';
       return;
     }
     el.innerHTML = narr

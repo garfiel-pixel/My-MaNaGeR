@@ -175,67 +175,124 @@ var MMGR = window.MMGR || {};
       return;
     }
     renderRiskMatrix();
-    let risks = (s && s.risks) || [];
+    // Keep the ORIGINAL index with every row: the editors write back through
+    // data-idx, and the matrix filter drops rows - mapping over the filtered
+    // array used to point every edit at the wrong record.
+    const all = ((s && s.risks) || []).map((r, i) => ({
+      r: ns.Risks && ns.Risks.normalize ? ns.Risks.normalize(r) : r,
+      i: i
+    }));
+    let rows = all;
     if (_riskFilter) {
       const [fp, fi] = _riskFilter.split('|');
-      risks = risks.filter(
-        r => !r.issueId && (r.probability || 'Low') === fp && (r.impact || 'Low') === fi
+      rows = all.filter(
+        x => !x.r.issueId && (x.r.probability || 'Low') === fp && (x.r.impact || 'Low') === fi
       );
     }
-    if (!risks.length) {
+    if (!rows.length) {
       body.innerHTML = emptyStateRow(
-        8,
-        'No risks tracked yet.',
+        9,
+        _riskFilter ? 'No risks in this matrix cell.' : 'No risks tracked yet.',
         '<button class="btn btn-g btn-s" data-action="addRisk">+ Add Risk</button>'
       );
       return;
     }
     const tasks = (s && s.tasks) || [];
-    body.innerHTML = risks
-      .map((r, i) => {
+    const levels = ['Low', 'Medium', 'High'];
+    const opts = sel =>
+      levels
+        .map(
+          lv =>
+            '<option value="' + lv + '"' + (lv === sel ? ' selected' : '') + '>' + lv + '</option>'
+        )
+        .join('');
+    const textCell = (field, value, idx, placeholder, width) =>
+      '<input type="text" value="' +
+      U.escapeHtml(value == null ? '' : String(value)) +
+      '" data-action="updField" data-module="Risks" data-field="' +
+      field +
+      '" data-idx="' +
+      idx +
+      '" placeholder="' +
+      placeholder +
+      '"' +
+      (width ? ' style="min-width:' + width + 'px"' : '') +
+      '>';
+    body.innerHTML = rows
+      .map((x, i) => {
+        const r = x.r;
         const scale = { Low: 1, Medium: 2, High: 3 };
         const score = (scale[r.probability] || 1) * (scale[r.impact] || 1);
         const cls = score >= 6 ? 'txt-danger' : score >= 4 ? 'txt-warn' : 'txt-green';
-        // LINKED-TASK PROPAGATION: if the risk is linked to an overdue task,
-        // flag it LATE so the project manager sees the cascade.
-        let linkedTag = '';
-        if (r.linkedTaskId) {
-          const lt = tasks.find(t => t.id === r.linkedTaskId);
-          if (lt) {
-            const overdue = lt.endDate && U.isOverdue(lt.endDate) && lt.status !== 'completed';
-            linkedTag =
-              ' <span style="font-size:.7rem">(' +
-              U.escapeHtml(lt.name) +
-              (overdue ? ' <span class="txt-danger">LATE</span>' : '') +
-              ')</span>';
-          }
-        }
+        // LINKED-TASK PROPAGATION: a risk tied to an overdue task is flagged
+        // LATE in its Linked Task cell, beside the task it will land on.
+        const lt = r.linkedTaskId ? tasks.find(t => t.id === r.linkedTaskId) : null;
+        const late = lt && lt.endDate && U.isOverdue(lt.endDate) && lt.status !== 'completed';
+        const taskOpts =
+          '<option value=""' +
+          (r.linkedTaskId ? '' : ' selected') +
+          '>None</option>' +
+          tasks
+            .map(
+              t =>
+                '<option value="' +
+                U.escapeHtml(t.id) +
+                '"' +
+                (t.id === r.linkedTaskId ? ' selected' : '') +
+                '>' +
+                U.escapeHtml(t.name) +
+                '</option>'
+            )
+            .join('');
         return (
           '<tr class="' +
           cls +
           '">' +
           '<td>' +
-          U.escapeHtml(r.name) +
-          linkedTag +
+          U.escapeHtml(r.id || '-') +
           '</td>' +
           '<td>' +
-          U.escapeHtml(r.probability || 'Low') +
+          textCell('description', r.description, i, 'Risk description', 150) +
           '</td>' +
-          '<td>' +
-          U.escapeHtml(r.impact || 'Low') +
-          '</td>' +
-          '<td>' +
-          U.escapeHtml(r.contingency || '-') +
-          '</td>' +
-          '<td>' +
-          U.escapeHtml(r.mitigation || '-') +
-          '</td>' +
-          '<td>' +
-          U.escapeHtml(r.owner || '-') +
-          '</td>' +
-          '<td><button class="btn btn-s btn-d" data-action="delRisk" data-idx="' +
+          '<td><select data-action="updField" data-module="Risks" data-field="probability" data-idx="' +
           i +
-          '">\u00d7</button></td>' +
+          '">' +
+          opts(r.probability) +
+          '</select></td>' +
+          '<td><select data-action="updField" data-module="Risks" data-field="impact" data-idx="' +
+          i +
+          '">' +
+          opts(r.impact) +
+          '</select></td>' +
+          '<td>' +
+          textCell('mitigation', r.mitigation, i, 'Mitigation plan', 140) +
+          '</td>' +
+          '<td><select data-action="updField" data-module="Risks" data-field="linkedTaskId" data-idx="' +
+          i +
+          '">' +
+          taskOpts +
+          '</select>' +
+          (late
+            ? ' <span class="txt-danger" style="font-size:.7rem;font-weight:700">LATE</span>'
+            : '') +
+          '</td>' +
+          '<td><input type="number" min="0" step="100" value="' +
+          (r.costImpactEstimate == null ? '' : U.escapeHtml(String(r.costImpactEstimate))) +
+          '" data-action="updField" data-module="Risks" data-field="costImpactEstimate" data-idx="' +
+          i +
+          '" style="min-width:80px" placeholder="0"></td>' +
+          '<td>' +
+          (r.issueId
+            ? '<span style="font-size:.72rem">' +
+              U.escapeHtml(r.issueId) +
+              ' <button class="btn btn-s btn-n" data-action="toggleRiskIssue" data-idx="' +
+              i +
+              '" title="Unlink from the issue register">Unlink</button></span>'
+            : '<button class="btn btn-s btn-o" data-action="toggleRiskIssue" data-idx="' +
+              i +
+              '" title="Promote this risk to the issue register">Raise</button>') +
+          '</td>' +
+          `<td><button class="btn btn-s btn-d" data-action="delRisk" data-idx="${i}" title="Delete this risk">\u00d7</button></td>` +
           '</tr>'
         );
       })

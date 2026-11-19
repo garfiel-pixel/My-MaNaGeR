@@ -14,6 +14,10 @@ var MMGR = window.MMGR || {};
       if (!s.risks) {
         s.risks = [];
       }
+      // The field set here is pinned to the MCP model's create defaults
+      // (test/mcp-model.test.mjs). The rest of the canonical shape - owner,
+      // status, notes, contingency, linkedTaskId, costImpactEstimate - is
+      // filled by State.normalizeRisk on read, so a row is never blank.
       s.risks.push({
         id: U.genShortId('R'),
         description: '',
@@ -29,7 +33,17 @@ var MMGR = window.MMGR || {};
     R.renderRisks();
   }
 
-  function updRisk(index, field, value) {
+  // Canonical record for display and for any reader that wants a whole risk.
+  // The implementation lives in mmgr-state.js (migration 32 needs it before
+  // this module loads); this is the module-level name the renderer calls.
+  function normalize(r) {
+    return ns.State && ns.State.normalizeRisk ? ns.State.normalizeRisk(r) : r;
+  }
+
+  // evtType is forwarded by the delegated updField dispatcher: 'input' fires
+  // on every keystroke, so the table must NOT repaint then (the caret would
+  // jump). 'change' (a select) repaints the matrix and the row's score class.
+  function updRisk(index, field, value, evtType) {
     ns.State.updateState(function (s) {
       if (s.risks && s.risks[index]) {
         s.risks[index][field] = value;
@@ -38,6 +52,9 @@ var MMGR = window.MMGR || {};
         }
       }
     });
+    if (evtType !== 'input' && R.renderRisks) {
+      R.renderRisks();
+    }
   }
 
   function delRisk(index) {
@@ -307,6 +324,7 @@ var MMGR = window.MMGR || {};
   // ---- API ----
   ns.Risks = {
     addRisk: addRisk,
+    normalize: normalize,
     updRisk: updRisk,
     delRisk: delRisk,
     toggleRiskIssue: toggleRiskIssue,

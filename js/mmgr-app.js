@@ -4600,6 +4600,37 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // Baseline deep link (data-truth PR): the Dashboard's "no baseline yet" card
+  // used to say "use Save Baseline in Controls" with no way there. This opens
+  // the drawer on Controls, expands Your Data, selects Backup & Transfer and
+  // brings the actual button into view - the same path openPacks() takes.
+  function openDrwToBaseline() {
+    if (document.body.classList.contains('focus-mode')) {
+      tglFocusMode();
+    }
+    openDrw();
+    swDtab('ctrl', document.querySelector('.dtab[data-tab="ctrl"]'));
+    const ac = window.MMGR && window.MMGR.AppControls;
+    if (ac && ac.focus) {
+      ac.focus('yourdata', 'backup');
+    }
+    const el = document.querySelector('#db-ctrl [data-action="saveBaseline"]');
+    if (el) {
+      requestAnimationFrame(function () {
+        try {
+          el.scrollIntoView({ block: 'center', behavior: 'auto' });
+        } catch (e) {
+          try {
+            el.scrollIntoView();
+          } catch (e2) {}
+        }
+        try {
+          el.focus();
+        } catch (e) {}
+      });
+    }
+  }
+
   // ---- Backup & Cloud-Sync UI ---- (extracted to js/app/backup.js)
   function cloudLinked() {
     return ns.AppBackup && ns.AppBackup.cloudLinked ? ns.AppBackup.cloudLinked() : false;
@@ -6037,6 +6068,10 @@ var MMGR = window.MMGR || {};
     showSec: showSec,
     tglFocusMode: tglFocusMode,
     openDrw: openDrw,
+    // The active project id. Three readers already expected it on this object
+    // (mmgr-ai.js MCP toggle + relay, mmgr-app.js row keying); without it they
+    // read `undefined` and keyed per-project settings to a shared bucket.
+    projectId: ns.projectId,
     closeDrw: closeDrw,
     swDtab: swDtab,
     openPacks: openPacks,
@@ -6190,6 +6225,7 @@ var MMGR = window.MMGR || {};
     populateSprint: populateSprint,
     openPrompt: openPrompt,
     openDrwToSave: openDrwToSave,
+    openDrwToBaseline: openDrwToBaseline,
     openDrwToPrompts: openDrwToPrompts,
     bkToggle: bkToggle,
     bkClose: bkClose,
@@ -6616,6 +6652,14 @@ window.MMGR = MMGR;
     addRisk: () => window.MMGR.Risks.addRisk(),
     delRisk: el => window.MMGR.Risks.delRisk(parseInt(el.getAttribute('data-idx'))),
     toggleRiskIssue: el => window.MMGR.Risks.toggleRiskIssue(parseInt(el.getAttribute('data-idx'))),
+    // Risk <-> AI: discuss a recorded risk. data-id is optional - with none
+    // the assistant takes the highest-exposure open risk.
+    askAboutRisk: el => {
+      const A = window.MMGR && window.MMGR.AiWin;
+      if (A && A.askAboutRisk) {
+        A.askAboutRisk(el && el.getAttribute('data-id'));
+      }
+    },
     delIssue: el => window.MMGR.Risks.delIssue(parseInt(el.getAttribute('data-idx'))),
     // MONOLITH-FEATURE-PARITY-DIRECTIVES RESTORE-1: risk matrix
     // click-to-filter (view-only , filtering the list, not mutating state).
@@ -7509,6 +7553,7 @@ window.MMGR = MMGR;
     populateSprint: () => window.MMGR.App.populateSprint(),
     openPrompt: el => window.MMGR.App.openPrompt(el.getAttribute('data-type')),
     openDrwToSave: () => window.MMGR.App.openDrwToSave(),
+    openDrwToBaseline: () => window.MMGR.App.openDrwToBaseline(),
     openDrwToPrompts: el => window.MMGR.App.openDrwToPrompts(el.getAttribute('data-type')),
     bkToggle: () => window.MMGR.App.bkToggle(),
     bkCloud: () => window.MMGR.App.bkCloud(),
@@ -7914,6 +7959,9 @@ window.MMGR = MMGR;
     swDtab: 1,
     openDrwToPrompts: 1,
     openDrwToSave: 1,
+    // Opening the drawer on the baseline control mutates nothing - the
+    // capture itself (saveBaseline) stays blocked for viewers.
+    openDrwToBaseline: 1,
     // C23 pool: opening the Library / refreshing the merge mutates NO
     // project state until the user explicitly links a row (poolLinkRow
     // etc. are mutating and stay read-only-blocked for viewers).
@@ -7959,6 +8007,9 @@ window.MMGR = MMGR;
     // Print Charter are ALL view-only. saveCharter mutates state and stays
     // blocked in view-only (deliberately not listed here).
     riskMatrixCell: 1,
+    // Discussing a risk writes no project record: a view-only session can ask
+    // the assistant about what it can already read.
+    askAboutRisk: 1,
     riskMatrixClear: 1,
     tglWbsIssues: 1,
     copyIdTemplate: 1,

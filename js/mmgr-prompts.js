@@ -39,7 +39,7 @@ var MMGR = window.MMGR || {};
     return s.risks
       .map(
         r =>
-          `- ${r.description} | P:${r.probability} I:${r.impact} | ${r.mitigation || 'No mitigation'}`
+          `- ${r.description || r.name || r.title || '(untitled risk)'} | P:${r.probability} I:${r.impact} | ${r.mitigation || 'No mitigation'}`
       )
       .join('\n');
   }

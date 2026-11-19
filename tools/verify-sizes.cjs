@@ -96,7 +96,10 @@ const EXACT = {
   // its four-item popover and the "Close snapshot" row in the backup popover
   // (~1.6 KB). The chip is the only new header control; the next markup wave
   // should move a panel out of this file rather than raise it again.
-  'project.html': 226000,
+  // 2026-11-19 (data-truth): raised 226000 -> 227000 for the Risk panel's
+  // "Discuss with AI" header button (~170 bytes, 226169 measured). Static
+  // markup only; the risk table itself is rendered by js/render/risks.js.
+  'project.html': 227000,
   'calculator.html': 80000,
   // 2026-11-10 (Theme pack): raised 140000 -> 143000 for the Customize modal
   // markup (themes grid, appearance/performance rows, account section) added to
@@ -132,7 +135,10 @@ const DIRS = {
   // eleven templates were dead. Naming them correctly costs ~270 bytes
   // (307269 measured); the rest of the headroom is the comment that stops the
   // next reader re-breaking it. This file is STILL the split candidate.
-  js: 309000,
+  // 2026-11-19 (data-truth): 309000 -> 310000 for openDrwToBaseline (the
+  // Dashboard baseline card's deep link, ~1.2 KB with its comment) and the
+  // askAboutRisk action entry (309319 measured).
+  js: 310000,
   css: 160000,
   src: 300000
 };

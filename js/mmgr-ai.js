@@ -555,21 +555,44 @@ var MMGR = window.MMGR || {};
 
     try {
       sec('TOP RISKS / ISSUES');
-      const risks = (s.risks || []).filter(r => !r.issueId);
-      const high = risks.filter(
-        r => /high/i.test(r.probability || '') || /high/i.test(r.impact || '')
-      );
-      line(
-        'Open risks',
-        risks.length +
-          (high.length ? ' (' + high.length + ' high) ' : '') +
-          (high.length
-            ? high
-                .slice(0, 5)
-                .map(r => r.description)
-                .join('; ')
-            : '')
-      );
+      // Normalised so the packet carries the same fields the panel shows,
+      // whichever writer created the record. Highest exposure first: the
+      // assistant should reason about what can hurt the project most.
+      const norm = ns.Risks && ns.Risks.normalize ? ns.Risks.normalize : r => r;
+      const scale = { Low: 1, Medium: 2, High: 3 };
+      const scoreOf = r => (scale[r.probability] || 1) * (scale[r.impact] || 1);
+      const risks = (s.risks || []).filter(r => !r.issueId).map(norm);
+      const high = risks.filter(r => scoreOf(r) >= 6);
+      line('Open risks', risks.length + (high.length ? ' (' + high.length + ' high)' : ''));
+      risks
+        .slice()
+        .sort((a, b) => scoreOf(b) - scoreOf(a))
+        .slice(0, 8)
+        .forEach(r => {
+          const task = r.linkedTaskId
+            ? (s.tasks || []).filter(t => t.id === r.linkedTaskId)[0]
+            : null;
+          const late = !!(
+            task &&
+            task.endDate &&
+            U.isOverdue(task.endDate) &&
+            task.status !== 'completed'
+          );
+          line(
+            r.description || 'Untitled risk',
+            [
+              'probability ' + r.probability,
+              'impact ' + r.impact,
+              'status ' + (r.status || 'open'),
+              r.owner ? 'owner ' + r.owner : 'no owner',
+              r.mitigation ? 'mitigation: ' + r.mitigation : 'no mitigation on record',
+              task ? 'linked task: ' + task.name + (late ? ' (LATE)' : '') : 'no linked task',
+              r.costImpactEstimate == null
+                ? 'no cost estimate'
+                : 'cost estimate $' + Number(r.costImpactEstimate).toLocaleString()
+            ].join(' | ')
+          );
+        });
       const issues = (s.issues || []).filter(i => i.status !== 'resolved' && i.status !== 'closed');
       line(
         'Live issues',
@@ -3650,6 +3673,100 @@ var MMGR = window.MMGR || {};
     e.preventDefault();
     askFromCommandBar(e);
   });
+
+  // ---- Discuss a risk with the assistant ----
+  // The Risk panel's "Discuss with AI" entry point. It writes a packet built
+  // from RECORDED fields only (no inference, no invented dates) and asks for a
+  // critique plus mitigations - never a project change. `id` is optional: with
+  // none, the highest-exposure open risk is the subject, which is what the
+  // panel header button wants.
+  function askAboutRisk(id) {
+    var s = ns.State && ns.State.getState ? ns.State.getState() : null;
+    if (!s) {
+      return;
+    }
+    var norm =
+      ns.Risks && ns.Risks.normalize
+        ? ns.Risks.normalize
+        : function (r) {
+            return r;
+          };
+    var risks = (s.risks || []).map(norm);
+    if (!risks.length) {
+      if (ns.App && ns.App.showToast) {
+        ns.App.showToast('Add a risk first, then discuss it here.', 'err');
+      }
+      open();
+      return;
+    }
+    var scale = { Low: 1, Medium: 2, High: 3 };
+    var scoreOf = function (r) {
+      return (scale[r.probability] || 1) * (scale[r.impact] || 1);
+    };
+    var r = id
+      ? risks.filter(function (x) {
+          return x.id === id;
+        })[0]
+      : null;
+    if (!r) {
+      r = risks.slice().sort(function (a, b) {
+        return scoreOf(b) - scoreOf(a);
+      })[0];
+    }
+    var task = r.linkedTaskId
+      ? (s.tasks || []).filter(function (t) {
+          return t.id === r.linkedTaskId;
+        })[0]
+      : null;
+    var late = !!(task && task.endDate && U.isOverdue(task.endDate) && task.status !== 'completed');
+    var lines = [
+      'Discuss this risk with me and keep the project on track.',
+      '',
+      'Risk: ' + (r.description || 'Untitled risk') + (r.id ? ' (' + r.id + ')' : ''),
+      'Probability: ' + r.probability + ' / Impact: ' + r.impact,
+      'Status: ' + (r.status || 'open'),
+      'Owner: ' + (r.owner || 'not assigned'),
+      'Mitigation on record: ' + (r.mitigation || 'none'),
+      'Contingency on record: ' + (r.contingency || 'none'),
+      'Linked task: ' +
+        (task
+          ? task.name +
+            ' (ends ' +
+            (task.endDate || 'no end date') +
+            ', ' +
+            (task.status || 'no status') +
+            (late ? ', LATE' : '') +
+            ')'
+          : 'none'),
+      'Cost impact estimate: ' +
+        (r.costImpactEstimate == null
+          ? 'none recorded'
+          : '$' + Number(r.costImpactEstimate).toLocaleString()),
+      'Issue register: ' + (r.issueId || 'not raised'),
+      'Notes: ' + (r.notes || 'none'),
+      '',
+      'Do four things:',
+      '1. Critique the assessment as recorded - is the probability and impact defensible given the linked task and the cost estimate?',
+      '2. Give concrete mitigations, each with an owner and a timeline.',
+      '3. Name the evidence that would show this risk closing.',
+      '4. Keep every suggestion inside the scope already on record for this project.',
+      '',
+      'Discuss and suggest only. Do not propose changes to the project.'
+    ];
+    open();
+    var aiQ = U.$('ai-q');
+    if (aiQ) {
+      aiQ.value = lines.join('\n');
+      try {
+        aiQ.focus();
+      } catch (e) {}
+    }
+    setTimeout(function () {
+      if (typeof runQuestion === 'function') {
+        runQuestion();
+      }
+    }, 120);
+  }
   /* S-6.5 (owner 2026-10-22) - DESKTOP FOCUS RETENTION IN THE CHAT.
      On desktop the dashboard re-renders underneath the AI window (the RAF
      sub-renders in renderDash, a cloud pull, a preference save). A render that
@@ -4690,7 +4807,10 @@ var MMGR = window.MMGR || {};
     pinChat: pinChat,
     renameChat: renameChat,
     applyAiMode: applyAiMode,
-    getChats: aiChatList
+    getChats: aiChatList,
+    // Risk ↔ AI: open the assistant on a recorded risk (discuss and suggest
+    // only - the packet never asks for a project change).
+    askAboutRisk: askAboutRisk
   };
 })(MMGR);
 window.MMGR = MMGR;

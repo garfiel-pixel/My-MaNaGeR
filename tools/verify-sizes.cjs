@@ -79,13 +79,19 @@ const EXACT = {
   // (623735 measured). One shared block, not per-page hacks.
   // 2026-11-19 (ux A4): 624000 -> 627000 for the coarse-pointer touch-target
   // block - one rule set, hit areas only, no layout (626087 measured).
-  'css/mmgr.css': 627000,
+  // 2026-11-19 (ux A5): 627000 -> 631000 for the sign-out confirm dialog
+  // (overlay, card, three-button row, short-landscape and coarse-pointer
+  // rules) in css/src/87-signin-polish.css (629248 measured).
+  'css/mmgr.css': 631000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
   // continuous-loop transition (border/box-shadow/colour eased at 0.7s), the
   // softer band-seam glow and the reduced-motion cross-fade rules.
-  'css/marketing.css': 166000,
+  // 2026-11-19 (ux A5): 166000 -> 169000. The marketing pages link their own
+  // stylesheet, so the sign-out confirm dialog is a deliberate twin of the
+  // app block (167637 measured) - identical rules, both files.
+  'css/marketing.css': 169000,
   // 2026-11-17 (rate book, user's own book): raised 600000 -> 610000. The
   // file readers were SPLIT OUT into js/book-import.js first (288 lines), so
   // this raise covers only what stayed: the per-line rate identity, the

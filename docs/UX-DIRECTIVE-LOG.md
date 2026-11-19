@@ -126,3 +126,47 @@ Gate: `qa-ux-landscape` **58/58**; `qa-a11y-axe` 7/7; `verify-contrast` at the
 2-failure baseline.
 
 Commit: `fix(ux): 44px touch targets on every coarse pointer`.
+
+### A5 - sign out asks first
+
+Tester report: "not warned before signing out". Four entry points existed and
+every one signed out on the first click: the account row
+(`js/mmgr-google-auth.js`), the marketing sheet (`js/marketing.js`), the
+sign-in confirmation block (`js/signin.js`) and the sync panel
+(`js/mmgr-app.js` -> `js/mmgr-sync.js`).
+
+One dialog, built once by `ensureSignOutDialog()` in
+`js/mmgr-google-auth.js` and appended to `<body>`, so every page that loads
+the auth module gets the same host without 13 copies of the markup:
+`#soc` + backdrop + card, title "Sign out?", body "Your work stays saved on
+this device. Cloud projects stay in your account.", buttons "Stay signed in"
+(default focus), "Sign out" and a conditional "Back up now".
+
+- Escape, an outside tap and "Stay signed in" all close it and touch nothing.
+- Focus is trapped between the visible buttons.
+- The sync panel's `signOut()` was split: `applySignOut()` does the work, and
+  `signOut()` now asks first. The toast fires only after the confirm.
+- The marketing sheet's handler was moved OUT of the `signinBtns.length`
+  guard. That block requires a `.signin-trigger` element, and NO marketing
+  page carries one, so the sheet's Sign out button had no handler at all -
+  the directive's "marketing sheet" entry point was dead markup. The sheet +
+  the auth module are now the only requirements.
+- Styles: `css/src/87-signin-polish.css` for the app, and a deliberate twin in
+  `css/marketing.css` (the marketing pages link their own bundle). The
+  buttons use `.soc-btn` rather than a page's button system, because the two
+  stylesheets define `.btn` differently. The two blocks must stay identical.
+
+Unsynced work: the sync layer exposes a dirty FLAG (`State.isDirty()`), not a
+count, so the note reads "Some changes have not been backed up yet." and never
+invents a number - recorded here as the directive requires. "Back up now" is
+offered only when dirty AND `MMGR.Cloud.autoSaveToCloud` exists; it runs the
+existing backup and closes the dialog.
+
+Size gate: `css/mmgr.css` 627000 -> 631000 (629248 measured),
+`css/marketing.css` 166000 -> 169000 (167637 measured).
+
+Gate: `tools/qa-signout-confirm.cjs` **42/42** (new); `qa-oauth`,
+`qa-cloud-phase1` 29/29, `qa-cloud-phase2`, `qa-api-keys` at baseline;
+`npm run verify` green.
+
+Commit: `fix(ux): every sign-out asks first`.

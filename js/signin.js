@@ -264,14 +264,21 @@
     renderSignedOut();
   });
 
-  /* Sign out from the confirmation block. */
+  /* Sign out from the confirmation block. UX-2026-11-19 A5: ask first,
+     through the shared dialog in mmgr-google-auth.js. */
   var out = document.getElementById('signin-out');
   if (out) {
     out.addEventListener('click', function () {
-      if (GA && typeof GA.signOut === 'function') {
-        GA.signOut();
-      } else {
+      if (!GA || typeof GA.signOut !== 'function') {
         window.location.reload();
+        return;
+      }
+      if (typeof GA.confirmSignOut === 'function') {
+        GA.confirmSignOut(function () {
+          GA.signOut();
+        });
+      } else {
+        GA.signOut();
       }
     });
   }

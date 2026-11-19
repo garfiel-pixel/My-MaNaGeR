@@ -772,7 +772,9 @@ var MMGR = window.MMGR || {};
     out.type = 'button';
     out.className = 'gchip-out';
     out.textContent = 'Sign out';
-    out.addEventListener('click', signOut);
+    out.addEventListener('click', function () {
+      confirmSignOut(signOut);
+    });
     chip.appendChild(avatar);
     chip.appendChild(name);
     chip.appendChild(out);
@@ -983,6 +985,191 @@ var MMGR = window.MMGR || {};
       /* storage may be blocked */
     }
     document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
+  }
+
+  // ---- Sign-out confirmation (UX-2026-11-19 A5) -------------------------
+  // A tester signed out by accident: the account row's button signed out on
+  // the first click with no question. Every sign-out entry point now routes
+  // through confirmSignOut(), which shows an in-app dialog (never
+  // window.confirm) and only calls the action on the explicit "Sign out".
+  //
+  // Escape, the backdrop and "Stay signed in" all leave the session intact.
+  // Focus is trapped between the two buttons and starts on "Stay signed in".
+  //
+  // Unsynced work: the sync layer exposes a dirty flag (State.isDirty), not a
+  // count, so the dialog says that changes have not been backed up and offers
+  // "Back up now" - it never invents a number.
+  let _socOpen = false;
+  let _socWired = false;
+  let _socConfirm = null;
+  let _socLastFocus = null;
+
+  // The dialog is built once and appended to <body>, so every page that loads
+  // this module (app, project, admin, the marketing pages, the standalone
+  // field guide) gets the same host without 13 copies of the markup drifting
+  // apart. Nothing here is remote data - the strings are literals.
+  function ensureSignOutDialog() {
+    if (document.getElementById('soc')) {
+      return true;
+    }
+    const host = document.createElement('div');
+    host.innerHTML =
+      '<div id="soc" class="soc" role="dialog" aria-modal="true" aria-labelledby="soc-title" aria-describedby="soc-body" hidden>' +
+      '<div class="soc-backdrop"></div>' +
+      '<div class="soc-card">' +
+      '<h2 class="soc-title" id="soc-title">Sign out?</h2>' +
+      '<p class="soc-body" id="soc-body">Your work stays saved on this device. Cloud projects stay in your account.</p>' +
+      '<p class="soc-note" data-soc-note hidden></p>' +
+      '<div class="soc-acts">' +
+      '<button type="button" class="soc-btn" data-soc="backup" hidden>Back up now</button>' +
+      '<button type="button" class="soc-btn soc-btn-primary" data-soc="stay">Stay signed in</button>' +
+      '<button type="button" class="soc-btn soc-btn-danger" data-soc="out">Sign out</button>' +
+      '</div>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(host.firstChild);
+    return true;
+  }
+
+  function socEls() {
+    const dlg = document.getElementById('soc');
+    if (!dlg) {
+      return null;
+    }
+    return {
+      dlg: dlg,
+      card: dlg.querySelector('.soc-card'),
+      stay: dlg.querySelector('[data-soc="stay"]'),
+      out: dlg.querySelector('[data-soc="out"]'),
+      back: dlg.querySelector('[data-soc="backup"]'),
+      note: dlg.querySelector('[data-soc-note]')
+    };
+  }
+
+  function closeSignOutDialog() {
+    const els = socEls();
+    _socOpen = false;
+    _socConfirm = null;
+    if (els) {
+      els.dlg.hidden = true;
+      document.removeEventListener('keydown', socKey, true);
+      document.removeEventListener('click', socOutside, true);
+    }
+    if (_socLastFocus && _socLastFocus.focus) {
+      try {
+        _socLastFocus.focus();
+      } catch (e) {}
+    }
+    _socLastFocus = null;
+  }
+
+  function socKey(e) {
+    if (!_socOpen) {
+      return;
+    }
+    const els = socEls();
+    if (!els) {
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeSignOutDialog();
+      return;
+    }
+    if (e.key !== 'Tab') {
+      return;
+    }
+    const list = [els.stay, els.back, els.out].filter(function (b) {
+      return b && !b.hidden;
+    });
+    if (!list.length) {
+      return;
+    }
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  function socOutside(e) {
+    if (!_socOpen) {
+      return;
+    }
+    const els = socEls();
+    if (els && els.card && !els.card.contains(e.target)) {
+      e.preventDefault();
+      closeSignOutDialog();
+    }
+  }
+
+  function confirmSignOut(onConfirm) {
+    if (_socOpen) {
+      return;
+    }
+    ensureSignOutDialog();
+    const els = socEls();
+    if (!els) {
+      // No dialog host on this page: never silently sign out, never hang.
+      return;
+    }
+    _socConfirm = typeof onConfirm === 'function' ? onConfirm : null;
+    _socLastFocus = document.activeElement;
+    // The sync layer exposes a dirty FLAG, not a count, so the dialog says
+    // that changes have not been backed up and never invents a number.
+    let dirty = false;
+    try {
+      dirty = !!(ns.State && ns.State.isDirty && ns.State.isDirty());
+    } catch (e) {
+      dirty = false;
+    }
+    const canBackup = !!(ns.Cloud && ns.Cloud.autoSaveToCloud);
+    if (els.note) {
+      els.note.hidden = !dirty;
+      els.note.textContent = dirty ? 'Some changes have not been backed up yet.' : '';
+    }
+    if (els.back) {
+      els.back.hidden = !(dirty && canBackup);
+    }
+    els.dlg.hidden = false;
+    _socOpen = true;
+    document.addEventListener('keydown', socKey, true);
+    document.addEventListener('click', socOutside, true);
+    try {
+      els.stay.focus();
+    } catch (e) {}
+  }
+
+  function wireSignOutDialog() {
+    if (_socWired || !ensureSignOutDialog()) {
+      return;
+    }
+    const els = socEls();
+    if (!els) {
+      return;
+    }
+    _socWired = true;
+    els.stay.addEventListener('click', closeSignOutDialog);
+    els.out.addEventListener('click', function () {
+      const fn = _socConfirm;
+      closeSignOutDialog();
+      if (fn) {
+        fn();
+      }
+    });
+    if (els.back) {
+      els.back.addEventListener('click', function () {
+        const C = ns.Cloud;
+        if (C && C.autoSaveToCloud) {
+          Promise.resolve(C.autoSaveToCloud({ force: true })).catch(function () {});
+        }
+        closeSignOutDialog();
+      });
+    }
   }
 
   // Retract every [data-plan-badge] pill. Paired with refreshPlan() so the two
@@ -3197,6 +3384,9 @@ var MMGR = window.MMGR || {};
     }
     wireHeaderChip();
     wireDriveControls();
+    // UX-2026-11-19 A5: the sign-out confirmation host is built once per page
+    // and wired before any account row can be clicked.
+    wireSignOutDialog();
     /* OWNER 2026-11-17 / CI 2026-11-18: the plan is a SESSION question, not
        a Google-script question. Restore the session NOW - /api/auth/me does
        not need GIS - so showUser() asks /api/billing/status at once for a
@@ -3261,6 +3451,8 @@ var MMGR = window.MMGR || {};
       return !!_user;
     },
     signOut: signOut,
+    // UX-2026-11-19 A5: every sign-out entry point asks first.
+    confirmSignOut: confirmSignOut,
     // PADDLE POST-CHECKOUT RETURN (2026-10-04): returns the parsed
     // /api/billing/status so marketing.js can report what actually
     // happened on the return from checkout rather than assuming success.

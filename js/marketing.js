@@ -771,14 +771,29 @@
     renderSigninSignedOutTriggers();
   }
 
-  if (signinBtns.length && signinSheet && GA) {
-    var signinOut = document.getElementById('signin-out');
-    if (signinOut) {
-      signinOut.addEventListener('click', function () {
+  /* UX-2026-11-19 A5: the sheet's Sign out button is wired on its own, NOT
+     inside the trigger block below. The trigger block needs a .signin-trigger
+     element, and the marketing pages carry the sheet markup without one - so
+     nesting this handler there left the button dead wherever the sheet was
+     shown some other way. The sheet + the auth module are the only
+     requirements. */
+  var signinOut = document.getElementById('signin-out');
+  if (signinOut && GA && signinOut.getAttribute('data-wired') !== '1') {
+    signinOut.setAttribute('data-wired', '1');
+    signinOut.addEventListener('click', function () {
+      /* Ask before signing out. The shared dialog lives in
+         mmgr-google-auth.js so every entry point behaves the same. */
+      if (typeof GA.confirmSignOut === 'function') {
+        GA.confirmSignOut(function () {
+          GA.signOut();
+        });
+      } else {
         GA.signOut();
-      });
-    }
+      }
+    });
+  }
 
+  if (signinBtns.length && signinSheet && GA) {
     signinBtns.forEach(function (b) {
       b.addEventListener('click', function () {
         setSigninOpen(signinSheet.hidden);

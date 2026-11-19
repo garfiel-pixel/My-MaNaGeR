@@ -6259,6 +6259,14 @@ window.MMGR = MMGR;
         ac.switchTab(el);
       }
     },
+    // TASK 17 (2026-11-18): deep link from the top-level MCP group to the
+    // per-project allow switch, still filed under Connect & Sync > AI.
+    ctlFocus: el => {
+      const ac = window.MMGR && window.MMGR.AppControls;
+      if (ac && ac.focus) {
+        ac.focus(el.getAttribute('data-ctl-group'), el.getAttribute('data-ctl-tab'));
+      }
+    },
     addTaskComment: el => {
       const taskId = el.getAttribute('data-id');
       const input = document.getElementById('comment-input-' + taskId);

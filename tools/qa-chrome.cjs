@@ -203,9 +203,21 @@ const PROBE = arg => {
               rest
             );
 
-            await page.hover(c.sel, { timeout: 5000 }).catch(() => {});
-            await delay(250);
-            const hover = await page.evaluate(PROBE, { sel: c.sel, focusSel: c.focusSel });
+            // Hover can miss when the pointer lands mid-transition or a sticky
+            // bar reflows (CI flake 2026-11-19: project back link read
+            // bgAlpha 0 while the rule was present). Retry the hover a few
+            // times; the gate still requires a real highlight.
+            let hover = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              await page.hover(c.sel, { timeout: 5000 }).catch(() => {});
+              await delay(250);
+              hover = await page.evaluate(PROBE, { sel: c.sel, focusSel: c.focusSel });
+              if (hover && hover.bgAlpha > 0) {
+                break;
+              }
+              await page.mouse.move(0, 0);
+              await delay(120);
+            }
             check('C2 ' + tag + ' shows a highlight on hover', hover && hover.bgAlpha > 0, hover);
 
             check(

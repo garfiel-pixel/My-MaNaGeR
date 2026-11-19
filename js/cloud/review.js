@@ -456,12 +456,23 @@ var MMGR = window.MMGR || {};
   }
 
   async function cloudReviewList() {
-    const wrap = $('cloud-review-list');
-    if (!wrap) {
+    // TASK 17 (2026-11-18): the queue has a top-level MCP home as well as the
+    // older Cloud-backup slot. Paint both from one fetch so the two surfaces
+    // can never disagree about what is waiting.
+    const wraps = ['mcp-review-list', 'cloud-review-list'].map($).filter(Boolean);
+    if (!wraps.length) {
       return;
     }
+    const paint = html => {
+      // html is built only from esc()/renderProposalCard() output and static
+      // markup - the same escaped string the single-slot renderer used before
+      // TASK 17. The helper only fans it out to the two queue slots.
+      wraps.forEach(w => {
+        w.innerHTML = html; // ok: escaped fragments only (esc/renderProposalCard/static)
+      });
+    };
     if (!hasOwnerAccess()) {
-      wrap.innerHTML = '<div class="sr-hint">Owner access required.</div>';
+      paint('<div class="sr-hint">Owner access required.</div>');
       return;
     }
     try {
@@ -474,13 +485,14 @@ var MMGR = window.MMGR || {};
         return {};
       });
       if (!res.ok || !data.ok) {
-        wrap.innerHTML = '<div class="sr-hint">Could not load proposals.</div>';
+        paint('<div class="sr-hint">Could not load proposals.</div>');
         return;
       }
       const props = data.proposals || [];
       if (!props.length) {
-        wrap.innerHTML =
-          '<div class="sr-hint">Nothing waiting for review - edits from editor codes and AI imports land here until you accept them.</div>';
+        paint(
+          '<div class="sr-hint">Nothing waiting for review - edits from editor codes and AI imports land here until you accept them.</div>'
+        );
         return;
       }
       const pending = props.filter(function (p) {
@@ -540,9 +552,9 @@ var MMGR = window.MMGR || {};
           return renderProposalCard(p);
         })
         .join('');
-      wrap.innerHTML = groupHtml + singleHtml + decidedHtml;
+      paint(groupHtml + singleHtml + decidedHtml);
     } catch (e) {
-      wrap.innerHTML = '<div class="sr-hint">Cloud unavailable here.</div>';
+      paint('<div class="sr-hint">Cloud unavailable here.</div>');
     }
   }
 

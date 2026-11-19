@@ -64,7 +64,13 @@ const EXACT = {
   // committed size (608868 bytes) after the search-palette + proposal-UI +
   // UI-IA waves landed; the prior raises were estimated, not measured. Bump to
   // 612000 so the gate tracks the true file, leaving ~3 KB headroom.
-  'css/mmgr.css': 612000,
+  // 2026-11-19 (MCP proposal view + admin card): raised 612000 -> 616000. The
+  // #11 grouped change-detail sheet (record cards, before/after rows, modal
+  // chrome) and the #12 admin card gutter/row spacing added ~0.5 KB to the
+  // built css/mmgr.css (612470 bytes measured). Both live in the isolated
+  // css/src/37-mcp-admin.css layer already; this raise tracks the real file,
+  // leaving ~3.5 KB headroom. The next CSS wave should split a layer first.
+  'css/mmgr.css': 616000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

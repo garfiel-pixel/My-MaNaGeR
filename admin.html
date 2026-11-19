@@ -677,15 +677,16 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <button type="button" class="db-link db-grp" data-rail-toggle="rail-g-go" aria-expanded="false" aria-controls="rail-g-go"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg> Go <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       <div class="db-sub" id="rail-g-go" hidden>
         <a class="db-link db-link-sub" href="app.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-orb"></use></svg> Projects / Dashboard</a>
-        <!-- T-28 (2026-11-12): the MCP server is a destination of its own,
-             so it gets its own dropdown instead of a flat row. The brand mark
-             is My MaNaGeR's (i-mpw), never a generic sparkle. -->
-        <button type="button" class="db-link db-link-sub" data-rail-toggle="rail-mcp" aria-expanded="false" aria-controls="rail-mcp"><svg class="ico mcp-brand-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> MCP Server <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
-        <div class="db-sub db-sub-nest" id="rail-mcp" hidden>
-          <button type="button" class="db-link db-link-sub" data-mcp-side="pending"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Pending changes</button>
-          <button type="button" class="db-link db-link-sub" data-mcp-side="connection"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Connection &amp; link</button>
-          <button type="button" class="db-link db-link-sub" data-mcp-side="clients"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Connected clients</button>
-        </div>
+      </div>
+      <!-- OWNER 2026-11-18 (task #17): MCP is a top-level destination, not a
+           child of Go. The owner must be able to reach Pending changes in one
+           open, without digging through Cloud or Backup first. The brand mark
+           is My MaNaGeR's (i-mpw), never a generic sparkle. -->
+      <button type="button" class="db-link db-grp" data-rail-toggle="rail-mcp" aria-expanded="false" aria-controls="rail-mcp"><svg class="ico mcp-brand-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> MCP Server <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
+      <div class="db-sub" id="rail-mcp" hidden>
+        <button type="button" class="db-link db-link-sub" data-mcp-side="pending"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg> Pending changes</button>
+        <button type="button" class="db-link db-link-sub" data-mcp-side="connection"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Connection &amp; link</button>
+        <button type="button" class="db-link db-link-sub" data-mcp-side="clients"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-users"></use></svg> Connected clients</button>
       </div>
       <button type="button" class="db-link db-grp" data-rail-toggle="rail-admin-customize" aria-expanded="false" aria-controls="rail-admin-customize"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-palette"></use></svg> Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       <div class="db-sub" id="rail-admin-customize" hidden>

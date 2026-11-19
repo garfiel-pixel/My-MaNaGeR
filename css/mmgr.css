@@ -12568,80 +12568,34 @@ body.dark-mode .ltr-roll td {
 }
 /* T-25 (2026-11-12): admin MCP server panel. Rows reuse the app's border and
    slate tokens; the tool subset wraps instead of forcing a horizontal scroll. */
-/* T-28 (2026-11-12): the card is a native disclosure. Folded, it is one row
-   that still states the truth in a chip (On / Off / Signed out), and the title
-   carries the app's own brand mark. */
+/* OWNER 2026-11-18 (task #12): the card used to zero out .card's padding, so
+   its title and rows sat flush against the border - "just a rectangle". It now
+   keeps a generous inner gutter (text never touches an edge), a soft divider
+   under the head, and plain-text counts instead of little coloured pills. */
 .mcp-admin-card {
-  padding: 0;
-}
-.mcp-admin-sum {
-  margin: 0;
-  padding: 16px 20px;
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-}
-.mcp-admin-sum::-webkit-details-marker {
-  display: none;
-}
-.mcp-admin-sum:focus-visible {
-  outline: 2px solid var(--gold-text);
-  outline-offset: -2px;
-  border-radius: var(--squircle-md);
-}
-.mcp-admin-card[open] > .mcp-admin-sum {
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
-}
-.mcp-admin-inner {
-  padding: 0 20px 18px;
-}
-.mcp-admin-sum-l,
-.mcp-admin-sum-r {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-.mcp-admin-sum .ico-caret {
-  width: 16px;
-  height: 16px;
-  transition: transform 0.18s ease;
-}
-.mcp-admin-card[open] .mcp-admin-sum .ico-caret {
-  transform: rotate(90deg);
+  padding: 22px 24px 24px;
 }
 .mcp-brand-ico {
   color: var(--gold-text);
 }
 .mcp-admin-chip {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--slate);
   white-space: nowrap;
 }
 .mcp-admin-chip[data-kind='ok'] {
   color: var(--dot-green);
-  border-color: color-mix(in oklch, var(--dot-green) 45%, transparent);
-  background: color-mix(in oklch, var(--dot-green) 10%, transparent);
 }
 .mcp-admin-chip[data-kind='warn'] {
   color: var(--dot-yellow);
-  border-color: color-mix(in oklch, var(--dot-yellow) 45%, transparent);
-  background: color-mix(in oklch, var(--dot-yellow) 10%, transparent);
 }
 .mcp-admin-chip[data-kind='err'] {
   color: var(--dot-red);
-  border-color: color-mix(in oklch, var(--dot-red) 45%, transparent);
-  background: color-mix(in oklch, var(--dot-red) 10%, transparent);
 }
 .mcp-admin-chip[data-kind='busy'] {
   color: var(--slate);
-  border-color: var(--border);
 }
 #mcp-admin-status[data-kind='ok'] {
   color: var(--dot-green);
@@ -12658,10 +12612,10 @@ body.dark-mode .ltr-roll td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 9px 11px;
+  gap: 14px;
+  padding: 13px 15px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   min-width: 0;
 }
 .mcp-admin-row > div:first-child {
@@ -12681,11 +12635,11 @@ body.dark-mode .ltr-roll td {
 .mcp-admin-tools {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
-  margin: 6px 0 12px;
-  padding: 10px 11px;
+  gap: 8px 16px;
+  margin: 8px 0 14px;
+  padding: 13px 15px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
 }
 .mcp-admin-tools[hidden] {
   display: none !important;
@@ -12705,10 +12659,10 @@ body.dark-mode .ltr-roll td {
 /* T-26: the connection block is the part a person needs before any config.
    The URL is selectable in one click and never truncated on a phone. */
 .mcp-admin-connect {
-  margin: 4px 0 2px;
-  padding: 12px 13px;
+  margin: 2px 0 16px;
+  padding: 16px 17px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--glass-fill-dark);
 }
 .mcp-admin-url {
@@ -12743,9 +12697,10 @@ body.dark-mode .ltr-roll td {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
   flex-wrap: wrap;
-  padding: 4px 0 12px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--border);
 }
 .mcp-admin-head-l {
   display: flex;
@@ -12786,9 +12741,9 @@ body.dark-mode .ltr-roll td {
 .mcp-admin-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   border-bottom: 1px solid var(--border);
-  margin: 0 0 12px;
+  margin: 14px 0 14px;
   overflow-x: auto;
 }
 .mcp-admin-tab {
@@ -12819,18 +12774,19 @@ body.dark-mode .ltr-roll td {
   outline-offset: -2px;
   border-radius: 6px;
 }
+/* Plain text count, not a pill or an icon: "Clients 2" reads calmly and never
+   competes with the tab label for attention. */
 .mcp-admin-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: color-mix(in oklch, var(--gold-text) 18%, transparent);
-  color: var(--gold-text);
-  font-size: 0.68rem;
-  font-weight: 700;
+  color: var(--slate);
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.mcp-admin-count::before {
+  content: ' (';
+}
+.mcp-admin-count::after {
+  content: ')';
 }
 .mcp-admin-count[hidden] {
   display: none;
@@ -12857,10 +12813,10 @@ body.dark-mode .ltr-roll td {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
-  padding: 12px 13px;
+  gap: 16px;
+  padding: 15px 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--glass-fill-dark);
   flex-wrap: wrap;
 }
@@ -12900,35 +12856,145 @@ body.dark-mode .ltr-roll td {
   display: grid;
   gap: 3px;
 }
-.mcp-q-diff {
-  font-size: 0.78rem;
-  line-height: 1.45;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.mcp-q-diff-rec {
-  font-weight: 600;
-}
-.mcp-q-diff-field {
-  color: var(--slate);
-}
-.mcp-q-diff-vals {
-  color: var(--slate);
-}
-.mcp-q-more {
-  margin-top: 6px;
-}
-.mcp-q-more summary {
-  cursor: pointer;
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: var(--gold-text);
-}
 .mcp-q-acts {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
+}
+/* OWNER 2026-11-11 / deferred T-25: the change sheet. One line per record
+   names the real record and its type; every field shows before -> after in
+   plain words. The compact copy sits in the queue, the full copy in View. */
+.mcp-q-g {
+  display: grid;
+  gap: 3px;
+  padding: 6px 0;
+}
+.mcp-q-g + .mcp-q-g {
+  border-top: 1px solid var(--border);
+}
+.mcp-view-g {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: var(--card, var(--bg));
+}
+.mcp-view-g-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+.mcp-view-kind {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised, var(--glass-fill-dark));
+  color: var(--text-muted, var(--slate));
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.mcp-view-rec {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.mcp-view-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--surface-raised, var(--glass-fill-dark));
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.mcp-view-row + .mcp-view-row {
+  margin-top: 4px;
+}
+.mcp-view-field {
+  color: var(--text-muted, var(--slate));
+  min-width: 8ch;
+  font-weight: 600;
+}
+.mcp-view-before {
+  color: var(--text-muted, var(--slate));
+  text-decoration: line-through;
+  overflow-wrap: anywhere;
+}
+.mcp-view-arrow {
+  color: var(--gold-text);
+  font-weight: 700;
+}
+.mcp-view-after {
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.mcp-view-surf {
+  color: var(--text-muted, var(--slate));
+  font-size: 0.72rem;
+  margin: 5px 0 0 8px;
+}
+.mcp-view-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+  overflow: auto;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+}
+.mcp-view-win {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--card, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+.mcp-view-hd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mcp-view-hd > div {
+  min-width: 0;
+}
+.mcp-view-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.mcp-view-sub {
+  color: var(--text-muted, var(--slate));
+  font-size: 0.76rem;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.mcp-view-groups {
+  margin-top: 12px;
+}
+.mcp-view-hint {
+  color: var(--text-muted, var(--slate));
+  font-size: 0.76rem;
+  margin: 4px 0 12px;
+}
+.mcp-view-ft {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
 }
 @media (max-width: 560px) {
   .mcp-admin-head-r {
@@ -12938,6 +13004,11 @@ body.dark-mode .ltr-roll td {
   .mcp-q-acts {
     width: 100%;
     justify-content: flex-end;
+  }
+  .mcp-view-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
 }
 /* ---- AI Assistant window (chat-style) ---- */

@@ -8,7 +8,8 @@
      S2  buildIndex() returns a substantial index (~170; the directive's
          own source list lands near 200).
      S3  buildIndex() + search() make ZERO network requests.
-     S4  search('mcp') returns the Connect an AI entry first.
+     S4  search('mcp') still resolves to Connect an AI. Re-baselined
+         2026-11-16: #17's top-level MCP group now leads the short query.
      S5  search('model context protocol') returns Connect an AI first.
      S6  hand-authored aliases resolve: 'dark mode' -> Look & feel,
          'undo' -> the Undo action, 'backup' -> Export.
@@ -178,6 +179,11 @@ function check(name, val, detail) {
       count: idx.length,
       netDelta: after - before,
       mcpTop: top(mcp),
+      // Re-baselined 2026-11-16: #17 added a top-level "MCP" group, so the
+      // short 'mcp' query now leads with it. The alias control still holds:
+      // 'Connect an AI' must stay reachable from the same query.
+      mcpConnect: mcp.some(function(e){ return e.label === 'Connect an AI'; }),
+      mcpGroup: mcp.some(function(e){ return e.label === 'MCP'; }),
       mcppTop: top(mcpp),
       darkMode: firstLabel('dark mode'),
       undo: firstLabel('undo'),
@@ -204,9 +210,9 @@ function check(name, val, detail) {
     core
   );
   check(
-    "S4 search: 'mcp' returns Connect an AI first",
-    core && core.mcpTop && core.mcpTop.label === 'Connect an AI',
-    core && core.mcpTop
+    "S4 search: 'mcp' still resolves to Connect an AI (alias intact; top-level MCP group now leads)",
+    core && core.mcpConnect === true && core.mcpGroup === true,
+    core && { top: core.mcpTop, connect: core.mcpConnect, group: core.mcpGroup }
   );
   check(
     "S5 search: 'model context protocol' returns Connect an AI first",
@@ -251,6 +257,7 @@ function check(name, val, detail) {
     var opts = Array.prototype.slice.call(document.querySelectorAll('#app-search-list .search-opt'));
     out.options = opts.length;
     out.first = opts.length ? opts[0].querySelector('.search-opt-label').textContent : '';
+    out.hasConnect = opts.some(function(o){ return o.querySelector('.search-opt-label').textContent === 'Connect an AI'; });
     out.live = document.getElementById('app-search-live').textContent;
     out.expanded = q.getAttribute('aria-expanded');
     out.activeDesc = q.getAttribute('aria-activedescendant');
@@ -271,10 +278,11 @@ function check(name, val, detail) {
     pal1
   );
   check(
-    'S11 palette: typing mcp lists Connect an AI first with combobox + live-region semantics',
+    'S11 palette: typing mcp lists the top-level MCP group first with Connect an AI still present (combobox + live-region semantics)',
     pal1 &&
       pal1.options > 0 &&
-      pal1.first === 'Connect an AI' &&
+      pal1.first === 'MCP' &&
+      pal1.hasConnect === true &&
       pal1.expanded === 'true' &&
       pal1.activeDesc === 'search-opt-0' &&
       pal1.selected0 === 'true' &&

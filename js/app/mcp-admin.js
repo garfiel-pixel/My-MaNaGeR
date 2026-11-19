@@ -293,24 +293,194 @@
     }
   }
 
-  function fieldLabel(field) {
-    return String(field || '')
+  // The names and field words are the same ones the project-page approval
+  // preview uses (js/mmgr-approval.js). Keep the two maps in step so an owner
+  // sees "Task Battle: Status todo -> completed" here too, never "task 1".
+  var FIELD_WORDS = {
+    planned: 'Planned budget',
+    actual: 'Actual spend',
+    qty: 'Quantity',
+    rate: 'Rate',
+    unit: 'Unit',
+    unitPrice: 'Price per unit',
+    name: 'Name',
+    category: 'Category',
+    boqRef: 'BOQ reference',
+    status: 'Status',
+    owner: 'Owner',
+    startDate: 'Start date',
+    endDate: 'End date',
+    dueDate: 'Due date',
+    progress: 'Progress',
+    description: 'Description',
+    title: 'Title',
+    notes: 'Notes',
+    severity: 'Severity',
+    likelihood: 'Likelihood',
+    mitigation: 'Mitigation',
+    supplierRef: 'Supplier reference',
+    date: 'Date',
+    amount: 'Amount',
+    assignee: 'Assignee',
+    dependsOn: 'Depends on',
+    duration: 'Duration',
+    workingDays: 'Working days',
+    priority: 'Priority',
+    impact: 'Impact',
+    probability: 'Probability',
+    response: 'Response',
+    note: 'Note',
+    ref: 'Reference',
+    text: 'Text',
+    problem: 'Problem statement',
+    goal: 'Goal',
+    phase: 'Phase',
+    percent: 'Percent complete'
+  };
+  var PATH_WORDS = {
+    tasks: 'Task',
+    risks: 'Risk',
+    issues: 'Issue',
+    budgetLines: 'Budget line',
+    spendLog: 'Delivery',
+    stakeholders: 'Stakeholder',
+    resources: 'Resource',
+    changes: 'Change request',
+    logEntries: 'Decision',
+    documents: 'Document',
+    commsEntries: 'Comms entry',
+    raci: 'RACI entry',
+    meetings: 'Meeting',
+    meetingPromises: 'Promise',
+    charter: 'Charter',
+    closure: 'Closure',
+    dmaic: 'DMAIC',
+    supplierBook: 'Supplier',
+    projectName: 'Project name',
+    methodology: 'Methodology',
+    methodologyLocked: 'Methodology lock',
+    projectDeadline: 'Project deadline',
+    budgetEnvelope: 'Budget envelope',
+    nspid: 'Delivery counter',
+    nmeetid: 'Meeting counter',
+    currency: 'Currency'
+  };
+  function human(k, map) {
+    var s = String(k || '');
+    if (map[s]) {
+      return map[s];
+    }
+    return s
       .replace(/\./g, ' / ')
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replace(/\b\w/g, function (c) {
         return c.toUpperCase();
       });
   }
+  function fieldLabel(field) {
+    return human(field, FIELD_WORDS);
+  }
+  function pathLabel(path) {
+    return human(path, PATH_WORDS);
+  }
 
-  function shortValue(v) {
+  function fullValue(v, absent) {
+    if (absent) {
+      return 'not set';
+    }
     if (v === undefined || v === null || v === '') {
-      return '(empty)';
+      return 'blank';
     }
-    var s = typeof v === 'object' ? JSON.stringify(v) : String(v);
-    if (s.length > 64) {
-      s = s.slice(0, 61) + '...';
+    return typeof v === 'object' ? JSON.stringify(v) : String(v);
+  }
+
+  // Group the flat diff leaves by the record they touch, in arrival order.
+  // The server already stamps every leaf with recordName, so the group head
+  // can carry a real name rather than a bare id or "Item 1".
+  function groupDiffs(diffs) {
+    var groups = [];
+    var byKey = {};
+    (Array.isArray(diffs) ? diffs : []).forEach(function (d) {
+      if (!d) {
+        return;
+      }
+      var rec = d.recordId || (d.index === null || d.index === undefined ? '' : '#' + d.index);
+      var key = String(d.path || '') + '|' + rec;
+      var g = byKey[key];
+      if (!g) {
+        g = {
+          path: String(d.path || ''),
+          recordId: d.recordId || '',
+          recordName: d.recordName || '',
+          index: d.index,
+          rows: []
+        };
+        byKey[key] = g;
+        groups.push(g);
+      }
+      if (!g.recordName && d.recordName) {
+        g.recordName = d.recordName;
+      }
+      g.rows.push(d);
+    });
+    return groups;
+  }
+
+  // The budget proposal shape has changes[] instead of diffs[]. Present them
+  // through the same grouped renderer so the owner reads one consistent view.
+  function diffList(p) {
+    if (p && Array.isArray(p.diffs) && p.diffs.length) {
+      return p.diffs.filter(Boolean);
     }
-    return s;
+    var changes = p && p.proposal && Array.isArray(p.proposal.changes) ? p.proposal.changes : [];
+    return changes.map(function (c) {
+      return {
+        path: 'budgetLines',
+        recordId: String(c.lineId || ''),
+        recordName: c.lineName || c.name || '',
+        field: c.field || c.kind,
+        before: c.before,
+        after: c.value,
+        surfaces: []
+      };
+    });
+  }
+
+  // One grouped, fully-spelled change view. Every write uses textContent:
+  // a client can name a record or a value with markup and it stays text.
+  function changeDetail(p, full) {
+    var host = el('div', full ? 'mcp-view-groups' : 'mcp-q-diffs');
+    var groups = groupDiffs(diffList(p));
+    groups.forEach(function (g) {
+      var card = el('div', full ? 'mcp-view-g' : 'mcp-q-g');
+      var head = el('div', 'mcp-view-g-head');
+      head.appendChild(el('span', 'mcp-view-kind', pathLabel(g.path)));
+      var rec =
+        g.recordName ||
+        g.recordId ||
+        (g.index != null ? 'Item ' + (g.index + 1) : pathLabel(g.path));
+      head.appendChild(el('span', 'mcp-view-rec', rec));
+      card.appendChild(head);
+      g.rows.forEach(function (d) {
+        var row = el('div', 'mcp-view-row');
+        row.appendChild(el('span', 'mcp-view-field', fieldLabel(d.field || d.path)));
+        row.appendChild(
+          el('span', 'mcp-view-before', fullValue(d.before, d.beforeAbsent === true))
+        );
+        row.appendChild(el('span', 'mcp-view-arrow', '\u2192'));
+        row.appendChild(el('span', 'mcp-view-after', fullValue(d.after, d.afterAbsent === true)));
+        card.appendChild(row);
+        var surfaces = Array.isArray(d.surfaces) ? d.surfaces : [];
+        if (surfaces.length) {
+          card.appendChild(el('div', 'mcp-view-surf', 'Affects ' + surfaces.join(', ')));
+        }
+      });
+      host.appendChild(card);
+    });
+    if (!groups.length) {
+      host.appendChild(el('div', 'mcp-admin-empty', 'This proposal carries no field changes.'));
+    }
+    return host;
   }
 
   function proposalCount(p) {
@@ -318,18 +488,6 @@
       return p.proposal.changes.length;
     }
     return p && Number.isFinite(p.diffTotal) ? p.diffTotal : p && p.diffs ? p.diffs.length : 0;
-  }
-
-  function diffLine(d) {
-    var row = el('div', 'mcp-q-diff');
-    row.appendChild(
-      el('span', 'mcp-q-diff-rec', d.recordName || d.recordId || d.path || 'Project')
-    );
-    row.appendChild(el('span', 'mcp-q-diff-field', ' ' + fieldLabel(d.field || d.path)));
-    row.appendChild(
-      el('span', 'mcp-q-diff-vals', ' ' + shortValue(d.before) + ' \u2192 ' + shortValue(d.after))
-    );
-    return row;
   }
 
   function renderPending() {
@@ -369,39 +527,18 @@
       main.appendChild(
         el('div', 'mcp-q-meta', 'Proposed ' + fmtWhen(p.proposedAt) + ' | proposal #' + p.id)
       );
-      var diffs = Array.isArray(p.diffs) ? p.diffs : [];
-      var preview = el('div', 'mcp-q-diffs');
-      diffs.slice(0, 3).forEach(function (d) {
-        preview.appendChild(diffLine(d));
-      });
-      if (!diffs.length && p.proposal && Array.isArray(p.proposal.changes)) {
-        p.proposal.changes.slice(0, 3).forEach(function (c) {
-          preview.appendChild(
-            diffLine({
-              recordName: c.lineId || c.kind,
-              field: c.field || c.kind,
-              before: c.before,
-              after: c.value
-            })
-          );
-        });
-      }
-      main.appendChild(preview);
-      if (diffs.length > 3) {
-        var more = document.createElement('details');
-        more.className = 'mcp-q-more';
-        var sum = document.createElement('summary');
-        sum.textContent = 'Show all ' + diffs.length + ' changes';
-        more.appendChild(sum);
-        var full = el('div', 'mcp-q-diffs');
-        diffs.slice(3).forEach(function (d) {
-          full.appendChild(diffLine(d));
-        });
-        more.appendChild(full);
-        main.appendChild(more);
-      }
+      // OWNER 2026-11-11 / deferred T-25: show exactly what moves - the real
+      // record name, the field and both values - for EVERY change, not a flat
+      // "task 1 will change" list truncated to three lines.
+      main.appendChild(changeDetail(p, false));
       row.appendChild(main);
       var acts = el('div', 'mcp-q-acts');
+      var view = el('button', 'btn btn-n btn-s', 'View');
+      view.type = 'button';
+      view.setAttribute('data-mcp-act', 'view');
+      view.setAttribute('data-project-id', item.projectId);
+      view.setAttribute('data-review-id', String(p.id));
+      acts.appendChild(view);
       var accept = el('button', 'btn btn-g btn-s', 'Accept');
       accept.type = 'button';
       accept.setAttribute('data-mcp-act', 'accept');
@@ -418,6 +555,95 @@
       wrap.appendChild(row);
     });
     host.appendChild(wrap);
+  }
+
+  // "View" opens the full change sheet before any decision. It reads the same
+  // proposal object the queue already loaded, so no second fetch is needed and
+  // the values are exactly the ones Accept would apply. The panel is inert:
+  // its controls use data-mcp-view, never the global data-action dispatcher.
+  function closeView() {
+    var ov = document.getElementById('mcp-view-ov');
+    if (ov) {
+      ov.remove();
+    }
+  }
+  function openView(projectId, reviewId) {
+    var item = null;
+    (pendingList || []).forEach(function (x) {
+      if (
+        String(x.projectId) === String(projectId) &&
+        String(x.proposal && x.proposal.id) === String(reviewId)
+      ) {
+        item = x;
+      }
+    });
+    if (!item) {
+      return;
+    }
+    closeView();
+    var p = item.proposal;
+    var ov = el('div', 'mcp-view-ov');
+    ov.id = 'mcp-view-ov';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-labelledby', 'mcp-view-title');
+    var win = el('div', 'mcp-view-win');
+    var hd = el('div', 'mcp-view-hd');
+    var left = el('div');
+    left.appendChild(el('div', 'mcp-view-title', 'Proposal #' + p.id));
+    left.appendChild(
+      el(
+        'div',
+        'mcp-view-sub',
+        (item.projectLabel || item.projectId) +
+          ' \u00b7 ' +
+          (p.sourceLabel || 'AI edit') +
+          ' \u00b7 Proposed ' +
+          fmtWhen(p.proposedAt)
+      )
+    );
+    hd.appendChild(left);
+    var close = el('button', 'btn btn-n btn-s', 'Close');
+    close.type = 'button';
+    close.setAttribute('data-mcp-view', 'close');
+    hd.appendChild(close);
+    win.appendChild(hd);
+    win.appendChild(changeDetail(p, true));
+    var hint = el(
+      'div',
+      'mcp-view-hint',
+      'Nothing is saved until you Accept. Reject sends a short reason back to whoever made the proposal.'
+    );
+    win.appendChild(hint);
+    var ft = el('div', 'mcp-view-ft');
+    var rej = el('button', 'btn btn-n btn-s', 'Reject');
+    rej.type = 'button';
+    rej.setAttribute('data-mcp-view', 'reject');
+    rej.setAttribute('data-project-id', projectId);
+    rej.setAttribute('data-review-id', String(p.id));
+    var acc = el('button', 'btn btn-g btn-s', 'Accept this proposal');
+    acc.type = 'button';
+    acc.setAttribute('data-mcp-view', 'accept');
+    acc.setAttribute('data-project-id', projectId);
+    acc.setAttribute('data-review-id', String(p.id));
+    ft.appendChild(rej);
+    ft.appendChild(acc);
+    win.appendChild(ft);
+    ov.appendChild(win);
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) {
+        closeView();
+      }
+    });
+    ov.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeView();
+      }
+    });
+    if (close.focus) {
+      close.focus();
+    }
   }
 
   // The management table the owner asked for: one place that shows what every
@@ -785,6 +1011,22 @@
 
   document.addEventListener('DOMContentLoaded', load);
   document.addEventListener('click', function (e) {
+    // The full change sheet is on <body>, outside the card. Its controls are
+    // namespaced with data-mcp-view so they never reach the action dispatcher.
+    var mv = e.target && e.target.closest ? e.target.closest('[data-mcp-view]') : null;
+    if (mv) {
+      e.preventDefault();
+      var what = mv.getAttribute('data-mcp-view');
+      if (what === 'close') {
+        closeView();
+      } else if (what === 'accept' || what === 'reject') {
+        var pid = mv.getAttribute('data-project-id');
+        var rid = mv.getAttribute('data-review-id');
+        closeView();
+        decide(what, pid, rid, null);
+      }
+      return;
+    }
     var side = e.target && e.target.closest ? e.target.closest('[data-mcp-side]') : null;
     if (side) {
       e.preventDefault();
@@ -814,6 +1056,9 @@
     } else if (act === 'copy-url') {
       e.preventDefault();
       copyUrl();
+    } else if (act === 'view') {
+      e.preventDefault();
+      openView(t.getAttribute('data-project-id'), t.getAttribute('data-review-id'));
     } else if (act === 'accept' || act === 'reject') {
       e.preventDefault();
       decide(act, t.getAttribute('data-project-id'), t.getAttribute('data-review-id'), t);

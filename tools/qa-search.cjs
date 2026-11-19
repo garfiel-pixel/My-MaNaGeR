@@ -8,8 +8,10 @@
      S1  MMGR.AppSearch is present on a loaded project.
      S2  Ctrl+K opens the dialog with focus in the combobox.
      S3  Escape closes it and restores focus to the invoker.
-     S4  'mcp' returns Connect an AI first. This is the alias-removal
-         control: delete the mcp alias and this check fails.
+     S4  'mcp' still resolves to Connect an AI. The alias-removal control:
+         delete the mcp alias and this check fails. Re-baselined 2026-11-16 -
+         #17's top-level MCP group now leads, so the check asserts the alias
+         stays reachable rather than ranking first.
      S5  'model context protocol' returns Connect an AI first.
      S6  'dark mode' returns Look & feel first.
      S7  'backup' resolves to Backup or Export.
@@ -33,10 +35,18 @@
          from 'newtown'.
      S21 MMGR.Shortcuts is absent and buildIndex() does not throw.
 
-   Admin (S22-S24)
+   Admin (S22-S24, S30-S31)
      S22 surface() is 'admin' and the header button opens the palette.
      S23 the rail and the cards are indexed (Shortcuts still absent).
      S24 Ctrl+K opens it.
+     S30 a feature search stays on admin UI - no field-guide/page hijack
+         (owner 2026-11-16: searching a feature used to jump to the guide).
+     S31 a guide-only query still reaches the field guide (no dead-end).
+
+   Project records (S28-S29)
+     S28 a task result lands on its WBS row.
+     S29 an issue result lands on its dashboard row - the owner's dead click
+         (palette closed, nothing happened) is fixed.
 
    Calculator (S25-S27)
      S25 surface() is 'calculator' and the top-bar button opens it.
@@ -246,6 +256,8 @@ function check(name, val, detail) {
       var after = performance.getEntriesByType('resource').length;
       return {
         mcp: top('mcp'),
+        mcpConnect: has('mcp','Connect an AI'),
+        mcpGroup: has('mcp','MCP'),
         mcpp: top('model context protocol'),
         dark: top('dark mode'),
         backup: has('backup','Backup') || has('backup','Export'),
@@ -256,10 +268,13 @@ function check(name, val, detail) {
         netDelta: after - before
       };
     })()`);
+    // Re-baselined 2026-11-16: #17 added a top-level "MCP" controls group, so
+    // 'mcp' now leads with that real group. The alias control still holds -
+    // 'Connect an AI' must stay reachable from the same query.
     check(
-      "S4 search: 'mcp' returns Connect an AI first (fails if the alias is removed)",
-      q8 && q8.mcp === 'Connect an AI',
-      q8 && q8.mcp
+      "S4 search: 'mcp' still resolves to Connect an AI (alias intact; top-level MCP group now leads)",
+      q8 && q8.mcpConnect === true && q8.mcpGroup === true,
+      q8 && { mcp: q8.mcp, connect: q8.mcpConnect, group: q8.mcpGroup }
     );
     check(
       "S5 search: 'model context protocol' returns Connect an AI first",
@@ -418,6 +433,39 @@ function check(name, val, detail) {
       s28
     );
 
+    // S29 (owner 2026-11-16): clicking a project record used to close the
+    // palette and do nothing. Issues render as plain divs in #d-iss, which
+    // the old finder never matched. The row (or the section panel) must now
+    // visibly land.
+    await nav(SERVE_BASE + '/project.html?id=demo-filled');
+    await waitFor(`!!(window.MMGR && MMGR.AppSearch && MMGR.State && MMGR.State.getState)`);
+    await delay(1200);
+    const s29 = await ev(`(function(){
+      var hits = MMGR.AppSearch.search('Steel beam');
+      var rec = hits.filter(function(e){ return e.kind === 'record'; })[0];
+      if (!rec) { return { found:false, labels: hits.map(function(e){ return e.kind + ':' + e.label; }) }; }
+      MMGR.AppSearch.close(false);
+      rec.run();
+      return new Promise(function(res){ setTimeout(function(){
+        var row = document.querySelector('#d-iss > div.search-hit');
+        var panel = document.querySelector('#panel-dash.search-hit');
+        var active = document.querySelector('.sec-btn.active');
+        res({
+          found: true,
+          label: rec.label,
+          sec: active ? active.textContent.trim() : '',
+          row: !!row,
+          panel: !!panel,
+          rowText: row ? row.textContent.slice(0, 44) : ''
+        });
+      }, 1000); });
+    })()`);
+    check(
+      'S29 a project issue search result lands on its dashboard row (dead click fixed)',
+      s29 && s29.found && (s29.row === true || s29.panel === true) && /Dashboard/.test(s29.sec),
+      s29
+    );
+
     // =====================================================================
     // Launcher surface
     // =====================================================================
@@ -511,6 +559,35 @@ function check(name, val, detail) {
     );
     await delay(300);
     check('S24 admin: Ctrl+K opens the palette', (await ev('MMGR.AppSearch.isOpen()')) === true);
+
+    // S30 (owner 2026-11-16): a feature search in the admin panel must stay on
+    // admin UI. The 48 cross-surface destinations (12 pages + 36 field-guide
+    // sheets) used to outnumber local content and hijack the query, sending
+    // the owner to the field guide. With local matches present, destinations
+    // must be filtered out.
+    const a3 = await ev(`(function(){
+      var hits = MMGR.AppSearch.search('projects');
+      function grp(name){ return hits.filter(function(e){ return e.group === name; }).length; }
+      var wl = MMGR.AppSearch.search('welcome');
+      return {
+        total: hits.length,
+        sheets: grp('Field guide'),
+        pages: grp('Pages'),
+        local: hits.length - grp('Field guide') - grp('Pages'),
+        labels: hits.map(function(e){ return e.group + ':' + e.label; }),
+        welcomeHasGuide: wl.some(function(e){ return e.group === 'Field guide'; })
+      };
+    })()`);
+    check(
+      'S30 admin: a feature search stays on admin UI and does not surface the field guide',
+      a3 && a3.local > 0 && a3.sheets === 0 && a3.pages === 0,
+      a3
+    );
+    check(
+      'S31 admin: a guide-only query still reaches the field guide (no dead-end search)',
+      a3 && a3.welcomeHasGuide === true,
+      a3
+    );
 
     // =====================================================================
     // Calculator surface

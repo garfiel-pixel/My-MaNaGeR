@@ -438,17 +438,48 @@
     if (!panel) {
       return null;
     }
-    var nodes = panel.querySelectorAll('tr, .kb-card, li, .meet-card, .doc-row, .mcp-q-row');
+    var wantCompact = compact(want);
+    // Covers table rows, cards, list items and the plain <div> rows the
+    // dashboard uses for active issues (#d-iss > div).
+    var nodes = panel.querySelectorAll(
+      'tr, .kb-card, li, .meet-card, .doc-row, .mcp-q-row, [data-id], #d-iss > div'
+    );
     for (var i = 0; i < nodes.length; i++) {
       var t = txt(nodes[i]).toLowerCase();
-      if (t.indexOf(want) === 0 || t.indexOf(want) > -1) {
+      if (t.indexOf(want) > -1) {
+        return nodes[i];
+      }
+      if (wantCompact && compact(t).indexOf(wantCompact) > -1) {
         return nodes[i];
       }
     }
     return null;
   }
+  // An issue row is a plain div in #d-iss. Prefer the row that owns this
+  // issue's own Resolve button (data-id), then fall back to rendered text.
+  function findIssueRow(issue) {
+    var id = issue && issue.id ? String(issue.id) : '';
+    if (id) {
+      var btn = document.querySelector(
+        '#d-iss [data-action="resolveIssue"][data-id="' + id.replace(/"/g, '') + '"]'
+      );
+      if (btn) {
+        var row = btn.closest ? btn.closest('div') : null;
+        return row || btn.parentNode;
+      }
+    }
+    var text = (issue && (issue.name || issue.description)) || '';
+    return findInPanel('dash', text);
+  }
+  // Owner bug 2026-11-16: a record result used to close the palette, reveal a
+  // section and then silently give up when the finder never matched the row -
+  // the UI "disappeared" with no navigation. Two fixes: (1) the section panel
+  // is always revealed and flashed as a guaranteed landing, and (2) we keep
+  // retrying while the reveal settles, then fall back to the panel itself.
   function jumpToRecord(section, finder) {
     revealSection(section);
+    var panel = document.getElementById('panel-' + section);
+    var landed = false;
     var tries = 0;
     function attempt() {
       var target = null;
@@ -458,14 +489,25 @@
         target = null;
       }
       if (target) {
+        landed = true;
         if (target.scrollIntoView) {
           target.scrollIntoView({ block: 'center' });
         }
         flash(target);
         return;
       }
-      if (tries++ < 10) {
+      if (tries++ < 20) {
         requestAnimationFrame(attempt);
+        return;
+      }
+      // Fallback: the section panel is the guaranteed visible destination.
+      // The reader lands on the right section even if the row moved or was
+      // re-rendered, instead of staring at an unchanged page.
+      if (!landed && panel) {
+        if (panel.scrollIntoView) {
+          panel.scrollIntoView({ block: 'start' });
+        }
+        flash(panel);
       }
     }
     requestAnimationFrame(attempt);
@@ -512,9 +554,10 @@
           (t.endDate || '?'),
         'wbs',
         function () {
-          return document.querySelector(
+          var byId = document.querySelector(
             '#wbs-body tr.wbs-row[data-id="' + String(t.id).replace(/"/g, '') + '"]'
           );
+          return byId || findInPanel('wbs', t.name);
         },
         125
       );
@@ -544,12 +587,17 @@
         return;
       }
       var label = i.name || i.description;
+      // Issues render as plain <div> rows inside #d-iss in the Dashboard
+      // panel (mmgr-render.js renders i.description there), not in a table.
+      // The old finder searched for a <tr> and never matched, so the palette
+      // closed and nothing happened - the owner's dead click. Match the row
+      // by its own Resolve button id first, then by rendered description.
       add(
         label,
         'Issue | ' + (i.status || 'open'),
         'dash',
         function () {
-          return findInPanel('dash', label);
+          return findIssueRow(i);
         },
         115
       );
@@ -1190,7 +1238,12 @@
       });
     }
 
-    // 7) Static pages.
+    // 7) Static pages. These are cross-surface DESTINATIONS, not UI on the
+    //    page the reader is looking at. Owner bug 2026-11-16: searching a
+    //    feature in the admin panel used to jump to the field guide because
+    //    these 48 destination rows (12 pages + 36 sheets) outnumbered the
+    //    surface's own entries. They are kept discoverable but flagged so
+    //    search() always ranks the current surface's real UI first.
     PAGES.forEach(function (p) {
       push({
         id: 'page-' + p.id,
@@ -1200,13 +1253,14 @@
         group: 'Pages',
         icon: p.icon,
         weight: 20,
+        destination: true,
         run: function () {
           location.href = p.href;
         }
       });
     });
 
-    // 8) Field-guide sheets.
+    // 8) Field-guide sheets (also cross-surface destinations).
     SHEETS.forEach(function (s) {
       push({
         id: 'sheet-' + s.id,
@@ -1216,6 +1270,7 @@
         group: 'Field guide',
         icon: 'i-book',
         weight: 15,
+        destination: true,
         run: function () {
           location.href = 'mymanager-field-guide.html#' + s.id;
         }
@@ -1375,6 +1430,17 @@
 
   var _index = null;
 
+  // Owner bug 2026-11-16: within one surface, real UI must always outrank a
+  // cross-surface destination. A feature searched in the admin panel must
+  // land on an admin rail/card, never on a field-guide sheet that happens to
+  // share a word. The destination flag (set on pages + sheets in buildIndex)
+  // drives a primary sort key; score/weight/order still decide within a tier.
+  // A destination is only shown when the surface itself has no matching UI,
+  // so field-guide pages stay reachable without hijacking a feature search.
+  function scopeTier(e) {
+    return e.destination ? 1 : 0;
+  }
+
   function search(query) {
     var q = String(query === undefined || query === null ? '' : query)
       .toLowerCase()
@@ -1395,6 +1461,11 @@
       }
     }
     scored.sort(function (a, b) {
+      var ta = scopeTier(a.entry);
+      var tb = scopeTier(b.entry);
+      if (ta !== tb) {
+        return ta - tb;
+      }
       if (b.score !== a.score) {
         return b.score - a.score;
       }
@@ -1406,6 +1477,17 @@
       }
       return a.entry.order - b.entry.order;
     });
+    // Keep the destination tier out of a mixed result set: if any surface UI
+    // matched, show only that. Otherwise fall back to the destination tier so
+    // a page / field-guide name is still findable (no dead-end search).
+    var hasLocal = scored.some(function (x) {
+      return scopeTier(x.entry) === 0;
+    });
+    if (hasLocal) {
+      scored = scored.filter(function (x) {
+        return scopeTier(x.entry) === 0;
+      });
+    }
     return scored.slice(0, MAX_RESULTS).map(function (x) {
       return x.entry;
     });
@@ -1433,10 +1515,12 @@
     page: 'Pages'
   };
 
+  // Scope is named in the placeholder so the reader knows the results are
+  // limited to the surface they are on (owner 2026-11-16: scoped search).
   var PLACEHOLDER = {
-    project: 'Search every feature and setting',
-    launcher: 'Search projects, pages and settings',
-    admin: 'Search the admin panel',
+    project: 'Search this project',
+    launcher: 'Search your projects and the app',
+    admin: 'Search this admin panel',
     calculator: 'Search the calculator'
   };
 

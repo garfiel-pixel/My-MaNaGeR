@@ -170,7 +170,7 @@ function check(name, val, detail) {
   );
   await delay(400);
 
-  // ---- C1: 6 groups, each >= 2 tabs ------------------------------------
+  // ---- C1: 7 groups, each >= 2 tabs (MCP added as top-level, task #17) --
   // After controls-nav init() the tabs live inside a .ctl-sec-group body, so
   // count them there (falling back to the following-sibling walk for the raw
   // pre-init markup).
@@ -194,7 +194,7 @@ function check(name, val, detail) {
     });
     return { count: secs.length, info: info };
   })()`);
-  check('C1 controls: exactly 6 [data-ctl-group] nodes', c1 && c1.count === 6, c1);
+  check('C1 controls: exactly 7 [data-ctl-group] nodes', c1 && c1.count === 7, c1);
   const badTabs = c1 && c1.info ? c1.info.filter(g => g.tabs < 2) : [];
   check('C1 controls: every group has >= 2 [data-ctl-tab]', badTabs.length === 0, badTabs);
 
@@ -389,6 +389,40 @@ function check(name, val, detail) {
     c8
   );
   await send('Emulation.clearDeviceMetricsOverride', {});
+
+  // ---- C9: MCP is a top-level control group (task #17) -----------------
+  const c9 = await ev(`(function(){
+    var sec = document.querySelector('#db-ctrl .ctl-sec[data-ctl-group="mcp"]');
+    var body = document.querySelector('#db-ctrl [data-ctl-group-body="mcp"]');
+    var tabs = body ? Array.prototype.slice.call(body.querySelectorAll('.dtab[data-ctl-tab]')).map(function(t){ return t.textContent.trim(); }) : [];
+    var focusBtn = body ? body.querySelector('[data-action="ctlFocus"][data-ctl-tab="ai"]') : null;
+    var before = document.querySelector('#db-ctrl .ctl-sec[data-ctl-group="connect"]').classList.contains('open');
+    if (focusBtn) { focusBtn.click(); }
+    return {
+      hasSec: !!sec,
+      label: sec ? sec.textContent.replace(/[ ]+/g,' ').trim() : '',
+      tabs: tabs,
+      hasReviewSlot: !!(body && body.querySelector('#mcp-review-list')),
+      focusBtn: !!focusBtn,
+      connectOpened: document.querySelector('#db-ctrl .ctl-sec[data-ctl-group="connect"]').classList.contains('open'),
+      connectWasOpen: before,
+      aiPanelShown: (function(){
+        var p = document.querySelector('#db-ctrl [data-ctl-panel="ai"]');
+        return !!p && !p.classList.contains('is-hide');
+      })()
+    };
+  })()`);
+  check(
+    'C9 MCP is top-level with Review/Allow tabs and an allow deep link',
+    c9.hasSec === true &&
+      /MCP/.test(c9.label) &&
+      c9.tabs.join('|') === 'Review changes|Allow & connect' &&
+      c9.hasReviewSlot === true &&
+      c9.focusBtn === true &&
+      c9.connectOpened === true &&
+      c9.aiPanelShown === true,
+    c9
+  );
 
   // ---- Tear down -------------------------------------------------------
   try {

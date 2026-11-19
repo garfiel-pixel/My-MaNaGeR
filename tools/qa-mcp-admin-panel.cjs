@@ -222,9 +222,10 @@ function check(name, val, detail) {
                   status: 'pending',
                   sourceLabel: 'MCP AI',
                   proposedAt: '2026-11-12T18:20:00Z',
-                  diffTotal: 2,
+                  diffTotal: 3,
                   diffs: [
                     { path: 'tasks', recordId: 'T009', recordName: 'MEP Rough-In', field: 'status', before: 'inprogress', after: 'completed', surfaces: ['Kanban board'] },
+                    { path: 'tasks', recordId: 'T009', recordName: 'MEP Rough-In', field: 'description', before: 'old', after: 'A deliberately long description value that must never be cut down to sixty-four characters in the owner change view.', surfaces: [] },
                     { path: 'tasks', recordId: 'T012', recordName: 'Seismic Retrofit', field: 'endDate', before: '2026-12-04', after: '2026-12-18', surfaces: ['Gantt'] }
                   ]
                 }
@@ -389,15 +390,12 @@ function check(name, val, detail) {
     m11
   );
 
-  // ---- M13: the rail is dropdown groups, with MCP Server under Go ---------
+  // ---- M13: MCP Server is a TOP-LEVEL rail group (task #17) ---------------
   const m13 = await ev(`(function(){
     const nav = document.getElementById('db-nav');
     const groups = Array.prototype.slice.call(nav.querySelectorAll(':scope > .db-link[data-rail-toggle]'));
-    const go = document.getElementById('rail-g-go');
-    const mcpRow = document.querySelector('[data-rail-toggle="rail-mcp"]');
-    const inGo = !!(go && mcpRow && go.contains(mcpRow));
-    const goT = document.querySelector('[data-rail-toggle="rail-g-go"]');
-    if (go && go.hidden) goT.click();
+    const mcpRow = nav.querySelector(':scope > [data-rail-toggle="rail-mcp"]');
+    const topLevel = !!(mcpRow && mcpRow.parentNode === nav);
     const mcpT = document.querySelector('[data-rail-toggle="rail-mcp"]');
     if (mcpT && document.getElementById('rail-mcp').hidden) mcpT.click();
     const sides = Array.prototype.slice.call(document.querySelectorAll('#rail-mcp [data-mcp-side]')).map(function(b){
@@ -405,19 +403,17 @@ function check(name, val, detail) {
     });
     return {
       groupCount: groups.length,
-      groupLabels: groups.map(function(b){ return b.textContent.trim(); }),
-      inGo: inGo,
-      goOpen: !go.hidden,
+      groupLabels: groups.map(function(b){ return b.textContent.replace(/[ ]+/g,' ').trim(); }),
+      topLevel: topLevel,
       mcpOpen: !document.getElementById('rail-mcp').hidden,
       sides: sides
     };
   })()`);
   check(
-    'M13 rail is four dropdown groups and MCP Server sits inside Go',
-    m13.groupCount === 4 &&
-      m13.groupLabels.join(',') === 'Projects,Export,Go,Customize' &&
-      m13.inGo &&
-      m13.goOpen &&
+    'M13 rail is five dropdown groups and MCP Server is top-level, not under Go',
+    m13.groupCount === 5 &&
+      m13.groupLabels.join(',') === 'Projects,Export,Go,MCP Server,Customize' &&
+      m13.topLevel &&
       m13.mcpOpen,
     m13
   );
@@ -492,6 +488,61 @@ function check(name, val, detail) {
       /completed/.test(m15.text),
     m15
   );
+  // M15c: the queue shows every change grouped by its real record, with both
+  // values spelled out (a long value must NOT be truncated) - not three flat
+  // lines and a "Show all" details.
+  const m15c = await ev(`(function(){
+    const row = document.querySelector('#mcp-pending .mcp-q-row');
+    return {
+      groups: row ? row.querySelectorAll('.mcp-q-g').length : 0,
+      rows: row ? row.querySelectorAll('.mcp-view-row').length : 0,
+      text: row ? row.textContent : '',
+      hasMore: !!row && !!row.querySelector('.mcp-q-more')
+    };
+  })()`);
+  check(
+    'M15c every change is grouped by real record with full before/after',
+    m15c.groups === 2 &&
+      m15c.rows === 3 &&
+      /MEP Rough-In/.test(m15c.text) &&
+      /Seismic Retrofit/.test(m15c.text) &&
+      /sixty-four characters/.test(m15c.text) &&
+      m15c.hasMore === false,
+    m15c
+  );
+
+  // M15d: View opens a full change sheet that names the records and values,
+  // and says nothing is saved until Accept. Close tears it down.
+  await ev(`document.querySelector('#mcp-pending [data-mcp-act="view"]').click();`);
+  await delay(200);
+  const m15d = await ev(`(function(){
+    const ov = document.getElementById('mcp-view-ov');
+    return {
+      open: !!ov,
+      modal: ov ? ov.getAttribute('aria-modal') : '',
+      text: ov ? ov.textContent : '',
+      groups: ov ? ov.querySelectorAll('.mcp-view-g').length : 0,
+      accept: ov ? ov.querySelectorAll('[data-mcp-view="accept"]').length : 0
+    };
+  })()`);
+  check(
+    'M15d View sheet names records, values and the no-save-until-Accept rule',
+    m15d.open === true &&
+      m15d.modal === 'true' &&
+      m15d.groups === 2 &&
+      m15d.accept === 1 &&
+      /Proposal #43/.test(m15d.text) &&
+      /MEP Rough-In/.test(m15d.text) &&
+      /inprogress/.test(m15d.text) &&
+      /completed/.test(m15d.text) &&
+      /Nothing is saved until you Accept/.test(m15d.text),
+    m15d
+  );
+  await ev(`document.querySelector('#mcp-view-ov [data-mcp-view="close"]').click();`);
+  await delay(100);
+  const m15e = await ev(`!!document.getElementById('mcp-view-ov')`);
+  check('M15e Close dismisses the change sheet', m15e === false, m15e);
+
   await ev(`document.querySelector('#mcp-pending [data-mcp-act="accept"]').click();`);
   await delay(800);
   const m15b = await ev(`(function(){
@@ -505,6 +556,33 @@ function check(name, val, detail) {
     'M15b Accept posts to the project review accept route',
     m15b.accept === 1 && /Accepted/i.test(m15b.status),
     m15b
+  );
+
+  // ---- M16: the card has a real inner gutter and plain-text counts -------
+  const m16 = await ev(`(function(){
+    var card = document.getElementById('mcp-admin-card');
+    var title = document.getElementById('mcp-admin-title');
+    var count = document.getElementById('mcp-client-count');
+    var cs = function(n){ return window.getComputedStyle(n); };
+    var cr = card.getBoundingClientRect();
+    var tr = title.getBoundingClientRect();
+    var cc = count ? cs(count) : null;
+    return {
+      padTop: parseFloat(cs(card).paddingTop),
+      padLeft: parseFloat(cs(card).paddingLeft),
+      inset: Math.round(tr.left - cr.left),
+      countRadius: cc ? cc.borderRadius : '',
+      countBg: cc ? cc.backgroundColor : ''
+    };
+  })()`);
+  check(
+    'M16 card has an inner gutter; title and counts are not pill boxes',
+    m16.padTop >= 16 &&
+      m16.padLeft >= 16 &&
+      m16.inset >= 16 &&
+      /^0px$/.test(m16.countRadius) &&
+      /rgba\(0, 0, 0, 0\)|transparent/.test(m16.countBg),
+    m16
   );
 
   // ---- M9: 390 has no horizontal overflow --------------------------------

@@ -136,9 +136,12 @@ const MEASURE = () => {
       }
       const items = [...nav.querySelectorAll('.dot-item')];
       const nb = nav.getBoundingClientRect();
+      // LAYOUT size, not the painted rect: the active dot is scaled (1.5x) and
+      // getBoundingClientRect reports the transformed width, so the same dot
+      // measured 5px or 8px depending on which section was active.
       const dots = items.map(i => {
-        const b = i.querySelector('.dot').getBoundingClientRect();
-        return { t: i.classList.contains('major') ? 'M' : 'm', w: Math.round(b.width) };
+        const d = i.querySelector('.dot');
+        return { t: i.classList.contains('major') ? 'M' : 'm', w: d.offsetWidth };
       });
       const h1 = document.querySelector('main h1').getBoundingClientRect();
       const visible = e =>
@@ -168,8 +171,12 @@ const MEASURE = () => {
         tag + ' alternates big, small, small, big ...',
         r.pattern
       );
+      // OWNER 2026-11-01: "the bigger dots can be cut down ... the smaller one
+      // looks fine". The major dot is 8px (was 12), the minor 5px, and the
+      // active marker is the same dot scaled 1.5x. The gate asserts the LAYOUT
+      // ranks are distinct, which is the rule that survives that decision.
       check(
-        r.majorW >= 12 && r.minorW <= 8 && r.minorW < r.majorW,
+        r.majorW >= 8 && r.minorW <= 6 && r.minorW < r.majorW,
         tag + ' big dots are bigger than small dots',
         'big ' + r.majorW + ' small ' + r.minorW
       );

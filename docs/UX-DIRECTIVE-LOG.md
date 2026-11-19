@@ -14,7 +14,7 @@ the current session.
 | `tools/verify-prettier.cjs` | pass |
 | `tools/verify-test-registry.cjs` | pass |
 | `tools/verify-sw-cache.cjs` | `mmgr-shell-v672` newer than all 63 assets |
-| `tools/verify-contrast.cjs` | pass |
+| `tools/verify-contrast.cjs` | 16 passed, **2 pre-existing failures** (`gold on card` 2.10:1 in two palettes). Not wired into `npm run verify`; recorded as the baseline, not fixed - the standing owner rule forbids changing a palette. |
 | `tools/verify-a11y-labels.cjs` | pass |
 | `tools/verify-marketing-markup.cjs` | pass |
 | `tools/verify-perf-boot.cjs` | pass |
@@ -92,3 +92,37 @@ Gate: `L1`, `L2`, `L2a`, `L4`, `L5` all PASS. `L2b`/`L3` still fail - those are
 A3's.
 
 Commit: `fix(ux): one slim chrome line and dvh dialogs on short screens`.
+
+### A3 - the tour card never covers its target
+
+`js/calculator-page.js` `positionTourPop` rewritten: a scored choice over
+below / above / right / left with a 10px gap on a spotlight already grown 6px
+(the directive's 8px clearance then holds by construction); a short viewport
+docks the card to a side edge at 280px; when no side has room the card is
+capped to the free space and its copy scrolls inside; a target that fills the
+viewport drops the cutout instead of breaking the rule. `tourVisibleBox()`
+walks up from a hidden target to the first ancestor with a real rect - step 1
+was spotlighting a 0x0 box at the origin. Back/Skip/Next are 44px on a coarse
+pointer. `calculator.html` cache-buster 55 -> 56.
+
+Gate: `qa-ux-landscape` 46/46.
+
+Commit: `fix(ux): the tour card never covers the control it explains`.
+
+### A4 - touch targets and clipped text
+
+One `@media (pointer: coarse)` block at the end of
+`css/src/91-design-system.css`: every listed control gets a transparent
+`::after` box of `max(100%, 44px)` centred on it. It paints nothing, adds no
+layout, and leaves the compact 32px visuals (and the 44px header cap from A2)
+intact. Inline links in prose are exempt.
+
+New `L6` in `qa-ux-landscape` enumerates every visible control on the four
+pages at all four viewports and fails when the effective box (own rect or
+`::after`) is under 44px. `L5` (clipped text without an ellipsis) was already
+green once the screen-reader helpers were excluded.
+
+Gate: `qa-ux-landscape` **58/58**; `qa-a11y-axe` 7/7; `verify-contrast` at the
+2-failure baseline.
+
+Commit: `fix(ux): 44px touch targets on every coarse pointer`.

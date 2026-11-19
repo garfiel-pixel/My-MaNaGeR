@@ -307,6 +307,44 @@ const FLUSH_RAF = `new Promise(function (res) {
               bars
             );
           }
+          // A4: every visible control offers a 44x44 hit area on a coarse
+          // pointer, either by its own box or by the ::after extension.
+          const targets = await page.evaluate(() => {
+            const sel =
+              '.btn, .tab-btn, .dtab, .db-link, .db-quick, .db-hamb, .settings-btn, .status-chip, .nav-btn, .chip, .pill, .bcp-seg button, .bcp-seg label, .bcp-iconbtn, .cm-close, .tgl';
+            const out = [];
+            document.querySelectorAll(sel).forEach(el => {
+              const cs = getComputedStyle(el);
+              if (cs.display === 'none' || cs.visibility === 'hidden') {
+                return;
+              }
+              const r = el.getBoundingClientRect();
+              if (r.width <= 0 || r.height <= 0) {
+                return;
+              }
+              if (r.bottom <= 0 || r.top >= window.innerHeight) {
+                return;
+              }
+              const ps = getComputedStyle(el, '::after');
+              const pw = parseFloat(ps.width) || 0;
+              const phh = parseFloat(ps.height) || 0;
+              const w = Math.max(r.width, ps.content !== 'none' ? pw : 0);
+              const h = Math.max(r.height, ps.content !== 'none' ? phh : 0);
+              if (w < 44 || h < 44) {
+                out.push({
+                  sel: (el.className || el.tagName).toString().slice(0, 36),
+                  w: Math.round(w),
+                  h: Math.round(h)
+                });
+              }
+            });
+            return out.slice(0, 6);
+          });
+          check(
+            'L6 ' + p.name + ' @' + vp.name + ': controls offer a 44x44 hit area',
+            targets.length === 0,
+            targets
+          );
           const clip = await clipped(page);
           check(
             'L5 ' + p.name + ' @' + vp.name + ': no text clipped without ellipsis',

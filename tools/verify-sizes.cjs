@@ -77,7 +77,9 @@ const EXACT = {
   // 2026-11-19 (ux A2): 620000 -> 624000 for the short-screen block - slim
   // headers, a 41px Estimate bar, dvh dialogs and safe-area insets
   // (623735 measured). One shared block, not per-page hacks.
-  'css/mmgr.css': 624000,
+  // 2026-11-19 (ux A4): 624000 -> 627000 for the coarse-pointer touch-target
+  // block - one rule set, hit areas only, no layout (626087 measured).
+  'css/mmgr.css': 627000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

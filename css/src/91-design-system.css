@@ -59,3 +59,67 @@ body.dark-mode .dashboard-card {
   position: relative;
   z-index: 1;
 }
+
+/* ============================================================
+   TOUCH TARGETS - 44 x 44 on every coarse pointer
+   (UX-2026-11-19 A4)
+   ------------------------------------------------------------
+   Testers said some controls were small to tap (the Performance Mode
+   switch, drawer items, the tour buttons) and that text was "almost cut
+   off". The tour buttons get a real 44px height in the calculator layer;
+   everywhere else the visual must stay compact - the header is capped at
+   44px on short screens - so the hit area is EXTENDED with a transparent
+   ::after box centred on the control. It paints nothing, adds no layout,
+   and takes no part in the flex/grid sizing.
+
+   Only controls whose ::after is free are listed: `.btn` and friends never
+   define one, and `.tgl`'s knob lives on `.tsl::before`. Inline links
+   inside a paragraph are deliberately exempt (the directive's own rule).
+   ============================================================ */
+@media (pointer: coarse) {
+  .btn,
+  .tab-btn,
+  .dtab,
+  .db-link,
+  .db-quick,
+  .db-hamb,
+  .settings-btn,
+  .status-chip,
+  .nav-btn,
+  .chip,
+  .pill,
+  .bcp-seg button,
+  .bcp-seg label,
+  .bcp-iconbtn,
+  .cm-close,
+  .tgl {
+    position: relative;
+  }
+  .btn::after,
+  .tab-btn::after,
+  .dtab::after,
+  .db-link::after,
+  .db-quick::after,
+  .db-hamb::after,
+  .settings-btn::after,
+  .status-chip::after,
+  .nav-btn::after,
+  .chip::after,
+  .pill::after,
+  .bcp-seg button::after,
+  .bcp-seg label::after,
+  .bcp-iconbtn::after,
+  .cm-close::after,
+  .tgl::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+    /* Purely a hit area: no paint, no layout contribution. */
+    background: none;
+    pointer-events: auto;
+  }
+}

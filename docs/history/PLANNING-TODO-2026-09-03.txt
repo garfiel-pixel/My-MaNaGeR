@@ -2802,3 +2802,24 @@ narrower reading of §14.3).
   Gates: qa-team-ui G15 (card shape + payload fields) and G16 (fetch stubbed
   to a promise that never resolves; the cards must still paint from cache),
   25/25; qa-team-rbac 75/75 unchanged. sw.js shell cache v652 -> v661.
+- PLAN-STATE CI REPAIR 2026-11-19 (feat/plan-state-persist PR17 run 44436803485).
+  Merging plan-state into main made two CI jobs red from the same root cause:
+  the boot fix above asked /api/billing/status in parallel on EVERY page with
+  [data-plan-badge] or [data-pricing-upgrade] (~10 marketing pages), signed in
+  or not. Signed-out, that is a 404 on the static dev server (qa-hero-globe
+  G10a console error) and a 403-then-429 flood on the Worker. qa-health-sweep
+  whitelists /api/* 401/403 but NOT 429, so its LAST pages (admin.html,
+  seed-test.html) failed http>=400 while the first ones passed - a self-inflicted
+  request flood, not a slow server. Fix: js/mmgr-google-auth.js boot() no longer
+  calls refreshPlan() from a selector check. It calls restoreSession() FIRST -
+  /api/auth/me does not need GIS - and the signed-in branch showUser() asks the
+  plan question; a signed-out visitor makes zero billing calls. The GIS branches
+  no longer re-call restoreSession (the _restored guard made them no-ops) and no
+  longer gate the session chip on the 10s vendor fallback. Owner requirement kept:
+  server-checked plan, survives reload, no Upgrade flash, paid card marked current.
+  Gates: qa-hero-globe 16/16 (G10a clean), health-sweep 15/15 on wrangler after
+  applying D1 migrations locally (the auth_nonces 503 on an unmigrated local state
+  is environmental, not from this change), qa-plan-badge 42/42, qa-consent 37/37,
+  qa-chrome 106/106, npm run verify green. skeptical-code-audit checklist item 15
+  added (a mount is not a session; suspect 429 on last-swept pages = self flood).
+  sw.js shell cache v665 -> v667 (v666 is the nav-icon-search branch).

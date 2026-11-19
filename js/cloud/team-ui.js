@@ -282,8 +282,15 @@ var MMGR = window.MMGR || {};
         els.status.textContent = 'Loading your projects...';
       }
       renderShared();
-    } else if (els.status && els.status.textContent === 'Loading your projects...') {
-      els.status.textContent = '';
+    } else {
+      // A read that ended with no memberships must not strand the "Loading
+      // the projects shared with you..." sentence on screen - that is the
+      // lingering loading state the owner reported. Re-render so the section
+      // collapses (or shows the real list) once the answer is in.
+      renderShared();
+      if (els.status && els.status.textContent === 'Loading your projects...') {
+        els.status.textContent = '';
+      }
     }
   }
   /* A read that failed while the browser still reports a connection: say what

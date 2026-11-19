@@ -2801,3 +2801,16 @@ narrower reading of §14.3).
   arrive, 500-while-online keeps the note hidden, real offline still shows
   it. Registered in docs/CI-TEST-COVERAGE.md and ci.yml (browser-app T4).
   qa-team-ui 25/25 unchanged. sw.js shell cache v661 -> v662.
+
+- PR 18 CI REPAIR 2026-11-19 (qa-appshell 95/97 at 900px light+dark):
+  "nothing on the page sits under the icon strip" failed with code-entry-in
+  hitting the fixed bottom strip. Root cause: setBusy(false) never re-rendered
+  the shared section, so on a failed team read (serve.cjs answers 404) the
+  "Loading the projects shared with you..." sentence stayed on screen forever -
+  the lingering loading state the owner reported. That sentence adds one line
+  of height, and whether the harness caught the expanded or collapsed state was
+  a timing race (local 97/97 four times, CI 95/97 once). Fix: setBusy(false)
+  now calls renderShared() so the section collapses once the answer is in;
+  the resting state is deterministic (code-entry-in at y771, strip at y852, no
+  overlap) instead of a 15px-clearance race. qa-appshell 97/97 x4, qa-team-
+  loading 11/11, qa-team-ui 25/25, npm run verify 0. sw.js v662 -> v666.

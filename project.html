@@ -1616,6 +1616,13 @@
     <div class="card">
       <div class="card-title">Meeting Agendas &amp; Templates<div class="g6"><button class="btn btn-o btn-s" data-action="openMeetPrompt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-edit"></use></svg> AI Agenda Prompt</button><button class="btn btn-n btn-s" data-action="cpAllPage" data-section="meet"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button></div></div>
       <p class="t-xs mb14">Pick a template to copy a Word-ready agenda , or hit <strong>Start</strong> to run the meeting live in the app: check items off with notes, track elapsed time, and end it to auto-log a permanent Comms entry.</p>
+      <div class="scrub-clock-row">
+        <span class="scrub-clock-lbl">Planned start</span>
+        <input type="text" class="in" data-smart-time="clock" data-time-pair="[data-pair-end]" value="09:00" inputmode="numeric" aria-label="Planned meeting start time">
+        <span class="scrub-clock-lbl">Planned end</span>
+        <input type="text" class="in" data-pair-end data-smart-time="clock" value="10:00" inputmode="numeric" aria-label="Planned meeting end time">
+        <span class="t-xs">Planning aid. Drag sideways, use the arrow keys, or open the clock chips.</span>
+      </div>
       <div class="rsec">
         <div class="rst"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Pre-Project Kickoff</div>
         <ul id="meet-kickoff-list" class="meet-kickoff-list"></ul>

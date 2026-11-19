@@ -94,7 +94,11 @@ const EXACT = {
   // 2026-11-19 (ux B6): 640000 -> 642000 for the eight [data-major] token
   // rules and the three carry-through accents - WBS row marker, Gantt bar
   // stripe, Kanban card stripe (640329 measured).
-  'css/mmgr.css': 642000,
+  // 2026-11-19 (scrub-smart-time): 642000 -> 648000 for the 97-scrub-smart-time
+  // layer - scrub affordance, active state, solid quick-value popover, chip
+  // sizes, coarse-pointer and reduced-motion/transparency/perf fallbacks
+  // (644376 measured).
+  'css/mmgr.css': 648000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

@@ -1336,6 +1336,13 @@ jobs:
         id: qa-dashboard-links
         run: node tools/qa-dashboard-links.cjs
 
+      # ScrubNumber / SmartTime (owner 2026-11-19): dead zone, drag
+      # physics, deferred commit, Escape cancel, presets, linked clock and
+      # ARIA. Own serve.cjs + headless Chrome, same as its neighbours.
+      - name: "T4: Scrub and smart entry (qa-scrub-controls)"
+        id: qa-scrub-controls
+        run: node tools/qa-scrub-controls.cjs
+
       - name: "T4: The completion ring and its contributors (qa-dashboard-ring)"
         id: qa-dashboard-ring
         run: node tools/qa-dashboard-ring.cjs

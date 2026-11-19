@@ -187,11 +187,16 @@ const appDir = path.join(ROOT, 'js', 'app');
 // ONE line, which this checker's `^\s+key:` rule could not parse - so the gap
 // was invisible until prettier split it. Excluded rather than wrapped: adding
 // four no-op delegations to the monolith would be the wrong fix.
+// scrub-number.js (2026-11-19) is the same standalone shape: it self-starts,
+// delegates pointer/key events from document, owns no application state and
+// is reached directly as MMGR.Scrub.*. It rides both the project and launcher
+// bundles, so mmgr-app.js is not its entry point.
 const APP_EXCLUDE = new Set([
   'components.js',
   'entitlements.js',
   'section-accelerator.js',
-  'launcher-rail.js'
+  'launcher-rail.js',
+  'scrub-number.js'
 ]);
 const appFiles = fs.readdirSync(appDir).filter(f => f.endsWith('.js') && !APP_EXCLUDE.has(f));
 const appSrc = fs.readFileSync(path.join(ROOT, 'js', 'mmgr-app.js'), 'utf8');

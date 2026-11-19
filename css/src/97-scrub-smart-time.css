@@ -1,0 +1,184 @@
+/* ============================================================
+   97 - ScrubNumber and SmartTime (2026-11-19)
+   ------------------------------------------------------------
+   Opt-in styling for [data-scrub], [data-smart-time] and
+   [data-smart-date]. This is the LAST cascade layer; every rule
+   below is scoped to an opted-in element or to the popover the
+   controller appends to document.body, so the existing layout,
+   table density and theme structure are untouched.
+
+   The popover is chrome (a floating quick-value panel), so it
+   takes the glass hierarchy: solid card surface, hairline rim
+   and measured shadow. It deliberately applies NO backdrop blur:
+   the X-2 paint gate is already at 24 of 25 rules, and light
+   mode retired glass fills. Reduced-motion, reduced-transparency
+   and Performance Mode fallbacks are stated explicitly.
+   ============================================================ */
+
+.scrub-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+[data-scrub],
+[data-smart-time] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  border-bottom: 1px dashed transparent;
+  transition: border-color var(--tr);
+}
+
+[data-scrub]:hover,
+[data-scrub]:focus-visible,
+[data-smart-time]:hover,
+[data-smart-time]:focus-visible {
+  border-bottom-color: var(--gold-ink);
+  cursor: ew-resize;
+}
+
+[data-scrub].is-scrubbing,
+[data-smart-time].is-scrubbing {
+  border-bottom-style: solid;
+  border-color: var(--gold);
+  background: var(--brand-subtle);
+  box-shadow: 0 0 0 2px var(--brand-subtle);
+  outline: none;
+  z-index: 2;
+}
+
+body.is-scrubbing,
+body.is-scrubbing * {
+  cursor: ew-resize !important;
+  user-select: none;
+}
+
+/* Floating quick-value panel. Solid surface, hairline rim, no blur. */
+.scrub-pop {
+  position: fixed;
+  z-index: 9000;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 8px;
+  background: var(--card);
+  border: var(--glass-border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--glass-shadow);
+  font-variant-numeric: tabular-nums;
+}
+
+.scrub-chip {
+  min-height: 32px;
+  padding: 5px 10px;
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color var(--tr),
+    border-color var(--tr),
+    color var(--tr);
+}
+
+.scrub-chip:hover,
+.scrub-chip:focus-visible {
+  background: var(--brand-subtle);
+  border-color: var(--gold);
+  color: var(--gold-ink);
+}
+
+.scrub-chip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The one live token: the existing teal chart slot, never a new hue. */
+.scrub-chip.is-live {
+  border-color: var(--major-7);
+  color: var(--major-7);
+  font-weight: 700;
+}
+
+[data-smart-date] {
+  scroll-margin-bottom: 64px;
+}
+
+/* Meeting planning aid: two opt-in clock fields. Default styles carry the
+   rest; this only lays the row out without touching any existing panel. */
+.scrub-clock-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.scrub-clock-row .scrub-clock-lbl {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.scrub-clock-row input {
+  width: 76px;
+  text-align: center;
+}
+
+.scrub-clock-row .t-xs {
+  flex-basis: 100%;
+}
+
+@media (pointer: coarse) {
+  .scrub-chip {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  [data-scrub],
+  [data-smart-time] {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scrub],
+  [data-smart-time],
+  .scrub-chip {
+    transition: none;
+  }
+}
+
+/* Reduced transparency: the panel is already a solid card, but state the
+   fallback explicitly so a future glass change cannot silently regress it. */
+@media (prefers-reduced-transparency: reduce) {
+  .scrub-pop {
+    background: var(--surface-raised);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Performance Mode: no transition on the chip row. 85-performance-mode.css
+   already forces backdrop-filter off for every element with !important. */
+[data-perf='on'] .scrub-chip,
+[data-perf='on'] [data-scrub],
+[data-perf='on'] [data-smart-time] {
+  transition: none;
+}

@@ -781,7 +781,10 @@
 // nav note was updated; both ride in the project bundle, so refresh the cache.
 // v679 - CI repair 2026-11-19: dropped the sign-out confirm's full-viewport
 // backdrop blur (css/mmgr.css) so X-2 stays under 25 blur rules; css is a shell asset.
-const CACHE = 'mmgr-shell-v679';
+// v680 - ScrubNumber / SmartTime 2026-11-19: js/app/scrub-number.js joins the
+// project and launcher bundles, css/src/97-scrub-smart-time.css joins css/mmgr.css;
+// both are shell assets, so returning clients must refetch them.
+const CACHE = 'mmgr-shell-v680';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

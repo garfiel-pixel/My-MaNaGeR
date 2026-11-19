@@ -2869,12 +2869,12 @@ var MMGR = window.MMGR || {};
         <td><input type="text" value="${U.escapeHtml(t.assignee || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="assignee" placeholder="--"></td>
         ${
           t.leadTime
-            ? `<td><label class="wbs-lt-lbl">Submitted</label><input type="date" value="${U.escapeHtml(t.submittedDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="submittedDate"></td>
-             <td><label class="wbs-lt-lbl">Expected</label><input type="date" value="${U.escapeHtml(t.expectedDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="expectedDate"></td>
+            ? `<td><label class="wbs-lt-lbl">Submitted</label><input type="date" value="${U.escapeHtml(t.submittedDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="submittedDate" data-smart-date></td>
+             <td><label class="wbs-lt-lbl">Expected</label><input type="date" value="${U.escapeHtml(t.expectedDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="expectedDate" data-smart-date></td>
              <td><span class="wbs-lt-note">Lead-time task, tracked by dates, not % done</span></td>`
-            : `<td><input type="text" value="${U.escapeHtml(t.duration || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="duration" placeholder="days" style="width:60px"></td>
-             <td><input type="date" value="${U.escapeHtml(t.startDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="startDate"></td>
-             <td><input type="date" value="${U.escapeHtml(t.endDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="endDate"></td>`
+            : `<td><input type="text" value="${U.escapeHtml(t.duration || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="duration" data-scrub="duration" data-scrub-step="0.5" data-scrub-min="0" data-scrub-presets="0.5,1,3,5,10" placeholder="days" style="width:60px"></td>
+             <td><input type="date" value="${U.escapeHtml(t.startDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="startDate" data-smart-date></td>
+             <td><input type="date" value="${U.escapeHtml(t.endDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="endDate" data-smart-date></td>`
         }
         <td>
           <select data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="status">

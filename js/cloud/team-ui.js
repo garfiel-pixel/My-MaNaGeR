@@ -80,7 +80,10 @@ var MMGR = window.MMGR || {};
     accessOpen: {},
     templates: [],
     templatesLoaded: false,
-    templateBusy: false
+    templateBusy: false,
+    // True while a read is in flight; drives the travelling line and the
+    // "loading" sentence in the shared section.
+    busy: false
   };
   var els = {};
 
@@ -259,6 +262,50 @@ var MMGR = window.MMGR || {};
     return typeof navigator === 'undefined' || navigator.onLine !== false;
   }
 
+  /* OWNER 2026-11-19: "it is telling me that I need connection, but if I did
+     not have connection I could not be on the web page". A slow answer is not
+     a lost connection. While a read is in flight a thin line travels across
+     the panel and the shared section (never a spinner), and the "Needs a
+     connection" note is reserved for the browser actually reporting offline. */
+  function setBusy(on) {
+    state.busy = !!on;
+    var panelBar = $('team-progress');
+    if (panelBar) {
+      panelBar.hidden = !on;
+    }
+    var sharedBar = $('shared-progress');
+    if (sharedBar) {
+      sharedBar.hidden = !on;
+    }
+    if (on) {
+      if (els.status && !els.status.textContent) {
+        els.status.textContent = 'Loading your projects...';
+      }
+      renderShared();
+    } else {
+      // A read that ended with no memberships must not strand the "Loading
+      // the projects shared with you..." sentence on screen - that is the
+      // lingering loading state the owner reported. Re-render so the section
+      // collapses (or shows the real list) once the answer is in.
+      renderShared();
+      if (els.status && els.status.textContent === 'Loading your projects...') {
+        els.status.textContent = '';
+      }
+    }
+  }
+  /* A read that failed while the browser still reports a connection: say what
+     happened without claiming the network is gone, and leave the retry loop
+     to fill the list in. */
+  function noteReadFailure() {
+    var offline = !online();
+    if (els.offline) {
+      els.offline.hidden = !offline;
+    }
+    if (!offline) {
+      setStatus('The server has not answered yet. This list fills in by itself.', false);
+    }
+  }
+
   // ---- HTTP ---------------------------------------------------------------
   function jfetch(path, opts) {
     var o = Object.assign({ credentials: 'same-origin' }, opts || {});
@@ -332,6 +379,7 @@ var MMGR = window.MMGR || {};
       '</div>' +
       '<div class="team-pane" id="team-pane-inv" role="tabpanel" aria-labelledby="team-tab-inv"><div class="team-list" id="team-inv-list"></div></div>' +
       '<div class="team-pane" id="team-pane-col" role="tabpanel" aria-labelledby="team-tab-col" hidden><div class="team-list" id="team-col-list"></div></div>' +
+      '<div class="team-progress" id="team-progress" role="progressbar" aria-label="Loading your projects" hidden></div>' +
       '<div class="team-pop-foot"><span class="team-status" id="team-pop-status" role="status" aria-live="polite"></span><span class="team-offline" id="team-offline" hidden>Needs a connection</span></div>';
     document.body.appendChild(pop);
     els.pop = pop;
@@ -1678,6 +1726,15 @@ var MMGR = window.MMGR || {};
   }
 
   async function refresh() {
+    setBusy(true);
+    try {
+      await refreshInner();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function refreshInner() {
     var wantsShared = !!$('shared-dash') || state.tab === 'collaborators';
     // The two reads are independent and both are session-gated, so they go out
     // together. Before this, the launcher's Shared-with-me list waited for the
@@ -1711,14 +1768,20 @@ var MMGR = window.MMGR || {};
         state.invitations = cached.invitations || [];
         renderInvitations();
       }
-      if (els.offline) {
-        els.offline.hidden = false;
-      }
+      // A slow or refused read while the browser is online must not claim the
+      // connection is gone (owner report 2026-11-19).
+      noteReadFailure();
       return;
     }
     setSignedIn(true);
     state.invitations = (inv.body && inv.body.invitations) || [];
     renderInvitations();
+    if (els.offline) {
+      els.offline.hidden = true;
+    }
+    if (els.status && /has not answered yet/.test(els.status.textContent || '')) {
+      setStatus('', false);
+    }
     // The launcher renders "Shared with me" outside the panel, so the list has
     // to be loaded on the ordinary refresh - waiting for the Collaborators tab
     // would leave a returning member with no way to reach their project.
@@ -1748,6 +1811,14 @@ var MMGR = window.MMGR || {};
       return;
     }
     if (!state.memberships.length) {
+      if (state.busy) {
+        // A first load with nothing cached: keep the section on screen with
+        // the travelling line above it, so the reader sees that the projects
+        // are coming instead of an empty gap.
+        wrap.hidden = false;
+        list.innerHTML = '<div class="cd-empty">Loading the projects shared with you...</div>';
+        return;
+      }
       wrap.hidden = true;
       list.innerHTML = '';
       return;

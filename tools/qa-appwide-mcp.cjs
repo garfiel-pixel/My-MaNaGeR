@@ -98,6 +98,15 @@ function handleUpdate(s, args, store) {
     }
     return { meta: { changes: row ? 1 : 0 } };
   }
+  if (s.includes('cloud_projects') && s.includes('latest_r2_key')) {
+    // OWNER 2026-11-17: create_project seeds the first snapshot and stamps
+    // the key back onto the row.
+    const row = store.cloud_projects.find(p => p.project_id === args[1]);
+    if (row) {
+      row.latest_r2_key = args[0];
+    }
+    return { meta: { changes: row ? 1 : 0 } };
+  }
   if (s.includes('mcp_tokens')) {
     let row = null;
     const last = args[args.length - 1];
@@ -315,7 +324,36 @@ function makeEnv(world) {
           }
         };
       }
+      if (m && world.blobs && world.blobs[m[1]] !== undefined) {
+        const blob = world.blobs[m[1]];
+        return {
+          async text() {
+            return blob;
+          }
+        };
+      }
       return null;
+    },
+    // OWNER 2026-11-17: a real put, so create_project's seeded snapshot is
+    // stored exactly as the Worker would store it (encrypted when the row
+    // carries a hash + salt).
+    async put(key, payload, opts) {
+      const m = /^projects\/([^/]+)\/latest\.json$/.exec(String(key || ''));
+      if (!m) {
+        throw new Error('unexpected R2 key ' + key);
+      }
+      if (
+        opts &&
+        opts.onlyIf &&
+        opts.onlyIf.etagDoesNotMatch === '*' &&
+        world.blobs &&
+        world.blobs[m[1]] !== undefined
+      ) {
+        throw new Error('precondition failed');
+      }
+      world.blobs = world.blobs || {};
+      world.blobs[m[1]] = String(payload);
+      return {};
     }
   };
   return {
@@ -1058,6 +1096,53 @@ async function sessionCookie(env, sub) {
     'create_project text never mentions the owner code',
     createdText.length > 0 && createdText.toLowerCase().indexOf('ownercode') === -1,
     createdText
+  );
+
+  // OWNER 2026-11-17: an MCP-created project must OPEN like a normal one.
+  // The create seeds the first snapshot from the app's own default state, so
+  // assert the blob really is a project state (decrypted with the row's own
+  // credentials) and not an empty placeholder.
+  const seededRow = envCreate.__store.cloud_projects.find(p => p.project_id === 'new-1');
+  const seededObj = await envCreate.R2.get('projects/new-1/latest.json');
+  const seededText = seededObj ? await seededObj.text() : '';
+  let seededState = null;
+  try {
+    const envelope = JSON.parse(seededText);
+    const http = await import('../src/lib/http.js');
+    seededState = await http.cloudDecryptState(
+      envelope,
+      seededRow && seededRow.owner_code_hash,
+      seededRow && seededRow.owner_code_salt
+    );
+  } catch (e) {
+    seededState = null;
+  }
+  check(
+    'create_project seeds the first snapshot, so the launcher can open it',
+    createdJson &&
+      createdJson.hasSnapshot === true &&
+      !!seededRow &&
+      seededRow.latest_r2_key === 'projects/new-1/latest.json' &&
+      !!seededState,
+    { created: createdJson, key: seededRow && seededRow.latest_r2_key, has: !!seededState }
+  );
+  check(
+    'the seeded snapshot is a real empty project state, named after the project',
+    seededState &&
+      seededState.projectId === 'new-1' &&
+      seededState.charter &&
+      seededState.charter.name === 'New Project' &&
+      Array.isArray(seededState.tasks) &&
+      typeof seededState.schemaVersion === 'number' &&
+      seededState.schemaVersion > 0 &&
+      seededState.revision === 1,
+    seededState && {
+      projectId: seededState.projectId,
+      name: seededState.charter && seededState.charter.name,
+      tasks: Array.isArray(seededState.tasks),
+      schema: seededState.schemaVersion,
+      revision: seededState.revision
+    }
   );
 
   section('APP-WIDE MCP M13 — list_projects returns owned + adopted');

@@ -53,6 +53,7 @@ import {
 } from '../lib/http.js';
 import { billingConfigured, billingFreeCap, subscriptionActive } from '../billing.js';
 import { enrichDiffs } from './proposal-diffs.js';
+import { emptyProjectState } from './empty-state.js';
 import { trackEvent } from '../lib/observe.js';
 
 // ROLE-VIEW (Wave 7, owner 2026-10-06): the role->sections matrix now lives in
@@ -65,7 +66,10 @@ const CLOUD_STATE_SECRET_PATHS = ['config.ai.apiKey', 'config.ai.azureKey', 'con
    launcher card, the cloud card and the D1 row. An unknown value never fails a
    write - it falls back to 'active' so a stale client cannot wedge a save. */
 const PROJECT_STATUSES = ['active', 'planning', 'on-hold', 'completed'];
-function normaliseProjectStatus(v) {
+// Exported for /api/team/memberships: a shared card shows the OWNER's project
+// status, and it must use this one vocabulary so the same project reads the
+// same on the owner's launcher and the member's "Shared with me" card.
+export function normaliseProjectStatus(v) {
   const s = String(v || '').toLowerCase();
   return PROJECT_STATUSES.indexOf(s) > -1 ? s : 'active';
 }
@@ -350,12 +354,43 @@ export async function insertCloudProject(env, p) {
     }
     throw e;
   }
+  // OWNER 2026-11-17: a project created by the MCP server has no home device
+  // to save the first snapshot. The launcher then refuses to open it ("no
+  // cloud snapshot yet") and the admin panel shows a row that was never
+  // saved. When the caller asks for it, seed the SAME state a fresh project
+  // on a device would have saved - generated from the app's own
+  // State.getDefaultState() (tools/gen-empty-state.cjs) - so an MCP-created
+  // project opens, renders and syncs like any other. A failure here never
+  // fails the create: the row exists and the first save seeds it instead.
+  let seeded = false;
+  if (p.seedSnapshot) {
+    try {
+      const key = 'projects/' + p.projectId + '/latest.json';
+      const state = emptyProjectState(p.projectId, p.name || '', now);
+      let payload = JSON.stringify(state);
+      try {
+        payload = await cloudEncryptState(state, hash, salt);
+      } catch (e) {
+        /* plaintext fallback, exactly as a save does */
+      }
+      const put = await cloudPutState(env, key, payload, null);
+      if (put.ok) {
+        await env.DB.prepare('UPDATE cloud_projects SET latest_r2_key = ? WHERE project_id = ?')
+          .bind(key, p.projectId)
+          .run();
+        seeded = true;
+      }
+    } catch (e) {
+      /* the row is still valid; the first save will seed the blob */
+    }
+  }
   return {
     ok: true,
     projectId: p.projectId,
     ownerCode,
     status: p.status || 'active',
-    syncMode: p.syncMode || 'auto'
+    syncMode: p.syncMode || 'auto',
+    hasSnapshot: seeded
   };
 }
 

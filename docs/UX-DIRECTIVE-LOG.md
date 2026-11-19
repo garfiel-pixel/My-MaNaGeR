@@ -752,3 +752,71 @@ Two notes:
   measured), for the two seam SVG data URIs and this motion block.
 
 Commit: `feat(marketing): the card rows move, and the numerals and watermarks get out of the text`.
+
+### C3 - the role cards open, with a figure
+
+The four "one tool for everyone" cards were an icon, a title and one line. Each
+is now a real disclosure: the card is a `<button aria-expanded aria-controls>`,
+and opening it reveals the role name, its two-sentence description and a
+silhouette figure in a reserved box.
+
+**State, not decoration.** `Enter` and `Space` work because it is a button; a
+click toggles; a fine pointer opens on hover; `Escape` closes and returns
+focus; only one card is open at a time. The hover-open and the click that
+follows it do not fight: the first click after a hover-open is absorbed, the
+next one toggles. On touch there is no hover, so tap opens and a second tap
+closes.
+
+**The copy is never hidden from a reader.** The description sits in the DOM in
+every state - the closed card clips it with `max-height: 0` and `overflow:
+hidden`, it never empties it. Four descriptions, 141 / 140 / 123 / 104
+characters, present on a page nobody has clicked.
+
+**The figure is an enhancement.** The HTML ships four inline SVG silhouettes
+(hard hat at a laptop, suit with a tablet, hi-vis vest with a clipboard, tool
+belt with a spirit level). Those are the complete experience: no JS, no
+WebGL, reduced motion, Performance Mode, save-data or a failed load all end
+there. `js/marketing-roles.js` replaces the silhouette in the *open* card with
+a low-poly three.js figure built from primitives.
+
+The 3D obeys its budget, measured rather than claimed:
+
+| Rule | Measured |
+|---|---|
+| triangles per figure, max 1,500 | 296 / 204 / 284 / 284 |
+| canvas box, max 280 x 340 | 150 x 214 CSS px |
+| device pixel ratio, max 1.5 | capped at 1.5 |
+| added JS, max 25 KB gzipped | **2,180 bytes** |
+| renderer / canvas instances | one of each, moved between cards |
+| three.js copy | the vendored r160 at `/vendor/three/three.module.js` - no second copy, no CDN |
+
+Render-on-demand is literal: a ~1.2s pop when a card opens (ease-out scale
+and a settle from a slight rotation), one frame per pointer move over that
+card, and then nothing. `window.__mmgrRoleFigures.frames()` is read twice 800ms
+apart and must not move - adding an idle loop turns C3f red (proven).
+
+Loading is deferred twice over. `js/marketing.js` sets an IntersectionObserver
+on `#builtfor` with `rootMargin: 100%` and injects the bundle only when the
+section comes within one viewport; the module then checks WebGL, reduced
+motion, Performance Mode and save-data *and re-checks the preference
+conditions on every open*, so turning Performance Mode on while the page is up
+stops the figure instead of leaving it running.
+
+One visual defect found by looking at the render rather than the numbers: the
+first build drew the figure at 208 x 296 inside a 104 x 148 box, so it spilled
+over the title and the paragraph. The box and the renderer now share one set of
+numbers (150 x 214), and the row uses `align-items: start` so a closed card
+keeps its own height instead of stretching to the open one.
+
+Gate: `tools/qa-landing-motion.cjs` **47/47** (was 32; C3a-C3g added, and
+C3b, C3e and C3f were each proven to fail when the behaviour they describe is
+removed). `qa-landing-ui` **70/70**, `qa-marketing-layout` PASS,
+`qa-a11y-axe` **7/7**, `verify-perf-boot` PASS, `verify-marketing-markup`
+PASS, `verify-three-revision` PASS (r160), `npm run verify` exit 0.
+
+Cap raised with the measured bytes: `index.html` 54000 -> **60000** (58365).
+The four silhouettes are inline by requirement - the fallback must render with
+no extra request - so this is the one growth the "move a band" note does not
+cover; it is recorded in `tools/verify-sizes.cjs` as such.
+
+Commit: `feat(marketing): the role cards open into a figure`.

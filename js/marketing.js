@@ -1654,6 +1654,144 @@
   }
   wireCardMotion();
 
+  /* ---- ROLE CARDS (UX-2026-11-19 C3) ----
+     The four "one tool for everyone" cards open a detail area. The card is a
+     real <button aria-expanded>, so Enter and Space are native; this only
+     wires the state. One open at a time, Escape closes, and a fine pointer
+     opens on hover (the owner asked for hover, focus and tap to all work).
+     The description is in the DOM in every state - the closed card is clipped,
+     never emptied - so a screen reader and a search engine both see it.
+
+     The 3D figures live in their own bundle. It is injected only when the
+     Built For section comes within one viewport of the screen, so nothing
+     loads before first paint and nothing competes with the hero. The inline
+     SVG silhouette is the fallback and stays the figure unless that bundle
+     replaces it. Never throws. */
+  function wireRoleCards() {
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.role-card'));
+    if (!cards.length) {
+      return;
+    }
+    var lastBtn = null;
+    function open(card) {
+      if (card.classList.contains('is-open')) {
+        return;
+      }
+      cards.forEach(function (c) {
+        if (c !== card && c.classList.contains('is-open')) {
+          c.classList.remove('is-open');
+          c.removeAttribute('data-hover-open');
+          var b = c.querySelector('.role-btn');
+          if (b) {
+            b.setAttribute('aria-expanded', 'false');
+          }
+        }
+      });
+      card.classList.add('is-open');
+      var btn = card.querySelector('.role-btn');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'true');
+        lastBtn = btn;
+      }
+      try {
+        card.dispatchEvent(new CustomEvent('mmgr:roleopen', { bubbles: true }));
+      } catch (e) {}
+    }
+    function close(card) {
+      if (!card.classList.contains('is-open')) {
+        return;
+      }
+      card.classList.remove('is-open');
+      card.removeAttribute('data-hover-open');
+      var btn = card.querySelector('.role-btn');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+      }
+      try {
+        card.dispatchEvent(new CustomEvent('mmgr:roleclose', { bubbles: true }));
+      } catch (e) {}
+    }
+    var fine = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)');
+    cards.forEach(function (card) {
+      var btn = card.querySelector('.role-btn');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          /* A fine pointer opens the card on hover, so the click that follows
+             must not immediately close what the pointer just opened. The first
+             click after a hover-open is absorbed; the next one toggles. */
+          if (card.classList.contains('is-open') && card.getAttribute('data-hover-open') === '1') {
+            card.removeAttribute('data-hover-open');
+            return;
+          }
+          if (card.classList.contains('is-open')) {
+            close(card);
+          } else {
+            open(card);
+          }
+        });
+      }
+      if (fine && fine.matches) {
+        card.addEventListener('pointerenter', function () {
+          if (!card.classList.contains('is-open')) {
+            card.setAttribute('data-hover-open', '1');
+            open(card);
+          }
+        });
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') {
+        return;
+      }
+      cards.forEach(close);
+      if (lastBtn) {
+        lastBtn.focus();
+        lastBtn = null;
+      }
+    });
+  }
+  wireRoleCards();
+
+  /* Load the 3D figures when the Built For section is nearly on screen. One
+     observer, disconnected as soon as it fires - the module decides for
+     itself whether it can draw (WebGL, reduced motion, Performance Mode, save
+     data) and leaves the SVG silhouettes alone when it cannot. */
+  (function loadRoleFigures() {
+    var section = document.getElementById('builtfor');
+    if (!section || !('IntersectionObserver' in window)) {
+      return;
+    }
+    if (document.documentElement.getAttribute('data-perf') === 'on') {
+      return;
+    }
+    var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (rm && rm.matches) {
+      return;
+    }
+    var io = new IntersectionObserver(
+      function (entries) {
+        if (
+          !entries.some(function (e) {
+            return e.isIntersecting;
+          })
+        ) {
+          return;
+        }
+        io.disconnect();
+        var s = document.createElement('script');
+        s.src = 'dist/marketing-roles.js';
+        s.onerror = function () {
+          var t = document.createElement('script');
+          t.src = 'js/marketing-roles.js';
+          document.body.appendChild(t);
+        };
+        document.body.appendChild(s);
+      },
+      { rootMargin: '100% 0px' }
+    );
+    io.observe(section);
+  })();
+
   /* ---- FEATURE PANELS (U-12, 2026-10-30) ----
      The auto-ticking carousel is GONE. It cloned five cards to fake a
      seamless loop (duplicate ids on the page), hid three quarters of the

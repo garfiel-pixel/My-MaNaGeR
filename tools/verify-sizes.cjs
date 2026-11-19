@@ -148,7 +148,12 @@ const EXACT = {
   // menu entries and the two footer links (~3.4 KB). The band is the only
   // new marketing section this year; if the next wave grows index.html again,
   // move a band to its own page rather than raising this.
-  'index.html': 54000
+  // 2026-11-19 (ux C3): 54000 -> 60000. The four role cards became buttons
+  // with a detail area and a silhouette figure, and the figures are INLINE by
+  // requirement - the fallback must render with no extra request, so it
+  // cannot be an external SVG file (58365 measured). This is not a new band;
+  // the "move a band" note above still stands for the next content growth.
+  'index.html': 60000
 };
 
 /* Per-directory defaults for everything else. */

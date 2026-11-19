@@ -6489,3 +6489,117 @@ html body.dark-mode .btn-gold:disabled {
 [data-perf='on'] [data-motion='card']:focus-visible > .ico {
   transform: none;
 }
+
+/* ============================================================
+   C3 - ROLE CARDS (UX-2026-11-19)
+   The four "one tool for everyone" cards open into a detail area: the role
+   name, its two-sentence description and a silhouette figure. The card is a
+   real button (aria-expanded / aria-controls), so Enter and Space work for
+   free and the state is announced.
+
+   The figure ships as an inline SVG silhouette in the HTML - that is the
+   complete, no-JS, no-WebGL, reduced-motion and Performance-Mode experience.
+   js/marketing-roles.js may later replace it with a three.js figure in the
+   same box; the box never changes size, so nothing shifts when it does.
+   ============================================================ */
+.audience.role-row {
+  align-items: start;
+}
+.aud-item.role-card {
+  padding: 0;
+  text-align: center;
+}
+.role-btn {
+  display: block;
+  width: 100%;
+  padding: 24px 20px 18px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.role-btn:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: -2px;
+}
+.role-btn > .ico,
+.role-btn > b,
+.role-btn > span {
+  position: relative;
+  z-index: 1;
+}
+.role-detail {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 18px;
+  transition:
+    max-height 320ms var(--ease-out),
+    opacity 220ms var(--ease-out),
+    padding 320ms var(--ease-out);
+}
+.role-card.is-open .role-detail {
+  max-height: 420px;
+  opacity: 1;
+  padding: 0 18px 20px;
+}
+.role-fig {
+  display: block;
+  width: 150px;
+  height: 214px;
+  margin: 0 auto 8px;
+  color: var(--ink);
+  font-size: 0;
+  line-height: 0;
+}
+.role-svg,
+.role-fig canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.role-svg {
+  fill: currentColor;
+  filter: drop-shadow(0 0 1px rgba(var(--gold-rgb), 0.55));
+}
+.role-name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.role-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+/* The pop: the card rises and swells a little when it opens. It composes with
+   the C2 hover tilt through the same custom properties. */
+.aud-item.role-card.is-open {
+  transform: perspective(900px) translateY(-4px) scale(1.06) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  border-color: rgba(var(--gold-rgb), 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(61, 46, 6, 0.06),
+    0 20px 40px -18px rgba(61, 46, 6, 0.34);
+  z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .role-detail {
+    transition: none;
+  }
+  .aud-item.role-card.is-open {
+    transform: none;
+  }
+}
+[data-perf='on'] .role-detail {
+  transition: none;
+}
+[data-perf='on'] .aud-item.role-card.is-open {
+  transform: none;
+}

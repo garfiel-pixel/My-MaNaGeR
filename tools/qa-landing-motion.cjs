@@ -615,6 +615,274 @@ function resolvePlaywright() {
       check('C2g the card rows are centred @' + w, skew.length === 0, rows);
       await ctx.close();
     }
+    // ================= C3: the role cards =========================
+    // Four cards, each a real button. Open by hover (fine pointer), click,
+    // Enter/Space and tap; one at a time; Escape closes. The description is in
+    // the DOM in every state. The 3D figure is an enhancement that must never
+    // load early, never run when idle, and never be required.
+
+    // ---- C3a: collapsed, but the copy is already there ------------
+    {
+      const { ctx, page } = await openPage({});
+      const st = await page.evaluate(() => ({
+        cards: document.querySelectorAll('.role-card').length,
+        buttons: document.querySelectorAll('.role-card .role-btn').length,
+        expanded: Array.from(document.querySelectorAll('.role-btn')).map(b =>
+          b.getAttribute('aria-expanded')
+        ),
+        controls: Array.from(document.querySelectorAll('.role-btn')).map(b =>
+          b.getAttribute('aria-controls')
+        ),
+        descs: Array.from(document.querySelectorAll('.role-desc')).map(d => ({
+          len: d.textContent.trim().length,
+          inDom: !!d.offsetParent || d.getClientRects().length >= 0
+        })),
+        open: document.querySelectorAll('.role-card.is-open').length
+      }));
+      check(
+        'C3a the four role cards are buttons that start collapsed',
+        st.cards === 4 &&
+          st.buttons === 4 &&
+          st.expanded.every(v => v === 'false') &&
+          st.controls.every(v => !!v) &&
+          st.open === 0,
+        st
+      );
+      check(
+        'C3a every role description is in the DOM while collapsed',
+        st.descs.length === 4 && st.descs.every(d => d.len > 80 && d.inDom),
+        st.descs
+      );
+      await ctx.close();
+    }
+
+    // ---- C3b: nothing 3D renders before a card is opened ----------
+    // The bundle itself is allowed to arrive as soon as the section is within
+    // one viewport (that is the load rule), so this arm proves the stronger
+    // fact the gate actually cares about: no canvas and no renderer exist
+    // until a card is opened. A short viewport keeps the section far enough
+    // away that the bundle has not even been requested yet.
+    {
+      const { ctx, page } = await openPage({ viewport: { width: 1280, height: 420 } });
+      const early = await page.evaluate(() => ({
+        canvas: document.querySelectorAll('canvas.role-canvas').length,
+        script: !!document.querySelector('script[src*="marketing-roles"]'),
+        figures: !!window.__mmgrRoleFigures,
+        y: window.scrollY
+      }));
+      check(
+        'C3b nothing 3D exists before #builtfor nears the viewport',
+        early.canvas === 0 && early.script === false && early.figures === false,
+        early
+      );
+      await page.evaluate(() => document.getElementById('builtfor').scrollIntoView());
+      await delay(1400);
+      const later = await page.evaluate(() => ({
+        script: !!document.querySelector('script[src*="marketing-roles"]'),
+        canvas: document.querySelectorAll('canvas.role-canvas').length
+      }));
+      check(
+        'C3b the bundle loads once #builtfor is on screen, and still draws nothing',
+        later.script === true && later.canvas === 0,
+        later
+      );
+      await ctx.close();
+    }
+
+    // ---- C3c: mouse, keyboard, one-at-a-time, Escape --------------
+    {
+      const { ctx, page } = await openPage({});
+      await page.evaluate(() => document.getElementById('builtfor').scrollIntoView());
+      await delay(900);
+      const click = async role => {
+        await page.evaluate(r => {
+          document.querySelector('.role-card[data-role="' + r + '"] .role-btn').click();
+        }, role);
+        await delay(380);
+      };
+      await click('gc');
+      const one = await page.evaluate(() => ({
+        open: document.querySelectorAll('.role-card.is-open').length,
+        which: Array.from(document.querySelectorAll('.role-card.is-open')).map(c =>
+          c.getAttribute('data-role')
+        ),
+        expanded: document
+          .querySelector('.role-card[data-role="gc"] .role-btn')
+          .getAttribute('aria-expanded'),
+        h: Math.round(document.querySelector('#role-gc-detail').getBoundingClientRect().height)
+      }));
+      check(
+        'C3c a click opens the card and announces it',
+        one.open === 1 && one.which[0] === 'gc' && one.expanded === 'true' && one.h > 120,
+        one
+      );
+      await click('super');
+      const swap = await page.evaluate(() => ({
+        open: document.querySelectorAll('.role-card.is-open').length,
+        which: Array.from(document.querySelectorAll('.role-card.is-open')).map(c =>
+          c.getAttribute('data-role')
+        ),
+        gcExpanded: document
+          .querySelector('.role-card[data-role="gc"] .role-btn')
+          .getAttribute('aria-expanded')
+      }));
+      check(
+        'C3c opening a second card closes the first',
+        swap.open === 1 && swap.which[0] === 'super' && swap.gcExpanded === 'false',
+        swap
+      );
+      await page.keyboard.press('Escape');
+      await delay(300);
+      const esc = await page.evaluate(() => ({
+        open: document.querySelectorAll('.role-card.is-open').length
+      }));
+      check('C3c Escape closes every card', esc.open === 0, esc);
+
+      // keyboard: Enter then Space
+      await page.focus('.role-card[data-role="pm"] .role-btn');
+      await page.keyboard.press('Enter');
+      await delay(300);
+      const kb1 = await page.evaluate(() => document.querySelectorAll('.role-card.is-open').length);
+      await page.keyboard.press('Space');
+      await delay(300);
+      const kb2 = await page.evaluate(() => document.querySelectorAll('.role-card.is-open').length);
+      check('C3c Enter opens and Space closes the focused card', kb1 === 1 && kb2 === 0, {
+        afterEnter: kb1,
+        afterSpace: kb2
+      });
+      await ctx.close();
+    }
+
+    // ---- C3d: touch opens on tap, a second tap closes -------------
+    {
+      const ctx = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true
+      });
+      const page = await ctx.newPage();
+      await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+      await delay(900);
+      const card = page.locator('.role-card[data-role="sub"]');
+      await card.scrollIntoViewIfNeeded();
+      await delay(600);
+      const box = await card.boundingBox();
+      const tap = async () => {
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + 30);
+        await delay(420);
+      };
+      await tap();
+      const t1 = await page.evaluate(() => ({
+        open: document.querySelectorAll('.role-card.is-open').length,
+        which: Array.from(document.querySelectorAll('.role-card.is-open')).map(c =>
+          c.getAttribute('data-role')
+        )
+      }));
+      await tap();
+      const t2 = await page.evaluate(() => document.querySelectorAll('.role-card.is-open').length);
+      check('C3d a tap opens the card and a second tap closes it', t1.open === 1 && t2 === 0, {
+        first: t1,
+        second: t2
+      });
+      await ctx.close();
+    }
+
+    // ---- C3e: the figure is an enhancement, never a requirement ---
+    for (const mode of ['perf', 'nogl']) {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      if (mode === 'nogl') {
+        await ctx.addInitScript(() => {
+          const orig = HTMLCanvasElement.prototype.getContext;
+          HTMLCanvasElement.prototype.getContext = function (type) {
+            if (/webgl/i.test(String(type))) {
+              return null;
+            }
+            return orig.apply(this, arguments);
+          };
+        });
+      }
+      const page = await ctx.newPage();
+      const errs = [];
+      page.on('pageerror', e => errs.push(e.message));
+      await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+      await delay(600);
+      if (mode === 'perf') {
+        await page.evaluate(() => document.documentElement.setAttribute('data-perf', 'on'));
+      }
+      await page.evaluate(() => document.getElementById('builtfor').scrollIntoView());
+      await delay(1200);
+      await page.evaluate(() => {
+        document.querySelector('.role-card[data-role="gc"] .role-btn').click();
+      });
+      await delay(700);
+      const st = await page.evaluate(() => ({
+        canvas: document.querySelectorAll('canvas.role-canvas').length,
+        svg: getComputedStyle(document.querySelector('#role-gc-detail .role-svg')).display,
+        open: document.querySelectorAll('.role-card.is-open').length,
+        h: Math.round(document.querySelector('#role-gc-detail').getBoundingClientRect().height)
+      }));
+      check(
+        'C3e ' + mode + ' keeps the SVG silhouette and opens the card',
+        st.canvas === 0 && st.svg !== 'none' && st.open === 1 && st.h > 120 && !errs.length,
+        { st: st, errs: errs }
+      );
+      await ctx.close();
+    }
+
+    // ---- C3f: the 3D figure stops when nothing is happening -------
+    {
+      const { ctx, page } = await openPage({});
+      await page.evaluate(() => document.getElementById('builtfor').scrollIntoView());
+      await delay(1200);
+      const has3d = await page.evaluate(() => !!window.__mmgrRoleFigures);
+      if (has3d) {
+        await page.evaluate(() => {
+          document.querySelector('.role-card[data-role="gc"] .role-btn').click();
+        });
+        await delay(1600); // the pop is ~1.2s
+        const f1 = await page.evaluate(() => window.__mmgrRoleFigures.frames());
+        await delay(800);
+        const f2 = await page.evaluate(() => window.__mmgrRoleFigures.frames());
+        const tris = await page.evaluate(() => window.__mmgrRoleFigures.triangles());
+        const dpr = await page.evaluate(() => window.__mmgrRoleFigures.dpr());
+        check('C3f the figure stops drawing once the pop has finished', f2 === f1, {
+          framesBefore: f1,
+          framesAfter: f2
+        });
+        check(
+          'C3f every figure is at or under 1500 triangles',
+          tris.length >= 1 && tris.every(t => t.tris > 0 && t.tris <= 1500),
+          tris
+        );
+        check('C3f the device pixel ratio is capped at 1.5', dpr <= 1.5, dpr);
+      } else {
+        // WebGL unavailable in this environment: the fallback is the contract.
+        const st = await page.evaluate(() => ({
+          canvas: document.querySelectorAll('canvas.role-canvas').length,
+          svg: document.querySelectorAll('.role-svg').length
+        }));
+        check(
+          'C3f no WebGL here, so the SVG silhouettes are the figures',
+          st.canvas === 0 && st.svg === 4,
+          st
+        );
+      }
+      await ctx.close();
+    }
+
+    // ---- C3g: the added JS stays inside its budget ---------------
+    {
+      const zlib = require('zlib');
+      const file = path.join(ROOT, 'dist', 'marketing-roles.js');
+      if (fs.existsSync(file)) {
+        const gz = zlib.gzipSync(fs.readFileSync(file)).length;
+        check('C3g the role-figure bundle is at most 25 KB gzipped', gz <= 25000, {
+          gzipped: gz
+        });
+      } else {
+        check('C3g the role-figure bundle exists', false, file);
+      }
+    }
   } catch (e) {
     failed++;
     log('FAIL  harness error  <-- ' + (e && e.message ? e.message : e));

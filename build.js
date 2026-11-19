@@ -246,6 +246,11 @@ const GLOBE_MODULES = ['js/marketing-globe.js'];
 // with the hero for first paint or LCP) ----
 const MARKETING_AI_MODULES = ['js/marketing-ai.js'];
 
+// ---- Role-card 3D figures (C3; index.html only, loaded when #builtfor nears
+// the viewport). One shared canvas for all four figures; the inline SVG
+// silhouette is the fallback and stays unless this bundle replaces it. ----
+const MARKETING_ROLES_MODULES = ['js/marketing-roles.js'];
+
 // ---- app.html bundle (launcher / project list) ----
 const APP_LAUNCHER_MODULES = [
   'projects-data.js',
@@ -503,6 +508,11 @@ if (buildGlobe) {
 if (buildMkt) {
   buildBundle(MARKETING_AI_MODULES, 'dist/marketing-ai.js', 'marketing AI bundle');
 }
+// C3: the role figures are their own lazily-loaded bundle, built with the
+// marketing set so a `--marketing` build always produces it.
+if (buildMkt) {
+  buildBundle(MARKETING_ROLES_MODULES, 'dist/marketing-roles.js', 'marketing roles bundle');
+}
 if (buildCss) {
   bundleAppCSS();
   buildCSS('css/mmgr.css', 'dist/mmgr.min.css', 'app CSS');
@@ -530,6 +540,8 @@ if (buildMkt) {
     'marketing-bundle.' + contentHash(path.join(DIST, 'marketing-bundle.js')) + '.js';
   manifest['marketing-ai.js'] =
     'marketing-ai.' + contentHash(path.join(DIST, 'marketing-ai.js')) + '.js';
+  manifest['marketing-roles.js'] =
+    'marketing-roles.' + contentHash(path.join(DIST, 'marketing-roles.js')) + '.js';
 }
 if (buildGlobe) {
   manifest['marketing-globe.js'] =

@@ -852,3 +852,76 @@ that is recorded with its reason in `tools/verify-sizes.cjs` (169000 ->
 176000) along with `index.html` (54000 -> 60000).
 
 Commit: `test(marketing): Part C close - standard battery green`.
+
+---
+
+## Deviations
+
+Every place this work departs from the directive's letter, and why. Nothing
+here changes what was asked for; each is either a correction of a premise the
+directive could not have known, or a gate that would have made the letter
+self-defeating.
+
+**1. B5 and B6 are one commit, not two.** They edit the same functions (the
+WBS renderer, the Kanban card builder, the panel stylesheet) and a hunk-level
+split would have produced a first commit that does not build. Each step keeps
+its own gate and its own entry above.
+
+**2. B5 keeps the Next-3 rows at 33px.** `qa-rhythm` R03 is a hard gate on
+that rhythm. The link fills the row and adds no height; the 44px touch floor
+applies to the stacked rows (Attention, This Week, health counters), where it
+is real. This Week lists counters, not tasks, so each counter opens the
+filtered task list rather than a task.
+
+**3. C2: "only transform and opacity animate" is applied as "no layout
+property is ever animated".** A 4px lift with a larger shadow cannot be done
+without animating `box-shadow`, and `border-color` is part of the same hover
+state. The gate asserts the transition list contains no `width`, `height`,
+`top`, `left`, `right`, `bottom`, `margin`, `padding` or `font-size` - the
+intent, which is that hover never triggers layout.
+
+**4. C2: the "left-heavy" card rows did not reproduce.** Measured at 1280,
+1440 and 1920, every row is centred to the pixel (left margin equals right
+margin exactly; the first card's edge equals the container's). The impression
+in the screenshots came from the asymmetric bottom-right watermark, which C2
+removed. `C2g` now measures it at three widths so a real skew cannot return
+unnoticed.
+
+**5. C3: the three.js premise was wrong, the requirement was not.**
+`js/marketing-globe.js` is a hand-written Canvas 2D dot globe with no
+three.js at all. The vendored r160 lives at `/vendor/three/three.module.js`
+and is used by `js/mmgr-glass.js` (the calculator's glass panel). C3 imports
+that same file, so there is still exactly one three.js in the repo and
+`verify-three-revision` stays green. The figures are 204-296 triangles each
+(the budget is 1,500) in a 150 x 214 box (the ceiling is 280 x 340).
+
+**6. C1: Performance Mode now stops the drift instead of removing the seam.**
+The old `[data-perf='on']` rule set `display: none` on the seam, which deleted
+the band boundary and left two colours butted together - a rendering defect,
+not a motion preference. Reduced motion and Performance Mode now behave the
+same way, as the directive asks: the drawing stays, the movement stops.
+
+**7. Two harnesses were re-baselined, not weakened.** `qa-band-seam.cjs`
+asserted "every seam paints a gradient blend" and `qa-landing-ui.cjs` L-08
+asserted "the gold light tracks the seam's scroll position" - both described
+the contract C1 retired. They now assert the wave, the stroke and the absence
+of scroll coupling. `qa-band-seam` went 16 -> 19 checks (it gained the
+wave/stroke/drawing arms); `qa-landing-ui` stayed at 70.
+
+**8. Caps rose only with a measured byte count and a recorded reason.**
+`css/mmgr.css` 634000 -> 642000; `js/` 310000 -> 315000; `project.html`
+227000 -> 230000 (all in Part B); `css/marketing.css` 169000 -> 176000
+(172805 measured, C1+C2); `index.html` 54000 -> 60000 (58365 measured, C3's
+four inline silhouettes). The index.html note that says "move a band rather
+than raise this" still stands for content growth - the silhouettes are inline
+by requirement, because the fallback must render with no extra request.
+
+**9. A6 branch 1 applied, A8 found one real defect.** Recorded in full in
+their own entries: the assistant is read-only-safe (it writes only its own
+transcript), and the AI surfaces had a hard-coded amber that ignored the
+theme.
+
+**10. One gap found and closed while wiring Part D.** `qa-ux-landscape.cjs`
+and `qa-signout-confirm.cjs` were registered as CI from the A wave but were
+never actually added to `ci.yml` - the registry was describing a gate that did
+not run. D1 added both steps, plus the `test/major-groups.test.mjs` row.

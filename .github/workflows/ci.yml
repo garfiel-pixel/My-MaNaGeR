@@ -1340,6 +1340,17 @@ jobs:
         id: qa-dashboard-ring
         run: node tools/qa-dashboard-ring.cjs
 
+      # UX-2026-11-19 A1-A5: short screens, landscape phones, the tour card,
+      # touch targets and the sign-out confirmation. Registered as CI since
+      # the A wave but never actually wired - D1 closed that gap.
+      - name: "T4: Short screens and landscape (qa-ux-landscape)"
+        id: qa-ux-landscape
+        run: node tools/qa-ux-landscape.cjs
+
+      - name: "T4: Sign out asks first (qa-signout-confirm)"
+        id: qa-signout-confirm
+        run: node tools/qa-signout-confirm.cjs
+
       - name: "T4: First-load shell - flat + one-shot rail demo (qa-shell-first-load)"
         id: qa-shell-first-load
         run: node tools/qa-shell-first-load.cjs

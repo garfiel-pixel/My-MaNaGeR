@@ -386,6 +386,43 @@ var MMGR = window.MMGR || {};
     document.addEventListener('focusout', out, true);
   }
 
+  // ---- UX-2026-11-19 B5: the dashboard's links ---------------------------
+  // Every number on the dashboard that stands for records is a link to those
+  // records. One markup helper, one delegated click handler (js/mmgr-app.js
+  // wireDashNav), one navigator (MMGR.Nav.go). A chevron says "this goes
+  // somewhere"; the row itself is the target and is 44px high.
+  const NAV_CHEV =
+    '<svg class="ico dash-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>';
+
+  function navLinkOpen(nav, extraClass) {
+    const n = nav || {};
+    let attrs = ' data-nav="1"';
+    if (n.panel) {
+      attrs += ' data-nav-panel="' + U.escapeHtml(n.panel) + '"';
+    }
+    if (n.recordId) {
+      attrs += ' data-nav-id="' + U.escapeHtml(n.recordId) + '"';
+    }
+    if (n.filter) {
+      attrs += ' data-nav-filter="' + U.escapeHtml(n.filter) + '"';
+    }
+    if (n.column) {
+      attrs += ' data-nav-col="' + U.escapeHtml(n.column) + '"';
+    }
+    if (n.anchor) {
+      attrs += ' data-nav-anchor="' + U.escapeHtml(n.anchor) + '"';
+    }
+    return (
+      '<a class="dash-link' +
+      (extraClass ? ' ' + extraClass : '') +
+      '" href="#' +
+      U.escapeHtml(n.panel || 'dash') +
+      '"' +
+      attrs +
+      '>'
+    );
+  }
+
   function renderDash() {
     const s = S();
     if (!s || !s.tasks) {
@@ -470,9 +507,17 @@ var MMGR = window.MMGR || {};
     }
 
     // Health
+    // B5: the counters are links now, so the number lives in its own
+    // .ds-num span - writing the row's textContent would delete the dot.
     const setVal = (id, val) => {
       const el = $(id);
-      if (el) {
+      if (!el) {
+        return;
+      }
+      const num = el.querySelector ? el.querySelector('.ds-num') : null;
+      if (num) {
+        num.textContent = val;
+      } else {
         el.textContent = val;
       }
     };
@@ -534,7 +579,19 @@ var MMGR = window.MMGR || {};
         n3.innerHTML = sorted
           .map(
             t =>
-              `<li><span title="${U.escapeHtml(t.name)}">${U.escapeHtml(t.name)}${t.critical ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>' : ''}${t.endDate ? ', due ' + U.escapeHtml(U.fmtDateShort(t.endDate)) : ''}</span></li>`
+              '<li>' +
+              navLinkOpen({ panel: 'wbs', recordId: String(t.id) }, 'n3-link') +
+              '<span title="' +
+              U.escapeHtml(t.name) +
+              '">' +
+              U.escapeHtml(t.name) +
+              (t.critical
+                ? ' <svg class="ico" aria-hidden="true" style="color:var(--gold)"><use href="css/mmgr-icons.svg#i-target"></use></svg>'
+                : '') +
+              (t.endDate ? ', due ' + U.escapeHtml(U.fmtDateShort(t.endDate)) : '') +
+              '</span>' +
+              NAV_CHEV +
+              '</a></li>'
           )
           .join('');
       }
@@ -739,6 +796,7 @@ var MMGR = window.MMGR || {};
             schedVar = U.daysBetween(bt.endDate, cur.endDate);
           }
           rows.push({
+            id: bt.id,
             name: bt.name,
             bEnd: bt.endDate || '',
             cEnd: cur.endDate || '',
@@ -749,13 +807,16 @@ var MMGR = window.MMGR || {};
           bvt.innerHTML =
             '<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:14px">Save a baseline to see per-task schedule variance.</td></tr>';
         } else {
+          // B5: the task name is a link to the row in the plan.
           // ok: number - schedVar is a day count, never text
           bvt.innerHTML = rows
             .map(
               r =>
                 '<tr><td>' +
+                navLinkOpen({ panel: 'wbs', recordId: String(r.id) }, 'tbl-link') +
                 U.escapeHtml(r.name) +
-                '</td><td>' +
+                NAV_CHEV +
+                '</a></td><td>' +
                 U.escapeHtml(r.bEnd || '') +
                 '</td><td>' +
                 U.escapeHtml(r.cEnd || '') +
@@ -938,22 +999,29 @@ var MMGR = window.MMGR || {};
       if (overdue > 0) {
         attnItems.push({
           label: overdue + ' task' + (overdue > 1 ? 's' : '') + ' overdue',
-          cls: 'br'
+          cls: 'br',
+          nav: { panel: 'wbs', filter: 'overdue' }
         });
       }
       if (blocked > 0) {
         attnItems.push({
           label: blocked + ' task' + (blocked > 1 ? 's' : '') + ' blocked',
-          cls: 'br'
+          cls: 'br',
+          nav: { panel: 'kan', column: 'blocked' }
         });
       }
       if (issues > 0) {
-        attnItems.push({ label: issues + ' live issue' + (issues > 1 ? 's' : ''), cls: 'br' });
+        attnItems.push({
+          label: issues + ' live issue' + (issues > 1 ? 's' : ''),
+          cls: 'br',
+          nav: { panel: 'risk', anchor: 'issues' }
+        });
       }
       if (atRisk > 0) {
         attnItems.push({
           label: atRisk + ' task' + (atRisk > 1 ? 's' : '') + ' due soon',
-          cls: 'ba'
+          cls: 'ba',
+          nav: { panel: 'wbs', filter: 'atrisk' }
         });
       }
       const expiringCompliance =
@@ -961,13 +1029,31 @@ var MMGR = window.MMGR || {};
           ? ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30).length
           : 0;
       if (expiringCompliance > 0) {
+        // B5: the row opens the person whose COI or licence is expiring.
+        let stakeIdx = -1;
+        if (ns.Stakeholders && ns.Stakeholders.getExpiringCompliance) {
+          const expiring = ns.Stakeholders.getExpiringCompliance(s.stakeholders || [], 30);
+          const keys = {};
+          expiring.forEach(function (x) {
+            if (x.id != null) {
+              keys[String(x.id)] = 1;
+            }
+            if (x.name) {
+              keys[String(x.name)] = 1;
+            }
+          });
+          stakeIdx = (s.stakeholders || []).findIndex(function (st) {
+            return keys[String(st.id)] || keys[String(st.name)];
+          });
+        }
         attnItems.push({
           label:
             expiringCompliance +
             ' compliance item' +
             (expiringCompliance > 1 ? 's' : '') +
             ' expiring',
-          cls: 'ba'
+          cls: 'ba',
+          nav: { panel: 'stk', recordId: stakeIdx > -1 ? String(stakeIdx) : '' }
         });
       }
       const attnCard = $('attention-card');
@@ -982,15 +1068,19 @@ var MMGR = window.MMGR || {};
         // spheres jumbled together when several alerts were live. A red dot
         // + the count + the label reads cleanly at any density. cls maps
         // br->red dot, ba->amber dot (the two attention severities).
+        // B5: every row is a link to the records behind the number.
         const dot = it => (it.cls === 'ba' ? 'a' : 'r');
         attnEl.innerHTML = attnItems
           .map(function (it) {
             return (
-              '<div class="fb-sm"><span>' +
+              navLinkOpen(it.nav) +
+              '<span>' +
               U.escapeHtml(it.label) +
-              '</span><span class="dotstat"><span class="sdot ' +
+              '</span><span class="dash-end"><span class="dotstat"><span class="sdot ' +
               dot(it) +
-              '"></span><span class="ds-num">!</span></span></div>'
+              '"></span><span class="ds-num">!</span></span>' +
+              NAV_CHEV +
+              '</span></a>'
             );
           })
           .join('');
@@ -1030,18 +1120,28 @@ var MMGR = window.MMGR || {};
         // pills. Colors: amber (planned), green (done), red only when
         // carryover is non-zero (slate-neutral at zero). Three status
         // colors total - no extra palette on the dashboard.
+        // B5: each counter opens the WBS filtered to that exact set.
         twEl.innerHTML =
-          '<div class="fb-sm"><span>Planned this week</span><span class="dotstat"><span class="sdot a"></span><span class="ds-num">' +
+          navLinkOpen({ panel: 'wbs', filter: 'week-planned' }, 'fb-sm') +
+          '<span>Planned this week</span><span class="dash-end"><span class="dotstat"><span class="sdot a"></span><span class="ds-num">' +
           thisWeekPlanned +
-          '</span></span></div>' +
-          '<div class="fb-sm"><span>Completed this week</span><span class="dotstat"><span class="sdot g"></span><span class="ds-num">' +
+          '</span></span>' +
+          NAV_CHEV +
+          '</span></a>' +
+          navLinkOpen({ panel: 'wbs', filter: 'week-done' }, 'fb-sm') +
+          '<span>Completed this week</span><span class="dash-end"><span class="dotstat"><span class="sdot g"></span><span class="ds-num">' +
           thisWeekDone +
-          '</span></span></div>' +
-          '<div class="fb-sm"><span>Carryover (past due)</span><span class="dotstat' +
+          '</span></span>' +
+          NAV_CHEV +
+          '</span></a>' +
+          navLinkOpen({ panel: 'wbs', filter: 'carryover' }, 'fb-sm') +
+          '<span>Carryover (past due)</span><span class="dash-end"><span class="dotstat' +
           (carryover > 0 ? '"><span class="sdot r"></span>' : ' zero"><span class="sdot"></span>') +
           '<span class="ds-num">' +
           carryover +
-          '</span></span></div>';
+          '</span></span>' +
+          NAV_CHEV +
+          '</span></a>';
       }
     }
 
@@ -2175,7 +2275,8 @@ var MMGR = window.MMGR || {};
     }
   }
 
-  function showSection(section, btn) {
+  function showSection(section, btn, opts) {
+    opts = opts || {};
     // EDITOR-SCOPE (mmgr-cloud.js applyEditorScope/isSectionBlocked): a scoped
     // editor code must not open a writable section outside its grant. The nav
     // grey-out (pointer-events:none + disabled) blocks mouse and keyboard on
@@ -2197,7 +2298,7 @@ var MMGR = window.MMGR || {};
         ? window.MMGR.Cloud.clientFirstSection()
         : 'dash';
       const fbBtn = document.querySelector('.sec-btn[data-section="' + fb + '"]');
-      showSection(fb, fbBtn);
+      showSection(fb, fbBtn, opts);
       return;
     }
     if (
@@ -2254,6 +2355,12 @@ var MMGR = window.MMGR || {};
     // so a resize/switch into a narrow view never leaves a heavy engine on.
     if (ns.Glass && ns.Glass.sync) {
       ns.Glass.sync();
+    }
+    // UX-2026-11-19 B5: every switch is a history entry, so Back returns to
+    // where the user came from. Nav.go suppresses this while it pushes its
+    // own entry (which also carries the filter and record).
+    if (ns.Nav && typeof ns.Nav.sectionShown === 'function') {
+      ns.Nav.sectionShown(section);
     }
   }
 
@@ -2421,6 +2528,158 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // ---- UX-2026-11-19 B5: the WBS view filter -----------------------------
+  // Arriving from a dashboard number ("7 overdue") must land on those rows,
+  // and a filtered list must SAY it is filtered - a hidden filter is a trap
+  // that looks like lost data. View state only: it is never written to the
+  // project, and it is cleared by the banner's own Clear button.
+  let wbsFilter = '';
+
+  function weekBounds() {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return { start: start, end: end };
+  }
+
+  function wbsFilterSpec(key) {
+    const k = String(key || '');
+    if (!k) {
+      return null;
+    }
+    if (k.indexOf('ids:') === 0) {
+      const ids = k
+        .slice(4)
+        .split(',')
+        .map(function (x) {
+          return String(x).trim();
+        })
+        .filter(Boolean);
+      const set = {};
+      ids.forEach(function (id) {
+        set[id] = 1;
+      });
+      return {
+        label: 'Weather-affected tasks',
+        test: function (t) {
+          return !!set[String(t.id)];
+        }
+      };
+    }
+    if (k === 'overdue') {
+      return {
+        label: 'Overdue',
+        test: function (t) {
+          return t.status !== 'completed' && U.isOverdue(t.endDate);
+        }
+      };
+    }
+    if (k === 'atrisk') {
+      return {
+        label: 'Due within 3 days',
+        test: function (t) {
+          return t.status !== 'completed' && U.isDueSoon(t.endDate, 3);
+        }
+      };
+    }
+    if (k === 'blocked') {
+      return {
+        label: 'Blocked',
+        test: function (t) {
+          return t.status === 'blocked';
+        }
+      };
+    }
+    if (k === 'done') {
+      return {
+        label: 'Completed',
+        test: function (t) {
+          return t.status === 'completed';
+        }
+      };
+    }
+    if (k === 'inprogress') {
+      return {
+        label: 'In progress',
+        test: function (t) {
+          return t.status === 'inprogress';
+        }
+      };
+    }
+    if (k === 'week-planned') {
+      return {
+        label: 'Planned this week',
+        test: function (t) {
+          if (t.status === 'completed' || !t.endDate) {
+            return false;
+          }
+          const w = weekBounds();
+          const d = new Date(t.endDate);
+          return d >= w.start && d < w.end;
+        }
+      };
+    }
+    if (k === 'week-done') {
+      return {
+        label: 'Completed this week',
+        test: function (t) {
+          if (t.status !== 'completed' || !t.endDate) {
+            return false;
+          }
+          const w = weekBounds();
+          const d = new Date(t.endDate);
+          return d >= w.start && d < w.end;
+        }
+      };
+    }
+    if (k === 'carryover') {
+      return {
+        label: 'Carryover (past due)',
+        test: function (t) {
+          const w = weekBounds();
+          return t.status !== 'completed' && !!t.endDate && new Date(t.endDate) < w.start;
+        }
+      };
+    }
+    return null;
+  }
+
+  function setWbsFilter(key) {
+    const next = String(key || '');
+    wbsFilter = wbsFilterSpec(next) ? next : '';
+    const panel = document.getElementById('panel-wbs');
+    if (panel && panel.classList.contains('active')) {
+      renderWbs();
+    }
+  }
+
+  function renderWbsViewBar(count) {
+    const bar = document.getElementById('wbs-view-bar');
+    if (!bar) {
+      return;
+    }
+    const spec = wbsFilterSpec(wbsFilter);
+    if (!spec) {
+      bar.hidden = true;
+      bar.innerHTML = '';
+      return;
+    }
+    // ok: the label is one of the fixed strings above, the count is a number
+    bar.innerHTML =
+      '<span class="wvb-txt">Showing <strong>' +
+      U.escapeHtml(spec.label) +
+      '</strong> &middot; ' +
+      Number(count) +
+      ' task' +
+      (count === 1 ? '' : 's') +
+      '</span>' +
+      '<button type="button" class="btn btn-n btn-s" data-action="wbsClearFilter">Show all tasks</button>';
+    bar.hidden = false;
+  }
+
   function renderWbs() {
     const s = S();
     if (!s) {
@@ -2438,6 +2697,7 @@ var MMGR = window.MMGR || {};
     const tasks = s.tasks || [];
     const defExpanded = s.defExpanded || {};
     if (tasks.length === 0) {
+      renderWbsViewBar(0);
       const cfCols = ns.CustomFields ? ns.CustomFields.visible(s, 'wbs').length : 0;
       body.innerHTML =
         '<tr><td colspan="' +
@@ -2475,23 +2735,44 @@ var MMGR = window.MMGR || {};
         visibleTasks.push(t);
       }
     }
+    // B5: a filter draws a flat list of every match (collapse state is a
+    // browsing aid, not a filter of its own, so it must not hide a match).
+    const filterSpec = wbsFilterSpec(wbsFilter);
+    const drawn = filterSpec ? tasks.filter(filterSpec.test) : visibleTasks;
+    renderWbsViewBar(filterSpec ? drawn.length : 0);
     // Task 4 (2026-09-19): parallel groups computed ONCE per render (the
     // pairwise overlap predicate matches audit() exactly). Badge markup is
     // rendered per-row from this map.
     const parGroups =
-      ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(visibleTasks) : null;
-    body.innerHTML = visibleTasks
+      ns.Schedule && ns.Schedule.parallelGroups ? ns.Schedule.parallelGroups(drawn) : null;
+    if (filterSpec && !drawn.length) {
+      const cfCols0 = ns.CustomFields ? ns.CustomFields.visible(s, 'wbs').length : 0;
+      body.innerHTML =
+        '<tr><td colspan="' +
+        (8 + cfCols0) +
+        '" class="wbs-empty"><div>No tasks match this filter.</div><div style="display:flex;gap:6px;justify-content:center"><button class="btn btn-n btn-s" data-action="wbsClearFilter">Show all tasks</button></div></td></tr>';
+      return;
+    }
+    // B6: the row marker - the same slot colour as the ring arc and the
+    // Gantt bar, carried as a custom property so themes re-tint it.
+    const majorOf =
+      ns.MajorTasks && ns.MajorTasks.assignments ? ns.MajorTasks.assignments(s) : null;
+    body.innerHTML = drawn
       .map(t => {
         const level = t.level || 0;
         const isPhase = t.isPhase || level === 0;
         const indent = t.indent !== undefined ? t.indent : level;
         const cls = 'wl' + Math.min(indent, 3);
+        // ok: slot is a 1..8 number assigned by MajorTasks.withColors, never text
+        const slot = majorOf ? majorOf[String(t.id)] : 0;
+        // The <tr> carries no other style, so one attribute is enough here.
+        const majorAttr = slot ? ' data-major="' + slot + '"' : '';
         const overdue = t.status !== 'completed' && U.isOverdue(t.endDate) ? 'overdue' : '';
         const lowConf = t.confidence === 'low' ? 'wbs-lowconf' : '';
         const chainRisk = (t.predecessors || []).some(p => overdueIds.has(String(p)));
         // Apply collapse state from defExpanded
         const collapsed = defExpanded[t.id] === false ? 'collapsed' : '';
-        return `<tr class="wbs-row ${cls} ${overdue} ${lowConf} ${collapsed}" data-id="${U.escapeHtml(t.id)}" tabindex="0">
+        return `<tr class="wbs-row ${cls} ${overdue} ${lowConf} ${collapsed}" data-id="${U.escapeHtml(t.id)}"${majorAttr} tabindex="0">
         <td>${U.escapeHtml(t.id || '')}</td>
         <td>
           <button class="cbtn ${isPhase ? '' : 'cls'}" data-action="tglPhase" data-id="${U.escapeHtml(t.id)}">&#9660;</button>
@@ -2827,6 +3108,9 @@ var MMGR = window.MMGR || {};
     if (!gc) {
       return;
     }
+    // B6: one lookup for the whole chart - the bar's 4px accent.
+    const majorOf =
+      ns.MajorTasks && ns.MajorTasks.assignments ? ns.MajorTasks.assignments(s) : null;
 
     // OWNER 2026-09-28: a re-render swaps the bar the pointer may be over;
     // no mouseout ever fires for a removed node, so the hover tip would
@@ -3165,9 +3449,14 @@ var MMGR = window.MMGR || {};
       // C3: milestones render as diamonds, not one-day rectangles; click-only
       // (date edits via the task detail) - drag handlers key on .gb and the
       // diamond is a different class, so no ambiguous drag on a diamond.
+      // B6: the major's colour rides on the bar as a 4px accent. The token is
+      // set as a custom property, so the stripe follows the theme exactly like
+      // the ring slot it matches.
+      const majorSlot = majorOf ? majorOf[String(t.id)] : 0;
+      const majorAttr = majorSlot ? ' data-major="' + majorSlot + '"' : '';
       const barInner = isMs
         ? `<div class="gb-milestone${isGate ? ' gate' : ''} ${t.critical ? 'crit' : ''}" data-id="${U.escapeHtml(t.id)}" style="left:${left + width / 2 - 8}px" title="${U.escapeHtml(t.name)} [${isGate ? 'Phase gate' : 'Milestone'}]${t.critical ? ' [Critical Path]' : ''}"></div>${msLabel}`
-        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}" style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}${
+        : `<div class="gb ${classes.join(' ')}" data-id="${U.escapeHtml(t.id)}"${majorAttr} style="left:${left}px;width:${width}px" title="${U.escapeHtml(t.name)}${t.weatherExposed ? ' [Weather-exposed]' : ''}${t.critical ? ' [Critical Path]' : ''}${t.totalFloat !== null ? ' [Float: ' + t.totalFloat + 'd]' : ''}${
             parGroups && parGroups.has(t.id)
               ? ' [Parallel with: ' +
                 U.escapeHtml(
@@ -4549,6 +4838,9 @@ var MMGR = window.MMGR || {};
     renderAll: renderAll,
     renderDash: renderDash,
     toggleMajorList: toggleMajorList,
+    setWbsFilter: setWbsFilter,
+    navLinkOpen: navLinkOpen,
+    NAV_CHEV: NAV_CHEV,
     renderWbs: renderWbs,
     renderGantt: renderGantt,
     renderKanban: renderKanban,

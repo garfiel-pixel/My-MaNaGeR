@@ -27,6 +27,12 @@
      L8 rows are at least 44px high on a coarse pointer.
      L9 a project with no groups hides the list entirely.
 
+   B6 gates (colour carry-through):
+     C1 the WBS row marker paints the same colour as the ring slot.
+     C2 the Gantt bar's 4px accent paints the same colour.
+     C3 the Kanban card's top stripe paints the same colour.
+     C4 an ungrouped project draws no stripe on any surface.
+
    Usage:   node tools/qa-dashboard-ring.cjs
    Registry: docs/CI-TEST-COVERAGE.md
    ============================================================ */
@@ -86,23 +92,24 @@ const FLUSH_RAF = `new Promise(function (res) {
 })`;
 
 // Two fixture projects. PHASED has phase rows with nested work; PLAIN has no
-// phase rows and no labels, which is the "keep today's ring" case.
+// phase rows and no labels, which is the "keep today's ring" case. Every
+// PHASED task carries dates so the Gantt arm of B6 has bars to paint.
 const PHASED = `[
-  { id: 'p1', name: 'Site preparation', isPhase: true, status: 'inprogress' },
-  { id: 't1', name: 'Site grading', parentId: 'p1', status: 'completed' },
-  { id: 't2', name: 'Temporary fences', parentId: 'p1', status: 'todo' },
-  { id: 'p2', name: 'Foundation', isPhase: true, status: 'inprogress' },
-  { id: 't3', name: 'Excavate', parentId: 'p2', status: 'completed' },
-  { id: 't4', name: 'Rebar', parentId: 'p2', status: 'todo' },
-  { id: 'p3', name: 'Structure', isPhase: true, status: 'todo' },
-  { id: 't5', name: 'Columns', parentId: 'p3', status: 'todo' },
-  { id: 't6', name: 'Slab', parentId: 'p3', status: 'completed' },
-  { id: 't7', name: 'Stairs', parentId: 'p3', status: 'todo' }
+  { id: 'p1', name: 'Site preparation', isPhase: true, status: 'inprogress', startDate: '2026-01-05', endDate: '2026-01-20' },
+  { id: 't1', name: 'Site grading', parentId: 'p1', status: 'completed', startDate: '2026-01-05', endDate: '2026-01-10' },
+  { id: 't2', name: 'Temporary fences', parentId: 'p1', status: 'todo', startDate: '2026-01-12', endDate: '2026-01-20' },
+  { id: 'p2', name: 'Foundation', isPhase: true, status: 'inprogress', startDate: '2026-01-21', endDate: '2026-02-10' },
+  { id: 't3', name: 'Excavate', parentId: 'p2', status: 'completed', startDate: '2026-01-21', endDate: '2026-01-28' },
+  { id: 't4', name: 'Rebar', parentId: 'p2', status: 'todo', startDate: '2026-02-01', endDate: '2026-02-10' },
+  { id: 'p3', name: 'Structure', isPhase: true, status: 'todo', startDate: '2026-02-11', endDate: '2026-03-10' },
+  { id: 't5', name: 'Columns', parentId: 'p3', status: 'todo', startDate: '2026-02-11', endDate: '2026-02-20' },
+  { id: 't6', name: 'Slab', parentId: 'p3', status: 'completed', startDate: '2026-02-21', endDate: '2026-02-28' },
+  { id: 't7', name: 'Stairs', parentId: 'p3', status: 'todo', startDate: '2026-03-01', endDate: '2026-03-10' }
 ]`;
 
 const PLAIN = `[
-  { id: 'a', name: 'One', status: 'completed' },
-  { id: 'b', name: 'Two', status: 'todo' }
+  { id: 'a', name: 'One', status: 'completed', startDate: '2026-01-05', endDate: '2026-01-10' },
+  { id: 'b', name: 'Two', status: 'todo', startDate: '2026-01-12', endDate: '2026-01-20' }
 ]`;
 
 // Seven majors with distinct contributions, so the list has a real order:
@@ -602,6 +609,88 @@ const NOTHING_DONE = `[
         !st.exists || st.hidden || st.rows.length === 0,
         st
       );
+      await ctx.close();
+    }
+
+    // ---- B6: the same colour on every surface ----------------------
+    {
+      const { ctx, page } = await openProject();
+      await seed(page, PHASED);
+      await page.evaluate(FLUSH_RAF);
+      await delay(250);
+      const ring = await ringState(page);
+      const slot = ring.slots.filter(s => s.id === 'group:p:p1')[0];
+      check(
+        'B6 the fixture has the ring slot to match',
+        !!slot,
+        ring.slots.map(s => s.id)
+      );
+
+      // t1 belongs to phase p1; its row, bar and card must paint p1's colour.
+      const wbsShadow = await page.evaluate(() => {
+        MMGR.Nav.go({ panel: 'wbs' });
+        const row = document.querySelector('#wbs-body tr[data-id="t1"]');
+        const td = row ? row.querySelector('td') : null;
+        return {
+          has: !!row && row.hasAttribute('data-major'),
+          paint: td ? getComputedStyle(td).boxShadow : ''
+        };
+      });
+      const ganttPaint = await page.evaluate(() => {
+        MMGR.Nav.go({ panel: 'gantt' });
+        const bar = document.querySelector('#panel-gantt .gb[data-id="t1"]');
+        return {
+          has: !!bar && bar.hasAttribute('data-major'),
+          paint: bar ? getComputedStyle(bar, '::before').backgroundColor : ''
+        };
+      });
+      const kanPaint = await page.evaluate(() => {
+        MMGR.Nav.go({ panel: 'kan' });
+        const card = document.querySelector('#panel-kan .kc[data-id="t1"]');
+        return {
+          has: !!card && card.hasAttribute('data-major'),
+          paint: card ? getComputedStyle(card).borderTopColor : ''
+        };
+      });
+
+      const rgb = s => {
+        const m = String(s || '').match(/rgba?\(([^)]+)\)/);
+        return m ? 'rgb(' + m[1].replace(/\s+/g, '') + ')' : String(s || '');
+      };
+      const want = rgb(slot && slot.stroke);
+      check(
+        'B6 the WBS row marker paints the ring slot colour',
+        wbsShadow.has && rgb(wbsShadow.paint) === want,
+        { want: want, got: rgb(wbsShadow.paint), raw: wbsShadow.paint }
+      );
+      check(
+        'B6 the Gantt bar accent paints the ring slot colour',
+        ganttPaint.has && rgb(ganttPaint.paint) === want,
+        { want: want, got: rgb(ganttPaint.paint) }
+      );
+      check(
+        'B6 the Kanban card stripe paints the ring slot colour',
+        kanPaint.has && rgb(kanPaint.paint) === want,
+        { want: want, got: rgb(kanPaint.paint) }
+      );
+      await ctx.close();
+    }
+
+    // ---- B6: no groups, no stripe ----------------------------------
+    {
+      const { ctx, page } = await openProject();
+      await seed(page, PLAIN);
+      await page.evaluate(FLUSH_RAF);
+      await delay(250);
+      const st = await page.evaluate(() => {
+        MMGR.Nav.go({ panel: 'kan' });
+        const card = document.querySelector('#panel-kan .kc');
+        return {
+          has: !!card && card.hasAttribute('data-major'),
+          border: card ? getComputedStyle(card).borderTopColor : ''
+        };
+      });
+      check('B6 an ungrouped project draws no stripe', !st.has, st);
       await ctx.close();
     }
 

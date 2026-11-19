@@ -657,13 +657,33 @@ var MMGR = window.MMGR || {};
             '</td><td>' +
             U.escapeHtml(e.note || '') +
             '</td><td>' +
-            U.escapeHtml((e.affectedTaskIds || []).join(', ') || '-') +
+            weatherAffectedCell(e.affectedTaskIds) +
             '</td><td><button class="btn btn-s btn-d" data-action="delWeatherLogEntry" data-idx="' +
             i +
             '">\u00d7</button></td></tr>'
         )
         .join('') +
       '</tbody></table></div>';
+  }
+
+  // UX-2026-11-19 B5: the affected tasks are a link to exactly those rows in
+  // the plan. One list, one filter, no second navigation path.
+  function weatherAffectedCell(ids) {
+    const list = Array.isArray(ids) ? ids.filter(Boolean) : [];
+    if (!list.length) {
+      return '-';
+    }
+    const R = ns.Render;
+    const label = U.escapeHtml(list.join(', '));
+    if (!R || typeof R.navLinkOpen !== 'function') {
+      return label;
+    }
+    return (
+      R.navLinkOpen({ panel: 'wbs', filter: 'ids:' + list.join(',') }, 'tbl-link') +
+      label +
+      R.NAV_CHEV +
+      '</a>'
+    );
   }
 
   // ---- Weather window input binding ----

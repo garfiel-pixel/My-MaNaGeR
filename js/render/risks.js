@@ -168,6 +168,69 @@ var MMGR = window.MMGR || {};
     el.innerHTML = html;
   }
 
+  // UX-2026-11-19 B5: the Live Issues table has had its headers, its two
+  // actions (updIssue / delIssue) and an empty tbody since the panel was
+  // built - nothing ever wrote the rows, so "issue to its issue" had no
+  // destination. This is that renderer, and it is the one place issue rows
+  // are drawn outside the dashboard.
+  const ISSUE_STATUSES = ['open', 'resolved', 'closed'];
+
+  function renderIssues() {
+    const s = S();
+    const body = $('issue-body');
+    if (!s || !body) {
+      return;
+    }
+    const list = Array.isArray(s.issues) ? s.issues : [];
+    if (!list.length) {
+      body.innerHTML = emptyStateRow(
+        6,
+        'No issues yet. Raise one from a risk, or log it on the dashboard.'
+      );
+      return;
+    }
+    body.innerHTML = list
+      .map(function (it, i) {
+        const status = String(it.status || 'open');
+        const tone =
+          status === 'open'
+            ? 'var(--danger)'
+            : status === 'resolved'
+              ? 'var(--green)'
+              : 'var(--slate)';
+        return (
+          '<tr data-id="' +
+          U.escapeHtml(it.id || '') +
+          '"><td>' +
+          U.escapeHtml(it.id || '') +
+          '</td><td><input type="text" value="' +
+          U.escapeHtml(it.description || '') +
+          '" data-action="updField" data-module="Issues" data-field="description" data-idx="' +
+          i +
+          '" aria-label="Issue description" style="min-width:180px"></td><td><input type="text" value="' +
+          U.escapeHtml(it.owner || '') +
+          '" data-action="updField" data-module="Issues" data-field="owner" data-idx="' +
+          i +
+          '" aria-label="Issue owner" style="width:120px"></td><td><input type="date" value="' +
+          U.escapeHtml(it.targetDate || '') +
+          '" data-action="updField" data-module="Issues" data-field="targetDate" data-idx="' +
+          i +
+          '" aria-label="Issue target date"></td><td><select data-action="updField" data-module="Issues" data-field="status" data-idx="' +
+          i +
+          '" aria-label="Issue status" style="color:' +
+          tone +
+          '">' +
+          ISSUE_STATUSES.map(function (v) {
+            return '<option' + (status === v ? ' selected' : '') + '>' + v + '</option>';
+          }).join('') +
+          '</select></td><td><button class="btn btn-s btn-d" data-action="delIssue" data-idx="' +
+          i +
+          '" title="Delete this issue">\u00d7</button></td></tr>'
+        );
+      })
+      .join('');
+  }
+
   function renderRisks() {
     const s = S();
     const body = $('risk-body');
@@ -297,6 +360,7 @@ var MMGR = window.MMGR || {};
         );
       })
       .join('');
+    renderIssues();
   }
 
   ns.RenderRisks = {

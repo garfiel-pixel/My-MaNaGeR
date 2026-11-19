@@ -519,6 +519,14 @@ var MMGR = window.MMGR || {};
     R.renderAll();
     updateUndoUi();
 
+    // UX-2026-11-19 B5: every [data-nav] element is an in-app link through
+    // the ONE helper, and Nav.start seeds the entry the project opened on so
+    // the back gesture always has the dashboard to return to.
+    wireDashNav();
+    if (ns.Nav && typeof ns.Nav.start === 'function') {
+      ns.Nav.start();
+    }
+
     // DIR-2 (PROJECT-UX-NAV-WEATHER-EXPORT-DIRECTIVE): measure the header so
     // the sticky section nav sits exactly below it; re-measure on resize (the
     // header wraps on narrow screens).
@@ -1287,6 +1295,58 @@ var MMGR = window.MMGR || {};
   // ---- Sections ----
   function showSec(section, btn) {
     R.showSection(section, btn);
+  }
+
+  // UX-2026-11-19 B5: one delegated handler turns every [data-nav] element
+  // into an in-app link. The attributes carry the whole destination:
+  //   data-nav-panel  the section (falls back to the href's #hash)
+  //   data-nav-id     the record to scroll to and flash
+  //   data-nav-filter the WBS view filter ("overdue", "ids:1,2", ...)
+  //   data-nav-col    a Kanban column
+  //   data-nav-anchor a card that is its own destination
+  // Modified clicks (Ctrl/Cmd/middle) are left to the browser, so a real
+  // href still opens in a new tab exactly as APP-2 promises.
+  function wireDashNav() {
+    if (document.body.getAttribute('data-nav-wired') === '1') {
+      return;
+    }
+    document.body.setAttribute('data-nav-wired', '1');
+    document.addEventListener('click', function (e) {
+      if (
+        e.defaultPrevented ||
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey
+      ) {
+        return;
+      }
+      const a = e.target && e.target.closest ? e.target.closest('[data-nav]') : null;
+      if (!a) {
+        return;
+      }
+      const panel =
+        a.getAttribute('data-nav-panel') || String(a.getAttribute('href') || '').replace(/^#/, '');
+      if (!panel) {
+        return;
+      }
+      e.preventDefault();
+      ns.Nav.go({
+        panel: panel,
+        recordId: a.getAttribute('data-nav-id') || '',
+        filter: a.getAttribute('data-nav-filter') || '',
+        column: a.getAttribute('data-nav-col') || '',
+        anchor: a.getAttribute('data-nav-anchor') || ''
+      });
+    });
+  }
+
+  // Clearing a WBS view filter is view state, so it is safe in view-only mode.
+  function clearWbsFilter() {
+    if (ns.Render && typeof ns.Render.setWbsFilter === 'function') {
+      ns.Render.setWbsFilter('');
+    }
   }
 
   // ---- Focus Mode ----
@@ -6175,6 +6235,7 @@ var MMGR = window.MMGR || {};
     ideaKeyMove: ideaKeyMove,
     setAgendaDays: setAgendaDays,
     agendaJump: agendaJump,
+    clearWbsFilter: clearWbsFilter,
     exportAgendaIcs: exportAgendaIcs,
     dragIdea: dragIdea,
     dropIdea: dropIdea,
@@ -7020,6 +7081,8 @@ window.MMGR = MMGR;
     aiRunPreset: el => window.MMGR.AiWin.runPreset(el.getAttribute('data-type')),
     aiRun: () => window.MMGR.AiWin.runQuestion(),
     majorShowAll: () => window.MMGR.Render.toggleMajorList(),
+    // UX-2026-11-19 B5: a WBS view filter is view state (a module flag).
+    wbsClearFilter: () => window.MMGR.App.clearWbsFilter(),
     aiCopyOut: () => window.MMGR.AiWin.copyOut(),
     aiSetTier: el => {
       window.MMGR.AiWin.setAiCfg({ tier: el.value });
@@ -8066,6 +8129,7 @@ window.MMGR = MMGR;
     // UX-2026-11-19 B4: expanding the contributor list is view state (a
     // module flag), never project state.
     majorShowAll: 1,
+    wbsClearFilter: 1,
     aiAttachContext: 1,
     aiCopy: 1,
     aiClear: 1,

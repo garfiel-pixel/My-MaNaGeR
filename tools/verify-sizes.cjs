@@ -84,11 +84,17 @@ const EXACT = {
   // rules) in css/src/87-signin-polish.css (629248 measured).
   // 2026-11-19 (ux B2): 631000 -> 634000 for the eight chart-slot tokens and
   // their dark / departure / obsidian / guild re-points (632054 measured).
+  // 2026-11-19 (ux B5): 637000 -> 640000 for the dashboard link styles (44px
+  // rows, chevron, focus ring), the section anchors and the WBS view-filter
+  // banner (638434 measured).
   // 2026-11-19 (ux B4): 634000 -> 637000 for the "What is driving completion"
   // list - row grid, dot, thin bar, points, empty line and the 520px
   // breakpoint, plus the hot-row wash that links it to the ring arcs
   // (635054 measured).
-  'css/mmgr.css': 637000,
+  // 2026-11-19 (ux B6): 640000 -> 642000 for the eight [data-major] token
+  // rules and the three carry-through accents - WBS row marker, Gantt bar
+  // stripe, Kanban card stripe (640329 measured).
+  'css/mmgr.css': 642000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
@@ -116,7 +122,10 @@ const EXACT = {
   // 2026-11-19 (data-truth): raised 226000 -> 227000 for the Risk panel's
   // "Discuss with AI" header button (~170 bytes, 226169 measured). Static
   // markup only; the risk table itself is rendered by js/render/risks.js.
-  'project.html': 227000,
+  // 2026-11-19 (ux B5): 227000 -> 230000. The seven health counters became
+  // links, the EVM tiles became links, four panels gained their #section
+  // anchor and the WBS gained its view-filter bar (228995 measured).
+  'project.html': 230000,
   'calculator.html': 80000,
   // 2026-11-10 (Theme pack): raised 140000 -> 143000 for the Customize modal
   // markup (themes grid, appearance/performance rows, account section) added to
@@ -161,7 +170,12 @@ const DIRS = {
   // entry plus the comment that explains why they are safe (310028 measured).
   // This file is STILL the split candidate - the next wave should split it
   // rather than raise this again.
-  js: 312000,
+  // 2026-11-19 (ux B5): 312000 -> 315000. The one delegated [data-nav]
+  // handler, the boot call that seeds the history entry, the clearWbsFilter
+  // action and its export (312344 measured). Navigation is app-level wiring,
+  // so it belongs here; the 3 KB headroom is deliberate - the next growth
+  // should be the split, not another raise.
+  js: 315000,
   css: 160000,
   src: 300000
 };

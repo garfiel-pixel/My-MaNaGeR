@@ -1332,6 +1332,14 @@ jobs:
         id: qa-appshell
         run: node tools/qa-appshell.cjs
 
+      - name: "T4: Every dashboard number is a door (qa-dashboard-links)"
+        id: qa-dashboard-links
+        run: node tools/qa-dashboard-links.cjs
+
+      - name: "T4: The completion ring and its contributors (qa-dashboard-ring)"
+        id: qa-dashboard-ring
+        run: node tools/qa-dashboard-ring.cjs
+
       - name: "T4: First-load shell - flat + one-shot rail demo (qa-shell-first-load)"
         id: qa-shell-first-load
         run: node tools/qa-shell-first-load.cjs

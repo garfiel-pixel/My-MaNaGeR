@@ -438,3 +438,127 @@ Size caps raised with the measured bytes: `css/mmgr.css` 634000 -> 637000
 (635054 measured), `js` directory 310000 -> 312000 (310028 measured).
 
 Commit: `feat(dashboard): the list that says what is driving completion`.
+
+### B5 - one navigation helper and the link inventory
+
+`MMGR.Nav` already existed for page-level navigation (same tab vs a new tab,
+APP-2). It now also moves WITHIN the workspace: `Nav.go({panel, recordId,
+filter, column, anchor})` switches the panel through the existing
+`showSection`, applies an optional view filter, scrolls the target into view
+and flashes it. A string argument still means "go to this URL", so every
+existing caller is untouched.
+
+What the helper does, in the order it does it:
+
+1. **Filter first.** The WBS view filter is set before the panel renders, so
+   the first paint is already the filtered list - no flash of everything.
+2. **Then the switch.** `showSection` is the one panel switch in the app, so
+   the guard for scoped editor codes still applies.
+3. **Then the target.** A record is found by attribute VALUE inside the
+   target panel (`[data-id]`, `[data-idea-id]`, `[data-idx]`), never by
+   building a selector from the id - an imported id can carry a quote.
+4. **Then the flash.** `.ag-hit` (the agenda's own pulse) for 1.6s, scrolled
+   to the centre, focused with `preventScroll`. Under reduced motion the jump
+   still happens and the pulse does not (the class stays for a static ring).
+5. **A dead target never leaves a blank screen.** The panel renders and a
+   one-line notice ("That task is no longer in this project.") sits at its
+   top for six seconds.
+
+History: every panel switch - including a sidebar click - is now an entry
+(`showSection` calls `Nav.sectionShown`), and the entry carries the scroll
+position it was left at. The hash is the panel name (`#wbs`), the only hash
+convention in this app, so a deep link works and an `<a href="#wbs">` still
+works with JavaScript off (four panels gained a zero-height `.sec-anchor` so
+`verify-navigation-anchors` can prove it). Back and the phone back gesture
+return to the dashboard with its scroll restored; `popstate` re-shows the
+panel from the entry's own state. The boot entry is seeded with
+`replaceState`, so a deep link does not leave a duplicate behind.
+
+The WBS filter is view state in the render module (never written to the
+project, allowed in view-only mode): `overdue`, `atrisk`, `blocked`, `done`,
+`inprogress`, `week-planned`, `week-done`, `carryover` and `ids:<a,b,c>` for
+an arbitrary set. A filtered list SAYS it is filtered - a banner above the
+table names the filter, counts the rows and offers "Show all tasks". A hidden
+filter reads as lost data, which is exactly the bug the banner prevents.
+
+The inventory, all through one delegated `[data-nav]` click handler:
+
+| Dashboard item | Destination |
+|---|---|
+| Attention: overdue / due soon / blocked | WBS filtered to that set / Kanban blocked column |
+| Attention: live issues | Risk panel, Live Issues section |
+| Attention: expiring compliance | the person whose COI or licence is expiring |
+| This Week: three counters | WBS filtered to planned / done / carryover |
+| Project Health: seven counters | WBS filtered (five) / Live Issues / the people panel |
+| Next 3 Priority Actions | the task's row in the WBS |
+| Baseline Variance rows | the task's row in the WBS |
+| Weather delay log: affected tasks | WBS filtered to exactly those ids |
+| EVM tiles | the EVM card (it is the only EVM surface in the app) |
+
+Two things found on the way, both fixed here because the links needed them:
+
+- The Risk panel's **Live Issues table had never been rendered**: headers,
+  both actions (`updIssue`, `delIssue`) and an empty tbody since the panel was
+  built, so "issue to its issue" had no destination. `js/render/risks.js` now
+  draws the register (id, description, owner, target date, status, delete).
+- The health counters were **losing their dots**: `setVal` wrote
+  `textContent` into the `.dotstat` wrapper, deleting the `.sdot`/`.ds-num`
+  markup on the first render. It now writes the `.ds-num` span when one
+  exists, so the dot, the number and the new chevron all survive.
+
+Two deliberate deviations, both to keep an existing hard gate green:
+
+- The Next-3 rows keep the list's **33px rhythm** (`qa-rhythm` R03 is a hard
+  gate); the link fills the row but adds no height. The 44px floor applies to
+  the stacked rows (Attention, This Week, health counters), where it is real.
+- This Week lists counters, not tasks, so "any listed task opens the task"
+  has no rows to apply to; each counter opens the filtered task list instead.
+
+Gate: `tools/qa-dashboard-links.cjs` **9/9** (new, wired into CI's
+browser-app job), `tools/qa-dashboard-ring.cjs` **35/35**,
+`qa-dashboard-spec` **104/104**, `qa-full` **194/194**, `qa-rhythm` PASS,
+`qa-a11y-axe` **7/7**, `verify-navigation-anchors` **2/2**,
+`verify-test-registry` **239 harnesses**, `verify-ci-coverage` **12/12**.
+
+Size caps raised with the measured bytes: `css/mmgr.css` 637000 -> 640000
+(638434), `js` directory 312000 -> 315000 (312344), `project.html`
+227000 -> 230000 (228995).
+
+Commit: `feat(dashboard): every number opens its records and the colour carries through` (B5 and B6 landed together - see the note at the end of B6).
+
+### B6 - the colour carries through
+
+A task that belongs to a major now reads the same colour everywhere it
+appears: a 4px accent on its Gantt bar, a 4px marker on its WBS row, a 4px
+top stripe on its Kanban card. One source, not four:
+
+- `MMGR.MajorTasks.getMajorGroups` already walked every work item into its
+  group; each group now also carries `members` (the task ids), and
+  `mergeOther` concatenates them when more than eight groups collapse into
+  "Other". `MMGR.MajorTasks.assignments(state)` turns that into one map of
+  task id to slot number - the same `withColors` slots the ring uses, so the
+  stripe and the arc cannot disagree.
+- The three renderers read the map once per render (WBS, Gantt, Kanban), set
+  `data-major="<slot>"` and `--major-row: var(--major-<slot>)` on the element,
+  and let CSS paint it. The colour is a token reference, so every theme and
+  every skin re-tints it exactly as it re-tints the ring.
+- No groups: no attribute is emitted, so nothing changes on an ungrouped
+  project (proven, not assumed).
+
+Nothing else was restyled: the WBS row keeps its own overdue/low-confidence
+classes, the Gantt bar keeps its critical/overdue/lead-time treatment (the
+accent is a `::before` stripe, so it does not fight the lead-time gradient or
+the pulse), and the Kanban card keeps its status border-left.
+
+Gate: `tools/qa-dashboard-ring.cjs` **40/40** (was 35). The B6 arms navigate
+to each panel and read the paint back - the row's inset box-shadow, the bar's
+`::before` background, the card's top border - and compare all three with the
+stroke of the matching ring slot; a fourth arm proves an ungrouped project
+carries no stripe.
+
+Commit: `feat(dashboard): every number opens its records and the colour carries through`.
+
+Note: B5 and B6 are one commit, not two. The two steps edit the same
+functions (the WBS renderer, the Kanban card builder, the panel stylesheet)
+and a hunk-level split would have produced a first commit that does not
+build. Each step keeps its own gate and its own entry here.

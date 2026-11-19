@@ -105,7 +105,7 @@ var MMGR = window.MMGR || {};
   }
 
   function blank(name, id) {
-    return { id: id, name: name, total: 0, completed: 0 };
+    return { id: id, name: name, total: 0, completed: 0, members: [] };
   }
 
   function finish(group, totalWork) {
@@ -117,7 +117,11 @@ var MMGR = window.MMGR || {};
       completed: group.completed,
       fraction: fraction,
       share: totalWork ? group.total / totalWork : 0,
-      points: pct(group.completed, totalWork)
+      points: pct(group.completed, totalWork),
+      // UX-2026-11-19 B6: the work items behind the group, so the Gantt bar,
+      // the WBS marker and the Kanban stripe can paint the same colour as the
+      // ring slot without a second membership rule.
+      members: (group.members || []).slice()
     };
   }
 
@@ -169,6 +173,9 @@ var MMGR = window.MMGR || {};
           return;
         }
         g.total++;
+        if (item.id != null && item.id !== '') {
+          g.members.push(String(item.id));
+        }
         if ((item.status || '') === 'completed') {
           g.completed++;
         }
@@ -183,6 +190,9 @@ var MMGR = window.MMGR || {};
           ? add(key, label, 'group:' + key)
           : add(UNASSIGNED_ID, UNASSIGNED_NAME, UNASSIGNED_ID);
         g.total++;
+        if (item.id != null && item.id !== '') {
+          g.members.push(String(item.id));
+        }
         if ((item.status || '') === 'completed') {
           g.completed++;
         }
@@ -255,13 +265,15 @@ var MMGR = window.MMGR || {};
       completed: 0,
       fraction: 0,
       share: 0,
-      points: 0
+      points: 0,
+      members: []
     };
     rest.forEach(function (g) {
       other.total += g.total;
       other.completed += g.completed;
       other.share += g.share;
       other.points += g.points;
+      other.members = other.members.concat(g.members || []);
     });
     other.fraction = other.total ? other.completed / other.total : 0;
     return keep.concat([other]);
@@ -283,9 +295,30 @@ var MMGR = window.MMGR || {};
     });
   }
 
+  // ---- B6: the same colour everywhere -----------------------------------
+  // A task id maps to the slot its major was given, so the ring arc, the
+  // Gantt bar, the WBS marker and the Kanban stripe cannot disagree. Returns
+  // null when the project has no groups - the callers then draw exactly what
+  // they drew before.
+  function assignments(state) {
+    const out = getMajorGroups(state);
+    if (!out || !out.grouped || !out.groups.length) {
+      return null;
+    }
+    const colored = withColors(out.groups);
+    const map = Object.create(null);
+    colored.forEach(function (g) {
+      (g.members || []).forEach(function (id) {
+        map[String(id)] = g.color;
+      });
+    });
+    return map;
+  }
+
   ns.MajorTasks = {
     getMajorGroups: getMajorGroups,
     withColors: withColors,
+    assignments: assignments,
     hashId: hashId,
     SLOTS: SLOTS,
     OTHER_ID: OTHER_ID,

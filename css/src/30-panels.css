@@ -191,7 +191,10 @@
   padding: 4px 2px;
   line-height: 1.45;
 }
-.n3 li > span {
+/* B5: the row's text now sits inside the link, so the ellipsis rule follows
+   it there - a long priority name still cannot break the 33px rhythm. */
+.n3 li > span,
+.n3 li > a > span {
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -5365,6 +5368,48 @@ body.dark-mode .team-link-danger {
 .ag-hit {
   animation: ag-flash 1.6s ease-out;
 }
+@media (prefers-reduced-motion: reduce) {
+  /* UX-2026-11-19 B5: the jump still happens, the pulse does not. */
+  .ag-hit {
+    animation: none;
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
+/* A dead link still lands on the panel; this line says why the record is
+   not there, instead of leaving the user on an empty-looking screen. */
+.nav-miss {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  border-radius: 8px;
+  background: var(--tile-bg);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+/* The WBS view filter's own banner: what is shown, how many, and the way
+   back to everything. A filter nobody can see reads as lost data. */
+.wbs-view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  background: var(--tile-bg);
+  font-size: 0.8rem;
+}
+.wbs-view-bar[hidden] {
+  display: none;
+}
+.wbs-view-bar .wvb-txt {
+  color: var(--text);
+}
 @keyframes ag-flash {
   0% {
     box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.55);
@@ -5381,6 +5426,54 @@ body.dark-mode .team-link-danger {
   }
 }
 
+/* UX-2026-11-19 B6: colour carry-through. A task that belongs to a major
+   carries that major's slot colour as a 4px accent on its Gantt bar and a
+   4px marker on its WBS row, so the same task reads the same everywhere it
+   appears. Nothing else is restyled; with no groups neither attribute is
+   emitted, so nothing changes. */
+/* The slot number maps to its token in CSS, not in an inline style: eight
+   fixed rules keep the DOM census clean and let every theme re-tint the
+   accent with no JavaScript involved. */
+[data-major='1'] {
+  --major-row: var(--major-1);
+}
+[data-major='2'] {
+  --major-row: var(--major-2);
+}
+[data-major='3'] {
+  --major-row: var(--major-3);
+}
+[data-major='4'] {
+  --major-row: var(--major-4);
+}
+[data-major='5'] {
+  --major-row: var(--major-5);
+}
+[data-major='6'] {
+  --major-row: var(--major-6);
+}
+[data-major='7'] {
+  --major-row: var(--major-7);
+}
+[data-major='8'] {
+  --major-row: var(--major-8);
+}
+.gb[data-major]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--major-row);
+  pointer-events: none;
+}
+.gb[data-major] {
+  padding-left: 10px;
+}
+.wbs-row[data-major] > td:first-child {
+  box-shadow: inset 4px 0 0 var(--major-row);
+}
 /* ---- Project book: page tree + block body (AppFlowy-inspired) ----
    Pages are a flat array rendered as an indented tree; a body is a list of
    typed blocks. Formatting is the block type, never tags inside the text. */

@@ -562,3 +562,39 @@ Note: B5 and B6 are one commit, not two. The two steps edit the same
 functions (the WBS renderer, the Kanban card builder, the panel stylesheet)
 and a hunk-level split would have produced a first commit that does not
 build. Each step keeps its own gate and its own entry here.
+
+### B7 - Part B close
+
+Part B is complete: the dashboard says what is driving completion, the ring
+gives every major group its own arc, every number opens the records behind it,
+and the colour a task earns on the ring follows it into the WBS, the Gantt and
+the board.
+
+Standard battery, run on the B6 tree with no Part C changes in it:
+
+| Harness | Result |
+|---|---|
+| `qa-full.cjs` | **194 / 194** |
+| `tools/qa-controls-ia.cjs` | **12 / 12** |
+| `tools/qa-dashboard-spec.cjs` | **104 / 104** |
+| `tools/qa-ux-landscape.cjs` | **58 / 58** |
+| `tools/qa-calculator-page.cjs` | **256 / 256** |
+| `tools/qa-a11y-axe.cjs` | **7 / 7** |
+| `tools/qa-cloud-phase1.cjs` | **29 / 29** |
+| `tools/qa-cloud-phase2.cjs` | **93 / 93** |
+| `npm run verify` | **exit 0**, 612 PASS lines, 0 FAIL |
+
+One environment note worth keeping: the two cloud suites spawn their own
+`wrangler dev`, and `tools/chrome-launcher.cjs` defaults that port to **8765 -
+the same port `serve.cjs` uses**. With the QA server already up, wrangler
+silently fails to bind, `/api/health` answers 200 *from serve.cjs*, and every
+`/api/cloud/*` call 404s - which reads as 22 product failures. Give the cloud
+suites their own port instead:
+
+```bash
+QA_PORT=8788 node tools/qa-cloud-phase1.cjs
+QA_PORT=8789 node tools/qa-cloud-phase2.cjs
+```
+
+No product change in this step; the gate is the point. Commit:
+`test(dashboard): Part B close - standard battery green`.

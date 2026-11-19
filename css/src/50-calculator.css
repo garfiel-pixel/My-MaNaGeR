@@ -2725,7 +2725,9 @@ body.ai-sheet .ai-inputbar {
 
 /* dark mode */
 body.dark-mode .ai-user {
-  background: linear-gradient(135deg, #f59e0b, #b45309);
+  /* UX-2026-11-19 A8: the accent is a token in dark mode too (white there,
+     by the owner's dark identity), so the bubble cannot stay amber. */
+  background: linear-gradient(135deg, var(--gold), var(--gold-ink, var(--gold)));
 }
 body.dark-mode .ai-bot-body {
   background: var(--lit-white-05);

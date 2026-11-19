@@ -225,3 +225,33 @@ shell asset newer than the last bump).
 Gate: `verify-marketing-markup` PASS; `qa-landing-ui` 70/70.
 
 Commit: `fix(marketing): the landing page says what it is and who it is for`.
+
+### A8 - theme colour check (verify only, one real defect found)
+
+The tester's low-confidence report was correct. `css/src/40-ai.css` painted
+the AI floating button, the user bubble and the bot avatar with a hard-coded
+`linear-gradient(135deg, #f59e0b, #d97706)`, and the panel header carried a
+hard-coded `rgba(245, 158, 11, 0.08)` wash. `css/src/50-calculator.css` held
+a dark-mode override that kept the user bubble amber as well. Every skin and
+every accent mode therefore painted the same orange dot.
+
+Changed to the theme's own tokens, with no palette value touched anywhere:
+
+- `.ai-fab`, `.ai-user`, `.ai-bot-avatar`:
+  `linear-gradient(135deg, var(--gold), var(--gold-ink, var(--gold)))`
+- their label/icon colour: `var(--on-gold, var(--lit-coal))`
+- every shadow and glow: `rgba(var(--gold-rgb, 212, 175, 55), a)`
+- `.ai-head` wash: `rgba(var(--gold-rgb, 212, 175, 55), 0.08)`
+- `.ai-seg-btn:hover` and the untested BYO dot wash: same token
+- the dark `.ai-user` override now reads the same two tokens
+
+Evidence: dark mode is white-accented by design (`css/src/20-shell.css` sets
+`--gold: #ffffff` and comments "the accent IS white in dark"), so the FAB is
+a white gradient there - that is the theme, not a bug. Vellum paints
+`#7a3039`, Obsidian `#e6b85f`, Bento `#17633f`, cyan `#00838f`, magenta
+`#c2185b`; the harness prints every combination it sampled.
+
+Gate: `tools/qa-ai-theme.cjs` **8/8** (new, 54 combinations, proven to bite);
+`verify-contrast` at the 2-failure baseline; `qa-bento-gate` 10/10.
+
+Commit: `fix(ui): the AI accent follows the chosen theme`.

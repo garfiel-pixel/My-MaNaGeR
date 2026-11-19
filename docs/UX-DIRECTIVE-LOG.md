@@ -205,3 +205,23 @@ two keys turns V2/V3 red with the tester's exact message);
 `qa-ai-actions` 13/13; `qa-ai-relay` RELAY_GATE PASS; `qa-ai-win` 27/27.
 
 Commit: `fix(ux): the assistant answers in view-only mode`.
+
+### A7 - the landing "Who we are" says what it is and who it is for
+
+Tester: the section did not make clear what the app is for or who it is for.
+The lead paragraph in `.who-band` (`.who-head`) now opens with the
+directive's sentence, verbatim:
+
+> My MaNaGeR is project management software for construction: schedule,
+> budget, risks and site records in one place, built for general
+> contractors, project managers, superintendents and trade leads.
+
+The existing local-first sentence stays immediately after it. Headings and
+the three cards are untouched, as the step requires.
+
+`sw.js` CACHE `mmgr-shell-v672` -> `v673` (the service-worker gate fails any
+shell asset newer than the last bump).
+
+Gate: `verify-marketing-markup` PASS; `qa-landing-ui` 70/70.
+
+Commit: `fix(marketing): the landing page says what it is and who it is for`.

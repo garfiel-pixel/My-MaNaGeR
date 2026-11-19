@@ -7019,6 +7019,7 @@ window.MMGR = MMGR;
     // Rank 2.3: real model wiring , run preset / run question / settings.
     aiRunPreset: el => window.MMGR.AiWin.runPreset(el.getAttribute('data-type')),
     aiRun: () => window.MMGR.AiWin.runQuestion(),
+    majorShowAll: () => window.MMGR.Render.toggleMajorList(),
     aiCopyOut: () => window.MMGR.AiWin.copyOut(),
     aiSetTier: el => {
       window.MMGR.AiWin.setAiCfg({ tier: el.value });
@@ -8062,6 +8063,9 @@ window.MMGR = MMGR;
     aiPreset: 1,
     aiRun: 1,
     aiRunPreset: 1,
+    // UX-2026-11-19 B4: expanding the contributor list is view state (a
+    // module flag), never project state.
+    majorShowAll: 1,
     aiAttachContext: 1,
     aiCopy: 1,
     aiClear: 1,

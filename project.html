@@ -375,6 +375,10 @@
           </div>
           <div><div class="t-sm">Completed</div><div class="stat-xl" id="dc">0</div><div class="t-xs">of <span id="tc">0</span> tasks</div></div>
         </div>
+        <!-- UX-2026-11-19 B4: the text version of the ring - what is actually
+             driving completion, one row per major group. Rendered by
+             js/mmgr-render.js; hidden when the project has no groups. -->
+        <div class="major-list" id="major-list" hidden></div>
       </div>
       <div class="card blueprint" id="health-card">
         <div class="card-title" data-def="Health Score">Project Health</div>

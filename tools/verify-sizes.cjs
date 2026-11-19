@@ -84,7 +84,11 @@ const EXACT = {
   // rules) in css/src/87-signin-polish.css (629248 measured).
   // 2026-11-19 (ux B2): 631000 -> 634000 for the eight chart-slot tokens and
   // their dark / departure / obsidian / guild re-points (632054 measured).
-  'css/mmgr.css': 634000,
+  // 2026-11-19 (ux B4): 634000 -> 637000 for the "What is driving completion"
+  // list - row grid, dot, thin bar, points, empty line and the 520px
+  // breakpoint, plus the hot-row wash that links it to the ring arcs
+  // (635054 measured).
+  'css/mmgr.css': 637000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
@@ -151,7 +155,13 @@ const DIRS = {
   // 2026-11-19 (data-truth): 309000 -> 310000 for openDrwToBaseline (the
   // Dashboard baseline card's deep link, ~1.2 KB with its comment) and the
   // askAboutRisk action entry (309319 measured).
-  js: 310000,
+  // 2026-11-19 (ux A6/B4): 310000 -> 312000. A6 added aiRun/aiRunPreset to
+  // the view-only safe list (the assistant answers without writing a project
+  // record) and B4 added the majorShowAll view-state action; both are one
+  // entry plus the comment that explains why they are safe (310028 measured).
+  // This file is STILL the split candidate - the next wave should split it
+  // rather than raise this again.
+  js: 312000,
   css: 160000,
   src: 300000
 };

@@ -13,8 +13,19 @@
      R5 Performance Mode: the entry sweep does not run.
      R6 the SVG is role="img" and its label names the percentage and
         the top contributors (colour is never the only carrier).
-     R7 hovering an arc marks it hot (the list half arrives with B4).
+     R7 hovering an arc marks it hot, and hovering a row lights its arc.
      R8 the ring survives a dark theme with the same tokens.
+
+   B4 gates (the list under the ring):
+     L1 five rows while collapsed, one per major, the rest behind a toggle.
+     L2 order: highest contribution first, zero-completed rows last.
+     L3 "+X.X pts" carries exactly one decimal and matches the model.
+     L4 a row's dot paints the same token as its own ring arc.
+     L5 "Show all (N)" expands to every group; "Show top 5" collapses.
+     L6 every row is a link to its major in the plan (#wbs).
+     L7 nothing completed: the empty line shows and no points render.
+     L8 rows are at least 44px high on a coarse pointer.
+     L9 a project with no groups hides the list entirely.
 
    Usage:   node tools/qa-dashboard-ring.cjs
    Registry: docs/CI-TEST-COVERAGE.md
@@ -94,6 +105,44 @@ const PLAIN = `[
   { id: 'b', name: 'Two', status: 'todo' }
 ]`;
 
+// Seven majors with distinct contributions, so the list has a real order:
+// 3/16, 2/16, then three at 1/16, then two at zero - and the zero group with
+// more items ("Services", 2) still sorts below the one with fewer ("Finishes").
+const WIDE = `[
+  { id: 'w1', name: 'Site preparation', isPhase: true },
+  { id: 'w1a', name: 'Clear', parentId: 'w1', status: 'completed' },
+  { id: 'w1b', name: 'Grade', parentId: 'w1', status: 'completed' },
+  { id: 'w1c', name: 'Fence', parentId: 'w1', status: 'completed' },
+  { id: 'w1d', name: 'Survey', parentId: 'w1', status: 'todo' },
+  { id: 'w2', name: 'Foundation', isPhase: true },
+  { id: 'w2a', name: 'Excavate', parentId: 'w2', status: 'completed' },
+  { id: 'w2b', name: 'Rebar', parentId: 'w2', status: 'completed' },
+  { id: 'w2c', name: 'Pour', parentId: 'w2', status: 'todo' },
+  { id: 'w3', name: 'Structure', isPhase: true },
+  { id: 'w3a', name: 'Columns', parentId: 'w3', status: 'completed' },
+  { id: 'w3b', name: 'Beams', parentId: 'w3', status: 'todo' },
+  { id: 'w3c', name: 'Slab', parentId: 'w3', status: 'todo' },
+  { id: 'w4', name: 'Envelope', isPhase: true },
+  { id: 'w4a', name: 'Roof', parentId: 'w4', status: 'completed' },
+  { id: 'w4b', name: 'Windows', parentId: 'w4', status: 'todo' },
+  { id: 'w5', name: 'Services', isPhase: true },
+  { id: 'w5a', name: 'Rough-in', parentId: 'w5', status: 'todo' },
+  { id: 'w5b', name: 'Terminations', parentId: 'w5', status: 'todo' },
+  { id: 'w6', name: 'Finishes', isPhase: true },
+  { id: 'w6a', name: 'Paint', parentId: 'w6', status: 'todo' },
+  { id: 'w7', name: 'Handover', isPhase: true },
+  { id: 'w7a', name: 'Snag', parentId: 'w7', status: 'completed' }
+]`;
+
+// Two majors, nothing completed: the empty line case.
+const NOTHING_DONE = `[
+  { id: 'n1', name: 'Site preparation', isPhase: true },
+  { id: 'n1a', name: 'Clear', parentId: 'n1', status: 'todo' },
+  { id: 'n1b', name: 'Grade', parentId: 'n1', status: 'todo' },
+  { id: 'n2', name: 'Foundation', isPhase: true },
+  { id: 'n2a', name: 'Excavate', parentId: 'n2', status: 'blocked' }
+]`;
+
 (async () => {
   let srv = null;
   const { chromium } = resolvePlaywright();
@@ -135,8 +184,11 @@ const PLAIN = `[
     });
 
     async function openProject(opts) {
+      const coarse = !!(opts && opts.coarse);
       const ctx = await browser.newContext({
-        viewport: { width: 1280, height: 900 }
+        viewport: coarse ? { width: 390, height: 844 } : { width: 1280, height: 900 },
+        hasTouch: coarse,
+        isMobile: coarse
       });
       await ctx.addInitScript(`try {
         localStorage.setItem('mmgr_unlocked_demo-project', '1');
@@ -156,6 +208,40 @@ const PLAIN = `[
         MMGR.State.updateState(function (s) { s.tasks = ${tasks}; });
         MMGR.Render.renderDash();
       })();`);
+
+    const listState = page =>
+      page.evaluate(() => {
+        const host = document.getElementById('major-list');
+        if (!host) {
+          return { exists: false };
+        }
+        const rows = Array.from(host.querySelectorAll('.major-row'));
+        return {
+          exists: true,
+          hidden: !!host.hidden || getComputedStyle(host).display === 'none',
+          rows: rows.map(function (el) {
+            const dot = el.querySelector('.major-dot');
+            const pts = el.querySelector('.major-pts');
+            return {
+              id: el.getAttribute('data-major-id'),
+              name: (el.querySelector('.major-name') || {}).textContent || '',
+              count: (el.querySelector('.major-count') || {}).textContent || '',
+              pts: pts ? pts.textContent : null,
+              dot: dot ? getComputedStyle(dot).backgroundColor : '',
+              href: el.getAttribute('href'),
+              nav: el.getAttribute('data-nav'),
+              h: el.getBoundingClientRect().height
+            };
+          }),
+          empty: !!host.querySelector('.major-empty'),
+          more: host.querySelector('.major-more')
+            ? host.querySelector('.major-more').textContent.trim()
+            : '',
+          moreAction: host.querySelector('.major-more')
+            ? host.querySelector('.major-more').getAttribute('data-action')
+            : ''
+        };
+      });
 
     const ringState = page =>
       page.evaluate(() => {
@@ -309,9 +395,213 @@ const PLAIN = `[
           first
         );
         check('R7 hovering an arc marks it hot', hotArc, first);
+
+        // The other half of the link (B4): a row lights its own arc.
+        const rowId = await page.evaluate(() => {
+          document.querySelectorAll('.ring-slot').forEach(function (el) {
+            el.classList.remove('is-hot');
+          });
+          const row = document.querySelector('.major-row');
+          if (!row) {
+            return null;
+          }
+          row.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+          return row.getAttribute('data-major-id');
+        });
+        const hotFromRow = await page.evaluate(id => {
+          const row = id ? document.querySelector('.major-row[data-major-id="' + id + '"]') : null;
+          const arc = id ? document.querySelector('.ring-slot[data-major-id="' + id + '"]') : null;
+          return {
+            id: id,
+            row: !!row && row.classList.contains('is-hot'),
+            arc: !!arc && arc.classList.contains('is-hot')
+          };
+        }, rowId);
+        check(
+          'R7 hovering a row lights the matching arc',
+          hotFromRow.row && hotFromRow.arc,
+          hotFromRow
+        );
       } else {
         check('R7 the fixture has an arc to hover', false, first);
       }
+      await ctx.close();
+    }
+
+    // ---- L1-L6: the "What is driving completion" list (B4) ----------
+    {
+      const { ctx, page, errors } = await openProject();
+      await seed(page, WIDE);
+      await page.evaluate(FLUSH_RAF);
+      await delay(250);
+      const st = await listState(page);
+      const ring = await ringState(page);
+
+      check('L1 the list is shown for a grouped project', st.exists && !st.hidden, st);
+      check('L1 five rows while collapsed', st.rows.length === 5, st.rows.length);
+      check(
+        'L1 the toggle offers the remaining groups',
+        st.more === 'Show all (7)' && st.moreAction === 'majorShowAll',
+        { more: st.more, action: st.moreAction }
+      );
+      check(
+        'L1 the first row is the largest contributor',
+        st.rows.length > 0 && st.rows[0].name === 'Site preparation',
+        st.rows.map(r => r.name)
+      );
+
+      const model = await page.evaluate(() => {
+        const out = MMGR.MajorTasks.getMajorGroups(MMGR.State.getState());
+        return out.groups.map(function (g) {
+          return { id: g.id, name: g.name, points: g.points, completed: g.completed };
+        });
+      });
+      const byId = {};
+      model.forEach(function (g) {
+        byId[g.id] = g;
+      });
+
+      const ptsBad = st.rows.filter(function (r) {
+        const g = byId[r.id];
+        if (!g) {
+          return true;
+        }
+        return r.pts !== '+' + g.points.toFixed(1) + ' pts';
+      });
+      check(
+        'L3 points carry one decimal and match the model',
+        ptsBad.length === 0,
+        ptsBad.map(r => ({ id: r.id, pts: r.pts, want: byId[r.id] && byId[r.id].points }))
+      );
+      check(
+        'L3 a completed group reads 18.8, not 18.75',
+        st.rows.length > 0 && st.rows[0].pts === '+18.8 pts',
+        st.rows.length > 0 ? st.rows[0].pts : null
+      );
+      check(
+        'L3 every row reads "done of total"',
+        st.rows.every(r => /^\d+ of \d+$/.test(r.count)),
+        st.rows.map(r => r.count)
+      );
+
+      const arcById = {};
+      ring.slots.forEach(function (s) {
+        arcById[s.id] = s;
+      });
+      const dotBad = st.rows.filter(function (r) {
+        return !arcById[r.id] || r.dot !== arcById[r.id].stroke;
+      });
+      check(
+        'L4 a row dot paints the same token as its own arc',
+        dotBad.length === 0,
+        dotBad.map(r => ({ id: r.id, dot: r.dot, arc: arcById[r.id] && arcById[r.id].stroke }))
+      );
+
+      check(
+        'L6 every row links to its major in the plan',
+        st.rows.every(r => r.href === '#wbs' && r.nav === 'major'),
+        st.rows.map(r => ({ href: r.href, nav: r.nav }))
+      );
+
+      // Expand.
+      await page.evaluate(() => {
+        const btn = document.querySelector('.major-more');
+        if (btn) {
+          btn.click();
+        }
+      });
+      await delay(200);
+      const all = await listState(page);
+      check('L5 "Show all" expands to every group', all.rows.length === 7, all.rows.length);
+      check('L5 the toggle flips to "Show top 5"', all.more === 'Show top 5', all.more);
+
+      const expanded = all.rows.map(function (r) {
+        return {
+          id: r.id,
+          name: r.name,
+          pts: parseFloat(String(r.pts).replace(/[^\d.]/g, '')),
+          zero: byId[r.id] && byId[r.id].completed === 0
+        };
+      });
+      const orderBad = [];
+      for (let i = 1; i < expanded.length; i++) {
+        if (expanded[i].zero !== expanded[i - 1].zero) {
+          if (expanded[i - 1].zero) {
+            orderBad.push('zero before done at ' + i);
+          }
+        } else if (expanded[i].pts > expanded[i - 1].pts + 0.05) {
+          orderBad.push('points rise at ' + i);
+        }
+      }
+      check(
+        'L2 order: highest contribution first, zero-completed rows last',
+        orderBad.length === 0 && expanded[expanded.length - 1].zero,
+        { orderBad: orderBad, names: expanded.map(r => r.name) }
+      );
+
+      // Collapse again.
+      await page.evaluate(() => {
+        const btn = document.querySelector('.major-more');
+        if (btn) {
+          btn.click();
+        }
+      });
+      await delay(200);
+      const back = await listState(page);
+      check(
+        'L5 "Show top 5" collapses back to five',
+        back.rows.length === 5 && back.more === 'Show all (7)',
+        { rows: back.rows.length, more: back.more }
+      );
+      check('L1 no page error while drawing the list', errors.length === 0, errors);
+      await ctx.close();
+    }
+
+    // ---- L7: nothing completed yet ---------------------------------
+    {
+      const { ctx, page } = await openProject();
+      await seed(page, NOTHING_DONE);
+      await page.evaluate(FLUSH_RAF);
+      await delay(250);
+      const st = await listState(page);
+      check('L7 the list still lists the groups', st.rows.length === 2, st.rows.length);
+      check('L7 the empty line says nothing is completed', st.empty, st);
+      check(
+        'L7 no points render before anything is completed',
+        st.rows.every(r => r.pts === null),
+        st.rows.map(r => r.pts)
+      );
+      await ctx.close();
+    }
+
+    // ---- L8: coarse pointer row height -----------------------------
+    {
+      const { ctx, page } = await openProject({ coarse: true });
+      await seed(page, WIDE);
+      await page.evaluate(FLUSH_RAF);
+      await delay(300);
+      const st = await listState(page);
+      const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
+      check(
+        'L8 rows are at least 44px high on a coarse pointer',
+        coarse === true && st.rows.length > 0 && st.rows.every(r => r.h >= 44),
+        { coarse: coarse, heights: st.rows.map(r => Math.round(r.h)) }
+      );
+      await ctx.close();
+    }
+
+    // ---- L9: no groups hides the list ------------------------------
+    {
+      const { ctx, page } = await openProject();
+      await seed(page, PLAIN);
+      await page.evaluate(FLUSH_RAF);
+      await delay(250);
+      const st = await listState(page);
+      check(
+        'L9 a project with no groups hides the list',
+        !st.exists || st.hidden || st.rows.length === 0,
+        st
+      );
       await ctx.close();
     }
 

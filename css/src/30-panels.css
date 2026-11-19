@@ -267,6 +267,101 @@
     filter: none;
   }
 }
+/* UX-2026-11-19 B4: "What is driving completion" under the ring. One row
+   per major group - colour dot, name, done-of-total, its own thin bar and the
+   points it contributes. The whole row is the link (B5), so it is a 44px
+   target with a chevron at the end. */
+.major-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.major-list[hidden] {
+  display: none;
+}
+.major-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto 64px auto 14px;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.78rem;
+  transition: background 0.15s ease;
+}
+.major-row:hover,
+.major-row:focus-visible {
+  background: var(--tile-bg);
+  text-decoration: none;
+}
+.major-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.major-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.major-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.major-count {
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.major-bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track-bg);
+  overflow: hidden;
+}
+.major-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+.major-pts {
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.major-chev {
+  width: 14px;
+  height: 14px;
+  color: var(--slate);
+  opacity: 0.7;
+}
+.major-empty {
+  margin: 2px 0 6px;
+  font-size: 0.78rem;
+  color: var(--slate);
+}
+.major-more {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+@media (max-width: 520px) {
+  /* Narrow card: the bar is the first thing to go, the numbers stay. */
+  .major-row {
+    grid-template-columns: 10px minmax(0, 1fr) auto auto 14px;
+  }
+  .major-bar {
+    display: none;
+  }
+}
 /* UX-2026-11-19 B3: one arc per major group, drawn over the ring's own
    geometry (r=39, 14.4px stroke, the whole SVG rotated -90 so 0 is 12
    o'clock). These rules add only the affordance - the slot colours come

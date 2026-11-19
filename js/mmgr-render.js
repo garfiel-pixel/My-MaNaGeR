@@ -265,6 +265,93 @@ var MMGR = window.MMGR || {};
     );
   }
 
+  // ---- UX-2026-11-19 B4: "What is driving completion" --------------------
+  // The text version of the ring. Top five groups by points (zero-completed
+  // rows last, whatever their total), a "Show all (N)" toggle when there are
+  // more, and one honest empty line when nothing is completed yet. The
+  // expanded flag is view state only - it is never written to project state.
+  let majorShowAll = false;
+
+  function toggleMajorList() {
+    majorShowAll = !majorShowAll;
+    renderDash();
+  }
+
+  function majorRows(state) {
+    const out = ringData(state);
+    if (!out || !out.grouped || !out.groups.length) {
+      return null;
+    }
+    const groups = out.groups.slice();
+    groups.sort(function (a, b) {
+      const az = a.completed > 0 ? 0 : 1;
+      const bz = b.completed > 0 ? 0 : 1;
+      if (az !== bz) {
+        return az - bz;
+      }
+      return b.points - a.points;
+    });
+    return { groups: groups, completed: out.completed };
+  }
+
+  function renderMajorList(state) {
+    const host = document.getElementById('major-list');
+    if (!host) {
+      return;
+    }
+    const data = majorRows(state);
+    if (!data) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    const none = data.completed === 0;
+    const shown = majorShowAll ? data.groups : data.groups.slice(0, 5);
+    let html = '';
+    shown.forEach(function (g) {
+      // ok: the token is built from the fixed 1..8 slot that withColors set,
+      // and every other value here is escaped or numeric
+      const token = g.color ? 'var(--major-' + Number(g.color) + ')' : 'var(--major-other)';
+      const width = Math.max(0, Math.min(100, Math.round((g.fraction || 0) * 100)));
+      html +=
+        '<a class="major-row" href="#wbs" data-major-id="' +
+        U.escapeHtml(g.id) +
+        '" data-nav="major" data-nav-id="' +
+        U.escapeHtml(g.id) +
+        '">' +
+        '<span class="major-dot" style="background:' +
+        token +
+        '"></span>' +
+        '<span class="major-name">' +
+        U.escapeHtml(g.name) +
+        '</span>' +
+        '<span class="major-count">' +
+        Number(g.completed) +
+        ' of ' +
+        Number(g.total) +
+        '</span>' +
+        '<span class="major-bar"><span style="width:' +
+        Number(width) +
+        '%;background:' +
+        token +
+        '"></span></span>' +
+        (none ? '' : '<span class="major-pts">+' + Number(g.points).toFixed(1) + ' pts</span>') +
+        '<svg class="ico major-chev" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>' +
+        '</a>';
+    });
+    if (none) {
+      html = '<p class="major-empty">No tasks completed yet</p>' + html;
+    }
+    if (data.groups.length > 5) {
+      html +=
+        '<button type="button" class="btn btn-n btn-s major-more" data-action="majorShowAll">' +
+        (majorShowAll ? 'Show top 5' : 'Show all (' + Number(data.groups.length) + ')') +
+        '</button>';
+    }
+    host.innerHTML = html;
+    host.hidden = false;
+  }
+
   // Hovering a slot lights the matching row under the ring and vice versa.
   // Delegated once, because both surfaces are re-rendered on every pass.
   let ringHoverWired = false;
@@ -361,6 +448,7 @@ var MMGR = window.MMGR || {};
     }
     // UX-2026-11-19 B3: draw the group arcs over the same geometry.
     renderRingSlots(s, ringOut);
+    renderMajorList(s);
     wireRingHover();
     const rt = $('rt');
     // OWNER 2026-09-12 (P2-12): ONLY the percentage lives inside the ring -
@@ -4460,6 +4548,7 @@ var MMGR = window.MMGR || {};
     scheduleRender: scheduleRender,
     renderAll: renderAll,
     renderDash: renderDash,
+    toggleMajorList: toggleMajorList,
     renderWbs: renderWbs,
     renderGantt: renderGantt,
     renderKanban: renderKanban,

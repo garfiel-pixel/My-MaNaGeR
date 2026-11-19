@@ -398,3 +398,43 @@ hover transition. Hovering an arc marks it hot - the list half arrives in B4.
 Gate: `tools/qa-dashboard-ring.cjs` **15/15**.
 
 Commit: `feat(dashboard): the completion ring is built from the major groups`.
+
+### B4 - the list that says what is driving completion
+
+The card under the ring had empty space; it now carries the text version of
+the same story. `renderMajorList()` (in `js/mmgr-render.js`) reads the same
+`MMGR.MajorTasks` model as the arcs, so the two can never disagree:
+
+- Top five majors by points contributed, highest first, with rows that have
+  nothing completed pushed last whatever their size (Services, two open
+  items, sits below Finishes, one open item, because both contribute zero).
+- Each row is a grid: colour dot, name (escaped, ellipsis), "N of M", a thin
+  bar of that group's own completion, "+X.X pts" at one decimal, chevron. The
+  whole row is the link (`href="#wbs"`, `data-nav="major"`, `data-nav-id`) so
+  B5 only has to make the helper honour it.
+- "Show all (N)" when there are more than five, flipping to "Show top 5". The
+  expanded flag is view state in the module - never written to project state,
+  and allowed in view-only mode (`majorShowAll` in `READONLY_SAFE_ACTIONS`).
+- Nothing completed yet: one quiet "No tasks completed yet" line and the
+  points column hidden, so a fresh project does not read as a wall of +0.0.
+- No groups at all: the list is hidden and the ring keeps today's single
+  stroke.
+
+Rows are 44px minimum at every width (the coarse-pointer rule is the floor,
+not an exception); under 520px the bar is the first thing to go and the
+numbers stay. Hovering a row lights its arc and hovering an arc lights its
+row - one delegated listener pair, `[data-major-id]` on both surfaces.
+
+Gate: `tools/qa-dashboard-ring.cjs` **35/35** (was 15). New B4 checks: five
+rows collapsed with the "Show all (7)" toggle, points at exactly one decimal
+matching the model (`+18.8 pts`, not `18.75`), every dot the same token as
+its own arc, `#wbs` links, order with zero-completed rows last after
+expanding, the toggle expanding and collapsing, the empty line with no
+points, 44px rows under an emulated coarse pointer (390x844, `hasTouch`), and
+the list hidden when a project has no groups. R7 now covers both halves of
+the hover link.
+
+Size caps raised with the measured bytes: `css/mmgr.css` 634000 -> 637000
+(635054 measured), `js` directory 310000 -> 312000 (310028 measured).
+
+Commit: `feat(dashboard): the list that says what is driving completion`.

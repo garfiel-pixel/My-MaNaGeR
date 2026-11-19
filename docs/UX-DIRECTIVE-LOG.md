@@ -170,3 +170,38 @@ Gate: `tools/qa-signout-confirm.cjs` **42/42** (new); `qa-oauth`,
 `npm run verify` green.
 
 Commit: `fix(ux): every sign-out asks first`.
+
+### A6 - the assistant answers in view-only mode
+
+Tester report: in a demo project the assistant was opened, a preset loaded,
+Send pressed, and the toast "View-only mode , read-only access. Contact the
+admin for full access." appeared. That is the one thing the directive
+forbids: the user was allowed to type and then refused.
+
+Branch 1 applies. `runQuestion()` reads the project (`buildContext()`),
+runs on this device or through the BYO-key relay, and writes only the
+assistant transcript (`state.aiOutputs[type]` + the conversation history) -
+never a project record. So the guard was too broad, and `aiRun` /
+`aiRunPreset` now sit on `READONLY_SAFE_ACTIONS` in `js/mmgr-app.js`.
+
+What stays blocked: applying an AI-proposed edit (the MCP accept engine) and
+every `aiSet*` control, which writes `state.config`. `addRisk` is used as the
+negative control in the harness and still refuses.
+
+Not fixed, out of scope: on the LOCAL tier some presets have no generator and
+answer "Local tier has no generator for this preset , run it on the Cloud
+tier instead." That is the local engine's coverage, identical for a
+full-access user, and not a view-only refusal.
+
+Harness re-baseline: `tools/qa-ai-win.cjs` gained the repo's standard RAF
+flush + 150ms settle after installing its session stubs. A5 makes every page
+build the sign-out dialog host at boot, and the first command-bar click could
+land mid-boot, so the three session checks raced a document swap and read
+`window.__qa` as undefined (3/3 reproducible before the settle, 27/27 twice
+after). App contract unchanged; registry row updated 22/22 -> 27/27.
+
+Gate: `tools/qa-ai-viewonly.cjs` **7/7** (new; proven to bite - removing the
+two keys turns V2/V3 red with the tester's exact message);
+`qa-ai-actions` 13/13; `qa-ai-relay` RELAY_GATE PASS; `qa-ai-win` 27/27.
+
+Commit: `fix(ux): the assistant answers in view-only mode`.

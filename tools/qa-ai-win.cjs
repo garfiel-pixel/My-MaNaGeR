@@ -613,6 +613,16 @@ async function launchChrome(port) {
     if (btn) btn.click();
     return true;
   })()`);
+  // UX-2026-11-19 A5: every page now builds the sign-out dialog host at boot,
+  // so the first command-bar click can land while that boot work is still
+  // settling. The repo's standard settle (RAF flush + a short delay) keeps the
+  // stub installed on the document the assertions then read - without it the
+  // three session checks raced a document swap and read `window.__qa` as
+  // undefined. Harness-side only: the app contract is unchanged.
+  await ev(`new Promise(function (res) {
+    requestAnimationFrame(function () { requestAnimationFrame(function () { res(1); }); });
+  })`);
+  await delay(150);
   const slowOpened = await waitFor(
     `(function(){ var w = document.getElementById('ai-win'); return !!(w && w.classList.contains('open')) && window.__qa.prompted === false ? true : null; })()`,
     12000
@@ -642,6 +652,10 @@ async function launchChrome(port) {
     if (btn) btn.click();
     return true;
   })()`);
+  await ev(`new Promise(function (res) {
+    requestAnimationFrame(function () { requestAnimationFrame(function () { res(1); }); });
+  })`);
+  await delay(150);
   const signedOutPrompted = await waitFor(
     `(function(){ return window.__qa && window.__qa.prompted === true ? true : null; })()`,
     12000

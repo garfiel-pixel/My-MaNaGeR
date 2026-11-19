@@ -8042,9 +8042,15 @@ window.MMGR = MMGR;
     // Rank 2.1: digestGenerate composes a read-only summary; digestPin writes
     // the reference snapshot and stays blocked in view-only mode.
     digestGenerate: 1,
-    // AI window: open/close/load/copy/attach are read-only. Rank 2.3's
-    // aiRunPreset/aiRun WRITE state.aiOutputs and aiSet* writes state.config
-    // , all correctly stay BLOCKED in view-only mode.
+    // AI window: open/close/load/copy/attach are read-only. aiSet* writes
+    // state.config (the model choice) and stays blocked in view-only mode.
+    // UX-2026-11-19 A6: aiRun/aiRunPreset are ALSO safe. They read the
+    // project and write only the assistant transcript (state.aiOutputs + the
+    // conversation history) - never a project record. The tester typed a
+    // question, pressed Send and was refused AFTER typing, which is exactly
+    // what the directive forbids: the guard was answering "you may not" to a
+    // question that changes nothing in the project. Applying an AI-proposed
+    // edit is a different path (the MCP accept engine) and stays blocked.
     openAiWin: 1,
     closeAiWin: 1,
     closeAiWinBg: 1,
@@ -8054,6 +8060,8 @@ window.MMGR = MMGR;
     aiHistToggle: 1,
     aiMoreToggle: 1,
     aiPreset: 1,
+    aiRun: 1,
+    aiRunPreset: 1,
     aiAttachContext: 1,
     aiCopy: 1,
     aiClear: 1,

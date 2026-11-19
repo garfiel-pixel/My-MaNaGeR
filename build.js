@@ -77,6 +77,11 @@ const APP_MODULES = [
   // Kanban board model. Must load before the renderer and the domain
   // modules, because both read MMGR.Kanban at call time.
   'js/mmgr-kanban.js',
+  // UX-2026-11-19 B1: the ONE definition of a major group. Loads after the
+  // Kanban model because it counts through MMGR.Kanban.workItems() at call
+  // time, and before the renderers because the ring, the list, the Gantt and
+  // the board all read it.
+  'js/mmgr-major-tasks.js',
   'js/mmgr-net.js',
   // Performance Mode (owner 2026-09-06): gates heavy layers; must load
   // before mmgr-viewport.js / mmgr-dock.js read it.

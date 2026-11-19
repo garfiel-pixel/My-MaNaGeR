@@ -292,3 +292,37 @@ two branches now carry an identical harness change.
 
 Part A complete: A1 `1898da3`, A2 `d27f133`, A3 `232a67f`, A4 `75ac0c7`,
 A5 `b561da9`, A6 `f3d1d10`, A7 `6e6678c`, A8 `431245b`, A9 this entry.
+
+## PART B - project dashboard: completion ring, contributors, links
+
+### B1 - major tasks, defined once
+
+New pure module `js/mmgr-major-tasks.js` (loaded in the project bundle right
+after `js/mmgr-kanban.js`, before every renderer) exposing
+`MMGR.MajorTasks.getMajorGroups(state)`.
+
+- Source order exactly as specified: `isPhase` rows in plan order with their
+  descendants by `parentId` / `parentName` at ANY depth (the match
+  `rollupPhases` uses, walked upward); else each task's `phase` label in
+  first-appearance order, capitalised; else no groups and the dashboard keeps
+  today's single ring.
+- Counting rule reused, not copied: `MMGR.Kanban.workItems(state)` is called
+  at read time. Without the Kanban model the module reports no groups rather
+  than inventing a count.
+- Each group returns `id`, `name`, `total`, `completed`, `fraction`, `share`
+  and `points`; the module also returns the project `total`, `completed` and
+  `overall` percentage.
+- One addition for honesty: work items that resolve to no phase (or carry no
+  `phase` label) go to an "Unassigned" group, so the groups' totals and points
+  still add up to the centre number exactly. A major with zero work items is
+  omitted, as specified.
+- `grouped` is true only when there is more than one group, which is the
+  renderer's cue to keep today's stroke.
+
+Gate: `test/major-groups.test.mjs` **9/9** - phases with nested subtasks, the
+label fallback, the no-groups fallback, the empty project, an omitted
+zero-item major, the sum-of-points invariant, and a test that proves the
+module counts what `Kanban.workItems` counts (a level-0 roll-up parent is
+excluded). The suite runs in `npm run verify` (468 tests, all passing).
+
+Commit: `feat(dashboard): one definition of a major task`.

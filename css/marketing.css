@@ -2371,17 +2371,22 @@ body.dark-mode .nav-dd-col.is-platform {
 /* OWNER 2026-11-01: "we could add some more SVG ... a simple background SVG,
    nothing crazy". Each card carries the same symbol it already uses, at
    watermark scale behind the copy: one sprite reference per card, no
-   duplicated paths, and the ranked icon stays the crisp one. */
+   duplicated paths, and the ranked icon stays the crisp one.
+
+   UX-2026-11-19 C2: the watermark used to be 92px at the bottom-right corner
+   at 12% opacity, so it ran straight through the body copy. It now lives in a
+   reserved top-right corner, small enough to clear the centred icon and the
+   first line of text, at no more than 6% - a texture, not a second icon. */
 .aud-item .aud-art {
   position: absolute;
-  right: -10px;
-  bottom: -14px;
-  width: 92px;
-  height: 92px;
+  top: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
   /* --gold-deep, not --gold: this is the ICON tone the ranked mark already uses
      (verify-gold forbids the gold FILL token on anything that carries words). */
   color: var(--gold-deep);
-  opacity: 0.12;
+  opacity: 0.06;
   pointer-events: none;
   z-index: 0;
 }
@@ -2393,9 +2398,9 @@ body.dark-mode .nav-dd-col.is-platform {
 }
 @media (max-width: 639px) {
   .aud-item .aud-art {
-    width: 68px;
-    height: 68px;
-    opacity: 0.1;
+    width: 32px;
+    height: 32px;
+    opacity: 0.06;
   }
 }
 .aud-item:hover {
@@ -2420,7 +2425,7 @@ body.dark-mode .nav-dd-col.is-platform {
   color: var(--gold-deep);
 }
 .aud-item.is-live .aud-art {
-  opacity: 0.2;
+  opacity: 0.06;
 }
 /* OWNER 2026-11-10: the ring must GLIDE from one card to the next, not snap.
    The reveal's .rv rule sets transition: opacity, transform only, which wipes
@@ -2734,13 +2739,17 @@ body.dark-mode #f-voice {
   counter-increment: step;
   content: counter(step, decimal-leading-zero);
   position: absolute;
-  top: -16px;
-  right: 22px;
-  font-size: 3rem;
+  /* UX-2026-11-19 C2: the numeral used to sit at top: -16px, hanging over the
+     card's top edge, and the section clipped it. It is now fully inside the
+     card, opposite the icon. */
+  top: 12px;
+  right: 18px;
+  font-size: 2.5rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
   color: rgba(var(--gold-rgb), 0.22);
+  pointer-events: none;
 }
 .step .st-icon {
   width: 40px;
@@ -6378,4 +6387,105 @@ html body.dark-mode .btn-gold:disabled {
   .bento-wide {
     grid-area: auto;
   }
+}
+
+/* ============================================================
+   C2 - CARD MOTION (UX-2026-11-19)
+   One treatment for the four card rows: the four step cards, the
+   "an account is optional" cards, the solution cards and the why cards. They
+   opt in with data-motion="card"; nothing here is applied by class name, so a
+   new card row joins by adding the attribute.
+
+   Rules: the entrance is the EXISTING .rv system (no second one). Hover and
+   keyboard focus lift 4px, deepen the shadow and scale the icon to 1.06 over
+   180ms. On a fine pointer only, the card also tilts up to 3 degrees toward
+   the pointer - the angle arrives as --tilt-x / --tilt-y from one small
+   pointermove handler that only exists while the pointer is on that card.
+   Only transform and opacity animate. Reduced motion and Performance Mode
+   keep the border/shadow change and drop the movement.
+
+   This block sits at the end of the file on purpose: it has to outrank the
+   older .step:hover / .aud-item:hover / .why-card:hover rules, which it ties
+   on specificity.
+   ============================================================ */
+[data-motion='card'] {
+  will-change: transform;
+}
+/* After the entrance has played, the card gets the short transition back.
+   .rv-done is added by js/marketing.js 900ms after .rv-in lands. */
+[data-motion='card'].rv-done,
+[data-motion='card']:not(.rv) {
+  transition:
+    transform 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out);
+}
+/* The audience cards carry a second motion: the gold ring that takes turns
+   between them (owner 2026-11-10) glides at 0.7s, and qa-landing-ui L-07 is a
+   hard gate on that. The card's 180ms lift must not shorten the ring, so the
+   ring keeps its own timings here - transform stays short, paint stays slow. */
+[data-motion='card'].aud-item.rv-done {
+  transition:
+    transform 180ms var(--ease-out),
+    opacity 0.5s var(--ease-out),
+    border-color 0.7s var(--ease-out),
+    box-shadow 0.7s var(--ease-out);
+}
+[data-motion='card']:hover,
+[data-motion='card']:focus-visible {
+  transform: perspective(900px) translateY(-4px) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  border-color: rgba(var(--gold-rgb), 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(61, 46, 6, 0.06),
+    0 18px 36px -18px rgba(61, 46, 6, 0.34);
+}
+[data-motion='card']:focus-visible {
+  outline: 2px solid var(--gold-ink);
+  outline-offset: 3px;
+}
+[data-motion='card'] .st-icon .ico,
+[data-motion='card'] .sol-ico .ico,
+[data-motion='card'] > .ico {
+  transition: transform 180ms var(--ease-out);
+}
+[data-motion='card']:hover .st-icon .ico,
+[data-motion='card']:focus-visible .st-icon .ico,
+[data-motion='card']:hover .sol-ico .ico,
+[data-motion='card']:focus-visible .sol-ico .ico,
+[data-motion='card']:hover > .ico,
+[data-motion='card']:focus-visible > .ico {
+  transform: scale(1.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-motion='card']:hover,
+  [data-motion='card']:focus-visible {
+    transform: none;
+  }
+  [data-motion='card']:hover .st-icon .ico,
+  [data-motion='card']:focus-visible .st-icon .ico,
+  [data-motion='card']:hover .sol-ico .ico,
+  [data-motion='card']:focus-visible .sol-ico .ico,
+  [data-motion='card']:hover > .ico,
+  [data-motion='card']:focus-visible > .ico {
+    transform: none;
+  }
+  [data-motion='card'] .st-icon .ico,
+  [data-motion='card'] .sol-ico .ico,
+  [data-motion='card'] > .ico {
+    transition: none;
+  }
+}
+[data-perf='on'] [data-motion='card']:hover,
+[data-perf='on'] [data-motion='card']:focus-visible {
+  transform: none;
+}
+[data-perf='on'] [data-motion='card']:hover .st-icon .ico,
+[data-perf='on'] [data-motion='card']:focus-visible .st-icon .ico,
+[data-perf='on'] [data-motion='card']:hover .sol-ico .ico,
+[data-perf='on'] [data-motion='card']:focus-visible .sol-ico .ico,
+[data-perf='on'] [data-motion='card']:hover > .ico,
+[data-perf='on'] [data-motion='card']:focus-visible > .ico {
+  transform: none;
 }

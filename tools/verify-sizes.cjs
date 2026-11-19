@@ -103,7 +103,12 @@ const EXACT = {
   // 2026-11-19 (ux A5): 166000 -> 169000. The marketing pages link their own
   // stylesheet, so the sign-out confirm dialog is a deliberate twin of the
   // app block (167637 measured) - identical rules, both files.
-  'css/marketing.css': 169000,
+  // 2026-11-19 (ux C1+C2): 169000 -> 176000. C1 rewrote the six band seams as
+  // two masked layers with their SVG data URIs (the wave and the stroke paths
+  // live in the stylesheet, so the markup stays unchanged) and C2 added the
+  // shared card-motion block plus the numeral/glyph corner fixes
+  // (172805 measured).
+  'css/marketing.css': 176000,
   // 2026-11-17 (rate book, user's own book): raised 600000 -> 610000. The
   // file readers were SPLIT OUT into js/book-import.js first (288 lines), so
   // this raise covers only what stayed: the per-line rate identity, the

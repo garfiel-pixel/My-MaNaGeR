@@ -1531,16 +1531,22 @@
      Elements unobserve themselves once revealed. Never throws. */
   var rvTargets = Array.prototype.slice.call(
     document.querySelectorAll(
-      '.fcard, .aud-item, .step, .section-head, .guide-band, .pb-content, .hero-inner'
+      '.fcard, .aud-item, .step, .sol-card, .why-card, .section-head, .guide-band, .pb-content, .hero-inner'
     )
   );
   if (rvTargets.length) {
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
     var perfMode = document.documentElement.getAttribute('data-perf') === 'on';
     if (!(reduceMotion && reduceMotion.matches) && !perfMode && 'IntersectionObserver' in window) {
-      rvTargets.forEach(function (el, i) {
+      /* UX-2026-11-19 C2: the stagger is per ROW, not per page. The old index
+         was global and capped at 8, so a card four rows down waited 720ms
+         behind cards the visitor could already see. Each card now counts its
+         own position among its siblings, so a row of four goes 0,1,2,3. */
+      rvTargets.forEach(function (el) {
         el.classList.add('rv');
-        el.style.setProperty('--rv-i', String(i > 8 ? 8 : i));
+        var p = el.parentNode;
+        var n = (p.__rvN = (p.__rvN || 0) + 1) - 1;
+        el.style.setProperty('--rv-i', String(n > 6 ? 6 : n));
       });
       var rvIO = new IntersectionObserver(
         function (entries) {
@@ -1549,6 +1555,11 @@
             if (en.isIntersecting) {
               el.classList.remove('rv-out');
               el.classList.add('rv-in');
+              // C2: once the entrance has played, hand the element back to the
+              // short hover transition (see .rv-done in the stylesheet).
+              setTimeout(function () {
+                el.classList.add('rv-done');
+              }, 900);
             } else if (en.boundingClientRect.top < 0) {
               // OWNER 2026-11-10: scrolling back up used to snap the element
               // away. A 400ms exit keeps the same movement in reverse.
@@ -1574,6 +1585,74 @@
       });
     }
   }
+
+  /* ---- CARD MOTION (UX-2026-11-19 C2) ----
+     One treatment for the four card rows (steps, account-optional, solutions,
+     why): the lift and the icon scale are pure CSS; the pointer tilt is the
+     only JS, and it is deliberately small and disposable.
+
+     The handler is attached to ONE card at a time, on pointerenter, and
+     removed on pointerleave - so a page with thirteen cards still has at most
+     one pointermove listener alive. The transform is written once per frame
+     inside a rAF, never per event. Coarse pointers, reduced motion and
+     Performance Mode never attach it at all (the CSS also refuses to tilt, so
+     a stale attribute can never move a card). Never throws. */
+  function wireCardMotion() {
+    var cards = Array.prototype.slice.call(document.querySelectorAll('[data-motion="card"]'));
+    if (!cards.length) {
+      return;
+    }
+    var fine = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!fine || !fine.matches || (reduce && reduce.matches)) {
+      return;
+    }
+    if (document.documentElement.getAttribute('data-perf') === 'on') {
+      return;
+    }
+    var MAX = 3; // degrees; the directive's ceiling
+    cards.forEach(function (card) {
+      var raf = 0;
+      var px = 0;
+      var py = 0;
+      function paint() {
+        raf = 0;
+        var r = card.getBoundingClientRect();
+        if (!r.width || !r.height) {
+          return;
+        }
+        var dx = (px - (r.left + r.width / 2)) / (r.width / 2);
+        var dy = (py - (r.top + r.height / 2)) / (r.height / 2);
+        var clamp = function (v) {
+          return Math.max(-1, Math.min(1, v));
+        };
+        card.style.setProperty('--tilt-y', (clamp(dx) * MAX).toFixed(2) + 'deg');
+        card.style.setProperty('--tilt-x', (clamp(-dy) * MAX).toFixed(2) + 'deg');
+      }
+      function onMove(e) {
+        px = e.clientX;
+        py = e.clientY;
+        if (!raf) {
+          raf = requestAnimationFrame(paint);
+        }
+      }
+      function onLeave() {
+        if (raf) {
+          cancelAnimationFrame(raf);
+          raf = 0;
+        }
+        card.removeEventListener('pointermove', onMove);
+        card.removeEventListener('pointerleave', onLeave);
+        card.style.removeProperty('--tilt-x');
+        card.style.removeProperty('--tilt-y');
+      }
+      card.addEventListener('pointerenter', function () {
+        card.addEventListener('pointermove', onMove);
+        card.addEventListener('pointerleave', onLeave);
+      });
+    });
+  }
+  wireCardMotion();
 
   /* ---- FEATURE PANELS (U-12, 2026-10-30) ----
      The auto-ticking carousel is GONE. It cloned five cards to fake a

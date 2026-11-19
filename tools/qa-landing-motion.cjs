@@ -365,6 +365,256 @@ function resolvePlaywright() {
       );
       await ctx.close();
     }
+    // ================= C2: the four card rows =====================
+    // One treatment, applied by data-motion="card": the four step cards, the
+    // "an account is optional" cards, the solution cards and the why cards.
+    // These arms prove the three defects the screenshots showed are gone, and
+    // that the motion obeys the pointer and preference rules.
+
+    // ---- C2-a: the step numerals sit fully inside their card ------
+    // The numeral is a ::before pseudo-element, so there is no element rect to
+    // read. Its box is derived from the CSS that actually applied: top offset,
+    // font-size and line-height, against the card's own border box.
+    for (const vp of [
+      { width: 1280, height: 900, tag: '1280' },
+      { width: 390, height: 844, tag: '390' },
+      { width: 1920, height: 1080, tag: '1920' }
+    ]) {
+      const { ctx, page } = await openPage({ viewport: { width: vp.width, height: vp.height } });
+      await page.evaluate(() => document.querySelector('.steps').scrollIntoView());
+      await delay(700);
+      const nums = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('.steps .step')).map(function (s) {
+          const cs = getComputedStyle(s, '::before');
+          const r = s.getBoundingClientRect();
+          const top = parseFloat(cs.top) || 0;
+          const fs = parseFloat(cs.fontSize) || 0;
+          let lh = parseFloat(cs.lineHeight);
+          if (!isFinite(lh)) {
+            lh = fs;
+          }
+          return {
+            top: Math.round(top),
+            boxH: Math.round(lh),
+            cardH: Math.round(r.height),
+            bottomInset: Math.round(r.height - (top + lh))
+          };
+        });
+      });
+      const clipped = nums.filter(function (n) {
+        return n.top < 0 || n.bottomInset < 0 || n.boxH === 0;
+      });
+      check(
+        'C2a the four step numerals sit fully inside the card @' + vp.tag,
+        nums.length === 4 && clipped.length === 0,
+        { nums: nums, clipped: clipped }
+      );
+      await ctx.close();
+    }
+
+    // ---- C2-b: the decorative glyph never crosses the copy --------
+    for (const vp of [
+      { width: 1280, height: 900, tag: '1280' },
+      { width: 390, height: 844, tag: '390' },
+      { width: 1920, height: 1080, tag: '1920' }
+    ]) {
+      const { ctx, page } = await openPage({ viewport: { width: vp.width, height: vp.height } });
+      const glyphs = await page.evaluate(() => {
+        const hit = (a, b) =>
+          a.left < b.right - 0.5 &&
+          a.right > b.left + 0.5 &&
+          a.top < b.bottom - 0.5 &&
+          a.bottom > b.top + 0.5;
+        return Array.from(document.querySelectorAll('.aud-item')).map(function (card) {
+          const art = card.querySelector('.aud-art');
+          if (!art) {
+            return { art: false };
+          }
+          const ar = art.getBoundingClientRect();
+          // Real text boxes, not the block box: a Range over each text node
+          // gives the line rectangles the glyph would actually cover.
+          const lines = [];
+          card.querySelectorAll('b, span').forEach(function (el) {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            Array.prototype.forEach.call(range.getClientRects(), function (r) {
+              lines.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+            });
+          });
+          const clashes = lines.filter(function (l) {
+            return hit(ar, l);
+          });
+          return {
+            art: true,
+            label: (card.querySelector('b') || {}).textContent || '',
+            opacity: Number(getComputedStyle(art).opacity),
+            w: Math.round(ar.width),
+            clashes: clashes.length
+          };
+        });
+      });
+      const arts = glyphs.filter(function (g) {
+        return g.art;
+      });
+      const bad = arts.filter(function (g) {
+        return g.clashes > 0 || !(g.opacity <= 0.06);
+      });
+      check(
+        'C2b no decorative glyph overlaps the copy @' + vp.tag,
+        arts.length >= 8 && bad.length === 0,
+        { cards: arts.length, bad: bad }
+      );
+      await ctx.close();
+    }
+
+    // ---- C2-c: the stagger is per row, not per page ---------------
+    {
+      const { ctx, page } = await openPage({});
+      const stag = await page.evaluate(() => {
+        const read = sel =>
+          Array.from(document.querySelectorAll(sel)).map(function (el) {
+            return Number(getComputedStyle(el).getPropertyValue('--rv-i')) || 0;
+          });
+        return { steps: read('.steps .step'), why: read('.why-grid .why-card') };
+      });
+      const rowStart = stag.steps.length === 4 && stag.steps[0] === 0 && stag.steps[3] === 3;
+      const whyStart = stag.why.length === 3 && stag.why[0] === 0 && stag.why[2] === 2;
+      check('C2c the reveal stagger restarts at 0 for every row', rowStart && whyStart, stag);
+      await ctx.close();
+    }
+
+    // ---- C2-d: hover lifts 4px, tilts, and scales the icon --------
+    {
+      const { ctx, page } = await openPage({});
+      const card = page.locator('.steps .step').first();
+      await card.scrollIntoViewIfNeeded();
+      await delay(1200); // let the reveal finish and .rv-done land
+      await card.hover({ position: { x: 30, y: 40 } });
+      await delay(320);
+      const hov = await page.evaluate(() => {
+        const c = document.querySelector('.steps .step');
+        const m = new DOMMatrix(getComputedStyle(c).transform);
+        const ico = c.querySelector('.st-icon .ico');
+        const im = ico ? new DOMMatrix(getComputedStyle(ico).transform) : null;
+        return {
+          lift: Math.round(m.m42 * 100) / 100,
+          rotX: Math.round(m.m32 * 1000) / 1000,
+          rotY: Math.round(m.m31 * 1000) / 1000,
+          iconScale: im ? Math.round(im.a * 1000) / 1000 : null,
+          tiltX: c.style.getPropertyValue('--tilt-x'),
+          transition: getComputedStyle(c).transitionProperty
+        };
+      });
+      check('C2d hover lifts the card 4px', Math.abs(hov.lift + 4) <= 0.6, hov);
+      check(
+        'C2d hover tilts at most 3 degrees toward the pointer',
+        Math.abs(hov.rotX) > 0 && Math.abs(hov.rotX) <= 0.0524 && Math.abs(hov.rotY) <= 0.0524,
+        hov
+      );
+      check('C2d hover scales the icon to 1.06', Math.abs(hov.iconScale - 1.06) <= 0.01, hov);
+      // Layout must never be animated: the transition list is allowed to carry
+      // paint properties (border-color, box-shadow) but no box property.
+      const layoutProps = /(^|,\s*)(width|height|top|left|right|bottom|margin|padding|font-size)/;
+      check(
+        'C2d nothing animates a layout property',
+        !layoutProps.test(hov.transition),
+        hov.transition
+      );
+      await ctx.close();
+    }
+
+    // ---- C2-e: a coarse pointer never tilts ----------------------
+    {
+      const ctx = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true
+      });
+      const page = await ctx.newPage();
+      await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+      await delay(900);
+      const coarse = await page.evaluate(() => ({
+        fine: matchMedia('(hover: hover) and (pointer: fine)').matches
+      }));
+      const card = page.locator('.steps .step').first();
+      await card.scrollIntoViewIfNeeded();
+      await delay(400);
+      const box = await card.boundingBox();
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await delay(250);
+      const after = await page.evaluate(() => {
+        const c = document.querySelector('.steps .step');
+        return {
+          tiltX: c.style.getPropertyValue('--tilt-x'),
+          transform: getComputedStyle(c).transform
+        };
+      });
+      check('C2e a coarse pointer never gets a tilt', coarse.fine === false && !after.tiltX, {
+        coarse: coarse,
+        after: after
+      });
+      await ctx.close();
+    }
+
+    // ---- C2-f: reduced motion and Performance Mode stop the lift --
+    for (const mode of ['reduced', 'perf']) {
+      const { ctx, page } = await openPage(mode === 'reduced' ? { reduced: true } : { perf: true });
+      const card = page.locator('.steps .step').first();
+      await card.scrollIntoViewIfNeeded();
+      await delay(500);
+      await card.hover({ position: { x: 30, y: 40 } });
+      await delay(300);
+      const st = await page.evaluate(() => {
+        const c = document.querySelector('.steps .step');
+        const ico = c.querySelector('.st-icon .ico');
+        return {
+          transform: getComputedStyle(c).transform,
+          icon: ico ? getComputedStyle(ico).transform : null
+        };
+      });
+      check(
+        'C2f ' + mode + ' keeps the card still on hover',
+        st.transform === 'none' && (st.icon === 'none' || st.icon === null),
+        st
+      );
+      await ctx.close();
+    }
+
+    // ---- C2-g: the rows are symmetric (the "left-heavy" report) ---
+    // The screenshots suggested a larger right margin. Measured at three
+    // widths it does not reproduce: every row is centred to the pixel. This
+    // arm keeps that true.
+    for (const w of [1280, 1440, 1920]) {
+      const { ctx, page } = await openPage({ viewport: { width: w, height: 900 } });
+      const rows = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        const out = {};
+        [
+          ['steps', '.steps'],
+          ['account', '.audience'],
+          ['solutions', '.solutions'],
+          ['why', '.why-grid']
+        ].forEach(function (pair) {
+          const el = document.querySelector(pair[1]);
+          if (!el) {
+            out[pair[0]] = null;
+            return;
+          }
+          const r = el.getBoundingClientRect();
+          out[pair[0]] = {
+            left: Math.round(r.left),
+            right: Math.round(vw - r.right)
+          };
+        });
+        return out;
+      });
+      const skew = Object.keys(rows).filter(function (k) {
+        const r = rows[k];
+        return r && Math.abs(r.left - r.right) > 1;
+      });
+      check('C2g the card rows are centred @' + w, skew.length === 0, rows);
+      await ctx.close();
+    }
   } catch (e) {
     failed++;
     log('FAIL  harness error  <-- ' + (e && e.message ? e.message : e));

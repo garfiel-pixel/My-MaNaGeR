@@ -676,3 +676,79 @@ Full C1 battery: `qa-marketing-layout` PASS, `qa-landing-ui` **70/70**,
 `npm run verify` exit 0.
 
 Commit: `feat(marketing): the seams are a calm drifting wave`.
+
+### C2 - light motion on the four card rows
+
+One treatment, opted into by attribute rather than by class name, so a fifth
+card row joins by adding `data-motion="card"`: the four step cards
+(`.steps .step`), the four "an account is optional" cards (`.audience` in
+`#data`), the four solution cards (`.sol-card`) and the three why cards
+(`.why-card`). Nineteen cards, one rule set.
+
+**The reveal is the existing one.** `.sol-card` and `.why-card` were added to
+the `.rv` target list, so nothing new was invented. What did change is the
+stagger: `--rv-i` used to be the element's index in the whole page list,
+capped at 8, so a card four rows down waited 720ms behind cards already on
+screen. It is now counted per parent, so every row goes 0,1,2,3 on its own.
+After the entrance plays, the card gets `.rv-done` (added 900ms after
+`.rv-in`) which hands it the short hover transition - the entrance keeps its
+0.8s glide, the hover gets its 180ms.
+
+**Hover and keyboard focus** lift 4px, deepen the shadow, and scale the icon
+to 1.06 over 180ms. The lift is `translateY(-4px)` inside a
+`perspective(900px)`, so the tilt below composes with it rather than fighting
+it. `:focus-visible` gets the same treatment plus a gold outline.
+
+**The tilt is the only JS**, and it is disposable by construction: one
+`pointerenter` on a card attaches `pointermove` and `pointerleave` to *that
+card only*, and `pointerleave` removes them and clears the custom properties.
+A page with nineteen cards therefore has at most one `pointermove` listener
+alive at any moment. The angle is written once per animation frame inside a
+`requestAnimationFrame`, never per event, and is clamped to 3 degrees. Coarse
+pointers, reduced motion and Performance Mode never attach the handler at all
+- and the CSS refuses to tilt too, so a stale attribute cannot move a card.
+
+Only `transform` and the paint properties (`border-color`, `box-shadow`)
+transition. The gate asserts no box property (`width`, `height`, `top`,
+`left`, `right`, `bottom`, `margin`, `padding`, `font-size`) is ever in the
+transition list - the intent of "only transform and opacity animate" is that
+layout is never animated, and a larger shadow cannot be animated without
+animating `box-shadow`.
+
+The three defects from the screenshots, fixed in the same step:
+
+1. **The numerals 01-04 were clipped.** `.step::before` sat at `top: -16px`,
+   hanging over the card's top edge. It is now at `top: 12px; right: 18px` at
+   2.5rem - fully inside the card, opposite the icon, still the same gold at
+   22%.
+2. **The watermark glyphs ran through the body copy.** `.aud-art` was 92px at
+   the bottom-right at 12% opacity, directly behind the paragraph. It is now a
+   40px mark in a reserved top-right corner at 6% (the directive's ceiling),
+   clear of the centred icon and of the first line of text. The `is-live` ring
+   no longer raises it to 20% either - the ring is what should be seen.
+3. **"The rows look left-heavy."** Measured at 1280, 1440 and 1920: every row
+   is centred to the pixel - left margin equals right margin exactly at all
+   three widths, and the first card's left edge equals the container's. The
+   defect **did not reproduce**; the impression came from the asymmetric
+   watermark, which is now gone. C2g keeps it measured.
+
+Gate: `tools/qa-landing-motion.cjs` **32/32** (was 15 - the C2 arms are
+C2a-C2g, and each was teeth-tested: restoring `top: -16px` fails C2a,
+restoring the 92px bottom-right glyph fails C2b with 1-2 real text clashes per
+card, `-2px` fails C2d, `scale(1)` fails C2d, and deleting the reduced-motion
+guard fails C2f). `qa-landing-ui` **70/70** - L-07 caught a real regression
+during this step: the shared 180ms transition had shortened the audience
+ring's 0.7s glide, so `.aud-item` keeps its own timings (transform 180ms,
+border/shadow 0.7s). `qa-marketing-layout` PASS, `qa-band-seam` **19/19**,
+`verify-marketing-markup` PASS, `verify-perf-boot` PASS, `qa-a11y-axe`
+**7/7**, `verify-gold` PASS, `npm run verify` exit 0.
+
+Two notes:
+
+- `verify-contrast` reports the same 2 failures ("gold on card 2.10:1")
+  before and after this step - pre-existing, unchanged, not worse. It is not
+  part of `npm run verify`.
+- `css/marketing.css` grew past its cap: 169000 -> **176000** (172805
+  measured), for the two seam SVG data URIs and this motion block.
+
+Commit: `feat(marketing): the card rows move, and the numerals and watermarks get out of the text`.

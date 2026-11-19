@@ -1814,9 +1814,14 @@ var MMGR = window.MMGR || {};
       if (state.busy) {
         // A first load with nothing cached: keep the section on screen with
         // the travelling line above it, so the reader sees that the projects
-        // are coming instead of an empty gap.
+        // are coming instead of an empty gap. OWNER 2026-11-19 (chrome-truth):
+        // the same skeleton shape the cloud grid uses, not a sentence.
         wrap.hidden = false;
-        list.innerHTML = '<div class="cd-empty">Loading the projects shared with you...</div>';
+        // ok: static skeleton template strings only (js/app/skeleton.js) plus one fixed sentence
+        list.innerHTML =
+          (window.MMGR && MMGR.Skeleton && MMGR.Skeleton.skeletonHtml
+            ? MMGR.Skeleton.skeletonHtml('cloud')
+            : '') || '<div class="cd-empty">Loading the projects shared with you...</div>';
         return;
       }
       wrap.hidden = true;

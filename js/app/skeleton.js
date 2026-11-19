@@ -119,6 +119,13 @@
       box('skel-card skel-tall') +
       box('skel-card skel-tall') +
       box('skel-card skel-tall') +
+      '</div>',
+    /* OWNER 2026-11-19 (chrome-truth): the rail's cloud list painted its own
+       one-line skeleton from js/mmgr-cloud-dash.js. Same shape, one owner. */
+    rail:
+      '<div class="skel-row db-skel-row">' +
+      box('skel-avatar') +
+      box('skel-line skel-w-60') +
       '</div>'
   };
 

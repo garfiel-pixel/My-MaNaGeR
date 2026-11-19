@@ -70,7 +70,11 @@ const EXACT = {
   // built css/mmgr.css (612470 bytes measured). Both live in the isolated
   // css/src/37-mcp-admin.css layer already; this raise tracks the real file,
   // leaving ~3.5 KB headroom. The next CSS wave should split a layer first.
-  'css/mmgr.css': 616000,
+  // 2026-11-19 (chrome-truth): raised 616000 -> 620000. The drawer containment
+  // + wide-viewport width, the mobile skeleton collapse and the skin bands add
+  // 6.6 KB of built CSS (619109 bytes measured). ~1 KB headroom only: the next
+  // CSS wave should SPLIT a layer rather than raise this again.
+  'css/mmgr.css': 620000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
@@ -122,7 +126,13 @@ const DIRS = {
   // 2026-11-12 (status menu placement): 305000 -> 307000 for the [popover]
   // anchoring helper (~1 KB). The menu opened at the viewport origin; this is
   // the fix, and the file remains the next split candidate.
-  js: 307000,
+  // 2026-11-19 (chrome-truth): 307000 -> 309000. The three skeleton wrappers
+  // were reading export names the module does not have (`.html/.paint/
+  // .sections` vs `skeletonHtml/skeletonPaint/skeletonSections`), so all
+  // eleven templates were dead. Naming them correctly costs ~270 bytes
+  // (307269 measured); the rest of the headroom is the comment that stops the
+  // next reader re-breaking it. This file is STILL the split candidate.
+  js: 309000,
   css: 160000,
   src: 300000
 };

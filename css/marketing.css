@@ -6546,6 +6546,11 @@ html body.dark-mode .btn-gold:disabled {
   opacity: 1;
   padding: 0 18px 20px;
 }
+/* The detail panel owns the title once the card is open — hiding the button's
+   copy keeps the role name from being printed twice. */
+.role-card.is-open .role-btn > b {
+  display: none;
+}
 .role-fig {
   display: block;
   width: 150px;
@@ -6563,6 +6568,10 @@ html body.dark-mode .btn-gold:disabled {
 }
 .role-svg {
   fill: currentColor;
+  /* A thin gold rim on every silhouette edge — visible on a plain SVG
+     fallback, not only a faint shadow. */
+  stroke: rgba(var(--gold-rgb), 0.55);
+  stroke-width: 0.9;
   filter: drop-shadow(0 0 1px rgba(var(--gold-rgb), 0.55));
 }
 .role-name {

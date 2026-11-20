@@ -135,6 +135,15 @@
       metalness: 0.06,
       flatShading: true
     });
+    // The one deliberately lighter tone: the superintendent's hi-vis vest.
+    // Distinct from the ink body and the slate accents, still flat-shaded, so
+    // the figure stays a silhouette rather than becoming a coloured cartoon.
+    var vest = new THREE.MeshStandardMaterial({
+      color: 0x6f6338,
+      roughness: 0.86,
+      metalness: 0.05,
+      flatShading: true
+    });
 
     var figures = Object.create(null);
     var active = null;
@@ -179,34 +188,49 @@
       box(g, 0.11, 0.56, 0.13, 0.29, 1.04, 0);
 
       if (hat) {
-        var brim = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.03, 10), mat);
-        brim.position.set(0, 1.62, 0);
+        // A hard hat is a rounded dome with a short forward peak — never the
+        // tapered cylinder crown and flat all-round brim that reads as a
+        // fedora. The hemisphere (a half sphere) plus a small box peak gives
+        // the construction-worker silhouette the owner asked for.
+        var brim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.028, 12), mat);
+        brim.position.set(0, 1.615, 0);
         g.add(brim);
-        var dome = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.155, 0.12, 10), mat);
-        dome.position.set(0, 1.69, 0);
+        var dome = new THREE.Mesh(
+          new THREE.SphereGeometry(0.152, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2),
+          mat
+        );
+        dome.position.set(0, 1.62, 0);
         g.add(dome);
+        // the short visor at the front, so the hat reads from the default view
+        box(g, 0.24, 0.022, 0.1, 0, 1.605, 0.17, mat);
       }
 
       if (role === 'gc') {
-        // a laptop on a low bench, hands forward
+        // a laptop on a low bench, hands forward; a pale face on the open lid
+        // is the screen so the laptop reads clearly at this small size
         box(g, 0.62, 0.04, 0.06, 0, 0.82, 0.42);
         var lid = box(g, 0.62, 0.36, 0.04, 0, 1.0, 0.24);
         lid.rotation.x = -0.28;
+        box(g, 0.54, 0.28, 0.012, 0, 1.0, 0.265, vest); // screen
         box(g, 0.62, 0.34, 0.3, 0, 0.4, 0.42, accent);
       } else if (role === 'pm') {
-        // a tablet held in both hands
+        // a tablet held in both hands, a tie, and two suit lapels
         var tab = box(g, 0.3, 0.4, 0.04, 0, 0.98, 0.26, accent);
         tab.rotation.x = -0.18;
-        // a tie
-        box(g, 0.07, 0.34, 0.03, 0, 1.12, 0.13, accent);
+        box(g, 0.07, 0.34, 0.03, 0, 1.12, 0.13, accent); // tie
+        var lapelL = box(g, 0.1, 0.34, 0.03, -0.11, 1.14, 0.132, accent);
+        lapelL.rotation.z = 0.22;
+        var lapelR = box(g, 0.1, 0.34, 0.03, 0.11, 1.14, 0.132, accent);
+        lapelR.rotation.z = -0.22;
       } else if (role === 'super') {
-        // hi-vis vest over the torso, a clipboard under one arm
-        box(g, 0.36, 0.44, 0.03, 0, 1.08, 0.13, accent);
+        // hi-vis vest in its own distinct tone, a clipboard under one arm
+        box(g, 0.36, 0.44, 0.035, 0, 1.08, 0.13, vest);
         var clip = box(g, 0.24, 0.32, 0.03, -0.34, 0.98, 0.2, accent);
         clip.rotation.z = 0.16;
       } else {
         // tool belt and a spirit level held out
         box(g, 0.5, 0.09, 0.28, 0, 0.72, 0, accent);
+        box(g, 0.08, 0.1, 0.03, 0, 0.72, 0.16, vest); // buckle
         var level = box(g, 0.07, 0.44, 0.07, 0.4, 1.06, 0.16, accent);
         level.rotation.z = -0.2;
       }

@@ -1,0 +1,51 @@
+(node:12048) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/server.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+--- W1 — empty apply_changes is a structured error, no row ---
+PASS  empty apply_changes returns isError "Nothing provided"
+PASS  empty apply_changes queued NO review row
+
+--- W2 — one diff queues one proposal ---
+PASS  one diff is queued
+PASS  one diff created exactly one row
+
+--- W3 — 30 diffs queue ONE proposal ---
+PASS  30 diffs are queued
+PASS  30 diffs created exactly ONE row
+
+--- W4 — 200 diffs queue ONE proposal ---
+PASS  200 diffs are queued
+PASS  200 diffs created exactly ONE row
+
+--- W5 — over-cap envelope is refused before the pipeline ---
+PASS  501 diffs is refused with the tier-aware cap message
+PASS  the cap refusal queued NO row
+
+--- W6 — a diff outside the key sections is refused ---
+PASS  out-of-scope diff is refused
+PASS  the scope refusal queued NO row
+
+--- A1 — invalid targetDate is a tool error; endpoint stays healthy ---
+PASS  invalid targetDate returns isError
+PASS  the next call still succeeds (no crash)
+
+--- A2 — impossible week is refused ---
+PASS  week 2026-13-45 returns isError
+
+--- A3 — unset envelope returns null remaining ---
+PASS  envelope 0 -> envelope null and envelopeRemaining null
+
+--- A4 — default weekly view is never future-dated ---
+PASS  default week is on or before today
+
+--- A5 — an API-key catalog hides get_weather ---
+PASS  get_weather is hidden from an API-key catalog
+PASS  the rest of the read tools are still listed
+
+--- M1 — 30 mixed calls, zero failures (1102 regression guard) ---
+PASS  30 mixed read/budget/write calls all answered
+      p95 latency: 6 ms (in-process, mock D1/R2)
+
+========== QA-MCP-WRITE-PATH RESULT: 20 passed, 0 failed ==========

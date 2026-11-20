@@ -1,0 +1,47 @@
+[ak] PASS  P0a email session minted (key management is owner-either-auth)
+[ak] PASS  P0b create cloud project (session-linked)
+[ak] PASS  P0c owner save ok (real state for scoped reads)
+[ak] PASS  P0d free owner + valid key -> MCP_PREMIUM_REFUSAL (isError, HTTP 200, no data)
+[ak] PASS  P0e billing webhook entitles the owner (status active)
+[ak] PASS  P1a create key -> plaintext shown once + sk-mmgr- format + scope echo + future expiry
+[ak] PASS  P1b create requires a section (empty scope refused)
+[ak] PASS  P1c create refuses past expiry
+[ak] PASS  P2 list -> prefix + expiresAt + active, never the plaintext
+[ak] PASS  P3 load with X-API-Key -> role api + scope + PROJECTED state (grant only)
+[ak] PASS  P4 save with X-API-Key -> queued as pending proposal (never direct)
+[ak] PASS  P5a in-scope sections applied in the proposal (wbs, bud)
+[ak] PASS  P5b out-of-scope section blocked (risk)
+[ak] PASS  P6a cloud state unchanged before accept (tasks still original)
+[ak] PASS  P6b review listed with sourceType api + label + diffs
+[ak] PASS  P6c owner accepts -> applied in-scope changes
+[ak] PASS  P6d after accept the cloud state carries the approved tasks
+[ak] PASS  P7 expired key create refused at mint time (expiry must be future)
+[ak] PASS  P8a second key minted (revoke target)
+[ak] PASS  P8b revoke ok
+[ak] PASS  P8c revoked key load -> generic 403
+[ak] PASS  P8d revoked key save -> generic 403
+[ak] PASS  P9 key from project A refused on project B (403)
+[ak] PASS  P10a viewer code minted for the negative probe
+[ak] PASS  P10b list keys with viewer code -> 403
+[ak] PASS  P10c create key with viewer code -> 403
+[ak] PASS  P10d list keys with no auth -> 403
+[ak] PASS  P11 unknown key -> generic 403
+[ak] PASS  P12 MCP initialize with Bearer sk-mmgr- key -> serverInfo
+[ak] PASS  P13 MCP get_risks with wbs+bud key -> scoped refusal (no data leak)
+[ak] PASS  P14a MCP get_budget with bud section but NO switch -> refused, no figures
+[ak] PASS  P14b MCP get_budget with the read switch -> real data
+[ak] PASS  P15 MCP apply_changes -> queued for owner review, out-of-scope refused
+[ak] PASS  P16a MCP proposal listed as pending
+[ak] PASS  P16b cloud state unchanged before MCP accept
+[ak] PASS  P16c owner accepts MCP proposal -> applied
+[ak] PASS  P16d after MCP accept the cloud state carries the approved change
+[ak] PASS  P17a MCP owner-code Bearer -> full access (risks readable)
+[ak] PASS  P17b MCP bad Bearer -> 200 isError credential refusal (PATH-A), no data
+[ak] PASS  P17c MCP unauthenticated initialize -> 200 serverInfo (PATH-A handshake)
+[ak] PASS  P18a title-only meeting+log creates -> queued (never refused)
+[ak] PASS  P18b queued proposal carries MATERIALIZED meetings+log diffs (undercount detector)
+[ak] PASS  P18c owner accepts the title-keyed proposal -> applied
+[ak] PASS  P18d accepted state renders title-keyed records (round-trip)
+[ak] PASS  P18e create with neither name nor title -> refused with the updated message
+[ak] ----------------------------------------
+[ak] ALL API-KEY GATES PASSED

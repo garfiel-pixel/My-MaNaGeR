@@ -918,6 +918,15 @@ var MMGR = window.MMGR || {};
   // traced facts already in the composer - the numbers stay from the watcher,
   // the assistant explains and elaborates. Nothing is sent automatically.
   function askAboutNotice(id) {
+    // Close-out 3a: on a view-only project the assistant is unavailable, so
+    // open the notice instead of writing the traced facts into a disabled box.
+    if (ns.App && typeof ns.App.aiViewOnly === 'function' && ns.App.aiViewOnly()) {
+      closeMailbox();
+      if (ns.AiWin && ns.AiWin.open) {
+        ns.AiWin.open();
+      }
+      return;
+    }
     const s = ns.State.getState();
     const note = s && Array.isArray(s.aiInbox) ? s.aiInbox.find(n => n.id === id) : null;
     if (!note || !note.ask) {

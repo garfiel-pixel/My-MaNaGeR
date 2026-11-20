@@ -1,0 +1,42 @@
+[qa-ring] PASS  R1 the phased fixture draws one arc per group
+[qa-ring] PASS  R1 the original single stroke is hidden while slots are drawn
+[qa-ring] PASS  R2 the arc points sum to the centre percentage within 0.1
+[qa-ring] PASS  R2 the centre counts work items, not phase rows
+[qa-ring] PASS  R3 every arc paints the --major-N token it names
+[qa-ring] PASS  R6 the SVG is role="img" with a label naming the percentage
+[qa-ring] PASS  R6 the label names the top contributors
+[qa-ring] PASS  R1 no page error while drawing the ring
+[qa-ring] PASS  R4 a project with no groups draws no slots
+[qa-ring] PASS  R4 the single stroke is back
+[qa-ring] PASS  R4 the centre still reads the all-task percentage
+[qa-ring] PASS  R5 under Performance Mode the entry sweep does not run
+[qa-ring] PASS  R5 the slots still draw under Performance Mode
+[qa-ring] PASS  R7 hovering an arc marks it hot
+[qa-ring] PASS  R7 hovering a row lights the matching arc
+[qa-ring] PASS  L1 the list is shown for a grouped project
+[qa-ring] PASS  L1 five rows while collapsed
+[qa-ring] PASS  L1 the toggle offers the remaining groups
+[qa-ring] PASS  L1 the first row is the largest contributor
+[qa-ring] PASS  L3 points carry one decimal and match the model
+[qa-ring] PASS  L3 a completed group reads 18.8, not 18.75
+[qa-ring] PASS  L3 every row reads "done of total"
+[qa-ring] PASS  L4 a row dot paints the same token as its own arc
+[qa-ring] PASS  L6 every row links to its major in the plan
+[qa-ring] PASS  L5 "Show all" expands to every group
+[qa-ring] PASS  L5 the toggle flips to "Show top 5"
+[qa-ring] PASS  L2 order: highest contribution first, zero-completed rows last
+[qa-ring] PASS  L5 "Show top 5" collapses back to five
+[qa-ring] PASS  L1 no page error while drawing the list
+[qa-ring] PASS  L7 the list still lists the groups
+[qa-ring] PASS  L7 the empty line says nothing is completed
+[qa-ring] PASS  L7 no points render before anything is completed
+[qa-ring] PASS  L8 rows are at least 44px high on a coarse pointer
+[qa-ring] PASS  L9 a project with no groups hides the list
+[qa-ring] PASS  B6 the fixture has the ring slot to match
+[qa-ring] PASS  B6 the WBS row marker paints the ring slot colour
+[qa-ring] PASS  B6 the Gantt bar accent paints the ring slot colour
+[qa-ring] PASS  B6 the Kanban card stripe paints the ring slot colour
+[qa-ring] PASS  B6 an ungrouped project draws no stripe
+[qa-ring] PASS  R8 the dark theme paints the dark steps of the same tokens
+[qa-ring] 
+[qa-ring] 40 passed, 0 failed

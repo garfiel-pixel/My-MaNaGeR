@@ -9,7 +9,7 @@
 
    Values are the owner's published plan matrix. This table is the ONLY
    place they are written down: pricing.html is checked against it by
-   tools/qa-pricing-parity.cjs, so a plan change edits this file and the
+   test/tier-limits.test.mjs, so a plan change edits this file and the
    page together.
    ============================================================ */
 
@@ -102,6 +102,17 @@ export function limitsFor(tier) {
   // A paid tier the table does not name yet (a legacy plan id, a new one
   // before this file catches up) is paid: contractor, never free.
   return CONTRACTOR;
+}
+
+// Close-out 3b (owner decision): raising low-risk auto-accept is a
+// Company/Enterprise feature. Estimator and Contractor may still use MCP and
+// the owner-reviewed proposal queue, but an agent may not land changes without
+// the owner's click on those plans. The policy itself stays OFF by default on
+// EVERY plan; this gate only decides whether an owner may turn it ON.
+// An unknown paid tier reads as contractor (see limitsFor), so it is refused.
+export function autoAcceptPlanAllowed(tier) {
+  const t = limitsFor(tier).tier;
+  return t === 'company' || t === 'enterprise';
 }
 
 // Effective per-call ceiling: the array's own cap, bounded by the tier's

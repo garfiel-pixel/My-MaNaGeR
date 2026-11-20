@@ -370,6 +370,55 @@ proposal actually apply instead of returning "No budget changes to apply."
 - `test/apply-ops.test.mjs` — the pure accept engine, 16/16 (cycle rollback,
   bad-enum, scope, delete guards, derived-field nulling).
 
+### 4.8 Tier limits and the auto-accept gate
+
+Every MCP limit follows the **project owner's** plan (the app-wide surface uses
+the account owner's plan), never the caller's. The frozen matrix lives in
+exactly one place — `src/mcp/tier-limits.js` — and `limitsFor(tier)` is the ONE
+lookup. `pricing.html` is checked against that table by
+`test/tier-limits.test.mjs`, so a plan change edits the table and the page
+together.
+
+| Tier | MCP | activeApiKeys | pendingPerKey | dailyOpsPerKey | maxOpsPerCall | largeBudgetPerDay | reportRetentionDays |
+|---|---|---|---|---|---|---|---|
+| `free` | no | 2 | 0 | 0 | 0 | 0 | 30 |
+| `estimator` | yes | 2 | 10 | 300 | 100 | 5 | 30 |
+| `contractor` | yes | 5 | 25 | 1000 | 250 | 10 | 60 |
+| `company` | yes | 10 | 50 | 3000 | 500 | 20 | 90 |
+| `enterprise` | yes | 25 | 100 | 10000 | 500 | 50 | 180 |
+
+Rules that matter when reading the table:
+
+- `limitsFor('')` (empty/absent tier) returns `free`. An unrecognised **paid**
+  tier (a legacy id, or one the table has not caught up with) returns
+  `contractor` — billing treats unknown paid as paid, never as free.
+- `upsellFor(tier)` returns the "higher plan raises this limit" sentence for
+  estimator/contractor/company, and nothing for enterprise (no step above it).
+- `perCallCap(arrayCap, limits)` is the effective per-call ceiling: the tool's
+  own array cap, bounded by the tier's `maxOpsPerCall`.
+
+**Auto-accept** is the one sanctioned path for an agent proposal to reach live
+state without an owner click, so its gate is deliberately narrow:
+
+- The policy is **per API key** (`cloud_api_keys.auto_accept`), OFF by default
+  on every plan, and its only "on" value is `low-risk`. `autoAcceptEligible(ops,
+  auth)` (`src/mcp/auto-accept.js`) is the pure, exhaustive check: a proposal is
+  eligible only if **every** op is a `set` of a free-text `notes` field (plus
+  `risks.mitigation`), ≤ 50 ops, targeting one record/field. One disallowed op
+  sends the **whole** proposal to the owner queue; the accept engine still runs
+  afterwards and can refuse, leaving it pending, never half-applied.
+- Close-out 3b (owner decision): raising that policy is a **Company and Enterprise** feature only. Estimator and Contractor may still use MCP and the owner-reviewed queue, but an agent may not land changes without the owner's click. `autoAcceptPlanAllowed(tier)` (server) and `mcpAutoAccept()` (client,
+  `js/app/entitlements.js`) are the two expressions of the same rule. The server
+  is authoritative: `handleCloudApiKeyPatch()` in `src/cloud/api-keys.js`
+  resolves the owner tier and refuses with `402` `{error:'enterprise_feature',
+  upgradeRequired:'company'}` before any UPDATE; turning the policy OFF is
+  always allowed, on every plan. The admin control is disabled with the reason
+  below Company.
+- Gates: `test/tier-limits.test.mjs` pins the matrix and the eligibility-by-plan
+  rule; `tools/qa-mcp-agent-first.cjs` (P6o/P6p) checks the server refusal on
+  each tier; `tools/qa-autoaccept-ui.cjs` checks the admin control across all
+  five plans plus the downgrade path.
+
 
 ## 5. Dashboard, colour and landing conventions (UX-2026-11-19)
 
@@ -440,6 +489,34 @@ by hand.
   `overdue`, `atrisk`, `blocked`, `done`, `inprogress`, `week-planned`,
   `week-done`, `carryover`, and `ids:a,b,c`. Add a filter by adding a branch
   there, not by passing a predicate through the DOM.
+
+**The concrete inventory.** Every dashboard number that opens records is a door,
+and `tools/qa-dashboard-links.cjs` pins the full set (N1: at least 14 links,
+N2-N10: each lands, filters, flashes, and returns via the back gesture). Each
+link is a `<a data-nav="1" …>` carrying a subset of `data-nav-panel`,
+`data-nav-id`, `data-nav-filter`, `data-nav-col` and `data-nav-anchor`, which
+`Nav.go({ panel, recordId, filter, col, anchor })` reads:
+
+| Dashboard figure | Target panel | Link kind | What it opens |
+|---|---|---|---|
+| Overdue tasks | `wbs` | `data-nav-filter="overdue"` | only the overdue rows, with the filter banner |
+| Blocked tasks | `wbs` | `data-nav-filter="blocked"` | only the blocked rows |
+| At-risk (due soon) | `wbs` | `data-nav-filter="atrisk"` | only the rows inside the near window |
+| In progress / done | `wbs` | `data-nav-filter="inprogress"` / `done` | the matching status rows |
+| Open issues | `risks` | `data-nav-panel` + `recordId` | the named issue, flashed |
+| Active risks | `risks` | `data-nav-panel` + `recordId` | the named risk, flashed |
+| COI expiring | `resources` | `data-nav-panel` + `recordId` | the named stakeholder |
+| Budget overrun | `budget` | `data-nav-panel` + `recordId` | the named budget line |
+| Weather delay | `wbs` | `data-nav-id` + `anchor` | each affected task card, flashed |
+| Kanban column counts | `kanban` | `data-nav-col` | the named column, flashed |
+
+`recordId` (the `data-nav-id` attribute) flashes one record; `col` flashes a
+Kanban column; `anchor` flashes the card that is a link's destination. A
+`recordId` that no longer exists inserts the one-line `Nav.miss` notice (N8) —
+it never navigates to an empty panel. View-only mode walks the exact same links
+(N9): navigation is not a write, so it is never fenced. When you add a counter
+to the dashboard, add its expected row to `qa-dashboard-links.cjs` in the same
+change or the inventory gate goes red.
 
 ### 5.4 The landing seam is a wave, not a gradient
 

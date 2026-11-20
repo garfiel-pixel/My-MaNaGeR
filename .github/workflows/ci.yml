@@ -1284,6 +1284,26 @@ jobs:
         id: qa-ai-window-layout
         run: node tools/qa-ai-window-layout.cjs
 
+      # Close-out 3a (owner decision): the assistant is unavailable on a
+      # view-only project, with the notice BEFORE typing and no view-only
+      # toast. Registered in D1 but never wired into ci.yml until 3c.
+      - name: "T4: AI unavailable on view-only projects (qa-ai-viewonly)"
+        id: qa-ai-viewonly
+        run: node tools/qa-ai-viewonly.cjs
+
+      # UX-2026-11-19 A8: the AI accent follows the chosen theme. Also
+      # registered in D1 but missing from ci.yml until close-out 3c.
+      - name: "T4: AI accent follows the theme (qa-ai-theme)"
+        id: qa-ai-theme
+        run: node tools/qa-ai-theme.cjs
+
+      # Close-out 3b: the key admin panel disables the low-risk auto-accept
+      # raise control below Company, with the reason, and always lets a
+      # downgraded owner turn it off.
+      - name: "T4: Auto-accept control by plan (qa-autoaccept-ui)"
+        id: qa-autoaccept-ui
+        run: node tools/qa-autoaccept-ui.cjs
+
       - name: "T4: v11 feature battery (qa-v11)"
         id: qa-v11
         run: node qa-v11.cjs

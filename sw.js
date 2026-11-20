@@ -784,7 +784,9 @@
 // v680 - ScrubNumber / SmartTime 2026-11-19: js/app/scrub-number.js joins the
 // project and launcher bundles, css/src/97-scrub-smart-time.css joins css/mmgr.css;
 // both are shell assets, so returning clients must refetch them.
-const CACHE = 'mmgr-shell-v680';
+// v681 - WBS text import 2026-11-20: the import modal gains a copyable prompt
+// for an outside AI (project.html) and the tasks module gains the handler.
+const CACHE = 'mmgr-shell-v684';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -1,0 +1,44 @@
+[qa-signout-confirm] PASS  S1 /app.html has the sign-out dialog, hidden by default
+[qa-signout-confirm] PASS  S2 the title is "Sign out?"
+[qa-signout-confirm] PASS  S2 the body is the directive sentence
+[qa-signout-confirm] PASS  S2 the two buttons read "Stay signed in" and "Sign out"
+[qa-signout-confirm] PASS  S2 "Back up now" is hidden and the note is hidden when nothing is unsaved
+[qa-signout-confirm] PASS  S1 /project.html?id=demo-project has the sign-out dialog, hidden by default
+[qa-signout-confirm] PASS  S1 /admin.html has the sign-out dialog, hidden by default
+[qa-signout-confirm] PASS  S1 /index.html has the sign-out dialog, hidden by default
+[qa-signout-confirm] PASS  S1 /signin.html has the sign-out dialog, hidden by default
+[qa-signout-confirm] PASS  S3 the stubbed session renders the account row sign-out button
+[qa-signout-confirm] PASS  S3 the account row opens the dialog instead of signing out
+[qa-signout-confirm] PASS  S7 focus starts on "Stay signed in"
+[qa-signout-confirm] PASS  S3 no logout request is sent before the question is answered
+[qa-signout-confirm] PASS  S7 Tab from the last button wraps to "Stay signed in"
+[qa-signout-confirm] PASS  S4 "Stay signed in" closes the dialog
+[qa-signout-confirm] PASS  S4 "Stay signed in" leaves the session intact
+[qa-signout-confirm] PASS  S4 "Stay signed in" sends no logout
+[qa-signout-confirm] PASS  S4 Escape closes the dialog and keeps the session
+[qa-signout-confirm] PASS  S4 Escape sends no logout
+[qa-signout-confirm] PASS  S4 an outside tap closes the dialog
+[qa-signout-confirm] PASS  S4 an outside tap sends no logout
+[qa-signout-confirm] PASS  S5 "Sign out" closes the dialog
+[qa-signout-confirm] PASS  S5 "Sign out" sends exactly one logout
+[qa-signout-confirm] PASS  S5 "Sign out" removes the account row
+[qa-signout-confirm] PASS  S6 the project page exposes syncSignOut and confirmSignOut
+[qa-signout-confirm] PASS  S6 syncSignOut opens the dialog
+[qa-signout-confirm] PASS  S6 no "signed out" toast appears before confirming
+[qa-signout-confirm] PASS  S6 "Stay signed in" clears no identity and shows no toast
+[qa-signout-confirm] PASS  S6 "Stay signed in" sends no logout
+[qa-signout-confirm] PASS  S8 unsaved work shows the note
+[qa-signout-confirm] PASS  S8 the note says changes are not backed up and invents no count
+[qa-signout-confirm] PASS  S8 "Back up now" is offered
+[qa-signout-confirm] PASS  S8 "Back up now" runs the existing backup
+[qa-signout-confirm] PASS  S8 "Back up now" returns to the closed state
+[qa-signout-confirm] PASS  S8 "Back up now" sends no logout
+[qa-signout-confirm] PASS  S9 /index.html has a #signin-out control
+[qa-signout-confirm] PASS  S9 /index.html sign-out opens the shared dialog
+[qa-signout-confirm] PASS  S9 /signin.html has a #signin-out control
+[qa-signout-confirm] PASS  S9 /signin.html sign-out opens the shared dialog
+[qa-signout-confirm] PASS  S10 at 740x360 the card sits inside the viewport
+[qa-signout-confirm] PASS  S10 every visible button keeps a 40px+ target
+[qa-signout-confirm] PASS  S10 the dialog paints above the toast layer
+[qa-signout-confirm] 
+[qa-signout-confirm] 42 passed, 0 failed

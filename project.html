@@ -2421,6 +2421,12 @@
   <div class="wi-box">
     <h3><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Import WBS from Text</h3>
     <div class="wi-step">
+      <div class="wi-lbl">Starting from a rough list?</div>
+      <div class="wi-hint">Copy this prompt into your AI tool together with your task list. It returns the outline this importer expects: each main task on its own line, subtasks indented two spaces.</div>
+      <button class="btn btn-o btn-s mt8" data-action="wiCopyPrompt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy prompt for your AI</button>
+      <span id="wi-prompt-status" class="wi-hint" role="status" aria-live="polite"></span>
+    </div>
+    <div class="wi-step">
       <div class="wi-lbl">1. Paste your outline</div>
       <textarea id="wi-source" aria-label="WBS import source text" data-action="wiPreview" placeholder="Main task 1&#10;  Subtask 1.1&#10;  Subtask 1.2&#10;&#10;Main task 2&#10;  Subtask 2.1"></textarea>
     </div>

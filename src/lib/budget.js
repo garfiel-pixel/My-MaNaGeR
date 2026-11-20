@@ -13,7 +13,6 @@
    ============================================================ */
 const BUDGET_LARGE_ABS = 50000; // Q5: 10 percent of the line, or this, whichever is smaller
 const BUDGET_PROPOSAL_LIMIT = 25; // changes in one proposal
-const BUDGET_LARGE_PER_DAY = 10; // large changes one key may queue in a day
 
 function round2(n) {
   return Math.round((+n || 0) * 100) / 100;
@@ -470,7 +469,6 @@ function buildBudgetProposal(prev, rawList, currency) {
 export {
   BUDGET_LARGE_ABS,
   BUDGET_PROPOSAL_LIMIT,
-  BUDGET_LARGE_PER_DAY,
   BUDGET_LINE_FIELDS,
   BUDGET_MONEY_FIELDS,
   round2,

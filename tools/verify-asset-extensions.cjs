@@ -42,6 +42,8 @@ const SKIP_DIRS = new Set([
   '.githooks',
   '.freebuff',
   '.agents',
+  // Accountability evidence logs (.log) are review artifacts, never assets.
+  'REVIEW-ARTIFACTS',
   'adittion to scope',
   'the last update towrads maintainance mode'
 ]);

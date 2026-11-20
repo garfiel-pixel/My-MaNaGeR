@@ -1,0 +1,7 @@
+=== PERFORMANCE MODE WIRING: 21 pages
+  GPU  calculator.html -> mmgr-glass.js?v=2
+  SKIP dashboard.html - redirect stub with no scripts (its header promises zero external requests)
+  SKIP monolith html to reference from all features.html - authoring reference copy of the old monolith, not linked or served as a page
+  SKIP seed-test.html - QA seed fixture, no UI and no decoration
+
+PERF WIRING PASS

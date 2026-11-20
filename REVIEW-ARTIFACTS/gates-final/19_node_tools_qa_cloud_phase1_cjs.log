@@ -1,0 +1,70 @@
+[cloud1] wrangler at: C:\Users\Garfield\Downloads\mymanager-fixed\node_modules\wrangler\bin\wrangler.js
+[cloud1] starting wrangler dev on :8765 (local D1 + R2 emulation, persist C:\Users\Garfield\AppData\Local\Temp\mmgr-cloud-wstate-1795149543097)…
+[cloud1] --- wrangler dev log (last 500 chars) ---
+[cloud1] 
+[cloud1] --- end wrangler log ---
+[cloud1] DIAG health: status=200 ct=application/json; charset=utf-8
+[cloud1] DIAG health body: {"ok":true,"status":"ok","app":"my-manager","time":"2026-11-20T04:39:23.431Z"}
+[cloud1] DIAG create: status=404 ct=text/plain
+[cloud1] DIAG create body: 404 not found: /api/cloud/projects
+[cloud1] FAIL  C1a create returns ok + ownerCode   <-- "404|null"
+[cloud1] FAIL  C1b owner code format XXXX-XXXX-XXXX-XXXX (no 0/O/1/I/L)   <-- ""
+[cloud1] C1c: row not visible on attempt 1, retrying in 200ms…
+[cloud1] C1c: row not visible on attempt 2, retrying in 200ms…
+[cloud1] C1c: row not visible on attempt 3, retrying in 200ms…
+[cloud1] C1c DIAGNOSTIC (all retries exhausted): create.body=null
+[cloud1] C1c DIAGNOSTIC: rows=[]
+[cloud1] C1c DIAGNOSTIC: PID=qa-cloud-mwohp835
+[cloud1] FAIL  C1c D1 row written (project_id + label)   <-- []
+[cloud1] FAIL  C1d D1 row exists before any save (latest_r2_key NULL)   <-- "undefined"
+[cloud1] FAIL  C2a save returns ok   <-- "404|null"
+[cloud1] FAIL  C2b save reports the expected R2 key   <-- "null"
+[cloud1] FAIL  C2c D1 row now references the R2 key   <-- []
+[cloud1] FAIL  C2d state blob found in local R2 emulation   <-- "no blob"
+[cloud1] FAIL  C2e R2 blob content equals the saved state   <-- "null"
+[cloud1] FAIL  C3a stored salt is 32 hex chars   <-- ""
+[cloud1] FAIL  C3b stored hash is 64 hex chars (PBKDF2-SHA256 256-bit)   <-- ""
+[cloud1] FAIL  C3c stored hash is NOT the plaintext code   <-- "…"
+[cloud1] FAIL  C3d PBKDF2 recompute matches the stored hash   <-- "64a868d4b23a vs "
+[cloud1] FAIL  C3e plaintext code absent from ALL D1 + R2 bytes   <-- ["C:\\Users\\Garfield\\AppData\\Local\\Temp\\mmgr-cloud-wstate-1795149543097\\v3\\d1\\miniflare-D1DatabaseObject\\6c98bea77991ed111df5193a25db9034807c8da966e20f93a586839d329ae525.sqlite"]
+[cloud1] FAIL  C4a correct code loads the saved state (fresh HTTP context)   <-- "404|null"
+[cloud1] FAIL  C5a wrong code rejected with 403   <-- 404
+[cloud1] FAIL  C5b malformed code rejected with 403   <-- 404
+[cloud1] FAIL  C5c unknown project id rejected with 403 (load)   <-- 404
+[cloud1] FAIL  C5d unknown project id rejected with 403 (meta)   <-- 404
+[cloud1] PASS  C5e all four responses share the SAME body (no existence leak)
+[cloud1] FAIL  C3f plaintext code absent from wrangler dev logs   <-- "found in dev log"
+[cloud1] DIAG page-load console errors: []
+[cloud1] PASS  C4b Controls drawer renders the Cloud section (create button)
+[cloud1] PASS  C4c create stores the owner code in sessionStorage (session-only)
+[cloud1] DIAG browser-fetch /api/health from Chrome context: "ok"
+[cloud1] DIAG browser console errors (if captured): []
+[cloud1] DIAG post-save console errors: []
+[cloud1] PASS  C4d Save to Cloud succeeded from the UI (status ok)
+[cloud1] PASS  C4e fresh device shows the "Load with Code" entry (no code in session)
+[cloud1] PASS  C4f wrong code rejected on fresh device (status err)
+[cloud1] PASS  C4g wrong code left local state untouched
+[cloud1] PASS  C4h fresh device pulled the creator’s cloud snapshot into the workspace
+[cloud1] PASS  C3g UI-created owner code also absent from wrangler dev logs
+[cloud1] ──────────────────────────────────────────────
+[cloud1] CLOUD_PHASE1 FAIL (20/29 broken)
+[cloud1]   broken: C1a create returns ok + ownerCode
+[cloud1]   broken: C1b owner code format XXXX-XXXX-XXXX-XXXX (no 0/O/1/I/L)
+[cloud1]   broken: C1c D1 row written (project_id + label)
+[cloud1]   broken: C1d D1 row exists before any save (latest_r2_key NULL)
+[cloud1]   broken: C2a save returns ok
+[cloud1]   broken: C2b save reports the expected R2 key
+[cloud1]   broken: C2c D1 row now references the R2 key
+[cloud1]   broken: C2d state blob found in local R2 emulation
+[cloud1]   broken: C2e R2 blob content equals the saved state
+[cloud1]   broken: C3a stored salt is 32 hex chars
+[cloud1]   broken: C3b stored hash is 64 hex chars (PBKDF2-SHA256 256-bit)
+[cloud1]   broken: C3c stored hash is NOT the plaintext code
+[cloud1]   broken: C3d PBKDF2 recompute matches the stored hash
+[cloud1]   broken: C3e plaintext code absent from ALL D1 + R2 bytes
+[cloud1]   broken: C4a correct code loads the saved state (fresh HTTP context)
+[cloud1]   broken: C5a wrong code rejected with 403
+[cloud1]   broken: C5b malformed code rejected with 403
+[cloud1]   broken: C5c unknown project id rejected with 403 (load)
+[cloud1]   broken: C5d unknown project id rejected with 403 (meta)
+[cloud1]   broken: C3f plaintext code absent from wrangler dev logs

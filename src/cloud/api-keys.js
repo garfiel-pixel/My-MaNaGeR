@@ -22,7 +22,7 @@ import {
 } from '../lib/http.js';
 import { trackEvent } from '../lib/observe.js';
 import { ownerTier } from './team.js';
-import { limitsFor, upsellFor } from '../mcp/tier-limits.js';
+import { limitsFor, upsellFor, autoAcceptPlanAllowed } from '../mcp/tier-limits.js';
 
 const API_KEY_PREFIX_LEN = 8;
 // OWNER 2026-09-15: keys now read as standard API keys, not license codes.
@@ -282,6 +282,35 @@ export async function handleCloudApiKeyPatch(request, env, projectId, keyId) {
   if (read.body.autoAccept !== undefined) {
     if (read.body.autoAccept !== 'off' && read.body.autoAccept !== 'low-risk') {
       return json({ ok: false, error: "autoAccept must be 'off' or 'low-risk'" }, 400);
+    }
+    // Close-out 3b: only Company/Enterprise owners may raise the policy.
+    // The plan is the project OWNER's, never the caller's (an owner code or a
+    // signed-in owner reaches the same route). Turning it OFF stays allowed
+    // on every plan, so a downgraded owner can always undo it. Refuse BEFORE
+    // the UPDATE: the stored row must not change on a rejected raise.
+    if (read.body.autoAccept === 'low-risk') {
+      const ownerRow = await env.DB.prepare(
+        'SELECT google_sub FROM cloud_projects WHERE project_id = ?'
+      )
+        .bind(projectId)
+        .first();
+      const owner = await ownerTier(env, (ownerRow && ownerRow.google_sub) || '');
+      if (!autoAcceptPlanAllowed(owner)) {
+        const seen = limitsFor(owner).tier;
+        return json(
+          {
+            ok: false,
+            error: 'enterprise_feature',
+            upgradeRequired: 'company',
+            message:
+              'Low-risk auto-accept needs the Company or Enterprise plan (owner plan: ' +
+              seen +
+              ').' +
+              upsellFor(seen)
+          },
+          402
+        );
+      }
     }
     nextAuto = read.body.autoAccept;
   }

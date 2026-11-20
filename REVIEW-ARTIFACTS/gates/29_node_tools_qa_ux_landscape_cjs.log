@@ -1,0 +1,60 @@
+[qa-ux-landscape] PASS  L1 projects-list @portrait-390x844: no horizontal overflow
+[qa-ux-landscape] PASS  L6 projects-list @portrait-390x844: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 projects-list @portrait-390x844: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 calculator @portrait-390x844: no horizontal overflow
+[qa-ux-landscape] PASS  L6 calculator @portrait-390x844: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 calculator @portrait-390x844: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 project-dashboard @portrait-390x844: no horizontal overflow
+[qa-ux-landscape] PASS  L6 project-dashboard @portrait-390x844: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 project-dashboard @portrait-390x844: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 projects-list @landscape-844x390: no horizontal overflow
+[qa-ux-landscape] PASS  L2 projects-list @landscape-844x390: content height >= 45% (100%)
+[qa-ux-landscape] PASS  L2a projects-list @landscape-844x390: bars are one slim line (<=44px)
+[qa-ux-landscape] PASS  L6 projects-list @landscape-844x390: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 projects-list @landscape-844x390: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 calculator @landscape-844x390: no horizontal overflow
+[qa-ux-landscape] PASS  L2 calculator @landscape-844x390: content height >= 45% (100%)
+[qa-ux-landscape] PASS  L2a calculator @landscape-844x390: bars are one slim line (<=44px)
+[qa-ux-landscape] PASS  L6 calculator @landscape-844x390: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 calculator @landscape-844x390: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 project-dashboard @landscape-844x390: no horizontal overflow
+[qa-ux-landscape] PASS  L2 project-dashboard @landscape-844x390: content height >= 45% (100%)
+[qa-ux-landscape] PASS  L2a project-dashboard @landscape-844x390: bars are one slim line (<=44px)
+[qa-ux-landscape] PASS  L6 project-dashboard @landscape-844x390: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 project-dashboard @landscape-844x390: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 projects-list @landscape-740x360: no horizontal overflow
+[qa-ux-landscape] PASS  L2 projects-list @landscape-740x360: content height >= 45% (100%)
+[qa-ux-landscape] PASS  L2a projects-list @landscape-740x360: bars are one slim line (<=44px)
+[qa-ux-landscape] PASS  L6 projects-list @landscape-740x360: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 projects-list @landscape-740x360: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 calculator @landscape-740x360: no horizontal overflow
+[qa-ux-landscape] PASS  L2 calculator @landscape-740x360: content height >= 45% (89%)
+[qa-ux-landscape] PASS  L2a calculator @landscape-740x360: bars are one slim line (<=44px)
+[qa-ux-landscape] PASS  L6 calculator @landscape-740x360: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 calculator @landscape-740x360: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 project-dashboard @landscape-740x360: no horizontal overflow
+[qa-ux-landscape] PASS  L2 project-dashboard @landscape-740x360: content height >= 45% (100%)
+[qa-ux-landscape] PASS  L2a project-dashboard @landscape-740x360: bars are one slim line (<=44px)
+[qa-ux-landscape] PASS  L6 project-dashboard @landscape-740x360: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 project-dashboard @landscape-740x360: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 projects-list @desktop-1280x720: no horizontal overflow
+[qa-ux-landscape] PASS  L6 projects-list @desktop-1280x720: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 projects-list @desktop-1280x720: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 calculator @desktop-1280x720: no horizontal overflow
+[qa-ux-landscape] PASS  L6 calculator @desktop-1280x720: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 calculator @desktop-1280x720: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L1 project-dashboard @desktop-1280x720: no horizontal overflow
+[qa-ux-landscape] PASS  L6 project-dashboard @desktop-1280x720: controls offer a 44x44 hit area
+[qa-ux-landscape] PASS  L5 project-dashboard @desktop-1280x720: no text clipped without ellipsis
+[qa-ux-landscape] PASS  L4 customize @portrait-390x844: Done and close inside the viewport
+[qa-ux-landscape] PASS  L4 customize @landscape-844x390: Done and close inside the viewport
+[qa-ux-landscape] PASS  L4 customize @landscape-740x360: Done and close inside the viewport
+[qa-ux-landscape] PASS  L4 customize @desktop-1280x720: Done and close inside the viewport
+[qa-ux-landscape] PASS  L3 tour @portrait-390x844: card never covers the spotlight, buttons visible and 44px
+[qa-ux-landscape] PASS  L2b tour @landscape-844x390: card docks to a side edge, max 280px
+[qa-ux-landscape] PASS  L3 tour @landscape-844x390: card never covers the spotlight, buttons visible and 44px
+[qa-ux-landscape] PASS  L2b tour @landscape-740x360: card docks to a side edge, max 280px
+[qa-ux-landscape] PASS  L3 tour @landscape-740x360: card never covers the spotlight, buttons visible and 44px
+[qa-ux-landscape] PASS  L3 tour @desktop-1280x720: card never covers the spotlight, buttons visible and 44px
+[qa-ux-landscape] ---
+[qa-ux-landscape] PASS 58 passed, 0 failed

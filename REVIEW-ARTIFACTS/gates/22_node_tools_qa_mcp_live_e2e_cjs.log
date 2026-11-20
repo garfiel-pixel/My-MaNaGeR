@@ -1,0 +1,50 @@
+[e2e] starting wrangler dev on :8833 (persist outside repo: C:\Users\Garfield\AppData\Local\Temp\mmgr-e2e-wstate-1795140051757)
+[e2e] wrangler ready on :8833
+[e2e] PASS  A1 create throwaway project (session-linked owner)
+[e2e] PASS  A2 owner save seeds the snapshot
+[e2e] PASS  A2b premium gate: free session owner + valid key -> MCP_PREMIUM_REFUSAL
+[e2e] PASS  A2c billing webhook entitles the owner (status active)
+[e2e] PASS  A3 mint scoped API key (shown once)
+[e2e] PASS  A4 MCP initialize with Bearer key -> serverInfo
+[e2e] PASS  A5 MCP apply_changes -> queued for owner review
+[e2e] PASS  A6 cloud state UNCHANGED before accept (never auto-applied)
+[e2e] PASS  A7 review queue lists the pending MCP proposal
+[e2e] PASS  D1 /api/mcp without a token answers 401 + resource_metadata
+[e2e] PASS  D2 protected-resource metadata advertises the MCP resource
+[e2e] PASS  D2b path-suffixed PRM (RFC 9728 form) also answers
+[e2e] PASS  D0 RFC 7636 S256 test vector is base64url
+[e2e] PASS  D3 open DCR (no cookie) returns a client id
+[e2e] PASS  D4 consent page renders for the signed-in owner and names the client
+[e2e] PASS  D4b consent page is branded, shows the signed-in account and both decisions
+[e2e] PASS  D5 approval redirects back with a code
+[e2e] PASS  D6 the code exchanges for an access token
+[e2e] PASS  D7 the app-wide MCP accepts the token (initialize -> serverInfo)
+[e2e] PASS  D8 GET /api/mcp/config answers the admin panel for the signed-in owner
+[e2e] PASS  B0 debug port free before spawn
+[e2e] PASS  B1 project page loads with cloud modules (CSP intact)
+[e2e] PASS  B2 owner code held -> cloud section renders with review list
+[e2e] PASS  B3 queue names the record, field and before/after with an Accept button + AI badge
+[e2e] PASS  B3b duplicate proposal queued while state is pre-accept
+[e2e] PASS  B4 Accept click applies -> status says Accepted, one row left
+[e2e] PASS  B5 stale accept refuses with a sentence and leaves the row for review
+[e2e] PASS  AT16a the hostile payload is queued and accepted
+[e2e] PASS  AT16b no payload executes in any view, panel, export or print path
+[e2e] PASS  AT16c the payload renders as literal text, never as markup
+[e2e] PASS  E1 AT21 full-scope key minted
+[e2e] PASS  E2 AT21 big fixture saved
+[e2e] PASS  E3 AT21 9 of 9 proposals queue
+[e2e] PASS  E4 AT21 the 10th call (validate) queues no proposal
+[e2e] PASS  E5 AT21 the 9 proposals share one change set
+[e2e] PASS  E6 AT21 Accept-all answers ok with an applied/conflict summary
+[e2e] PASS  E7 AT21 the accept summary reports the proposal + applied counts
+[e2e] PASS  E8 AT21 applied ops landed: t2 completed, t3 note, t4 inprogress, t61+r10 created, r1 edited
+[e2e] PASS  E9 AT21 the colliding t1.status resolved to one value (mixed conflict)
+[e2e] PASS  E10 AT21 the 24-change budget batch applied (12 lines repriced + 12 deliveries)
+[e2e] PASS  C1 an accepted change IS in the cloud state (t1 resolved away from its pre-accept value)
+[e2e] PASS  C2 a Phase-A proposal was decided by the browser owner UI (status accepted) + changelog carries the accepted entry
+[e2e] PASS  C3 API key revoked
+[e2e] PASS  C4 revoked key refuses tool calls, no data leak
+[e2e] PASS  C5 throwaway project deleted
+[e2e] PASS  C6 project gone (meta refuses)
+[e2e] ========================================
+[e2e] QA-MCP-LIVE-E2E RESULT: 46 passed, 0 failed  (project e2e-mcp-7h2g0u)

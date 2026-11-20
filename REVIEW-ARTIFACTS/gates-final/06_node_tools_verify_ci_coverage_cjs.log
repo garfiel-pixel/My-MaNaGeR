@@ -1,0 +1,16 @@
+[ci-coverage] PASS  the base workflow is readable from git (origin/main)
+[ci-coverage] jobs: ["static","cloud-core","cloud-auth","browser-calc","browser-app","summary"]
+[ci-coverage] PASS  job "static" exists
+[ci-coverage] PASS  job "cloud-core" exists
+[ci-coverage] PASS  job "cloud-auth" exists
+[ci-coverage] PASS  job "browser-calc" exists
+[ci-coverage] PASS  job "browser-app" exists
+[ci-coverage] PASS  job "summary" exists
+[ci-coverage] PASS  the summary job needs all five worker jobs and runs always()
+[ci-coverage] PASS  no run: step was dropped or changed by the split
+[ci-coverage] PASS  no run: step was duplicated outside the per-job setup lines
+[ci-coverage] old run blocks: 205, new run blocks: 208
+[ci-coverage] PASS  no T4: step was dropped or duplicated (new gates are allowed)
+[ci-coverage] PASS  every steps.<id>.outcome reads an id defined in the same job
+[ci-coverage] 
+[ci-coverage] PASS - 12/12 gates

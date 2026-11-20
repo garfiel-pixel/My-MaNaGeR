@@ -1,0 +1,23 @@
+PASS  T1 the calculator carries both controls
+PASS  T1 baseline is light with perf off
+PASS  T1a a theme flip on the calculator leaves Performance Mode alone
+PASS  T1b a Performance Mode flip on the calculator leaves the theme alone
+PASS  T1c in dark the Calculate button is gold, not green
+PASS  T1c the gold Calculate button pulses
+PASS  T3a both preferences survive a calculator reload
+PASS  T4a the theme and Performance Mode reach the project workspace
+PASS  T2 the project carries both controls
+PASS  T2a a theme flip on the project leaves Performance Mode alone
+PASS  T2b a Performance Mode flip on the project leaves the theme alone
+PASS  T4b the theme and Performance Mode reach the app dashboard
+PASS  T3b both preferences survive an app reload
+PASS  T5a an open tab follows a theme changed in another tab
+PASS  T5b it also follows Performance Mode, without the theme moving
+PASS  T5c the calculator follows the project tab in return
+PASS  T6 calculator body carries the saved skin
+PASS  T6 calculator repaints its tokens, not just the attribute
+PASS  T6 admin body carries the saved skin
+PASS  T6 admin repaints its tokens, not just the attribute
+PASS  zero page errors across the walk
+
+PASS - 21/21 gates

@@ -1,0 +1,285 @@
+(node:26052) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/server.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+--- R01 — 100 task creates survive the 500-leaf cap ---
+PASS  R01a the queue reports the true op count and the op list is preserved
+PASS  R01b accept applies all 100 proposed creates
+PASS  R01c the row carries the uncapped op list and diffs_json is display-capped
+
+--- R02 — a diffless MCP row is refused, never whole-array merged ---
+PASS  R02 a row without stored diffs is refused with 409
+PASS  R02b the live status is untouched by the refused accept
+PASS  R02c a legacy 500-leaf row is refused as truncated
+
+--- R03 — get_table refuses money tables with Read budget off ---
+PASS  R03 budgetLines is refused to a key with Read budget off
+PASS  R03 spendLog is refused to a key with Read budget off
+PASS  R03 budgetEnvelope is refused to a key with Read budget off
+PASS  R03b a key with Read budget on still gets the table
+
+--- R04 — budget diffs are refused with Propose budget changes off ---
+PASS  R04 budgetLines/spendLog/budgetEnvelope are refused without the write switch
+PASS  R04b a budget-line diff queues as a changeLine op in proposal_json
+PASS  R04c a spendLog diff is refused and points at addDelivery
+PASS  R04d an envelope set queues and carries the large flag
+PASS  R04e a non-numeric envelope is refused
+
+--- R04m — budget permission matrix ---
+PASS  R04m every budget permission combination behaves
+
+--- R05 — a stale agent before is refused with both values ---
+PASS  R05 a wrong before is refused with expected and live
+PASS  R05b a correct before queues and accepts
+PASS  R05c an omitted before still queues the change
+
+--- R06 — 24 large budget changes name N, U and L ---
+PASS  R06 the message names the 24 incoming, 0 used and the 10 limit
+
+--- R07 — one concurrent accept wins the claim ---
+PASS  R07 exactly one accept answers 200 and the other 409
+
+--- AT13 (R07b) — a UI save and an accept keep both changes ---
+PASS  AT13 the UI save lands
+PASS  AT13 both the saved field and the accepted field survive
+
+--- R08 — identical apply_changes retried returns the first proposal ---
+PASS  R08 a retry returns the same proposal with duplicate: true
+PASS  R08b a resend after 25 minutes queues a new row
+
+--- F1.1 — idempotency dedupes only a live proposal ---
+PASS  F1.1a a resubmit while pending is a duplicate with the original id
+PASS  F1.1b a resubmit after REJECT queues a fresh proposal
+PASS  F1.1c a resubmit after WITHDRAW queues a fresh proposal
+PASS  F1.1d a resubmit after CHANGE-SET REJECT queues a fresh proposal
+PASS  F1.1e a resubmit after ACCEPT still returns the original proposal id
+
+--- R08c — the structured block reports refused ops and warnings ---
+PASS  R08c every refused op appears with a reason
+PASS  R08c counts and proposalId are machine-readable
+PASS  R08c an omitted before is listed in warnings
+
+--- R09 — name-only risks read, openRisks case-insensitive ---
+PASS  R09a a risk with name only reads its name in both fields
+PASS  R09b every risk carries isOpen and openRiskCount counts both
+PASS  R09c openRisks counts the "Open"-cased risk too
+PASS  R09d a promoted risk is not open
+
+--- R10 — an unknown status is refused with the allowed enum ---
+PASS  R10a status "done" is refused with the allowed list and no row is queued
+PASS  R10b "InProgress" queues and stores the canonical lowercase value
+
+--- R11 — a derived field is refused ---
+PASS  R11 critical is refused as derived and nothing is queued
+PASS  R11b a create carrying critical is refused
+
+--- R12 — a completed status stamps completedDate and statusSince ---
+PASS  R12 accept stamps statusSince and completedDate on a completed move
+
+--- R13 — a large accept keeps every diff (diffs_key) and its attribution ---
+PASS  R13a the full 41-leaf diff list is stored through diffs_key, not dropped
+PASS  R13b the entry carries proposal_id / source_type / source_label / key_id / change_set_id
+
+--- F1.3 — derived schedule fields are global, read-time, never stored ---
+PASS  F1.3a a notes edit nulls no derived fields and stores no derived string
+PASS  F1.3b a task create nulls derived on every task and stores no derived string
+PASS  F1.3c get_tasks reports derived at read time for a null-derived work item
+
+--- R14 — get_changes_since is in the catalog with its paging schema ---
+PASS  R14 tools/list advertises get_changes_since with since, cursor, limit and path
+PASS  R14b it is a read tool with an outputSchema
+
+--- F1 — the dry run and the queue return identical refusals ---
+PASS  AT18 50 generated inputs produce identical refusals from both tools
+
+--- T1 — tempId maps a create chain onto real ids ---
+PASS  T1a 30 creates queue in one proposal
+PASS  T1b every stored predecessor is the previous real id
+PASS  T1c no tempId leaks into the stored state
+PASS  T1d a forward tempId reference resolves to the later id
+PASS  T1e an unknown predecessor is refused
+
+--- AT07 — withdraw_changes removes queued ops before the owner decides ---
+PASS  AT07a a proposal with 3 ops is queued
+PASS  AT07b whole withdraw marks the proposal withdrawn
+PASS  AT07c partial withdraw keeps the surviving op queued (count 1)
+PASS  AT07d withdrawing the last op withdraws the whole proposal
+PASS  AT07e a key cannot withdraw another key's proposal
+
+--- AT08 — change-set accept is one read-modify-write for the set ---
+PASS  AT08a the set accepts with both proposals decided
+PASS  AT08b the two task changes are both present in the resulting state
+PASS  AT08c the whole set was written to R2 exactly once
+PASS  AT08d each proposal got its own apply_report_json and a changelog entry
+
+--- AT09 — change-set reject declines the whole set ---
+PASS  AT09a the whole set is rejected
+
+--- AT10 — get_apply_report returns the stored accept report ---
+PASS  AT10a a pending proposal has no report yet
+PASS  AT10b after accept the report lists the applied op
+
+--- AT10/AT12 — get_proposal_status lists by change set and reports conflicts ---
+PASS  AT10a changeSetId returns the two proposals in the set
+PASS  AT12a a proposal with a conflict is surfaced as accepted-with-conflicts
+
+--- AT12 — get_pending groups by change set and previews conflicts ---
+PASS  AT12a pending proposals are grouped by change set
+PASS  AT12b the dry run previews the accept with no conflicts
+PASS  AT22a pending cap (25 on contractor) refuses the whole call
+PASS  AT22b daily op limit (1000 on contractor) refuses the whole call
+PASS  AT22c a rejected row frees its pending slot so the 25th is allowed
+
+--- AT23 — fixed error codes on refusals and apply results ---
+PASS  AT23a get_schema publishes the fixed error-code set (23 codes)
+PASS  AT23b every structured refusal carries a code in the set
+PASS  AT23c every non-applied apply-report result carries a code in the set
+
+--- AT24 — cross-proposal dependencies ---
+PASS  AT24a P1 create queued
+PASS  AT24b P2 validates against the overlaid state and queues
+PASS  AT24c P2 ops_json records dependsOn [P1]
+PASS  AT24d single accept of a dependent proposal is refused (DEPENDS_ON_PENDING)
+PASS  AT24e accept-all applies the dependency chain in id order
+PASS  AT24f withdrawing a depended-on proposal is refused
+
+--- AT25 — D1/R2 recovery (all-skipped heals to accepted) ---
+PASS  AT25a a retry after a lost D1 status heals to accepted (not 409)
+PASS  AT25b the healing retry reports the op as skipped, not applied
+PASS  AT25c D1 status is accepted after the healing retry
+PASS  AT25d a change-set retry after a lost D1 status heals to accepted
+
+--- AT25e — stale duplicate accept refuses, no false success ---
+PASS  AT25e-a the real change applies
+PASS  AT25e-b a stale duplicate accept is refused 409 stale
+PASS  AT25e-c the refusal carries the actionable remedy sentence
+PASS  AT25e-d the stale row stays pending for review (claim released), no false success
+PASS  F1.5a accept returns a detailed applied list plus appliedCount
+PASS  F1.5b accept returns a numeric revision
+PASS  F1.5c get_proposal_status reports appliedCount and the landed revision
+
+--- AT26 — MCP polish (annotations, outputSchema, version, injection warning) ---
+PASS  AT26a initialize reports serverInfo.version 2.1.0 and the record-text warning
+PASS  AT26b every advertised tool carries a full annotation block
+PASS  AT26c every advertised tool declares an object outputSchema
+PASS  AT26d no outputSchema requires an undeclared property
+PASS  AT26e every read tool is readOnlyHint true and destructiveHint false
+PASS  AT26f write tools are not readOnly and Monte Carlo is not idempotent
+PASS  AT26g a read call returns structuredContent equal to its JSON text block
+PASS  AT26h apply_changes returns structuredContent from its second (JSON) block
+PASS  AT26i an isError result carries no structuredContent
+PASS  AT26j the app-wide catalog carries the same annotations and outputSchemas
+
+--- AT27 — report size and retention ---
+PASS  AT27a the report store helper is exported
+PASS  AT27b a 600-entry report stores 500 entries and counts all 600
+PASS  AT27c a real accept stores the versioned report with its summary
+PASS  AT27d a 120-day-old decided row loses its op list and keeps a summary
+PASS  AT27e a 2-day-old decided row keeps its op list and its full report
+PASS  AT27f a pending row is never pruned, however old
+PASS  AT27g get_apply_report returns the summary and pruned:true for a pruned row
+
+--- AT15 — changelog attribution (agent vs ui vs editor) ---
+PASS  AT15a a direct owner save is attributed to the ui
+PASS  AT15b an accepted agent proposal carries agent, the key label and key_id
+PASS  AT15c an accepted editor proposal is attributed to the editor
+
+--- AT15 — get_changes_since (audit read) ---
+PASS  AT15d an accepted agent change reads back with its attribution
+PASS  AT15e each change names the table, record, field and both values
+PASS  AT15f a wbs-only key sees the task change and never the budget change
+PASS  AT15g a 600-record entry pages 500 + 500 + rest with no repeats
+
+--- AT02 — a UI edit after the queue conflicts one op, applies the rest ---
+PASS  AT02a the accept succeeds and applies the unconflicted op
+PASS  AT02b the UI value survives the older proposal
+PASS  AT02c the report names the conflicted op and its record
+PASS  AT02d the summary counts one applied and one conflict
+
+--- AT03 — both tools refuse an invalid enum with the allowed list ---
+PASS  AT03a validate_changes refuses "done" and lists the allowed values
+PASS  AT03b apply_changes refuses the same op and queues no row
+
+--- AT04 — computed and stamp fields are refused as derived ---
+PASS  AT04a critical, totalFloat, statusSince and completedDate are all refused as derived
+PASS  AT04b a create cannot smuggle a computed field
+
+--- AT05 — a predecessor cycle rolls the whole accept back ---
+PASS  AT05a the cycle-forming proposal is queued (the queue cannot see the whole set)
+PASS  AT05b the accept refuses with 422 accept-failed
+PASS  AT05c the stored blob is byte-identical after the rollback
+PASS  AT05d neither task kept the cyclic predecessors
+PASS  AT05e the report names the op(s) that created the cycle
+PASS  AT05f no row claims it applied after the rollback
+PASS  AT05g the proposal is still pending, not accepted
+
+--- AT06 — summary counts match the records after an accept ---
+PASS  AT06a the five creates queue as one proposal
+PASS  AT06b the accept succeeds
+PASS  AT06c completedTasks equals the work items with status completed
+PASS  AT06d statusCounts.completed agrees and the counts sum to every task
+PASS  AT06e openRisks counts open, promoted and MCP-created risks the same way
+PASS  AT06f get_risks reports the same open count as the summary
+PASS  AT06g completion percent matches the counted work items
+
+--- AT11 — permission matrix: section x read switch x write switch ---
+PASS  AT11a all sections, both switches on — 16 read tools answer exactly as granted
+PASS  AT11a wbs only, both switches off — 16 read tools answer exactly as granted
+PASS  AT11a budget only, read switch off — 16 read tools answer exactly as granted
+PASS  AT11a budget only, write switch off — 16 read tools answer exactly as granted
+PASS  AT11a no sections at all — 16 read tools answer exactly as granted
+PASS  AT11b all sections, both switches on — 4 write paths queue exactly as granted
+PASS  AT11b wbs only, both switches off — 4 write paths queue exactly as granted
+PASS  AT11b budget only, read switch off — 4 write paths queue exactly as granted
+PASS  AT11b budget only, write switch off — 4 write paths queue exactly as granted
+PASS  AT11b no sections at all — 4 write paths queue exactly as granted
+
+--- AT19 — create-then-read round trip for every creatable list ---
+PASS  AT19a every creatable list accepts a text create in one proposal
+PASS  AT19b the accept succeeds
+PASS  AT19c every list reads the created text back byte for byte
+PASS  AT19d the dedicated readers return the same text
+
+--- AT09 — the large-change counter counts only live decisions ---
+PASS  AT09a the message names 8 incoming, 3 used (rejected 5 excluded) and the 10 limit
+
+--- AT28 — tier-aware limits ---
+PASS  AT28a the five tier rows match the published matrix
+PASS  AT28b an unknown paid tier uses the contractor row, never free
+PASS  AT28c the free tier is refused before a limit is read
+PASS  AT28d the per-call cap bounds the total across arrays
+PASS  AT28e the pending cap names the tier, the limit and the usage
+PASS  AT28f the daily ops cap names the tier, the limit and the usage
+PASS  AT28g a tier change applies the new caps to the very next call
+PASS  AT28h the daily ops counter does not reset on a tier change
+PASS  AT28i a planning call performs no tier query of its own
+
+--- F3 — acceptance: change-set union, delete rules, legacy rows ---
+PASS  AT01 Accept all on two same-table proposals applies the union
+PASS  AT14a a phase with children is refused at accept
+PASS  AT14b a task referenced by a budget line is refused at accept
+PASS  AT14c an unreferenced task is deleted and survivors lose it from predecessors
+PASS  AT14d budget lines cannot be deleted through MCP
+PASS  AT14e a delete-only proposal queues with a real section diff
+PASS  AT20a a truncated legacy row is refused with the stated message
+PASS  AT20b a normal legacy row still accepts
+
+--- P6 — auto-accept policy ---
+PASS  P6a default is off: a low-risk-shaped proposal stays pending
+PASS  P6b low-risk applies an allowlisted notes set
+PASS  P6c the changelog records the policy actor, not the owner
+PASS  P6d a mixed proposal queues entirely
+PASS  P6e budget never auto-applies
+PASS  P6f a 51-op proposal queues
+PASS  P6g creates never auto-apply
+PASS  P6h an allowlisted risk mitigation set is eligible
+PASS  P6i a date field is never eligible
+PASS  P6j a whole-section set (no record, no field) is never eligible
+PASS  P6k the policy off short-circuits everything
+PASS  P6l an unknown autoAccept value is refused with 400
+PASS  P6m the config route is owner-only
+PASS  P6n the owner can raise the policy, and the stored row follows
+
+========================================
+186 passed, 0 failed

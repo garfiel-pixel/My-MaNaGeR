@@ -1288,6 +1288,33 @@ export function stateRevision(state) {
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
 }
 
+// An accept applies changes server-side, so the top-level fields it touched
+// must carry a fresh per-field stamp. A client merge adopts a field only when
+// the incoming stamp is NEWER, and a tie keeps local; an accept that left
+// fieldTs untouched therefore lost to the device's own last save and the
+// accepted change never reached the open page.
+export function stampChangedFieldTs(prev, next, when) {
+  if (!next || typeof next !== 'object') {
+    return [];
+  }
+  const ts = when || new Date().toISOString();
+  if (!next.fieldTs || typeof next.fieldTs !== 'object' || Array.isArray(next.fieldTs)) {
+    next.fieldTs = {};
+  }
+  const changed = [];
+  Object.keys(next).forEach(function (k) {
+    if (k === 'fieldTs' || k === 'updatedAt' || k === 'revision') {
+      return;
+    }
+    const before = prev && typeof prev === 'object' ? prev[k] : undefined;
+    if (JSON.stringify(before) !== JSON.stringify(next[k])) {
+      next.fieldTs[k] = ts;
+      changed.push(k);
+    }
+  });
+  return changed;
+}
+
 // MCP-AGENT-FIRST 2026-11-12 1.6(b): one shared read-with-etag / conditional
 // write pair for projects/<id>/latest.json. Every writer (owner save, accept,
 // revert) uses it, so a concurrent write is a detected conflict instead of a

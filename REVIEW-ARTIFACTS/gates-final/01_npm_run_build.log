@@ -1,0 +1,62 @@
+npm notice run my-manager@1.0.0 build
+npm notice run node build.js
+My MaNaGeR - build
+
+  app bundle:
+    modules:  99
+    raw:      2902 KB
+    minified: 1357 KB (53.2% reduction)
+    output:   dist/bundle.js -> dist/bundle.5838c0f5.js
+    time:     1586ms
+  launcher bundle:
+    modules:  16
+    raw:      472 KB
+    minified: 203 KB (56.9% reduction)
+    output:   dist/app-bundle.js -> dist/app-bundle.d72b181b.js
+    time:     1332ms
+  admin bundle:
+    modules:  9
+    raw:      189 KB
+    minified: 80 KB (57.9% reduction)
+    output:   dist/admin-bundle.js -> dist/admin-bundle.8304bb4e.js
+    time:     1266ms
+  marketing bundle:
+    modules:  5
+    raw:      119 KB
+    minified: 47 KB (60.6% reduction)
+    output:   dist/marketing-bundle.js -> dist/marketing-bundle.b6fec8fd.js
+    time:     1256ms
+  marketing globe bundle:
+    modules:  1
+    raw:      43 KB
+    minified: 22 KB (48.7% reduction)
+    output:   dist/marketing-globe.js -> dist/marketing-globe.db91df89.js
+    time:     1266ms
+  marketing AI bundle:
+    modules:  1
+    raw:      20 KB
+    minified: 12 KB (41.6% reduction)
+    output:   dist/marketing-ai.js -> dist/marketing-ai.53ce612b.js
+    time:     1263ms
+  marketing roles bundle:
+    modules:  1
+    raw:      12 KB
+    minified: 5 KB (60.1% reduction)
+    output:   dist/marketing-roles.js -> dist/marketing-roles.c9420a8c.js
+    time:     1299ms
+  app CSS layers:
+    layers:   36 (10-tokens.css, 20-shell.css, 30-panels.css, 35-workspace.css, 36-search.css, 37-mcp-admin.css, 40-ai.css, 50-calculator.css, 60-dashboard.css, 70-chrome.css, 80-auth.css, 82-launcher.css, 83-floating-calculator.css, 84-themes.css, 85-performance-mode.css, 86-assistant-mailbox.css, 86-theme-bento.css, 86-theme-departure.css, 86-theme-editorial.css, 86-theme-guild.css, 86-theme-modal.css, 86-theme-obsidian.css, 86-theme-pegboard.css, 86-theme-permit.css, 86-theme-vellum.css, 87-signin-polish.css, 88-dark-buttons.css, 89-code-names.css, 90-calc-owner-wave.css, 91-design-system.css, 92-procurement.css, 93-wide-and-export.css, 94-procurement-extra.css, 95-gold-buttons.css, 96-accent-modes.css, 97-scrub-smart-time.css)
+    time:     4ms
+  app CSS:
+    raw:      631 KB
+    minified: 382 KB (39.5% reduction)
+    output:   dist/mmgr.min.css -> dist/mmgr.min.705919b5.css
+    time:     1288ms
+  marketing CSS:
+    raw:      172 KB
+    minified: 97 KB (43.4% reduction)
+    output:   dist/marketing.min.css -> dist/marketing.min.3a7f4612.css
+    time:     1271ms
+
+Done.
+  manifest:  dist/manifest.json

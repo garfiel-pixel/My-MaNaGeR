@@ -188,6 +188,14 @@
   function rbacEnterprise() {
     return _tier === 'company' || _tier === 'enterprise';
   }
+  // Close-out 3b (owner decision): raising an API key's low-risk auto-accept
+  // policy is a Company/Enterprise feature. Estimator/Contractor may use MCP
+  // and the owner-reviewed queue, but an agent may not land changes without
+  // the owner's click on those plans. The server is authoritative (402) - this
+  // gate only disables the control and explains why before the click.
+  function mcpAutoAccept() {
+    return _tier === 'company' || _tier === 'enterprise';
+  }
 
   ns.Entitlements = {
     setBillingTier: setBillingTier,
@@ -201,7 +209,8 @@
     estimatorAccess: estimatorAccess,
     rbacAccess: rbacAccess,
     rbacUnlimited: rbacUnlimited,
-    rbacEnterprise: rbacEnterprise
+    rbacEnterprise: rbacEnterprise,
+    mcpAutoAccept: mcpAutoAccept
   };
 
   // Ask once, at parse time: every gate above answers in the same tick, the

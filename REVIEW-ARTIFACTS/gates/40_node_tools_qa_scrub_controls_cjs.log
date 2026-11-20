@@ -1,0 +1,28 @@
+[qa-scrub] PASS  S0 engine booted and live region created
+[qa-scrub] PASS  S0 shipped clock planning aid present
+[qa-scrub] PASS  S1 a 3px click leaves the value alone
+[qa-scrub] PASS  S1 typing 6.75 commits 6.75
+[qa-scrub] PASS  S2 drag changed the value upward
+[qa-scrub] PASS  S2 drag landed on a 0.25 step
+[qa-scrub] PASS  S2 value stays inside 0 to 24
+[qa-scrub] PASS  S2 no change event during pointermove
+[qa-scrub] PASS  S2 exactly one change event on pointerup
+[qa-scrub] PASS  S2 live input fired during the drag
+[qa-scrub] PASS  S2 scrub classes removed on release
+[qa-scrub] PASS  S3 Escape restores the initial value
+[qa-scrub] PASS  S3 Escape suppresses the commit
+[qa-scrub] PASS  S4 hours popover offers 4h, 8h, +0.5h and Clear
+[qa-scrub] PASS  S4 the 8h chip sets 8
+[qa-scrub] PASS  S4 the 8h chip commits once
+[qa-scrub] PASS  S4 SmartTime Now picks the current quarter hour
+[qa-scrub] PASS  S4b scrubbing the start moved the start
+[qa-scrub] PASS  S4b linked end time preserves the one hour gap
+[qa-scrub] PASS  S5 popover is a body portal
+[qa-scrub] PASS  S5 popover is fixed and viewport clamped
+[qa-scrub] PASS  S5 popover is not nested in a panel
+[qa-scrub] PASS  S5 focus stays on the field after a preset commit
+[qa-scrub] PASS  S6 value bounds are exposed
+[qa-scrub] PASS  S6 aria-valuenow follows the value
+[qa-scrub] PASS  S6 one polite live region
+[qa-scrub] PASS  S7 no page errors
+[qa-scrub] 27 passed, 0 failed

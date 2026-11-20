@@ -1,0 +1,681 @@
+npm notice run my-manager@1.0.0 verify
+npm notice run npm run verify:csp && npm run verify:inline && npm run verify:js && npm run verify:three && npm run verify:csp-origins && npm run verify:asset-ext && npm run typecheck && npm run verify:eol && npm run verify:sw && npm run verify:demo-dates && npm run verify:hidden && npm run verify:skills && npm run verify:exports && npm run verify:wiring && npm run verify:css && npm run verify:ratebook-sync && npm run verify:empty-state && npm run verify:ratebook && npm run verify:lump && npm run verify:wording && npm run verify:reach && npm run verify:sweep13 && npm run verify:sw10 && npm run verify:gantt && npm run verify:a11y && npm run verify:eslint && npm run verify:prettier && npm run verify:marketing && npm run verify:feature-registry && npm run verify:nav-anchors && npm run verify:observe && npm run verify:google && npm run verify:csp-eval && npm test && npm run verify:sizes && npm run verify:major-colors && npm run verify:registry
+npm notice run my-manager@1.0.0 verify:csp
+npm notice run node tools/verify-csp-hashes.cjs
+[verify-csp-hashes] OK — 25 inline-script hashes match worker.js and serve.cjs: project.html (4 inline scripts), app.html (4 inline scripts), admin.html (4 inline scripts), dashboard.html (1 inline script), seed-test.html (1 inline script), mymanager-field-guide.html (1 inline script), monolith html to reference from all features.html (2 inline scripts), index.html (2 inline scripts), features.html (1 inline script), about.html (1 inline script), contact.html (1 inline script), reviews.html (1 inline script), privacy.html (1 inline script), terms.html (1 inline script)
+npm notice run my-manager@1.0.0 verify:inline
+npm notice run node tools/verify-inline-js.cjs
+[verify-inline-js] OK — 25 inline scripts across 20 pages all parse as JavaScript.
+npm notice run my-manager@1.0.0 verify:js
+npm notice run node tools/verify-js-syntax.cjs
+  PASS  js/ai-actions.js
+  PASS  js/app/backup.js
+  PASS  js/app/baseline-guard.js
+  PASS  js/app/components.js
+  PASS  js/app/confirm.js
+  PASS  js/app/controls-nav.js
+  PASS  js/app/copy-text.js
+  PASS  js/app/definitions.js
+  PASS  js/app/entitlements.js
+  PASS  js/app/export.js
+  PASS  js/app/history.js
+  PASS  js/app/launcher-rail.js
+  PASS  js/app/mcp-admin.js
+  PASS  js/app/scrub-number.js
+  PASS  js/app/search.js
+  PASS  js/app/section-accelerator.js
+  PASS  js/app/sidebar.js
+  PASS  js/app/skeleton.js
+  PASS  js/app/weather.js
+  PASS  js/book-import.js
+  PASS  js/calc-ai.js
+  PASS  js/calculator-page.js
+  PASS  js/cloud/diffs.js
+  PASS  js/cloud/photos-ui.js
+  PASS  js/cloud/review.js
+  PASS  js/cloud/scope.js
+  PASS  js/cloud/share.js
+  PASS  js/cloud/team-ui.js
+  PASS  js/cloud/webhooks.js
+  PASS  js/consent.js
+  PASS  js/marketing-ai.js
+  PASS  js/marketing-globe.js
+  PASS  js/marketing-roles.js
+  PASS  js/marketing.js
+  PASS  js/mmgr-agenda.js
+  PASS  js/mmgr-ai-key.js
+  PASS  js/mmgr-ai.js
+  PASS  js/mmgr-app.js
+  PASS  js/mmgr-approval.js
+  PASS  js/mmgr-bids.js
+  PASS  js/mmgr-billing-manage.js
+  PASS  js/mmgr-boq-bridge.js
+  PASS  js/mmgr-calculator.js
+  PASS  js/mmgr-charter.js
+  PASS  js/mmgr-claim.js
+  PASS  js/mmgr-closure.js
+  PASS  js/mmgr-cloud-dash.js
+  PASS  js/mmgr-cloud.js
+  PASS  js/mmgr-combobox.js
+  PASS  js/mmgr-custom-fields.js
+  PASS  js/mmgr-cycles.js
+  PASS  js/mmgr-decisions.js
+  PASS  js/mmgr-defs.js
+  PASS  js/mmgr-digest.js
+  PASS  js/mmgr-dmaic.js
+  PASS  js/mmgr-dock.js
+  PASS  js/mmgr-errors.js
+  PASS  js/mmgr-evm.js
+  PASS  js/mmgr-field.js
+  PASS  js/mmgr-forecast.js
+  PASS  js/mmgr-gantt-view.js
+  PASS  js/mmgr-glass.js
+  PASS  js/mmgr-google-auth.js
+  PASS  js/mmgr-health.js
+  PASS  js/mmgr-icon-restore.js
+  PASS  js/mmgr-ideas.js
+  PASS  js/mmgr-kanban.js
+  PASS  js/mmgr-major-tasks.js
+  PASS  js/mmgr-meetings.js
+  PASS  js/mmgr-net.js
+  PASS  js/mmgr-pages.js
+  PASS  js/mmgr-pdf.js
+  PASS  js/mmgr-perf-boot.js
+  PASS  js/mmgr-perf.js
+  PASS  js/mmgr-pool.js
+  PASS  js/mmgr-presence.js
+  PASS  js/mmgr-process.js
+  PASS  js/mmgr-procurement.js
+  PASS  js/mmgr-prompts.js
+  PASS  js/mmgr-raci.js
+  PASS  js/mmgr-relations.js
+  PASS  js/mmgr-render.js
+  PASS  js/mmgr-report.js
+  PASS  js/mmgr-resources.js
+  PASS  js/mmgr-risks.js
+  PASS  js/mmgr-schedule.js
+  PASS  js/mmgr-shortcuts.js
+  PASS  js/mmgr-skin.js
+  PASS  js/mmgr-stakeholders.js
+  PASS  js/mmgr-state.js
+  PASS  js/mmgr-sync.js
+  PASS  js/mmgr-tasks.js
+  PASS  js/mmgr-templates.js
+  PASS  js/mmgr-theme.js
+  PASS  js/mmgr-tour.js
+  PASS  js/mmgr-utils.js
+  PASS  js/mmgr-viewport.js
+  PASS  js/mmgr-voice.js
+  PASS  js/mmgr-watch.js
+  PASS  js/mmgr-weather.js
+  PASS  js/mmgr-weekly.js
+  PASS  js/pricing-fx.js
+  PASS  js/rateunits.js
+  PASS  js/render/agenda.js
+  PASS  js/render/closure.js
+  PASS  js/render/cycles.js
+  PASS  js/render/documents.js
+  PASS  js/render/financials.js
+  PASS  js/render/ideas.js
+  PASS  js/render/kanban.js
+  PASS  js/render/pages.js
+  PASS  js/render/people.js
+  PASS  js/render/process.js
+  PASS  js/render/resources.js
+  PASS  js/render/risks.js
+  PASS  js/render/weather.js
+  PASS  js/reset.js
+  PASS  js/reviews.js
+  PASS  js/signin.js
+  PASS  js/team-accept.js
+  PASS  js/verify.js
+  PASS  js/xlsx-lite.js
+  PASS  src/admin.js
+  PASS  src/ai-proxy.js
+  PASS  src/api/shapes.js
+  PASS  src/auth/admin-code.js
+  PASS  src/auth/google.js
+  PASS  src/auth/recovery.js
+  PASS  src/auth/session.js
+  PASS  src/billing.js
+  PASS  src/cloud/api-keys.js
+  PASS  src/cloud/apply-ops.js
+  PASS  src/cloud/calc-workspace.js
+  PASS  src/cloud/changelog.js
+  PASS  src/cloud/client-codes.js
+  PASS  src/cloud/editors.js
+  PASS  src/cloud/empty-state.js
+  PASS  src/cloud/photos.js
+  PASS  src/cloud/pool.js
+  PASS  src/cloud/presence.js
+  PASS  src/cloud/projects.js
+  PASS  src/cloud/proposal-diffs.js
+  PASS  src/cloud/sync.js
+  PASS  src/cloud/team-templates.js
+  PASS  src/cloud/team.js
+  PASS  src/contact.js
+  PASS  src/csp-report.js
+  PASS  src/data/ratebook.js
+  PASS  src/domain/task-effects.js
+  PASS  src/events.js
+  PASS  src/fx.js
+  PASS  src/lib/budget.js
+  PASS  src/lib/http.js
+  PASS  src/lib/observe.js
+  PASS  src/lib/turnstile.js
+  PASS  src/lib/validate.js
+  PASS  src/mcp/appwide.js
+  PASS  src/mcp/auto-accept.js
+  PASS  src/mcp/budget-access.js
+  PASS  src/mcp/changes.js
+  PASS  src/mcp/deps.js
+  PASS  src/mcp/errors.js
+  PASS  src/mcp/model.js
+  PASS  src/mcp/oauth.js
+  PASS  src/mcp/plan.js
+  PASS  src/mcp/report-store.js
+  PASS  src/mcp/server.js
+  PASS  src/mcp/tier-limits.js
+  PASS  src/mcp/tool-meta.js
+  PASS  src/ratebook.js
+  PASS  src/reviews.js
+  PASS  src/router.js
+  PASS  src/webhooks.js
+  PASS  worker.js
+  PASS  serve.cjs
+  PASS  sw.js
+  PASS  build.js
+
+[verify-js-syntax] 177/177 source scripts parse.
+JS SYNTAX PASS
+npm notice run my-manager@1.0.0 verify:three
+npm notice run node tools/verify-three-revision.cjs
+[verify-three] PASS: vendored three.js is r160
+npm notice run my-manager@1.0.0 verify:csp-origins
+npm notice run node tools/qa-csp-origins.cjs
+(node:17292) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/worker.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[csp-origins] files scanned: 194
+[csp-origins] policy origins: 20
+[csp-origins] exceptions: 21
+[csp-origins] PASS: every scanned origin is covered or excepted
+npm notice run my-manager@1.0.0 verify:asset-ext
+npm notice run node tools/verify-asset-extensions.cjs
+[asset-ext] WARN: 50 file(s) with a non-fatal extension
+[asset-ext]   warn AGENTS.md
+[asset-ext]   warn AUTHORS-FIX-ISSUE.md
+[asset-ext]   warn CLAUDE.md
+[asset-ext]   warn CONTINUATION-DIRECTIVE.md
+[asset-ext]   warn CONTRIBUTING.md
+[asset-ext]   warn dist/admin-bundle.js.map
+[asset-ext]   warn dist/app-bundle.js.map
+[asset-ext]   warn dist/bundle.js.map
+[asset-ext]   warn dist/marketing-ai.js.map
+[asset-ext]   warn dist/marketing-bundle.js.map
+[asset-ext] PASS: no .sql/.env/.bak/.pem/.key/.pfx/.zip/.tar/.log in the asset tree
+npm notice run my-manager@1.0.0 typecheck
+npm notice run tsc -p tsconfig.typecheck.json
+npm notice run my-manager@1.0.0 verify:eol
+npm notice run node tools/verify-eol.cjs
+[verify-eol] tracked text files in the index: 796
+[verify-eol] PASS: no CR bytes in 796 tracked text files
+
+npm notice run my-manager@1.0.0 verify:sw
+npm notice run node tools/verify-sw-cache.cjs
+[verify-sw-cache] OK — cache version mmgr-shell-v684 is newer than all 63 SHELL assets.
+npm notice run my-manager@1.0.0 verify:demo-dates
+npm notice run node tools/verify-demo-dates.cjs
+PASS  MMGR_DEMO_FILLED is defined
+PASS  updatedAt carries an ISO date
+PASS  the demo carries 30 tasks
+PASS  task ids are unique
+PASS  every task has both dates
+PASS  no task ends before it starts
+PASS  every duration matches the working-day span
+PASS  no open task ends before the fixture clock (2026-11-11)
+PASS  no 0% task has an elapsed start
+PASS  baseline rows all name a live task
+PASS  charter.targetStart is not after the first task
+PASS  charter.targetCompletion is not before the last task
+PASS  approved changes carry a title
+PASS  resolved issues carry a resolution
+PASS  weather log is historical (not after the fixture clock)
+
+DEMO FIXTURE PASS - 30 tasks, as of 2026-11-11.
+npm notice run my-manager@1.0.0 verify:hidden
+npm notice run node tools/verify-hidden-attr.cjs
+[verify-hidden] OK — every [hidden] element in 21 page(s) is matched by no unguarded non-none display rule (5716 CSS rules checked).
+npm notice run my-manager@1.0.0 verify:skills
+npm notice run node tools/verify-skills-lock.cjs
+OK     accessibility-rules          
+OK     cloudflare-api               
+OK     d1-migration                 
+OK     gemini-api-dev               
+OK     gws-drive                    
+OK     high-grade-mcp               
+OK     human-audit                  
+OK     landing-page-generator       
+OK     no-slacking                  
+OK     oauth                        
+OK     paddle-catalog-setup         
+OK     paddle-sandbox-testing       
+OK     paddle-subscription-sync     
+OK     paddle-webhooks              
+OK     plain-language-copy          
+OK     pwa-development              
+OK     qa-expert                    
+OK     security-audit               
+OK     skeptical-code-audit         
+OK     sleek-design-mobile-apps     
+OK     think outside the box skill  
+OK     ui-modernization             
+OK     universal-ui-architect       
+OK     web-perf                     
+OK     workers-best-practices       
+OK     wrangler                     
+ALL LOCKED SKILL HASHES MATCH
+npm notice run my-manager@1.0.0 verify:exports
+npm notice run node tools/verify-render-exports.cjs
+
+=== A1: render module export completeness ===
+
+  PASS: agenda.js: all 1 exports have wrappers
+  PASS: closure.js: all 4 exports have wrappers
+  PASS: cycles.js: empty export (skip)
+  PASS: documents.js: all 7 exports have wrappers
+  PASS: financials.js: all 4 exports have wrappers
+  PASS: ideas.js: all 1 exports have wrappers
+  PASS: kanban.js: all 3 exports have wrappers
+  PASS: pages.js: empty export (skip)
+  PASS: people.js: all 10 exports have wrappers
+  PASS: process.js: empty export (skip)
+  PASS: resources.js: all 7 exports have wrappers
+  PASS: risks.js: all 8 exports have wrappers
+  PASS: weather.js: all 13 exports have wrappers
+
+=== A1: mmgr-render.js ns.Render export identifiers ===
+
+  PASS: All 86 ns.Render export identifiers defined
+
+=== A1: app module export completeness ===
+
+  PASS: backup.js: all 9 exports have wrappers
+  PASS: baseline-guard.js: empty export (skip)
+  PASS: confirm.js: all 4 exports have wrappers
+  PASS: controls-nav.js: no export object found (skip)
+  PASS: copy-text.js: all 7 exports have wrappers
+  PASS: definitions.js: all 3 exports have wrappers
+  PASS: export.js: all 7 exports have wrappers
+  PASS: history.js: all 7 exports have wrappers
+  PASS: mcp-admin.js: no export object found (skip)
+  PASS: search.js: no export object found (skip)
+  PASS: sidebar.js: all 10 exports have wrappers
+  PASS: skeleton.js: all 3 exports have wrappers
+  PASS: weather.js: all 9 exports have wrappers
+
+=== A1: cloud module export completeness ===
+
+  PASS: diffs.js: all 3 exports have wrappers
+  PASS: photos-ui.js: all 18 exports have wrappers
+  PASS: review.js: all 10 exports have wrappers
+  PASS: scope.js: all 6 exports have wrappers
+  PASS: share.js: all 6 exports have wrappers
+  PASS: webhooks.js: all 4 exports have wrappers
+
+ALL CHECKS PASSED
+npm notice run my-manager@1.0.0 verify:wiring
+npm notice run node tools/verify-wiring.cjs
+
+=== 1. data-action in served HTML has a handler ===
+
+  PASS  all 366 HTML data-action values have a handler
+
+=== 2. handler references (informational) ===
+
+  WARN  handler "poolRefreshAndMerge" has no static reference (dynamic only?)
+  WARN  handler "exportGanttPNG" has no static reference (dynamic only?)
+  WARN  handler "exportGanttSVG" has no static reference (dynamic only?)
+  WARN  handler "exportGanttPDF" has no static reference (dynamic only?)
+  WARN  handler "closeAiWinBg" has no static reference (dynamic only?)
+  WARN  handler "tglSidebar" has no static reference (dynamic only?)
+  WARN  handler "cloudReviewMine" has no static reference (dynamic only?)
+  WARN  handler "openDrwToSave" has no static reference (dynamic only?)
+  WARN  handler "undoDelMeeting" has no static reference (dynamic only?)
+  WARN  handler "calcBookDefault" has no static reference (dynamic only?)
+  PASS  647 handlers scanned (10 dynamic-only, informational)
+
+=== 3. delegated data-* families have a handler ===
+
+  PASS  all 9 delegated families have a handler
+
+=== 4. local page links resolve ===
+
+  PASS  all 343 local page links resolve
+
+ALL CHECKS PASSED
+npm notice run my-manager@1.0.0 verify:css
+npm notice run node tools/verify-css-integrity.cjs
+
+=== CSS integrity: ARM 1 stray comment closers ===
+  PASS  css/src/10-tokens.css: no stray comment closer
+  PASS  css/src/20-shell.css: no stray comment closer
+  PASS  css/src/30-panels.css: no stray comment closer
+  PASS  css/src/35-workspace.css: no stray comment closer
+  PASS  css/src/36-search.css: no stray comment closer
+  PASS  css/src/37-mcp-admin.css: no stray comment closer
+  PASS  css/src/40-ai.css: no stray comment closer
+  PASS  css/src/50-calculator.css: no stray comment closer
+  PASS  css/src/60-dashboard.css: no stray comment closer
+  PASS  css/src/70-chrome.css: no stray comment closer
+  PASS  css/src/80-auth.css: no stray comment closer
+  PASS  css/src/82-launcher.css: no stray comment closer
+  PASS  css/src/83-floating-calculator.css: no stray comment closer
+  PASS  css/src/84-themes.css: no stray comment closer
+  PASS  css/src/85-performance-mode.css: no stray comment closer
+  PASS  css/src/86-assistant-mailbox.css: no stray comment closer
+  PASS  css/src/86-theme-bento.css: no stray comment closer
+  PASS  css/src/86-theme-departure.css: no stray comment closer
+  PASS  css/src/86-theme-editorial.css: no stray comment closer
+  PASS  css/src/86-theme-guild.css: no stray comment closer
+  PASS  css/src/86-theme-modal.css: no stray comment closer
+  PASS  css/src/86-theme-obsidian.css: no stray comment closer
+  PASS  css/src/86-theme-pegboard.css: no stray comment closer
+  PASS  css/src/86-theme-permit.css: no stray comment closer
+  PASS  css/src/86-theme-vellum.css: no stray comment closer
+  PASS  css/src/87-signin-polish.css: no stray comment closer
+  PASS  css/src/88-dark-buttons.css: no stray comment closer
+  PASS  css/src/89-code-names.css: no stray comment closer
+  PASS  css/src/90-calc-owner-wave.css: no stray comment closer
+  PASS  css/src/91-design-system.css: no stray comment closer
+  PASS  css/src/92-procurement.css: no stray comment closer
+  PASS  css/src/93-wide-and-export.css: no stray comment closer
+  PASS  css/src/94-procurement-extra.css: no stray comment closer
+  PASS  css/src/95-gold-buttons.css: no stray comment closer
+  PASS  css/src/96-accent-modes.css: no stray comment closer
+  PASS  css/src/97-scrub-smart-time.css: no stray comment closer
+  PASS  css/marketing.css: no stray comment closer
+  PASS  dist/mmgr.min.css: no stray comment closer
+  PASS  dist/marketing.min.css: no stray comment closer
+  PASS  admin.html: no stray comment closer
+  PASS  app.html: no stray comment closer
+  PASS  dashboard.html: no stray comment closer
+  PASS  monolith html to reference from all features.html: no stray comment closer
+  PASS  mymanager-field-guide.html: no stray comment closer
+
+=== CSS integrity: ARM 0 the served stylesheet is the assembled layers ===
+  PASS  css/mmgr.css is byte-identical to 36 layer(s): css/src/10-tokens.css, css/src/20-shell.css, css/src/30-panels.css, css/src/35-workspace.css, css/src/36-search.css, css/src/37-mcp-admin.css, css/src/40-ai.css, css/src/50-calculator.css, css/src/60-dashboard.css, css/src/70-chrome.css, css/src/80-auth.css, css/src/82-launcher.css, css/src/83-floating-calculator.css, css/src/84-themes.css, css/src/85-performance-mode.css, css/src/86-assistant-mailbox.css, css/src/86-theme-bento.css, css/src/86-theme-departure.css, css/src/86-theme-editorial.css, css/src/86-theme-guild.css, css/src/86-theme-modal.css, css/src/86-theme-obsidian.css, css/src/86-theme-pegboard.css, css/src/86-theme-permit.css, css/src/86-theme-vellum.css, css/src/87-signin-polish.css, css/src/88-dark-buttons.css, css/src/89-code-names.css, css/src/90-calc-owner-wave.css, css/src/91-design-system.css, css/src/92-procurement.css, css/src/93-wide-and-export.css, css/src/94-procurement-extra.css, css/src/95-gold-buttons.css, css/src/96-accent-modes.css, css/src/97-scrub-smart-time.css
+
+=== CSS integrity: ARM 2 rules dropped by the build ===
+  PASS  css/src/10-tokens.css + css/src/20-shell.css + css/src/30-panels.css + css/src/35-workspace.css + css/src/36-search.css + css/src/37-mcp-admin.css + css/src/40-ai.css + css/src/50-calculator.css + css/src/60-dashboard.css + css/src/70-chrome.css + css/src/80-auth.css + css/src/82-launcher.css + css/src/83-floating-calculator.css + css/src/84-themes.css + css/src/85-performance-mode.css + css/src/86-assistant-mailbox.css + css/src/86-theme-bento.css + css/src/86-theme-departure.css + css/src/86-theme-editorial.css + css/src/86-theme-guild.css + css/src/86-theme-modal.css + css/src/86-theme-obsidian.css + css/src/86-theme-pegboard.css + css/src/86-theme-permit.css + css/src/86-theme-vellum.css + css/src/87-signin-polish.css + css/src/88-dark-buttons.css + css/src/89-code-names.css + css/src/90-calc-owner-wave.css + css/src/91-design-system.css + css/src/92-procurement.css + css/src/93-wide-and-export.css + css/src/94-procurement-extra.css + css/src/95-gold-buttons.css + css/src/96-accent-modes.css + css/src/97-scrub-smart-time.css: all 2007 class rules survive the build into dist/mmgr.min.css
+  PASS  css/marketing.css: all 347 class rules survive the build into dist/marketing.min.css
+
+CSS INTEGRITY PASS
+npm notice run my-manager@1.0.0 verify:ratebook-sync
+npm notice run node tools/gen-ratebook.cjs --check
+[gen-ratebook] in sync - {"rows":811,"trades":11,"inApp":100,"calc":711}
+npm notice run my-manager@1.0.0 verify:empty-state
+npm notice run node tools/gen-empty-state.cjs --check
+[gen-empty-state] in sync - schema 32
+npm notice run my-manager@1.0.0 verify:ratebook
+npm notice run node tools/verify-ratebook-wording.cjs
+PASS  the rate book name is one constant
+PASS  the dialog header uses the name and the brand mark
+PASS  the brand mark is sized 18px
+PASS  the planning notice is one function
+PASS  the notice carries the directive sentence
+PASS  the notice rides the priced result and the dialog footer
+PASS  the provenance status is known
+PASS  first-party provenance names My MaNaGeR as publisher
+PASS  first-party status shows no external source line or publisher wording
+PASS  no claim of independent production reaches a user surface
+PASS  the pricing page names the book
+PASS  the pricing page makes no whole-book rate-count claim
+PASS  the pricing page offers upload of the user's own rate book
+PASS  no code file carries the old institution initials (the book is My MaNaGeR Rate Book only)
+
+PASS - 14/14 gates
+npm notice run my-manager@1.0.0 verify:lump
+npm notice run node tools/verify-calc-lump.cjs
+[calc-lump] PASS  every WORK trade carries an ACCESSORIES entry or a written reason
+[calc-lump] PASS  the ACCESSORIES table describes only real trades
+[calc-lump] PASS  every entry is either an itemised list or a written reason, never both
+[calc-lump] PASS  every itemised line has an id, a name, a unit, a rule, waste, a price and a source
+[calc-lump] PASS  a written reason says something (20+ characters)
+[calc-lump] PASS  T-LUMP: no trade with a multi-part material description is left as a bare lump
+[calc-lump] PASS  the table itemises the trades the owner named (30+ lists)
+[calc-lump] coverage: 35 trades itemised, 14 with a written reason, 49 trades in total
+[calc-lump] multi-part descriptions answered with a reason (review these - each one is a deliberate "there is nothing to itemise here"):
+[calc-lump]   - siteprep: Clearing and stripping is plant and labour - the allowance is the whole cost.
+[calc-lump]   - scaffold: The rate is for scaffolding erected and stripped - the hire is the whole figure.
+[calc-lump]   - welding: The rate is the cut and the finish; electrodes and discs are inside it.
+[calc-lump]   - stirrups: The links arrive cut and bent - the rate is the link and the tying.
+[calc-lump]   - rebar-size: The rate is the bar itself, by size.
+[calc-lump]   - concrete-labour: Labour-only bands - there is no material in this rate.
+[calc-lump]   - fabric-mesh: The rate is the mesh, lapped and tied.
+[calc-lump]   - debrush: The rate is cutting and clearing the line.
+[calc-lump]   - custom: Your own combined figure - it does not split.
+[calc-lump]   - book: A published planning rate covers the whole item.
+[calc-lump] PASS  the drywall question the owner asked is answered with a real list
+[calc-lump] 
+[calc-lump] RESULT  all checks passed
+npm notice run my-manager@1.0.0 verify:wording
+npm notice run node tools/verify-assistant-wording.cjs
+PASS  every calcCheck() missing entry carries a meaning and an example (8 blocks)
+PASS  the page builds locked sentence 3 in one function
+PASS  the sentence builder is exported to the panel
+PASS  calcPopulate composes its refusal from the sentence builder
+PASS  the panel composes its refusal from the page sentence builder
+PASS  the old bare refusal wording is gone
+PASS  the assistant prompt carries the amended locked sentence 3
+PASS  no user-facing file tells the user to check the quantities
+PASS  every WORK entry is given a meaning and an example at load
+PASS  the quantity classifier covers area, volume, length and count
+
+PASS - 10/10 gates
+npm notice run my-manager@1.0.0 verify:reach
+npm notice run node tools/verify-settings-reach.cjs
+
+=== SW-14: every stored setting has a UI or an AI path ===
+  PASS  SETTING_FIELDS parses with 11 settings keys
+  PASS  every key has a type SETTING_ORDER ranks (bool/select/num/parts/acc)
+  PASS  9 keys reach a real field id in the page
+  PASS  composite "onCost" (parts) has its editor and its applier branch
+  PASS  composite "accessories" (acc) has its editor and its applier branch
+  PASS  the system prompt names exactly the 11 keys the page accepts
+  PASS  the panel is given the same list (MMGR_CALC_SETTING_KEYS)
+  PASS  all 43 ids readState() saves exist as fields
+  NOTE  js/mmgr-state.js carries no `settings` block - the project app keeps no settings object of that shape (its settings are fields on the state root, each with its own row). If one is ever added, this test reads it and applies the sweep rule: each key needs calc-<key>/set-<key> in a page or a quoted path in an AI module.
+SW-14 UNREACHABLE SETTINGS PASS
+npm notice run my-manager@1.0.0 verify:sweep13
+npm notice run node tools/verify-sweep13.cjs
+
+=== SW-13: notice containers that no code ever fills ===
+  PASS  SW-13 the sweep reports zero dead containers
+  PASS  SW-13 the containers the detector judges are still on the project page
+  PASS  SW-13 the scan has a real surface to judge (at least ten candidates)
+  PASS  SW-13 every producer the detector relies on is in a file it scans
+
+SW-13 NOTICE CONTAINERS PASS (4 checks)
+npm notice run my-manager@1.0.0 verify:sw10
+npm notice run node tools/verify-sw10.cjs
+  PASS  ARM 1: the sweep reports SW-10 = 0
+  PASS  ARM 2a: at least 12 div/span/li/td data-action surfaces remain
+  PASS  ARM 2b: the six dialog backdrops are still judged (data-action + role=presentation)
+  PASS  ARM 2c: the three nav scrims still carry their data-action
+  PASS  ARM 3a: #dirty-ind carries role=button and tabindex=0
+  PASS  ARM 3b: #timeline-ind carries role=button and tabindex=0
+  PASS  ARM 3c: a delegated keydown activates role=button data-action elements (Enter/Space -> click)
+  PASS  ARM 4: no nav scrim is focusable (aria-hidden + tabindex would be a violation)
+  PASS  ARM 5: every dialog backdrop still offers a real close button
+  ---
+  verify-sw10: 9/9 checks
+npm notice run my-manager@1.0.0 verify:gantt
+npm notice run node tools/verify-gantt-view.cjs
+[gantt-view] PASS  the module publishes MMGR.GanttView
+[gantt-view] PASS  GanttView.build is a function
+[gantt-view] PASS  GanttView.reduceLinks is a function
+[gantt-view] PASS  GanttView.isMilestone is a function
+[gantt-view] PASS  GanttView.isGateMilestone is a function
+[gantt-view] PASS  GanttView.groupKeyOf is a function
+[gantt-view] PASS  the builder never touches document.
+[gantt-view] PASS  the builder never touches fetch(
+[gantt-view] PASS  the builder never touches XMLHttpRequest
+[gantt-view] PASS  the builder never touches localStorage
+[gantt-view] PASS  the builder never touches sessionStorage
+[gantt-view] PASS  the builder never touches addEventListener
+[gantt-view] PASS  the builder never touches getElementById
+[gantt-view] PASS  the builder writes nothing into the state object
+[gantt-view] PASS  the fixture is a bank renovation with five phases
+[gantt-view] PASS  the fixture carries parented children
+[gantt-view] PASS  the fixture carries one orphan whose parent cannot resolve
+[gantt-view] PASS  build() leaves the state byte-identical (a view is not a write)
+[gantt-view] PASS  no row is drawn twice
+[gantt-view] PASS  every dated task is drawn exactly once (nothing is silently dropped)
+[gantt-view] PASS  rows = five phases + every real task + one group header
+[gantt-view] PASS  phases keep state order
+[gantt-view] PASS  every child sits under its phase, in start-date order
+[gantt-view] PASS  the orphan is listed last, under one named group header
+[gantt-view] PASS  the orphan list is reported to the caller
+[gantt-view] PASS  phases are numbered 1..5
+[gantt-view] PASS  the first child of P1 is 1.1
+[gantt-view] PASS  a sibling counts up
+[gantt-view] PASS  switching the swimlane axis does not renumber the plan
+[gantt-view] PASS  collapsing finished phases does not renumber the plan
+[gantt-view] PASS  a phase span falls back to its own dates when no Schedule is loaded
+[gantt-view] PASS  a phase span comes from Schedule.phaseSpan (never a stored rollup)
+[gantt-view] PASS  a task span is never asked of Schedule
+[gantt-view] PASS  the fixture draws six diamonds: one plain milestone and five gates
+[gantt-view] PASS  the gate rule picks the five phase gates and not the plain milestone
+[gantt-view] PASS  a phase is never a milestone diamond
+[gantt-view] PASS  a same-day row that names a sign-off is a milestone by name
+[gantt-view] PASS  a multi-day task is not a milestone
+[gantt-view] PASS  the milestone flag alone is enough
+[gantt-view] PASS  the fixture has 63 finish-to-start links
+[gantt-view] PASS  'all' draws every plan link and nothing else
+[gantt-view] PASS  'all' invents no link (every line is in the plan)
+[gantt-view] PASS  the critical chain is a subset of the plan links
+[gantt-view] PASS  'near' keeps every critical link
+[gantt-view] PASS  'near' drops every line longer than eight rows
+[gantt-view] PASS  the gates view derives one line per phase gate
+[gantt-view] PASS  every derived line runs from a phase to its OWN gate milestone
+[gantt-view] PASS  the gates view is materially thinner than the wall of links
+[gantt-view] PASS  the default view stays legible on a 46-row plan (at most 40 lines)
+[gantt-view] PASS  the gates view draws no task-to-task line
+[gantt-view] PASS  an unknown policy falls back to the default 'gates'
+[gantt-view] PASS  the default policy is reported back
+[gantt-view] PASS  tidy collapses the three phases that finished before today
+[gantt-view] PASS  tidy keeps the collapsed phase rows themselves
+[gantt-view] PASS  tidy drops the children of a collapsed phase
+[gantt-view] PASS  tidy never draws a link the untidied view does not have
+[gantt-view] PASS  tidy reduces the links transitively (no redundant line survives)
+[gantt-view] PASS  an all-complete phase collapses even with open dates
+[gantt-view] PASS  an active phase stays open
+[gantt-view] PASS  the active phase keeps its child
+[gantt-view] PASS  the trade axis draws one band per trade
+[gantt-view] PASS  the assignee axis draws one band per person
+[gantt-view] PASS  the trade axis draws no phase rows
+[gantt-view] PASS  every task appears once on the trade axis
+[gantt-view] PASS  tasks inside a band are in start-date order
+[gantt-view] PASS  a band is labelled, not blank
+[gantt-view] PASS  an unknown axis falls back to phases
+[gantt-view] PASS  a task with no assignee is not dropped from the assignee axis
+[gantt-view] PASS  the whole-project window is the project range
+[gantt-view] PASS  a 117-day plan gets week ticks
+[gantt-view] PASS  totalDays matches the window
+[gantt-view] PASS  the next-90 window starts today and runs 90 days
+[gantt-view] PASS  a 91-day window gets week ticks
+[gantt-view] PASS  the scale bounds are date STRINGS, never Date objects
+[gantt-view] PASS  every span bound is a date string
+[gantt-view] PASS  a custom window keeps the owner dates verbatim
+[gantt-view] PASS  tidy collapses a phase that starts AFTER the visible window
+[gantt-view] PASS  a 20-day custom window gets day ticks
+[gantt-view] PASS  a two-year window gets month ticks
+[gantt-view] PASS  an inverted window falls back to the whole project
+[gantt-view] PASS  a half-typed window falls back to the whole project
+[gantt-view] PASS  an empty plan returns no rows and no links
+[gantt-view] PASS  an empty plan still reports a usable scale
+[gantt-view] PASS  the module builds without MMGR.Utils (fallbacks hold)
+[gantt-view] PASS  the live chart reads the view through one helper
+[gantt-view] PASS  renderGantt paints the builder answer
+[gantt-view] PASS  the live chart no longer re-derives the row order
+[gantt-view] PASS  the live chart no longer re-derives the date range
+[gantt-view] PASS  the live chart no longer walks predecessors for its arrows
+[gantt-view] PASS  the live chart draws the builder scale
+[gantt-view] PASS  the live chart clamps bars to the visible window
+[gantt-view] PASS  the arrow overlay consumes the view link list
+[gantt-view] PASS  a derived gate line is drawn but never offered as a deletable dependency
+[gantt-view] PASS  the arrow redraw path rebuilds the same view
+[gantt-view] PASS  the export builds its draw list from the one builder
+[gantt-view] PASS  exportGanttPNG draws from the shared draw list
+[gantt-view] PASS  exportGanttSVG draws from the shared draw list
+[gantt-view] PASS  exportGanttPDF draws from the shared draw list
+[gantt-view] PASS  the export passes the same axis and window the screen uses
+[gantt-view] PASS  the export x-axis is the view scale
+[gantt-view] PASS  project.html carries the ganttTidy control
+[gantt-view] PASS  the ganttTidy action is in the exported App object
+[gantt-view] PASS  the ganttTidy action is in ACTION_MAP
+[gantt-view] PASS  project.html carries the setGanttGroup control
+[gantt-view] PASS  the setGanttGroup action is in the exported App object
+[gantt-view] PASS  the setGanttGroup action is in ACTION_MAP
+[gantt-view] PASS  project.html carries the setGanttWindow control
+[gantt-view] PASS  the setGanttWindow action is in the exported App object
+[gantt-view] PASS  the setGanttWindow action is in ACTION_MAP
+[gantt-view] PASS  project.html carries the setGanttWindowDate control
+[gantt-view] PASS  the setGanttWindowDate action is in the exported App object
+[gantt-view] PASS  the setGanttWindowDate action is in ACTION_MAP
+[gantt-view] PASS  the custom window row ships hidden and is a real date range
+[gantt-view] PASS  the change-event whitelist carries the toolbar selects
+[gantt-view] PASS  renderGantt mirrors the view state back onto the controls
+[gantt-view] PASS  the hidden custom row has its own display guard (verify-hidden-attr)
+[gantt-view] PASS  css/mmgr.css defines .gr-group
+[gantt-view] PASS  css/mmgr.css defines .gr-group-name
+[gantt-view] PASS  css/mmgr.css defines .gb-ms-label
+[gantt-view] PASS  css/mmgr.css defines .gb-milestone.gate
+[gantt-view] PASS  css/mmgr.css defines .ms-diamond.gate
+[gantt-view] PASS  css/mmgr.css defines .gd-tick
+[gantt-view] PASS  css/mmgr.css defines .gv-custom
+[gantt-view] PASS  css/mmgr.css defines .gv-tgl.tgl
+[gantt-view] PASS  css/mmgr.css defines .gv-tgl-txt
+[gantt-view] 
+[gantt-view] RESULT  all checks passed
+npm notice run my-manager@1.0.0 verify:a11y
+npm notice run node tools/verify-a11y-labels.cjs
+
+=== A11Y LABELS: accessible names on every served page ===
+  pages in scope: 20 (excludes the legacy reference dump)
+  PASS  about.html  (0 field(s), 1 icon control(s) checked)
+  PASS  admin.html  (41 field(s), 9 icon control(s) checked)
+  PASS  app.html  (9 field(s), 10 icon control(s) checked)
+  PASS  calculator.html  (77 field(s), 4 icon control(s) checked)
+  PASS  contact.html  (4 field(s), 1 icon control(s) checked)
+  PASS  dashboard.html  (0 field(s), 0 icon control(s) checked)
+  PASS  features.html  (0 field(s), 1 icon control(s) checked)
+  PASS  index.html  (0 field(s), 1 icon control(s) checked)
+  PASS  mymanager-field-guide.html  (0 field(s), 1 icon control(s) checked)
+  PASS  pricing.html  (0 field(s), 1 icon control(s) checked)
+  PASS  privacy.html  (0 field(s), 1 icon control(s) checked)
+  PASS  project.html  (141 field(s), 24 icon control(s) checked)
+  PASS  refund.html  (0 field(s), 1 icon control(s) checked)
+  PASS  reset.html  (3 field(s), 0 icon control(s) checked)
+  PASS  reviews.html  (7 field(s), 1 icon control(s) checked)
+  PASS  seed-test.html  (0 field(s), 0 icon control(s) checked)
+  PASS  signin.html  (0 field(s), 0 icon control(s) checked)
+  PASS  team-accept.html  (0 field(s), 0 icon control(s) checked)
+  PASS  terms.html  (0 field(s), 1 icon control(s) checked)
+  PASS  verify.html  (1 field(s), 0 icon control(s) checked)
+
+A11Y LABELS PASS — every served page has named fields, named icon controls, valid label targets and no duplicate ids.
+npm notice run my-manager@1.0.0 verify:eslint
+npm notice run node tools/verify-eslint.cjs
+ESLint: 0 errors, 1040 pre-existing warning(s) across 514 file(s) (ceiling 1286, headroom 246)
+ESLint per-rule (count/frozen): curly 594/598, no-unused-vars 240/411, no-undef 158/202, no-redeclare 48/65
+npm notice run my-manager@1.0.0 verify:prettier
+npm notice run node tools/verify-prettier.cjs
+
+1 file(s) need formatting:
+  REVIEW-ARTIFACTS/capture-shots.cjs
+
+PRETTIER GATE FAIL: 1 file(s) need formatting - run `npx prettier --write .` to fix
+  REVIEW-ARTIFACTS/capture-shots.cjs

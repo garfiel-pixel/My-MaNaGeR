@@ -1,0 +1,2 @@
+ESLint: 0 errors, 1040 pre-existing warning(s) across 514 file(s) (ceiling 1286, headroom 246)
+ESLint per-rule (count/frozen): curly 594/598, no-unused-vars 240/411, no-undef 158/202, no-redeclare 48/65

@@ -1,0 +1,48 @@
+[mb] PASS  B0a email session minted
+[mb] PASS  B0b cloud project created
+[mb] PASS  B0c owner save ok (real budget state)
+[mb] PASS  B0d billing webhook entitles the owner (MCP is a Premium feature)
+[mb] PASS  B1a a key cannot be granted "propose" without "read" (400)
+[mb] PASS  B1b the three keys minted (none / read / read+write)
+[mb] PASS  B2a a key with the Budget section but no switch reads no money
+[mb] PASS  B2b get_deliveries is refused by the same switch
+[mb] PASS  B3a get_budget carries BOQ quantity, unit and rate
+[mb] PASS  B3b get_budget carries deliveries, remaining quantity and a chip
+[mb] PASS  B3c get_budget carries the frozen baseline and the variation count
+[mb] PASS  B3d the envelope reads as a ceiling, not a second plan
+[mb] PASS  B4a get_deliveries lists the delivery with its quantity and price
+[mb] PASS  B4b get_deliveries rolls up quantity left and money left
+[mb] PASS  B5a get_weekly_summary snaps to the Monday of that week
+[mb] PASS  B5b spent this week is the delivery inside that week
+[mb] PASS  B5c forecast at completion: B1 = spent + remaining quantity at the latest price
+[mb] PASS  B5d money used vs work done is reported (workPct 50 from four tasks)
+[mb] PASS  B6a a read-only key cannot queue a budget proposal
+[mb] PASS  B7a a delivery proposal queues (proposal number returned)
+[mb] PASS  B7b the proposal changes NO live value
+[mb] PASS  B8 a text quantity is refused
+[mb] PASS  B9 a negative quantity is refused
+[mb] PASS  B10 a unit outside the line family is refused
+[mb] PASS  B11 a delivery without a price is refused
+[mb] PASS  B12 get_proposal_status reports pending with the server summary
+[mb] PASS  B13 an AI client cannot approve (review endpoints are owner-only)
+[mb] PASS  B14 the owner rejects with a reason
+[mb] PASS  B15 get_proposal_status reports rejected AND the owner reason
+[mb] PASS  B16 the owner accepts with an edit note
+[mb] PASS  B17 get_proposal_status reports edited-and-accepted with the note
+[mb] PASS  B18 the accepted delivery lands with the SERVER-computed amount (5 x 1,600 = 8,000)
+[mb] PASS  B18b a task field diff queues (proposal number returned)
+[mb] PASS  B18c the review row names the record and the affected screens
+[mb] PASS  B18d one-press accept saves the project
+[mb] PASS  B18e the task status changed and its other fields survived
+[mb] PASS  B18f a sets proposal queues both a scalar and a nested object field
+[mb] PASS  B18g the accepted scalar set lands
+[mb] PASS  B18h the accepted nested object set lands
+[mb] PASS  B18i a set against a record list is refused (use diffs)
+[mb] PASS  B19a PATCH cannot turn propose on while read is off (400)
+[mb] PASS  B19b PATCH turns "Read budget" on after the key was minted
+[mb] PASS  B19c the same key now reads the budget (the switch is live, not cached)
+[mb] PASS  B20a deleting a budget line through MCP is refused
+[mb] PASS  B20b an unknown proposal kind is refused with the allowed list
+[mb] PASS  B21 tools/list advertises get_deliveries, get_weekly_summary and get_proposal_status
+[mb] ---------------------------------------------
+[mb] RESULT 46 passed, 0 failed of 46

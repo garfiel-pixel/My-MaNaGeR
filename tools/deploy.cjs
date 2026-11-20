@@ -78,7 +78,9 @@ const SKIP_DIRS = new Set([
   'tmp',
   'screenshots',
   'web-research',
-  'dogfood-output'
+  'dogfood-output',
+  // Accountability evidence (logs + screenshots) is for review, not deploy.
+  'REVIEW-ARTIFACTS'
 ]);
 const SKIP_FILE_RE = [
   /\.dev\.vars/,

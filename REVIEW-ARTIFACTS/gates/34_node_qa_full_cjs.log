@@ -1,0 +1,197 @@
+[PASS] 01 boot: MMGR + active dash panel
+[PASS] 01b boot: no boot failure banner
+[PASS] 02 theme: light default + Appearance select reflects
+[PASS] 02b theme: select dark -> class + device pref
+[PASS] 02c theme: click again -> light (no double-toggle)
+[PASS] 03 crosshair: toggle on -> class + state
+[PASS] 03b crosshair: mousemove moves #cx/#cy lines
+[PASS] 03c crosshair: toggle off -> class gone
+[PASS] 04 persistence: dark + crosshair survive hard refresh
+[PASS] 05 snapshot: Snapshot Now button appears in modal
+[PASS] 05b snapshot: click writes dailySnapshot state
+[PASS] 05c snapshot: not shown for other prompt types
+[PASS] 06 leadtime tracker: table renders with t3
+[PASS] 07 float watch: renders critical/near-critical/crash sections
+[PASS] 08 wx: inputs present
+[PASS] 08b wx: change persists state + rerenders stats
+[PASS] 08c wx: buffer persists
+[PASS] 09 confidence: 3-way card renders
+[PASS] 10 monte carlo: result panel populates
+[PASS] 10b monte carlo: headline probability when target set
+[PASS] 11 kanban lane: visible initially (seed kbShowLeadtime=true)
+[PASS] 11b kanban lane: toggle off -> hidden + state false
+[PASS] 11c kanban lane: toggle on -> visible + chip is-on
+[PASS] 11d kanban lane: leadtime card shows expected/days-left/elapsed (monolith detail)
+[PASS] 11e kanban drop guard: leadtime card refused in another work column
+[PASS] 11f kanban drop guard: normal card still moves
+[PASS] 11g kanban DOM-id contract: drops render into every real column + WIP counter
+[PASS] 11h import: wiCommit refreshes Kanban + Dash; phases stay off the board
+[PASS] 11i import: idCommit refreshes Gantt + Kanban + Dash
+[PASS] 11j wbs: click task name -> edit -> blur commits name (no jump)
+[PASS] 11k kanban: phases + rollup parents never land on the board
+[PASS] 11l wbs: status change via updTaskField refreshes Dashboard (h-dn)
+[PASS] 11m kanban: lead-time drop refreshes WBS badge + Dash tracker
+[PASS] 11n wbs: date change commits WITHOUT rebuilding the WBS row (picker stays anchored)
+[PASS] 11g boot sync: lane hidden on fresh dash boot when kbShowLeadtime=false
+[PASS] 11h boot sync: lane + chip reflect true state after renderAll
+[PASS] 12 critical hl: on -> body class + state + chip
+[PASS] 12b critical hl: off -> cleared
+[PASS] 13 gantt arrows: svg overlay with lines
+[PASS] 13b gantt arrows: bar count matches rows
+[PASS] 13c gantt arrows: click -> confirm modal opens
+[PASS] 13d gantt arrows: confirm removes the dependency
+[PASS] 13e gantt view: Group=Trade draws swimlane bands and persists
+[PASS] 13f gantt view: Group=Phase restores one row per phase
+[PASS] 13g gantt view: Window=Custom reveals the two date fields
+[PASS] 13h gantt view: a custom window narrows the drawn scale
+[PASS] 13i gantt view: Window=All hides the date fields again
+[PASS] 13j gantt view: Tidy collapses the view and persists
+[PASS] 13k gantt view: the switches never touched the plan
+[PASS] 14 cashflow: S-curve svg renders
+[PASS] 14b spend log: row appears
+[PASS] 14c spend log: amount persists to state
+[PASS] 14d spend log: delete works
+[PASS] 15 baseline variance: table rows + cost roll-up
+[PASS] 16 raci: matrix cell set
+[PASS] 16b raci: task delete prunes row + cells
+[PASS] 16c raci: resource delete prunes person col + cells
+[PASS] 16d raci: stakeholder delete prunes col
+[PASS] 16e raci: manual row delete works
+[PASS] 17 meetings: live card renders with elapsed badge
+[PASS] 17b meetings: item toggle persists
+[PASS] 17c meetings: note persists without focus loss
+[PASS] 17d meetings: elapsed badge auto-refreshes to ~10m
+[PASS] 17e meetings: ended -> history record + comms entry
+[PASS] 17f meetings: Copy Minutes toasts + no throw
+[PASS] 17g meetings: history shows Copy Minutes button per row
+[PASS] 18 charter: modal documents docx/pdf limitation
+[PASS] 18b charter: upload input accepts txt/md/docx/pdf
+[PASS] 18c charter: .txt file upload reads text into source
+[PASS] 18d charter: txt content lands in cu-source + prompt regenerates
+[PASS] 18e charter: docx file lands on paste tab with clear error
+[PASS] 18f charter: docx error toast + paste tab active
+[PASS] 19 emoji: no emoji in rendered DOM text
+[PASS] 20 inline styles: DOM census reduced below 250 (was 354 pre-refactor)
+[PASS] 21 dirty: shows Not backed up on fresh profile
+[PASS] 21b dirty: clears after file backup + watermark set
+[PASS] 21c dirty: returns on next edit
+[PASS] 22 focus: F toggles class + state
+[PASS] 22b focus: hides header/nav/drawer, keeps active panel
+[PASS] 22c focus: F again exits
+[PASS] 23 access gate: locked project redirects to app entry
+[PASS] 24 undo/redo: push -> mutate -> undo restores
+[PASS] 25 multi-tab: storage conflict modal + keepTheirs
+[PASS] 25b multi-tab: conflict modal opens + keepTheirs adopts
+[PASS] 26 weather region: persists
+[PASS] 27 copy-all: raci + comms blocks no-throw
+[PASS] 28 shortcuts: Escape closes drawer
+[PASS] 29 drawer tabs: Q&A tab shows/hides via is-hide
+[PASS] 30 MLC card: hover shows, leave hides
+[PASS] 30b MLC card: hides after leave timer
+[PASS] 31 dmaic signal: shows when active, hides when off
+[PASS] 32 res-warn: conflict shows wrap, cleared after
+[PASS] 33 budget alerts: plan notice and bar warning against a real envelope
+[PASS] 34 cfm-items: confirm list shows, then hides on cancel
+[PASS] 35 agile meetings section: visible in agile, hidden in waterfall
+[PASS] 35b agile meetings section: hidden in waterfall
+[PASS] 36 mc-error: shown when too few scheduled tasks
+[PASS] 37 static markup: project.html source has zero inline styles
+[PASS] 38 dom census: rendered inline styles reduced
+[PASS] 38b computed visibility: is-hide beats .kcol/.sp display rules
+[PASS] 40 decisions: ranked needs-you-now list from 3+ sources
+[PASS] 41 meetings: last-promises ribbon carries unresolved items + tick-off persists
+[PASS] 42 health: narrative explains the score and its movement
+[PASS] 43 risk-prop: risk linked to overdue task flags LATE
+[PASS] 44 change-ripple: ripple cell parses days + $ + downstream
+[PASS] 45 contingency: risk exposure vs contingency gap renders
+[PASS] 46 raci-alerts: no-Accountable + multi-Accountable conflict alerts render
+[PASS] 47 leadtime need-by: expected past need-by flags red
+[PASS] 48 aging: open action items age with escalating badges
+[PASS] 49 streak: consecutive-day counter bumps and persists
+[PASS] 50 baseline narrative: plain-English diff + Copy All path
+[PASS] 51 readonly scope: opens view-only mode with banner + blocked edits
+[PASS] 51b readonly scope: body class + banner visible after reload
+[PASS] 51c readonly scope: mutating data-action is refused with toast
+[PASS] 51d readonly scope: navigation + Copy All still work
+[PASS] 51e readonly scope: full scope restores editing
+[PASS] 52 raci heatmap: workload rows render with weighted load
+[PASS] 53 cpFormats: slack/email/client all copy composed text
+[PASS] 54 tooltip: data-def hover shows glossary entry
+[PASS] 55 gantt export: exports a PNG blob + toast
+[PASS] 55b gantt export G1/G2/G3/G7: phase roll-up, row order, milestone diamonds, canvas guard
+[PASS] 55c gantt export G5/GANTT-1: links policy (gates default), lanes, cap with honest hidden count
+[PASS] 55d gantt export G6/G8: themes, table columns, phase bracket, progress fill, SVG format, dialog
+[PASS] 55e gantt export C5b PDF: true PDF from the draw list, A4 pagination with repeated header, fit mode
+[PASS] 56 onboarding empty states: WBS + Kanban deep-link to add task
+[PASS] 56b portfolio-rollup retired: MMGR.Portfolio is gone by design
+[PASS] 58 forecast: module booted + dashboard cards + wx buttons present
+[PASS] 59 forecast: no location -> setup hint, no throw
+[PASS] 60 forecast: seeded cache renders strip + risk flags + heat alert
+[PASS] 61 forecast: precip>=60 / heat>=32 / cold<=0 thresholds flag
+[PASS] 62 wx log: logWeatherDay + LD/SRI strip compute + rate input
+[PASS] 63 wx log: delete entry + subcontractor notice composes
+[PASS] 63b readonly scope: wxLogToday refused (mutating)
+[PASS] 63c readonly scope: wxLogToday blocked + toast, copy still works
+[PASS] 63d full scope: wxLogToday works again
+[PASS] 64 decisions+weather: cached risk days surface a Weather item
+[PASS] 39 def: section switcher shows and panel activates
+[PASS] 39b def: glossary renders data-driven cards
+[PASS] 39c def: every card has a term, a meaning, and a why
+[PASS] 39d def: re-render is idempotent (no duplicate cards)
+[PASS] 39e def: new-feature terms render (Decision Engine + SRI)
+[PASS] 64 v10 streak: dashboard card renders and bumps on updateState
+[PASS] 64b v10 kickoff agenda: PMBOK items (Assumptions/Constraints/Sign-Off/Success) present
+[PASS] 65 v10 sentiment: pulse records + sparkline renders
+[PASS] 66 v10 rolling leadtime: stale badge before Review
+[PASS] 66b v10 rolling leadtime: Review stamp clears stale
+[PASS] 67 v10 distributed float: per-task input + cascade honors wxFloatPad
+[PASS] 68 v10 manual weather override: wxLogManual writes a manual entry
+[PASS] 68b v10 AI window: signed-out click refuses + shows the sign-in toast
+[PASS] 69 v10 AI window: presets + free-form + context dump + copy
+[PASS] 69b v10 AI window: closes via Escape
+[PASS] 71 v10 wxlog copy: dispute-ready record (date/conditions/note/affected + LD)
+[PASS] 71b v10 forecast view: 7d/16d toggle switches strip + active chip
+[PASS] 71b-2 forecast view: 16d toggle shows 14+ days
+[PASS] 72 claim: nav + panel + controls present
+[PASS] 73 claim: slips derived baseline-vs-current, weather cause auto-tagged
+[PASS] 74 claim: cause never blank — defaults to unknown without evidence
+[PASS] 75 claim: setCause persists a user override
+[PASS] 76 claim: buildClaimPack pulls the full package live from state
+[PASS] 77 claim: Copy All exports the package via the claim section
+[PASS] 78 claim: budget tab LD rollup renders avoided vs incurred
+[PASS] 79 phase0: unload-safety flush persists dirty edits (flushSave + beforeunload)
+[PASS] 79b claim: Generate Package button path populates the preview
+[PASS] 79c claim: reversed date range is refused with a toast
+[PASS] 80 digest: dashboard card renders with mode fallback
+[PASS] 81 digest: pin captures a compact reference snapshot (schema v13)
+[PASS] 82 digest: diff vs pinned snapshot catches completed + slipped
+[PASS] 83 digest: Copy All exports the digest text
+[PASS] 84 digest: Generate Now button path populates the card
+[PASS] 85 prompts: claim + digest presets grounded in live evidence
+[PASS] 86 claim: export reads like a counsel-ready print document
+[PASS] 87 claim: later weather entry re-tags a slip from unknown to weather (pure re-derivation)
+[PASS] 70 v10 readonly: enter view-only scope
+[PASS] 70b v10 readonly: wxLogManual + meetSentiment blocked, AI window allowed
+[PASS] 70g v10 readonly: digestGenerate allowed (read-only), digestPin refused
+[PASS] 70c v10 readonly: full scope restores editing
+[PASS] 70d v10 readonly: app.html roCodeHash unlocks into readonly scope
+[PASS] 70f v10 readonly: roCodeHash still maps to readonly scope (attemptUnlock probe)
+[PASS] 70e v10 readonly: WBS task-name edit blocked in view-only scope
+[PASS] 70g v299 W1: local card carries the /local tag + sync dot, chip pills retired
+[PASS] 70h v11 local-first: local project click = instant full unlock, no unlock modal
+[PASS] 70i v11 local-first: published-only project still opens the unlock modal
+[PASS] 70k v300 search: typing in the project search filters the list (was a silent no-op)
+[PASS] 70k-restore: the project list snapshot is put back for the gates below
+[PASS] 70j v11 local-first: deep link to a locally-owned project bypasses the gate
+[PASS] mcp1: dev mint returns a shown-once sk-mmgr- key (scoped)
+[PASS] mcp2: MCP GET -> 405 JSON "MCP server requires POST"
+[PASS] mcp3: PATH-A - unauthenticated POST initialize -> 200 JSON-RPC (transport never 401s)
+[PASS] mcp7: PATH-A - unauthenticated tools/call -> 200 isError credential refusal, no data
+[PASS] mcp4: MCP initialize with Bearer sk-mmgr- AND X-API-Key -> serverInfo
+[PASS] mcp5: scoped key - get_risks refused with exact text, get_tasks returns seeded data
+[PASS] mcp6: tools/list carries the tool surface; unknown method -> JSON-RPC -32601
+
+==== CONSOLE ERRORS (0) ====
+==== PAGE EXCEPTIONS (0) ====
+
+==== QA SUMMARY: 194 passed / 0 failed of 194 ====

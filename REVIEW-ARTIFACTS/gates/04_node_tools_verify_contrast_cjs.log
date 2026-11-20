@@ -1,0 +1,37 @@
+WCAG 2.2 AA Contrast Checker
+
+css/mmgr.css:
+  PASS: text on card — 12.63:1 (min 4.5:1)
+  PASS: text on canvas — 11.05:1 (min 4.5:1)
+  PASS: slate on card — 5.74:1 (min 4.5:1)
+  FAIL: gold on card — 2.10:1 (min 3:1)
+  SKIP: green on card (token not found)
+  PASS: danger on card — 4.64:1 (min 3:1)
+  PASS: blue on card — 5.75:1 (min 3:1)
+  PASS: dark: text on card — 13.28:1 (min 4.5:1)
+  PASS: dark: text on canvas — 14.42:1 (min 4.5:1)
+  PASS: dark: slate on card — 6.26:1 (min 4.5:1)
+  PASS: dark: gold on card — 6.99:1 (min 3:1)
+  PASS: dark: green on card — 16.09:1 (min 3:1)
+  PASS: dark: danger on card — 16.09:1 (min 3:1)
+  PASS: dark: blue on card — 16.09:1 (min 3:1)
+
+css/marketing.css:
+  SKIP: text on card (token not found)
+  SKIP: text on canvas (token not found)
+  SKIP: slate on card (token not found)
+  FAIL: gold on card — 2.10:1 (min 3:1)
+  SKIP: green on card (token not found)
+  PASS: danger on card — 5.62:1 (min 3:1)
+  SKIP: blue on card (token not found)
+  SKIP: dark: text on card (token not found)
+  SKIP: dark: text on canvas (token not found)
+  SKIP: dark: slate on card (token not found)
+  PASS: dark: gold on card — 7.71:1 (min 3:1)
+  SKIP: dark: green on card (token not found)
+  PASS: dark: danger on card — 4.65:1 (min 3:1)
+  SKIP: dark: blue on card (token not found)
+
+Results: 15 passed, 2 failed
+
+WCAG CONTRAST CHECK FAILED — 2 pair(s) below minimum

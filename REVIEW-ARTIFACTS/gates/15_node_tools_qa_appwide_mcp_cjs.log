@@ -1,0 +1,130 @@
+(node:22700) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/oauth.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+--- MCP transport — the endpoint answers non-POST with 405, never 404 ---
+PASS  GET answers 405 with Allow: POST
+PASS  GET body is a JSON-RPC error a client can parse
+PASS  DELETE answers 405 with Allow: POST
+PASS  DELETE body is a JSON-RPC error a client can parse
+
+--- OAUTH O1 — PKCE S256 challenge ---
+PASS  challenge equals base64url SHA-256(verifier)
+PASS  RFC 7636 appendix B test vector
+
+--- OAUTH O2/O3 — token issue + verify + rejection ---
+PASS  issueTokens returns opaque access + refresh
+PASS  verifyAccessToken round-trips the account + client
+PASS  unknown token is rejected
+
+--- OAUTH O4/O5 — authorization code + PKCE + single use ---
+PASS  exchange with correct verifier succeeds
+PASS  exchange with wrong verifier is refused
+PASS  replaying a consumed code is refused
+
+--- OAUTH O6 — refresh token rotation ---
+PASS  refresh returns a fresh token pair
+PASS  old access token is revoked after rotation
+
+--- OAUTH O7 — metadata documents ---
+PASS  authorization-server metadata has required fields
+PASS  protected-resource metadata points at the app-wide resource
+
+--- OAUTH O8 — consent page is CSP-safe (no inline script) ---
+PASS  consent page contains no <script> tag
+PASS  consent page carries the hidden fields
+
+--- OAUTH O9 — open dynamic client registration ---
+PASS  registration without a browser session returns 201 + client_id
+PASS  registration echoes the redirect URI
+PASS  registration stores no account binding yet
+
+--- OAUTH O10 — registration refuses a non-HTTPS redirect ---
+PASS  http redirect outside localhost is refused
+
+--- OAUTH O11 — authorize enforces the registered redirect ---
+PASS  authorize refuses an unregistered redirect_uri
+PASS  consent page names the client
+PASS  consent page names the redirect host
+
+--- OAUTH O12 — approval binds the client and issues a code ---
+PASS  approve redirects back with a code
+PASS  approval binds the client to the signed-in account
+PASS  the issued code exchanges for a token
+
+--- APP-WIDE MCP M1/M2 — handshake + catalog ---
+PASS  initialize returns protocolVersion + serverInfo
+PASS  catalog includes list_projects
+PASS  catalog includes create_project
+PASS  catalog includes read tools + apply_changes
+PASS  catalog does NOT include any collaboration-invite tool
+PASS  every project-scoped tool requires projectId
+
+--- APP-WIDE MCP M3 — 401 metadata challenge ---
+PASS  tools/call without a bearer answers 401 + resource_metadata
+PASS  the 401 body carries no tool result
+PASS  initialize without a bearer also answers 401 (the OAuth trigger)
+PASS  an invalid bearer answers 401 with error="invalid_token"
+
+--- APP-WIDE MCP M4 — premium refusal ---
+PASS  free-tier account is refused with MCP_PREMIUM_REFUSAL
+
+--- APP-WIDE MCP M5 — disabled / block_all config ---
+PASS  disabled config is refused
+PASS  block_all policy is refused
+
+--- APP-WIDE MCP M6 — allow_read blocks writes ---
+PASS  allow_read blocks create_project
+
+--- APP-WIDE MCP M7 — allow_subset blocks unspecified tool ---
+PASS  allow_subset blocks a tool not in the subset
+
+--- APP-WIDE MCP M8/M9/M10 — access + per-project opt-out + view role ---
+PASS  project the account cannot reach is refused
+PASS  per-project mcp_enabled=0 is refused
+PASS  view role blocks write tools
+
+--- APP-WIDE MCP M11 — owner read clears every gate ---
+PASS  owner read with no snapshot reaches the engine (no gate refusal)
+
+--- APP-WIDE MCP M12 — create_project succeeds ---
+PASS  create_project returns projectId + status and NO ownerCode credential
+PASS  create_project text never mentions the owner code
+PASS  create_project seeds the first snapshot, so the launcher can open it
+PASS  the seeded snapshot is a real empty project state, named after the project
+
+--- APP-WIDE MCP M13 — list_projects returns owned + adopted ---
+PASS  list_projects returns both owned and adopted
+
+--- APP-WIDE MCP W1 — empty apply_changes is a structured error ---
+PASS  empty apply_changes returns isError "Nothing provided"
+PASS  empty apply_changes queued NO review row
+
+--- APP-WIDE MCP W2 — one diff queues one proposal ---
+PASS  one diff is accepted and queued
+PASS  one diff created exactly one cloud_reviews row
+
+--- APP-WIDE MCP W3 — 30 diffs queue ONE proposal ---
+PASS  30 diffs are accepted and queued
+PASS  30 diffs still created exactly ONE review row
+
+--- APP-WIDE MCP W3b — over-cap envelope is refused before state load ---
+PASS  more than the plan per-call cap is refused with a cap message
+PASS  a company plan raises the app-wide per-call cap to 500
+
+--- APP-WIDE MCP W4 — view role cannot propose writes ---
+PASS  view role write is refused
+
+--- APP-WIDE MCP W5 — out-of-scope diff is refused ---
+PASS  diff outside the granted sections is refused
+PASS  a budget diff from an unswitched key is refused before the section check
+PASS  W5b get_tasks answers on the wbs-only member
+PASS  W5b get_risks refuses on the wbs-only member
+PASS  W5b get_budget refuses on the wbs-only member
+PASS  W5b get_meetings refuses on the wbs-only member
+
+--- APP-WIDE MCP W6 — mcp_enabled=0 blocks writes before the pipeline ---
+PASS  mcp_enabled=0 blocks a write
+
+========== QA-APPWIDE-MCP RESULT: 68 passed, 0 failed ==========

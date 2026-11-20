@@ -1,0 +1,9 @@
+[qa-ai-viewonly] PASS  V1 the fixture is a view-only session
+[qa-ai-viewonly] PASS  V2 the assistant panel opens
+[qa-ai-viewonly] PASS  V2 the composer and Send exist
+[qa-ai-viewonly] PASS  V2 Send is not refused in view-only mode
+[qa-ai-viewonly] PASS  V2 the typed question reaches the thread
+[qa-ai-viewonly] PASS  V3 a preset is not refused in view-only mode
+[qa-ai-viewonly] PASS  V4 a project-writing action is still refused in view-only mode
+[qa-ai-viewonly] 
+[qa-ai-viewonly] 7 passed, 0 failed

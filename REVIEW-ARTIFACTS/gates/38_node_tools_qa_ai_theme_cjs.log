@@ -1,0 +1,10 @@
+[qa-ai-theme] PASS  every skin x accent x mode was sampled
+[qa-ai-theme] PASS  the AI floating button paints the theme accent (first gradient stop = --gold)
+[qa-ai-theme] PASS  the AI floating button gradient ends on --gold-ink
+[qa-ai-theme] PASS  the AI floating button label paints --on-gold
+[qa-ai-theme] PASS  the bot avatar paints the theme accent
+[qa-ai-theme] PASS  the user bubble paints the theme accent
+[qa-ai-theme] PASS  the AI panel header wash is tinted with the theme accent
+[qa-ai-theme] PASS  the sampled themes produce more than one accent colour
+[qa-ai-theme] 
+[qa-ai-theme] 8 passed, 0 failed

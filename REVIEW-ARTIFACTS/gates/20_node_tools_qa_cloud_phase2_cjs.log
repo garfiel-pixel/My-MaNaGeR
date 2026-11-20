@@ -1,0 +1,97 @@
+[cloud2] starting wrangler dev on :8765 (local D1 + R2, ADMIN_CODE configured)…
+[cloud2] PASS  P2.9a /api/cloud/sections returns ok + sections array
+[cloud2] PASS  P2.9b canonical sections include wbs/bud/risk with labels
+[cloud2] PASS  P2.1a owner create ok + owner code
+[cloud2] PASS  P2.1b editor code created with label + scope
+[cloud2] PASS  P2.1c editor code format XXXX-XXXX-XXXX-XXXX
+[cloud2] PASS  P2.1d editor row stored with scope JSON
+[cloud2] PASS  P2.1e editor salt/hash shapes (32/64 hex)
+[cloud2] PASS  P2.1f editor hash is NOT the plaintext code
+[cloud2] PASS  P2.1g PBKDF2 recompute matches stored editor hash
+[cloud2] PASS  P2.1h editor code plaintext absent from D1 bytes
+[cloud2] PASS  P2.2a editor list (owner) returns the row without code fields
+[cloud2] PASS  P2.2b editor list without auth -> generic 403
+[cloud2] PASS  P2.2c editor list with wrong owner code -> 403
+[cloud2] PASS  P2.4a owner first save ok (Phase 1 regression)
+[cloud2] PASS  P2.4d first save returns revision 1
+[cloud2] PASS  P2.4e a save on the current revision succeeds and returns revision 2
+[cloud2] PASS  P2.4f a save from a stale revision is refused 409 with the live revision
+[cloud2] PASS  P2.3a editor load returns role/editorLabel/scope
+[cloud2] PASS  P2.3b editor load returns the owner snapshot (charter + risks readable)
+[cloud2] PASS  P2.4b editor in-scope save ok (review pending, actor editor)
+[cloud2] PASS  P2.4c editor save reports would-be applied:["wbs"]
+[cloud2] PASS  P2.5a editor save that touches out-of-scope section still ok (proposal)
+[cloud2] PASS  P2.5b out-of-scope change reported as blocked:["risk"]
+[cloud2] PASS  P2.5c REVIEW QUEUE: editor save did NOT move the blob yet
+[cloud2] PASS  P2.5c2 owner accept ok (applied wbs)
+[cloud2] PASS  P2.5c3 the pre-accept load carries the numeric revision
+[cloud2] PASS  P2.5c4 a save on the pre-accept revision is refused 409 (no overwrite)
+[cloud2] PASS  P2.5c5 a save on the fresh revision succeeds
+[cloud2] PASS  P2.5c6 the accepted change survives the interleaved save
+[cloud2] PASS  P2.5d server-side merge on accept: in-scope WBS change persisted
+[cloud2] PASS  P2.5e server-side merge on accept: out-of-scope risk change NOT persisted
+[cloud2] PASS  P2.5f server-side merge on accept: other sections (charter) untouched
+[cloud2] PASS  P2.6a wrong editor code -> 403
+[cloud2] PASS  P2.6b unknown project with valid editor code -> 403
+[cloud2] PASS  P2.6c editor-code failures share the SAME body as owner failures (no distinguisher)
+[cloud2] PASS  P2.7a unknown scope keys filtered out (stored scope ["wbs"])
+[cloud2] PASS  P2.7b empty scope -> 400
+[cloud2] PASS  P2.8a editor first save is a pending proposal (no blob yet)
+[cloud2] PASS  P2.8b no blob before the owner accepts
+[cloud2] PASS  P2.8b2 owner accept bootstraps the blob
+[cloud2] PASS  P2.8c editor-bootstrapped blob contains ONLY its scoped section (tasks)
+[cloud2] PASS  P2.8d editor-bootstrapped blob does NOT carry out-of-scope keys
+[cloud2] PASS  P3.1a small owner save returns changelog entry id + type edit
+[cloud2] PASS  P3.1b changelog row is edit / owner with a single section
+[cloud2] PASS  P3.1c field-level before/after recorded for charter.name
+[cloud2] PASS  P3.2a changelog list (owner) returns entries
+[cloud2] PASS  P3.2b changelog list without auth -> generic 403
+[cloud2] PASS  P3.2c owner revert ok, returns revert entry id
+[cloud2] PASS  P3.2d blob restored to the before-value after revert
+[cloud2] PASS  P3.2e revert logged a NEW entry (history preserved)
+[cloud2] PASS  P3.2f revert-of-revert ok (every entry reversible)
+[cloud2] PASS  P3.2g revert-of-revert restored the reverted change
+[cloud2] PASS  P3.3a editor save ok (pending review)
+[cloud2] PASS  P3.3b proposal attributed to the editor code label
+[cloud2] PASS  P3.3c accept logs the accepted entry
+[cloud2] PASS  P3.3d newest changelog entry is accepted with diffs
+[cloud2] PASS  P3.4a editor CANNOT revert -> generic 403
+[cloud2] PASS  P3.4b editor CANNOT list the changelog -> generic 403
+[cloud2] PASS  P3.5x pre-bulk marker save ok (config is not a diffable content key)
+[cloud2] PASS  P3.5a bulk save returns changelog entry type bulk
+[cloud2] PASS  P3.5b bulk entry references an R2 snapshot of the pre-change blob
+[cloud2] PASS  P3.5c bulk revert ok
+[cloud2] PASS  P3.5d bulk revert restored the snapshot (1 task, charter v2)
+[cloud2] PASS  P3.5e revert-of-bulk-revert ok
+[cloud2] PASS  P3.5f revert-of-bulk-revert restored the 12-task state
+[cloud2] PASS  P2.6d owner revoke ok
+[cloud2] PASS  P2.6e revoked editor code -> 403 on load
+[cloud2] PASS  P2.6f revoked editor code -> 403 on save
+[cloud2] PASS  P2.10x fresh editor code created for the UI run
+[cloud2] phaseE: pid=qa-cloud2-mwocos4v code=YK5J**** (len 19)
+[cloud2] PASS  P2.10a locked direct link bounced to app.html?locked and auto-opened the unlock modal
+[cloud2] PASS  P2.10b editor code unlocked the project + wrote state + remembered scope
+[cloud2] PASS  P2.10c editor scope stored in session (sections from the server)
+[cloud2] PASS  P2.10d editor-scope UI: body editor-scope + WBS allowed + Budget greyed
+[cloud2] PASS  P2.10e drawer shows editor mode with Save button
+[cloud2] PASS  P2.10f editor-mode Save to Cloud succeeded (server enforced, status ok)
+[cloud2] PASS  P4.1a admin list with correct ADMIN_CODE -> 200 with our projects
+[cloud2] PASS  P4.1b admin row exposes label + snapshot state (no hashes/codes)
+[cloud2] PASS  P4.2a admin list with wrong code -> 403
+[cloud2] PASS  P4.2b admin list without code -> 403
+[cloud2] PASS  D0 fresh project for the rate-limit checks
+[cloud2] PASS  P5.1a cross-origin cloud request rejected (403, explicit message)
+[cloud2] PASS  P5.1b no Access-Control-Allow-Origin on the rejected response
+[cloud2] PASS  P5.1c same-origin Origin accepted
+[cloud2] PASS  P5.2 editor-code cap: 26th create rejected with the cap error
+[cloud2] PASS  P5.3a unlink ok (owner)
+[cloud2] PASS  P5.3b load after unlink -> generic 403 (cloud copy gone)
+[cloud2] PASS  P5.3c unlink removed D1 rows (project + editor codes)
+[cloud2] PASS  P5.3d an editor code cannot unlink (generic 403)
+[cloud2] PASS  P5.4a burst trips 429 with a Retry-After header
+[cloud2] PASS  P5.4b authorized requests below the budget are not throttled
+[cloud2] PASS  P1.regress meta unknown project -> 403 (no existence leak)
+[cloud2] PASS  P2.1i owner code absent from wrangler dev logs
+[cloud2] PASS  P2.1j editor code absent from wrangler dev logs
+[cloud2] ──────────────────────────────────────────────
+[cloud2] CLOUD_PHASE2 PASS (93/93 checks)

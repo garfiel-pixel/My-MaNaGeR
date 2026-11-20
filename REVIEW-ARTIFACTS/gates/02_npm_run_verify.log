@@ -1,0 +1,1489 @@
+npm notice run my-manager@1.0.0 verify
+npm notice run npm run verify:csp && npm run verify:inline && npm run verify:js && npm run verify:three && npm run verify:csp-origins && npm run verify:asset-ext && npm run typecheck && npm run verify:eol && npm run verify:sw && npm run verify:demo-dates && npm run verify:hidden && npm run verify:skills && npm run verify:exports && npm run verify:wiring && npm run verify:css && npm run verify:ratebook-sync && npm run verify:empty-state && npm run verify:ratebook && npm run verify:lump && npm run verify:wording && npm run verify:reach && npm run verify:sweep13 && npm run verify:sw10 && npm run verify:gantt && npm run verify:a11y && npm run verify:eslint && npm run verify:prettier && npm run verify:marketing && npm run verify:feature-registry && npm run verify:nav-anchors && npm run verify:observe && npm run verify:google && npm run verify:csp-eval && npm test && npm run verify:sizes && npm run verify:major-colors && npm run verify:registry
+npm notice run my-manager@1.0.0 verify:csp
+npm notice run node tools/verify-csp-hashes.cjs
+[verify-csp-hashes] OK — 25 inline-script hashes match worker.js and serve.cjs: project.html (4 inline scripts), app.html (4 inline scripts), admin.html (4 inline scripts), dashboard.html (1 inline script), seed-test.html (1 inline script), mymanager-field-guide.html (1 inline script), monolith html to reference from all features.html (2 inline scripts), index.html (2 inline scripts), features.html (1 inline script), about.html (1 inline script), contact.html (1 inline script), reviews.html (1 inline script), privacy.html (1 inline script), terms.html (1 inline script)
+npm notice run my-manager@1.0.0 verify:inline
+npm notice run node tools/verify-inline-js.cjs
+[verify-inline-js] OK — 25 inline scripts across 20 pages all parse as JavaScript.
+npm notice run my-manager@1.0.0 verify:js
+npm notice run node tools/verify-js-syntax.cjs
+  PASS  js/ai-actions.js
+  PASS  js/app/backup.js
+  PASS  js/app/baseline-guard.js
+  PASS  js/app/components.js
+  PASS  js/app/confirm.js
+  PASS  js/app/controls-nav.js
+  PASS  js/app/copy-text.js
+  PASS  js/app/definitions.js
+  PASS  js/app/entitlements.js
+  PASS  js/app/export.js
+  PASS  js/app/history.js
+  PASS  js/app/launcher-rail.js
+  PASS  js/app/mcp-admin.js
+  PASS  js/app/scrub-number.js
+  PASS  js/app/search.js
+  PASS  js/app/section-accelerator.js
+  PASS  js/app/sidebar.js
+  PASS  js/app/skeleton.js
+  PASS  js/app/weather.js
+  PASS  js/book-import.js
+  PASS  js/calc-ai.js
+  PASS  js/calculator-page.js
+  PASS  js/cloud/diffs.js
+  PASS  js/cloud/photos-ui.js
+  PASS  js/cloud/review.js
+  PASS  js/cloud/scope.js
+  PASS  js/cloud/share.js
+  PASS  js/cloud/team-ui.js
+  PASS  js/cloud/webhooks.js
+  PASS  js/consent.js
+  PASS  js/marketing-ai.js
+  PASS  js/marketing-globe.js
+  PASS  js/marketing-roles.js
+  PASS  js/marketing.js
+  PASS  js/mmgr-agenda.js
+  PASS  js/mmgr-ai-key.js
+  PASS  js/mmgr-ai.js
+  PASS  js/mmgr-app.js
+  PASS  js/mmgr-approval.js
+  PASS  js/mmgr-bids.js
+  PASS  js/mmgr-billing-manage.js
+  PASS  js/mmgr-boq-bridge.js
+  PASS  js/mmgr-calculator.js
+  PASS  js/mmgr-charter.js
+  PASS  js/mmgr-claim.js
+  PASS  js/mmgr-closure.js
+  PASS  js/mmgr-cloud-dash.js
+  PASS  js/mmgr-cloud.js
+  PASS  js/mmgr-combobox.js
+  PASS  js/mmgr-custom-fields.js
+  PASS  js/mmgr-cycles.js
+  PASS  js/mmgr-decisions.js
+  PASS  js/mmgr-defs.js
+  PASS  js/mmgr-digest.js
+  PASS  js/mmgr-dmaic.js
+  PASS  js/mmgr-dock.js
+  PASS  js/mmgr-errors.js
+  PASS  js/mmgr-evm.js
+  PASS  js/mmgr-field.js
+  PASS  js/mmgr-forecast.js
+  PASS  js/mmgr-gantt-view.js
+  PASS  js/mmgr-glass.js
+  PASS  js/mmgr-google-auth.js
+  PASS  js/mmgr-health.js
+  PASS  js/mmgr-icon-restore.js
+  PASS  js/mmgr-ideas.js
+  PASS  js/mmgr-kanban.js
+  PASS  js/mmgr-major-tasks.js
+  PASS  js/mmgr-meetings.js
+  PASS  js/mmgr-net.js
+  PASS  js/mmgr-pages.js
+  PASS  js/mmgr-pdf.js
+  PASS  js/mmgr-perf-boot.js
+  PASS  js/mmgr-perf.js
+  PASS  js/mmgr-pool.js
+  PASS  js/mmgr-presence.js
+  PASS  js/mmgr-process.js
+  PASS  js/mmgr-procurement.js
+  PASS  js/mmgr-prompts.js
+  PASS  js/mmgr-raci.js
+  PASS  js/mmgr-relations.js
+  PASS  js/mmgr-render.js
+  PASS  js/mmgr-report.js
+  PASS  js/mmgr-resources.js
+  PASS  js/mmgr-risks.js
+  PASS  js/mmgr-schedule.js
+  PASS  js/mmgr-shortcuts.js
+  PASS  js/mmgr-skin.js
+  PASS  js/mmgr-stakeholders.js
+  PASS  js/mmgr-state.js
+  PASS  js/mmgr-sync.js
+  PASS  js/mmgr-tasks.js
+  PASS  js/mmgr-templates.js
+  PASS  js/mmgr-theme.js
+  PASS  js/mmgr-tour.js
+  PASS  js/mmgr-utils.js
+  PASS  js/mmgr-viewport.js
+  PASS  js/mmgr-voice.js
+  PASS  js/mmgr-watch.js
+  PASS  js/mmgr-weather.js
+  PASS  js/mmgr-weekly.js
+  PASS  js/pricing-fx.js
+  PASS  js/rateunits.js
+  PASS  js/render/agenda.js
+  PASS  js/render/closure.js
+  PASS  js/render/cycles.js
+  PASS  js/render/documents.js
+  PASS  js/render/financials.js
+  PASS  js/render/ideas.js
+  PASS  js/render/kanban.js
+  PASS  js/render/pages.js
+  PASS  js/render/people.js
+  PASS  js/render/process.js
+  PASS  js/render/resources.js
+  PASS  js/render/risks.js
+  PASS  js/render/weather.js
+  PASS  js/reset.js
+  PASS  js/reviews.js
+  PASS  js/signin.js
+  PASS  js/team-accept.js
+  PASS  js/verify.js
+  PASS  js/xlsx-lite.js
+  PASS  src/admin.js
+  PASS  src/ai-proxy.js
+  PASS  src/api/shapes.js
+  PASS  src/auth/admin-code.js
+  PASS  src/auth/google.js
+  PASS  src/auth/recovery.js
+  PASS  src/auth/session.js
+  PASS  src/billing.js
+  PASS  src/cloud/api-keys.js
+  PASS  src/cloud/apply-ops.js
+  PASS  src/cloud/calc-workspace.js
+  PASS  src/cloud/changelog.js
+  PASS  src/cloud/client-codes.js
+  PASS  src/cloud/editors.js
+  PASS  src/cloud/empty-state.js
+  PASS  src/cloud/photos.js
+  PASS  src/cloud/pool.js
+  PASS  src/cloud/presence.js
+  PASS  src/cloud/projects.js
+  PASS  src/cloud/proposal-diffs.js
+  PASS  src/cloud/sync.js
+  PASS  src/cloud/team-templates.js
+  PASS  src/cloud/team.js
+  PASS  src/contact.js
+  PASS  src/csp-report.js
+  PASS  src/data/ratebook.js
+  PASS  src/domain/task-effects.js
+  PASS  src/events.js
+  PASS  src/fx.js
+  PASS  src/lib/budget.js
+  PASS  src/lib/http.js
+  PASS  src/lib/observe.js
+  PASS  src/lib/turnstile.js
+  PASS  src/lib/validate.js
+  PASS  src/mcp/appwide.js
+  PASS  src/mcp/auto-accept.js
+  PASS  src/mcp/budget-access.js
+  PASS  src/mcp/changes.js
+  PASS  src/mcp/deps.js
+  PASS  src/mcp/errors.js
+  PASS  src/mcp/model.js
+  PASS  src/mcp/oauth.js
+  PASS  src/mcp/plan.js
+  PASS  src/mcp/report-store.js
+  PASS  src/mcp/server.js
+  PASS  src/mcp/tier-limits.js
+  PASS  src/mcp/tool-meta.js
+  PASS  src/ratebook.js
+  PASS  src/reviews.js
+  PASS  src/router.js
+  PASS  src/webhooks.js
+  PASS  worker.js
+  PASS  serve.cjs
+  PASS  sw.js
+  PASS  build.js
+
+[verify-js-syntax] 177/177 source scripts parse.
+JS SYNTAX PASS
+npm notice run my-manager@1.0.0 verify:three
+npm notice run node tools/verify-three-revision.cjs
+[verify-three] PASS: vendored three.js is r160
+npm notice run my-manager@1.0.0 verify:csp-origins
+npm notice run node tools/qa-csp-origins.cjs
+(node:34864) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/worker.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[csp-origins] files scanned: 194
+[csp-origins] policy origins: 20
+[csp-origins] exceptions: 21
+[csp-origins] PASS: every scanned origin is covered or excepted
+npm notice run my-manager@1.0.0 verify:asset-ext
+npm notice run node tools/verify-asset-extensions.cjs
+[asset-ext] WARN: 50 file(s) with a non-fatal extension
+[asset-ext]   warn AGENTS.md
+[asset-ext]   warn AUTHORS-FIX-ISSUE.md
+[asset-ext]   warn CLAUDE.md
+[asset-ext]   warn CONTINUATION-DIRECTIVE.md
+[asset-ext]   warn CONTRIBUTING.md
+[asset-ext]   warn dist/admin-bundle.js.map
+[asset-ext]   warn dist/app-bundle.js.map
+[asset-ext]   warn dist/bundle.js.map
+[asset-ext]   warn dist/marketing-ai.js.map
+[asset-ext]   warn dist/marketing-bundle.js.map
+[asset-ext] PASS: no .sql/.env/.bak/.pem/.key/.pfx/.zip/.tar/.log in the asset tree
+npm notice run my-manager@1.0.0 typecheck
+npm notice run tsc -p tsconfig.typecheck.json
+npm notice run my-manager@1.0.0 verify:eol
+npm notice run node tools/verify-eol.cjs
+[verify-eol] tracked text files in the index: 788
+[verify-eol] PASS: no CR bytes in 788 tracked text files
+
+npm notice run my-manager@1.0.0 verify:sw
+npm notice run node tools/verify-sw-cache.cjs
+[verify-sw-cache] OK — cache version mmgr-shell-v681 is newer than all 63 SHELL assets.
+npm notice run my-manager@1.0.0 verify:demo-dates
+npm notice run node tools/verify-demo-dates.cjs
+PASS  MMGR_DEMO_FILLED is defined
+PASS  updatedAt carries an ISO date
+PASS  the demo carries 30 tasks
+PASS  task ids are unique
+PASS  every task has both dates
+PASS  no task ends before it starts
+PASS  every duration matches the working-day span
+PASS  no open task ends before the fixture clock (2026-11-11)
+PASS  no 0% task has an elapsed start
+PASS  baseline rows all name a live task
+PASS  charter.targetStart is not after the first task
+PASS  charter.targetCompletion is not before the last task
+PASS  approved changes carry a title
+PASS  resolved issues carry a resolution
+PASS  weather log is historical (not after the fixture clock)
+
+DEMO FIXTURE PASS - 30 tasks, as of 2026-11-11.
+npm notice run my-manager@1.0.0 verify:hidden
+npm notice run node tools/verify-hidden-attr.cjs
+[verify-hidden] OK — every [hidden] element in 21 page(s) is matched by no unguarded non-none display rule (5709 CSS rules checked).
+npm notice run my-manager@1.0.0 verify:skills
+npm notice run node tools/verify-skills-lock.cjs
+OK     accessibility-rules          
+OK     cloudflare-api               
+OK     d1-migration                 
+OK     gemini-api-dev               
+OK     gws-drive                    
+OK     high-grade-mcp               
+OK     human-audit                  
+OK     landing-page-generator       
+OK     no-slacking                  
+OK     oauth                        
+OK     paddle-catalog-setup         
+OK     paddle-sandbox-testing       
+OK     paddle-subscription-sync     
+OK     paddle-webhooks              
+OK     plain-language-copy          
+OK     pwa-development              
+OK     qa-expert                    
+OK     security-audit               
+OK     skeptical-code-audit         
+OK     sleek-design-mobile-apps     
+OK     think outside the box skill  
+OK     ui-modernization             
+OK     universal-ui-architect       
+OK     web-perf                     
+OK     workers-best-practices       
+OK     wrangler                     
+ALL LOCKED SKILL HASHES MATCH
+npm notice run my-manager@1.0.0 verify:exports
+npm notice run node tools/verify-render-exports.cjs
+
+=== A1: render module export completeness ===
+
+  PASS: agenda.js: all 1 exports have wrappers
+  PASS: closure.js: all 4 exports have wrappers
+  PASS: cycles.js: empty export (skip)
+  PASS: documents.js: all 7 exports have wrappers
+  PASS: financials.js: all 4 exports have wrappers
+  PASS: ideas.js: all 1 exports have wrappers
+  PASS: kanban.js: all 3 exports have wrappers
+  PASS: pages.js: empty export (skip)
+  PASS: people.js: all 10 exports have wrappers
+  PASS: process.js: empty export (skip)
+  PASS: resources.js: all 7 exports have wrappers
+  PASS: risks.js: all 8 exports have wrappers
+  PASS: weather.js: all 13 exports have wrappers
+
+=== A1: mmgr-render.js ns.Render export identifiers ===
+
+  PASS: All 86 ns.Render export identifiers defined
+
+=== A1: app module export completeness ===
+
+  PASS: backup.js: all 9 exports have wrappers
+  PASS: baseline-guard.js: empty export (skip)
+  PASS: confirm.js: all 4 exports have wrappers
+  PASS: controls-nav.js: no export object found (skip)
+  PASS: copy-text.js: all 7 exports have wrappers
+  PASS: definitions.js: all 3 exports have wrappers
+  PASS: export.js: all 7 exports have wrappers
+  PASS: history.js: all 7 exports have wrappers
+  PASS: mcp-admin.js: no export object found (skip)
+  PASS: search.js: no export object found (skip)
+  PASS: sidebar.js: all 10 exports have wrappers
+  PASS: skeleton.js: all 3 exports have wrappers
+  PASS: weather.js: all 9 exports have wrappers
+
+=== A1: cloud module export completeness ===
+
+  PASS: diffs.js: all 3 exports have wrappers
+  PASS: photos-ui.js: all 18 exports have wrappers
+  PASS: review.js: all 10 exports have wrappers
+  PASS: scope.js: all 6 exports have wrappers
+  PASS: share.js: all 6 exports have wrappers
+  PASS: webhooks.js: all 4 exports have wrappers
+
+ALL CHECKS PASSED
+npm notice run my-manager@1.0.0 verify:wiring
+npm notice run node tools/verify-wiring.cjs
+
+=== 1. data-action in served HTML has a handler ===
+
+  PASS  all 366 HTML data-action values have a handler
+
+=== 2. handler references (informational) ===
+
+  WARN  handler "poolRefreshAndMerge" has no static reference (dynamic only?)
+  WARN  handler "exportGanttPNG" has no static reference (dynamic only?)
+  WARN  handler "exportGanttSVG" has no static reference (dynamic only?)
+  WARN  handler "exportGanttPDF" has no static reference (dynamic only?)
+  WARN  handler "closeAiWinBg" has no static reference (dynamic only?)
+  WARN  handler "tglSidebar" has no static reference (dynamic only?)
+  WARN  handler "cloudReviewMine" has no static reference (dynamic only?)
+  WARN  handler "openDrwToSave" has no static reference (dynamic only?)
+  WARN  handler "undoDelMeeting" has no static reference (dynamic only?)
+  WARN  handler "calcBookDefault" has no static reference (dynamic only?)
+  PASS  647 handlers scanned (10 dynamic-only, informational)
+
+=== 3. delegated data-* families have a handler ===
+
+  PASS  all 9 delegated families have a handler
+
+=== 4. local page links resolve ===
+
+  PASS  all 343 local page links resolve
+
+ALL CHECKS PASSED
+npm notice run my-manager@1.0.0 verify:css
+npm notice run node tools/verify-css-integrity.cjs
+
+=== CSS integrity: ARM 1 stray comment closers ===
+  PASS  css/src/10-tokens.css: no stray comment closer
+  PASS  css/src/20-shell.css: no stray comment closer
+  PASS  css/src/30-panels.css: no stray comment closer
+  PASS  css/src/35-workspace.css: no stray comment closer
+  PASS  css/src/36-search.css: no stray comment closer
+  PASS  css/src/37-mcp-admin.css: no stray comment closer
+  PASS  css/src/40-ai.css: no stray comment closer
+  PASS  css/src/50-calculator.css: no stray comment closer
+  PASS  css/src/60-dashboard.css: no stray comment closer
+  PASS  css/src/70-chrome.css: no stray comment closer
+  PASS  css/src/80-auth.css: no stray comment closer
+  PASS  css/src/82-launcher.css: no stray comment closer
+  PASS  css/src/83-floating-calculator.css: no stray comment closer
+  PASS  css/src/84-themes.css: no stray comment closer
+  PASS  css/src/85-performance-mode.css: no stray comment closer
+  PASS  css/src/86-assistant-mailbox.css: no stray comment closer
+  PASS  css/src/86-theme-bento.css: no stray comment closer
+  PASS  css/src/86-theme-departure.css: no stray comment closer
+  PASS  css/src/86-theme-editorial.css: no stray comment closer
+  PASS  css/src/86-theme-guild.css: no stray comment closer
+  PASS  css/src/86-theme-modal.css: no stray comment closer
+  PASS  css/src/86-theme-obsidian.css: no stray comment closer
+  PASS  css/src/86-theme-pegboard.css: no stray comment closer
+  PASS  css/src/86-theme-permit.css: no stray comment closer
+  PASS  css/src/86-theme-vellum.css: no stray comment closer
+  PASS  css/src/87-signin-polish.css: no stray comment closer
+  PASS  css/src/88-dark-buttons.css: no stray comment closer
+  PASS  css/src/89-code-names.css: no stray comment closer
+  PASS  css/src/90-calc-owner-wave.css: no stray comment closer
+  PASS  css/src/91-design-system.css: no stray comment closer
+  PASS  css/src/92-procurement.css: no stray comment closer
+  PASS  css/src/93-wide-and-export.css: no stray comment closer
+  PASS  css/src/94-procurement-extra.css: no stray comment closer
+  PASS  css/src/95-gold-buttons.css: no stray comment closer
+  PASS  css/src/96-accent-modes.css: no stray comment closer
+  PASS  css/src/97-scrub-smart-time.css: no stray comment closer
+  PASS  css/marketing.css: no stray comment closer
+  PASS  dist/mmgr.min.css: no stray comment closer
+  PASS  dist/marketing.min.css: no stray comment closer
+  PASS  admin.html: no stray comment closer
+  PASS  app.html: no stray comment closer
+  PASS  dashboard.html: no stray comment closer
+  PASS  monolith html to reference from all features.html: no stray comment closer
+  PASS  mymanager-field-guide.html: no stray comment closer
+
+=== CSS integrity: ARM 0 the served stylesheet is the assembled layers ===
+  PASS  css/mmgr.css is byte-identical to 36 layer(s): css/src/10-tokens.css, css/src/20-shell.css, css/src/30-panels.css, css/src/35-workspace.css, css/src/36-search.css, css/src/37-mcp-admin.css, css/src/40-ai.css, css/src/50-calculator.css, css/src/60-dashboard.css, css/src/70-chrome.css, css/src/80-auth.css, css/src/82-launcher.css, css/src/83-floating-calculator.css, css/src/84-themes.css, css/src/85-performance-mode.css, css/src/86-assistant-mailbox.css, css/src/86-theme-bento.css, css/src/86-theme-departure.css, css/src/86-theme-editorial.css, css/src/86-theme-guild.css, css/src/86-theme-modal.css, css/src/86-theme-obsidian.css, css/src/86-theme-pegboard.css, css/src/86-theme-permit.css, css/src/86-theme-vellum.css, css/src/87-signin-polish.css, css/src/88-dark-buttons.css, css/src/89-code-names.css, css/src/90-calc-owner-wave.css, css/src/91-design-system.css, css/src/92-procurement.css, css/src/93-wide-and-export.css, css/src/94-procurement-extra.css, css/src/95-gold-buttons.css, css/src/96-accent-modes.css, css/src/97-scrub-smart-time.css
+
+=== CSS integrity: ARM 2 rules dropped by the build ===
+  PASS  css/src/10-tokens.css + css/src/20-shell.css + css/src/30-panels.css + css/src/35-workspace.css + css/src/36-search.css + css/src/37-mcp-admin.css + css/src/40-ai.css + css/src/50-calculator.css + css/src/60-dashboard.css + css/src/70-chrome.css + css/src/80-auth.css + css/src/82-launcher.css + css/src/83-floating-calculator.css + css/src/84-themes.css + css/src/85-performance-mode.css + css/src/86-assistant-mailbox.css + css/src/86-theme-bento.css + css/src/86-theme-departure.css + css/src/86-theme-editorial.css + css/src/86-theme-guild.css + css/src/86-theme-modal.css + css/src/86-theme-obsidian.css + css/src/86-theme-pegboard.css + css/src/86-theme-permit.css + css/src/86-theme-vellum.css + css/src/87-signin-polish.css + css/src/88-dark-buttons.css + css/src/89-code-names.css + css/src/90-calc-owner-wave.css + css/src/91-design-system.css + css/src/92-procurement.css + css/src/93-wide-and-export.css + css/src/94-procurement-extra.css + css/src/95-gold-buttons.css + css/src/96-accent-modes.css + css/src/97-scrub-smart-time.css: all 2002 class rules survive the build into dist/mmgr.min.css
+  PASS  css/marketing.css: all 347 class rules survive the build into dist/marketing.min.css
+
+CSS INTEGRITY PASS
+npm notice run my-manager@1.0.0 verify:ratebook-sync
+npm notice run node tools/gen-ratebook.cjs --check
+[gen-ratebook] in sync - {"rows":811,"trades":11,"inApp":100,"calc":711}
+npm notice run my-manager@1.0.0 verify:empty-state
+npm notice run node tools/gen-empty-state.cjs --check
+[gen-empty-state] in sync - schema 32
+npm notice run my-manager@1.0.0 verify:ratebook
+npm notice run node tools/verify-ratebook-wording.cjs
+PASS  the rate book name is one constant
+PASS  the dialog header uses the name and the brand mark
+PASS  the brand mark is sized 18px
+PASS  the planning notice is one function
+PASS  the notice carries the directive sentence
+PASS  the notice rides the priced result and the dialog footer
+PASS  the provenance status is known
+PASS  first-party provenance names My MaNaGeR as publisher
+PASS  first-party status shows no external source line or publisher wording
+PASS  no claim of independent production reaches a user surface
+PASS  the pricing page names the book
+PASS  the pricing page makes no whole-book rate-count claim
+PASS  the pricing page offers upload of the user's own rate book
+PASS  no code file carries the old institution initials (the book is My MaNaGeR Rate Book only)
+
+PASS - 14/14 gates
+npm notice run my-manager@1.0.0 verify:lump
+npm notice run node tools/verify-calc-lump.cjs
+[calc-lump] PASS  every WORK trade carries an ACCESSORIES entry or a written reason
+[calc-lump] PASS  the ACCESSORIES table describes only real trades
+[calc-lump] PASS  every entry is either an itemised list or a written reason, never both
+[calc-lump] PASS  every itemised line has an id, a name, a unit, a rule, waste, a price and a source
+[calc-lump] PASS  a written reason says something (20+ characters)
+[calc-lump] PASS  T-LUMP: no trade with a multi-part material description is left as a bare lump
+[calc-lump] PASS  the table itemises the trades the owner named (30+ lists)
+[calc-lump] coverage: 35 trades itemised, 14 with a written reason, 49 trades in total
+[calc-lump] multi-part descriptions answered with a reason (review these - each one is a deliberate "there is nothing to itemise here"):
+[calc-lump]   - siteprep: Clearing and stripping is plant and labour - the allowance is the whole cost.
+[calc-lump]   - scaffold: The rate is for scaffolding erected and stripped - the hire is the whole figure.
+[calc-lump]   - welding: The rate is the cut and the finish; electrodes and discs are inside it.
+[calc-lump]   - stirrups: The links arrive cut and bent - the rate is the link and the tying.
+[calc-lump]   - rebar-size: The rate is the bar itself, by size.
+[calc-lump]   - concrete-labour: Labour-only bands - there is no material in this rate.
+[calc-lump]   - fabric-mesh: The rate is the mesh, lapped and tied.
+[calc-lump]   - debrush: The rate is cutting and clearing the line.
+[calc-lump]   - custom: Your own combined figure - it does not split.
+[calc-lump]   - book: A published planning rate covers the whole item.
+[calc-lump] PASS  the drywall question the owner asked is answered with a real list
+[calc-lump] 
+[calc-lump] RESULT  all checks passed
+npm notice run my-manager@1.0.0 verify:wording
+npm notice run node tools/verify-assistant-wording.cjs
+PASS  every calcCheck() missing entry carries a meaning and an example (8 blocks)
+PASS  the page builds locked sentence 3 in one function
+PASS  the sentence builder is exported to the panel
+PASS  calcPopulate composes its refusal from the sentence builder
+PASS  the panel composes its refusal from the page sentence builder
+PASS  the old bare refusal wording is gone
+PASS  the assistant prompt carries the amended locked sentence 3
+PASS  no user-facing file tells the user to check the quantities
+PASS  every WORK entry is given a meaning and an example at load
+PASS  the quantity classifier covers area, volume, length and count
+
+PASS - 10/10 gates
+npm notice run my-manager@1.0.0 verify:reach
+npm notice run node tools/verify-settings-reach.cjs
+
+=== SW-14: every stored setting has a UI or an AI path ===
+  PASS  SETTING_FIELDS parses with 11 settings keys
+  PASS  every key has a type SETTING_ORDER ranks (bool/select/num/parts/acc)
+  PASS  9 keys reach a real field id in the page
+  PASS  composite "onCost" (parts) has its editor and its applier branch
+  PASS  composite "accessories" (acc) has its editor and its applier branch
+  PASS  the system prompt names exactly the 11 keys the page accepts
+  PASS  the panel is given the same list (MMGR_CALC_SETTING_KEYS)
+  PASS  all 43 ids readState() saves exist as fields
+  NOTE  js/mmgr-state.js carries no `settings` block - the project app keeps no settings object of that shape (its settings are fields on the state root, each with its own row). If one is ever added, this test reads it and applies the sweep rule: each key needs calc-<key>/set-<key> in a page or a quoted path in an AI module.
+SW-14 UNREACHABLE SETTINGS PASS
+npm notice run my-manager@1.0.0 verify:sweep13
+npm notice run node tools/verify-sweep13.cjs
+
+=== SW-13: notice containers that no code ever fills ===
+  PASS  SW-13 the sweep reports zero dead containers
+  PASS  SW-13 the containers the detector judges are still on the project page
+  PASS  SW-13 the scan has a real surface to judge (at least ten candidates)
+  PASS  SW-13 every producer the detector relies on is in a file it scans
+
+SW-13 NOTICE CONTAINERS PASS (4 checks)
+npm notice run my-manager@1.0.0 verify:sw10
+npm notice run node tools/verify-sw10.cjs
+  PASS  ARM 1: the sweep reports SW-10 = 0
+  PASS  ARM 2a: at least 12 div/span/li/td data-action surfaces remain
+  PASS  ARM 2b: the six dialog backdrops are still judged (data-action + role=presentation)
+  PASS  ARM 2c: the three nav scrims still carry their data-action
+  PASS  ARM 3a: #dirty-ind carries role=button and tabindex=0
+  PASS  ARM 3b: #timeline-ind carries role=button and tabindex=0
+  PASS  ARM 3c: a delegated keydown activates role=button data-action elements (Enter/Space -> click)
+  PASS  ARM 4: no nav scrim is focusable (aria-hidden + tabindex would be a violation)
+  PASS  ARM 5: every dialog backdrop still offers a real close button
+  ---
+  verify-sw10: 9/9 checks
+npm notice run my-manager@1.0.0 verify:gantt
+npm notice run node tools/verify-gantt-view.cjs
+[gantt-view] PASS  the module publishes MMGR.GanttView
+[gantt-view] PASS  GanttView.build is a function
+[gantt-view] PASS  GanttView.reduceLinks is a function
+[gantt-view] PASS  GanttView.isMilestone is a function
+[gantt-view] PASS  GanttView.isGateMilestone is a function
+[gantt-view] PASS  GanttView.groupKeyOf is a function
+[gantt-view] PASS  the builder never touches document.
+[gantt-view] PASS  the builder never touches fetch(
+[gantt-view] PASS  the builder never touches XMLHttpRequest
+[gantt-view] PASS  the builder never touches localStorage
+[gantt-view] PASS  the builder never touches sessionStorage
+[gantt-view] PASS  the builder never touches addEventListener
+[gantt-view] PASS  the builder never touches getElementById
+[gantt-view] PASS  the builder writes nothing into the state object
+[gantt-view] PASS  the fixture is a bank renovation with five phases
+[gantt-view] PASS  the fixture carries parented children
+[gantt-view] PASS  the fixture carries one orphan whose parent cannot resolve
+[gantt-view] PASS  build() leaves the state byte-identical (a view is not a write)
+[gantt-view] PASS  no row is drawn twice
+[gantt-view] PASS  every dated task is drawn exactly once (nothing is silently dropped)
+[gantt-view] PASS  rows = five phases + every real task + one group header
+[gantt-view] PASS  phases keep state order
+[gantt-view] PASS  every child sits under its phase, in start-date order
+[gantt-view] PASS  the orphan is listed last, under one named group header
+[gantt-view] PASS  the orphan list is reported to the caller
+[gantt-view] PASS  phases are numbered 1..5
+[gantt-view] PASS  the first child of P1 is 1.1
+[gantt-view] PASS  a sibling counts up
+[gantt-view] PASS  switching the swimlane axis does not renumber the plan
+[gantt-view] PASS  collapsing finished phases does not renumber the plan
+[gantt-view] PASS  a phase span falls back to its own dates when no Schedule is loaded
+[gantt-view] PASS  a phase span comes from Schedule.phaseSpan (never a stored rollup)
+[gantt-view] PASS  a task span is never asked of Schedule
+[gantt-view] PASS  the fixture draws six diamonds: one plain milestone and five gates
+[gantt-view] PASS  the gate rule picks the five phase gates and not the plain milestone
+[gantt-view] PASS  a phase is never a milestone diamond
+[gantt-view] PASS  a same-day row that names a sign-off is a milestone by name
+[gantt-view] PASS  a multi-day task is not a milestone
+[gantt-view] PASS  the milestone flag alone is enough
+[gantt-view] PASS  the fixture has 63 finish-to-start links
+[gantt-view] PASS  'all' draws every plan link and nothing else
+[gantt-view] PASS  'all' invents no link (every line is in the plan)
+[gantt-view] PASS  the critical chain is a subset of the plan links
+[gantt-view] PASS  'near' keeps every critical link
+[gantt-view] PASS  'near' drops every line longer than eight rows
+[gantt-view] PASS  the gates view derives one line per phase gate
+[gantt-view] PASS  every derived line runs from a phase to its OWN gate milestone
+[gantt-view] PASS  the gates view is materially thinner than the wall of links
+[gantt-view] PASS  the default view stays legible on a 46-row plan (at most 40 lines)
+[gantt-view] PASS  the gates view draws no task-to-task line
+[gantt-view] PASS  an unknown policy falls back to the default 'gates'
+[gantt-view] PASS  the default policy is reported back
+[gantt-view] PASS  tidy collapses the three phases that finished before today
+[gantt-view] PASS  tidy keeps the collapsed phase rows themselves
+[gantt-view] PASS  tidy drops the children of a collapsed phase
+[gantt-view] PASS  tidy never draws a link the untidied view does not have
+[gantt-view] PASS  tidy reduces the links transitively (no redundant line survives)
+[gantt-view] PASS  an all-complete phase collapses even with open dates
+[gantt-view] PASS  an active phase stays open
+[gantt-view] PASS  the active phase keeps its child
+[gantt-view] PASS  the trade axis draws one band per trade
+[gantt-view] PASS  the assignee axis draws one band per person
+[gantt-view] PASS  the trade axis draws no phase rows
+[gantt-view] PASS  every task appears once on the trade axis
+[gantt-view] PASS  tasks inside a band are in start-date order
+[gantt-view] PASS  a band is labelled, not blank
+[gantt-view] PASS  an unknown axis falls back to phases
+[gantt-view] PASS  a task with no assignee is not dropped from the assignee axis
+[gantt-view] PASS  the whole-project window is the project range
+[gantt-view] PASS  a 117-day plan gets week ticks
+[gantt-view] PASS  totalDays matches the window
+[gantt-view] PASS  the next-90 window starts today and runs 90 days
+[gantt-view] PASS  a 91-day window gets week ticks
+[gantt-view] PASS  the scale bounds are date STRINGS, never Date objects
+[gantt-view] PASS  every span bound is a date string
+[gantt-view] PASS  a custom window keeps the owner dates verbatim
+[gantt-view] PASS  tidy collapses a phase that starts AFTER the visible window
+[gantt-view] PASS  a 20-day custom window gets day ticks
+[gantt-view] PASS  a two-year window gets month ticks
+[gantt-view] PASS  an inverted window falls back to the whole project
+[gantt-view] PASS  a half-typed window falls back to the whole project
+[gantt-view] PASS  an empty plan returns no rows and no links
+[gantt-view] PASS  an empty plan still reports a usable scale
+[gantt-view] PASS  the module builds without MMGR.Utils (fallbacks hold)
+[gantt-view] PASS  the live chart reads the view through one helper
+[gantt-view] PASS  renderGantt paints the builder answer
+[gantt-view] PASS  the live chart no longer re-derives the row order
+[gantt-view] PASS  the live chart no longer re-derives the date range
+[gantt-view] PASS  the live chart no longer walks predecessors for its arrows
+[gantt-view] PASS  the live chart draws the builder scale
+[gantt-view] PASS  the live chart clamps bars to the visible window
+[gantt-view] PASS  the arrow overlay consumes the view link list
+[gantt-view] PASS  a derived gate line is drawn but never offered as a deletable dependency
+[gantt-view] PASS  the arrow redraw path rebuilds the same view
+[gantt-view] PASS  the export builds its draw list from the one builder
+[gantt-view] PASS  exportGanttPNG draws from the shared draw list
+[gantt-view] PASS  exportGanttSVG draws from the shared draw list
+[gantt-view] PASS  exportGanttPDF draws from the shared draw list
+[gantt-view] PASS  the export passes the same axis and window the screen uses
+[gantt-view] PASS  the export x-axis is the view scale
+[gantt-view] PASS  project.html carries the ganttTidy control
+[gantt-view] PASS  the ganttTidy action is in the exported App object
+[gantt-view] PASS  the ganttTidy action is in ACTION_MAP
+[gantt-view] PASS  project.html carries the setGanttGroup control
+[gantt-view] PASS  the setGanttGroup action is in the exported App object
+[gantt-view] PASS  the setGanttGroup action is in ACTION_MAP
+[gantt-view] PASS  project.html carries the setGanttWindow control
+[gantt-view] PASS  the setGanttWindow action is in the exported App object
+[gantt-view] PASS  the setGanttWindow action is in ACTION_MAP
+[gantt-view] PASS  project.html carries the setGanttWindowDate control
+[gantt-view] PASS  the setGanttWindowDate action is in the exported App object
+[gantt-view] PASS  the setGanttWindowDate action is in ACTION_MAP
+[gantt-view] PASS  the custom window row ships hidden and is a real date range
+[gantt-view] PASS  the change-event whitelist carries the toolbar selects
+[gantt-view] PASS  renderGantt mirrors the view state back onto the controls
+[gantt-view] PASS  the hidden custom row has its own display guard (verify-hidden-attr)
+[gantt-view] PASS  css/mmgr.css defines .gr-group
+[gantt-view] PASS  css/mmgr.css defines .gr-group-name
+[gantt-view] PASS  css/mmgr.css defines .gb-ms-label
+[gantt-view] PASS  css/mmgr.css defines .gb-milestone.gate
+[gantt-view] PASS  css/mmgr.css defines .ms-diamond.gate
+[gantt-view] PASS  css/mmgr.css defines .gd-tick
+[gantt-view] PASS  css/mmgr.css defines .gv-custom
+[gantt-view] PASS  css/mmgr.css defines .gv-tgl.tgl
+[gantt-view] PASS  css/mmgr.css defines .gv-tgl-txt
+[gantt-view] 
+[gantt-view] RESULT  all checks passed
+npm notice run my-manager@1.0.0 verify:a11y
+npm notice run node tools/verify-a11y-labels.cjs
+
+=== A11Y LABELS: accessible names on every served page ===
+  pages in scope: 20 (excludes the legacy reference dump)
+  PASS  about.html  (0 field(s), 1 icon control(s) checked)
+  PASS  admin.html  (41 field(s), 9 icon control(s) checked)
+  PASS  app.html  (9 field(s), 10 icon control(s) checked)
+  PASS  calculator.html  (77 field(s), 4 icon control(s) checked)
+  PASS  contact.html  (4 field(s), 1 icon control(s) checked)
+  PASS  dashboard.html  (0 field(s), 0 icon control(s) checked)
+  PASS  features.html  (0 field(s), 1 icon control(s) checked)
+  PASS  index.html  (0 field(s), 1 icon control(s) checked)
+  PASS  mymanager-field-guide.html  (0 field(s), 1 icon control(s) checked)
+  PASS  pricing.html  (0 field(s), 1 icon control(s) checked)
+  PASS  privacy.html  (0 field(s), 1 icon control(s) checked)
+  PASS  project.html  (141 field(s), 24 icon control(s) checked)
+  PASS  refund.html  (0 field(s), 1 icon control(s) checked)
+  PASS  reset.html  (3 field(s), 0 icon control(s) checked)
+  PASS  reviews.html  (7 field(s), 1 icon control(s) checked)
+  PASS  seed-test.html  (0 field(s), 0 icon control(s) checked)
+  PASS  signin.html  (0 field(s), 0 icon control(s) checked)
+  PASS  team-accept.html  (0 field(s), 0 icon control(s) checked)
+  PASS  terms.html  (0 field(s), 1 icon control(s) checked)
+  PASS  verify.html  (1 field(s), 0 icon control(s) checked)
+
+A11Y LABELS PASS — every served page has named fields, named icon controls, valid label targets and no duplicate ids.
+npm notice run my-manager@1.0.0 verify:eslint
+npm notice run node tools/verify-eslint.cjs
+ESLint: 0 errors, 1028 pre-existing warning(s) across 509 file(s) (ceiling 1286, headroom 258)
+ESLint per-rule (count/frozen): curly 597/598, no-unused-vars 240/411, no-undef 143/202, no-redeclare 48/65
+npm notice run my-manager@1.0.0 verify:prettier
+npm notice run node tools/verify-prettier.cjs
+Prettier: all matched files use Prettier code style
+npm notice run my-manager@1.0.0 verify:marketing
+npm notice run node tools/verify-marketing-markup.cjs
+PASS  index.html carries the dot rail
+PASS  rail <li> elements are never nested inside a <li>  [0 nested]
+PASS  the rail closes every <li> it opens  [depth=0]
+PASS  the rail exposes seven big dots  [got 7]
+PASS  the rail has no .tooltip
+PASS  the rail has no .dot-label
+PASS  the rail has no .rail-line
+PASS  the rail has no .dot-group
+PASS  css/marketing.css defines the .dot box
+PASS  .dot declares a display that makes width/height apply  [display not blockified -> an inline span measures 0x0]
+PASS  .dot-item.major .dot width >= 6px  [width=8px]
+PASS  .dot-item.minor .dot width <= 8px  [width=5px]
+PASS  a major dot stays distinctly larger than a minor one  [major=8px minor=5px]
+PASS  main has no margin-left
+PASS  main has no margin-right
+PASS  main max-width is none  [max-width=max-width: none]
+PASS  main width is 100%  [width=width: 100%]
+PASS  js/marketing.js declares MINORS_PER_GAP
+PASS  index.html: offers no sign-in trigger
+PASS  features.html: offers no sign-in trigger
+PASS  about.html: offers no sign-in trigger
+PASS  contact.html: offers no sign-in trigger
+PASS  pricing.html: offers no sign-in trigger
+PASS  privacy.html: offers no sign-in trigger
+PASS  terms.html: offers no sign-in trigger
+PASS  refund.html: offers no sign-in trigger
+PASS  reviews.html: offers no sign-in trigger
+PASS  mymanager-field-guide.html: offers no sign-in trigger
+PASS  app.html: Sign in leaves for the standalone /signin page
+
+MARKETING MARKUP PASS
+npm notice run my-manager@1.0.0 verify:feature-registry
+npm notice run node tools/verify-feature-registry.cjs
+PASS  registry: FEATURES is a non-empty array
+PASS  registry: every FEATURES entry has a unique id
+PASS  registry: cardId is unique
+PASS  registry: index.html has no duplicate card ids
+PASS  registry: features.html has no duplicate block ids
+PASS  registry: index.html cards == FEATURES cardIds
+PASS  registry: features.html blocks == FEATURES detail ids
+PASS  registry: PANEL_COUNT is 15
+PASS  registry: PANEL_COUNT is derived from FEATURES
+PASS  registry: window.MMGR_PANEL_COUNT is exposed
+=== FEATURE REGISTRY: 10/10 ===
+npm notice run my-manager@1.0.0 verify:nav-anchors
+npm notice run node tools/verify-navigation-anchors.cjs
+PASS  anchors: every static href="#id" resolves on its page
+PASS  anchors: every NAV_DD item exists on its target page
+=== NAVIGATION ANCHORS: 2/2 ===
+npm notice run my-manager@1.0.0 verify:observe
+npm notice run node tools/verify-observability-redaction.cjs
+
+=== OBSERVABILITY: sampling + redaction (S-3) ===
+
+  PASS  observability is enabled
+  PASS  traces are sampled at 10% or less
+  PASS  errors stay at 1 (the log sampling rate is not below 1)
+  PASS  no record of every request (invocation logs are off)
+  PASS  the query string is redacted (a URL can carry a token)
+(node:14364) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/lib/observe.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  PASS  observe.js exports the scrubber
+  PASS  no secret value reached the log tail
+  PASS  the redaction marker is where the secret was
+  PASS  useful context survives the scrubber
+  PASS  the error line keeps its context (only the secret is cut)
+  PASS  the fixed fields win (a payload cannot rename the event)
+  PASS  no source line logs a credential or a request header
+  PASS  the scrubber is wired into the log path
+
+OBSERVABILITY PASS
+13 passed, 0 failed
+npm notice run my-manager@1.0.0 verify:google
+npm notice run node tools/verify-google-signin.cjs
+
+=== 1. Client ID is identical wherever it is written ===
+  PASS  6 files carry one client ID
+  PASS  client ID shape matches the Google client ID form
+
+=== 2. Served CSP allows the sign-in origins ===
+  PASS  script-src allows accounts.google.com (the GIS script)
+  PASS  connect-src allows oauth2.googleapis.com (token verification)
+  PASS  connect-src allows accounts.google.com (GIS fetches)
+  PASS  frame-src allows accounts.google.com (the account chooser)
+  PASS  img-src allows the Google avatar host
+
+=== 3. Every page that loads GIS can finish a sign-in ===
+  PASS  build.js carries the module in the project and app-launcher bundles
+  PASS  dist/app-bundle.js is built
+  PASS  admin.html (mount + module)
+  PASS  app.html (mount + module)
+  PASS  signin.html (mount + module)
+
+=== 4. Authorized JavaScript Origins list covers every site domain ===
+  PASS  checklist names https://mymanagerworkspace.com
+  PASS  checklist names the local dev origin http://localhost:8765
+  PASS  checklist names the local dev origin http://localhost:8787
+  PASS  checklist states that the GIS flow uses no redirect URI
+
+=== 5. The verifier reads the tokeninfo wire shape ===
+  PASS  no boolean-only email_verified comparison
+  PASS  email_verified goes through the normaliser
+  PASS  the nonce claim is read from the ID token itself
+
+all checks passed
+npm notice run my-manager@1.0.0 verify:csp-eval
+npm notice run node tools/verify-csp-unsafe-eval.cjs
+
+=== CSP: no unsafe-eval on any HTML page (S-4) ===
+
+--- static ---
+  PASS  worker.js declares the three policies
+  PASS  serve.cjs declares the same three policies
+  PASS  the PAGE policy carries no unsafe-eval
+  PASS  the PRICING policy carries no unsafe-eval
+  PASS  the whisper runtime policy is the one that allows it
+  PASS  exactly one policy allows unsafe-eval (the whisper one)
+  PASS  CSP identical in both mirrors
+  PASS  PADDLE_CSP identical in both mirrors
+  PASS  WHISPER_CSP identical in both mirrors
+  PASS  the Worker hands out the relaxed policy only under /vendor/whisper/
+  PASS  the Worker tests the NORMALISED path (dot segments cannot smuggle)
+  PASS  the dev server hands out the relaxed policy only under the RESOLVED path
+  PASS  no HTML page lives under vendor/whisper/
+  PASS  the page policy keeps script-src free of 'unsafe-inline'
+
+--- live ---
+  PASS  the dev server answered
+  PASS  every HTML page answers with a Content-Security-Policy
+  PASS  no HTML page is served with a policy that allows unsafe-eval
+  PASS  the whisper runtime still gets its relaxed policy (control)
+  PASS  an ordinary asset does not get the relaxed policy (control)
+
+CSP PASS
+19 passed, 0 failed
+npm notice run my-manager@1.0.0 test
+npm notice run node --test test/*.test.mjs
+✔ build merges six record kinds and sorts by date then kind (4.6198ms)
+✔ build drops completed work, closed registers and terminal ideas (0.4439ms)
+✔ the 7-day window stops at day seven and 0 means no horizon (0.7965ms)
+✔ past open work stays and is overdue, past meetings and ideas drop (0.9628ms)
+✔ a milestone is one event, never also a task (0.2816ms)
+✔ tone marks today and the next two days as now (1.0322ms)
+✔ group keeps day order and every event lands in one group (27.9737ms)
+✔ summary counts each kind and totals the overdue ones (0.8722ms)
+✔ ics is a CRLF calendar with date-only events and escaped text (3.1714ms)
+✔ parseISO rejects impossible dates and never shifts a day (0.9269ms)
+(node:33520) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/ai-proxy.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ pool: (no key, no Workers AI, signed in) answers from the pool with the lite model (79.0886ms)
+✔ pool: the model the CLIENT asked for is ignored (lite only, per owner rule) (5.491ms)
+✔ pool: a rate-limited key is skipped and the next key answers (17.1297ms)
+✔ pool: a rejected key (401) is skipped too (4.1262ms)
+✔ pool: unset slots are skipped (two keys set = two attempts, not four) (3.6828ms)
+✔ pool: when EVERY key fails the existing capacity message still answers (8.431ms)
+✔ sign-in: an anonymous caller is refused with a sign-in message, never the pool (4.6951ms)
+✔ sign-in: an anonymous caller cannot ride the Workers AI free binding either (3.0403ms)
+✔ sign-in: a caller OWN key still works with no session (the BYO path is theirs) (3.0475ms)
+✔ pool: a request carrying the user OWN key never touches the pool (8.6247ms)
+✔ pool: the free model is used even when the caller asked for another provider (4.9062ms)
+✔ quota: the 6th message in a window is refused with 402 and spends NO key (15.0259ms)
+✔ quota: 402 is NOT 429/503 (the client ladder must not retry it) (6.5893ms)
+✔ quota: the counter is spent on a successful answer and reported as remaining (6.1827ms)
+✔ quota: the first message starts the counter at 1 with a 24h window (8.5051ms)
+✔ quota: a failed rung does NOT spend the quota (11.2237ms)
+✔ quota: an ACTIVE subscription is not capped (3.4098ms)
+✔ quota: a past_due subscription counts as active (D1 grace window) (9.2477ms)
+✔ quota: a CANCELED subscription is capped again (5.741ms)
+✔ quota: a missing KV binding still answers (cache fault must not take AI down) (15.4913ms)
+✔ quota: an unreadable counter is treated as zero, not as an error (11.8239ms)
+✔ quota: a D1 fault fails CLOSED (treated as free) so the pool cannot be drained (16.2307ms)
+✔ pool: no key secret is ever echoed back to the caller (9.2964ms)
+✔ pool: the quota counter is keyed per account, not globally (5.6536ms)
+✔ pool: a 200 with no usable text falls through instead of answering empty (2.5201ms)
+✔ order: the pool answers BEFORE the Workers AI binding is tried (3.7923ms)
+✔ order: Workers AI is the safety net when every pool key fails (11.5965ms)
+✔ quota: the Workers AI safety net spends the SAME allowance as the pool (4.8108ms)
+✔ quota: an exhausted allowance refuses BEFORE Workers AI (the cap is a cap) (25.0371ms)
+(node:1360) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/lib/observe.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"ts":"2026-11-20T02:15:30.157Z","level":"info","event":"signup"}
+{"ts":"2026-11-20T02:15:30.166Z","level":"info","event":"project_created"}
+{"ts":"2026-11-20T02:15:30.166Z","level":"info","event":"calculator_export"}
+{"ts":"2026-11-20T02:15:30.167Z","level":"info","event":"mcp_key_created"}
+{"ts":"2026-11-20T02:15:30.167Z","level":"info","event":"photo_uploaded"}
+{"ts":"2026-11-20T02:15:30.169Z","level":"info","event":"page_view"}
+{"ts":"2026-11-20T02:15:30.171Z","level":"info","event":"signup"}
+{"ts":"2026-11-20T02:15:30.171Z","level":"info","event":"signup"}
+{"ts":"2026-11-20T02:15:30.175Z","level":"info","event":"project_created","first":true}
+{"ts":"2026-11-20T02:15:30.176Z","level":"info","event":"project_created"}
+{"ts":"2026-11-20T02:15:30.177Z","level":"info","event":"signup"}
+✔ the allowlist is exactly the five agreed names (1.953ms)
+✔ each allowlisted event writes one data point (70.5355ms)
+✔ an unknown event name writes nothing (1.1332ms)
+✔ DNT and Sec-GPC both suppress the write (2.1995ms)
+✔ no identifier reaches the data point (3.5689ms)
+✔ a non-boolean first is dropped rather than serialised (1.2321ms)
+✔ no binding means no write and no throw (0.7671ms)
+(node:32316) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/cloud/apply-ops.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a set applies against the pre-state and reports applied (12.3665ms)
+✔ a set whose after already matches the live value is skipped_already (1.1025ms)
+✔ a set whose before no longer matches is a conflict and the live value stays (2.7089ms)
+✔ a later op on the same target supersedes the earlier one (2.9175ms)
+✔ idempotent re-accept: the same ops on the accepted state all skip (1.3362ms)
+✔ a create inserts; a repeat create with the same id skips (1.3827ms)
+✔ a create that revalidates an out-of-enum status is refused (2.8554ms)
+✔ a delete of a referenced task is refused (1.9823ms)
+✔ a delete of an unreferenced task removes it and strips survivor predecessors (1.6716ms)
+✔ deleting a phase that still has children is refused (1.4353ms)
+✔ a non-deletable list (budgetLines) refuses delete (0.8721ms)
+✔ an op outside the granted scope is a conflict (0.7334ms)
+✔ a predecessor cycle is a hard failure and the state is unchanged (2.6851ms)
+✔ a cycle rolls every report row back and blames the predecessors op (3.2507ms)
+✔ a bad enum left in state is a hard failure (1.1896ms)
+✔ F1.3 a non-schedule edit (assignee) nulls nothing and leaves no derived string (0.9717ms)
+✔ F1.3 a schedule-input edit (predecessors) nulls the derived fields on EVERY task (1.2323ms)
+✔ F1.3 a task create nulls the derived fields on every task (0.7742ms)
+✔ F1.2 a status change stamps statusSince + completedDate and clears leadTime (0.7338ms)
+✔ F1.2 a completed -> todo move clears completedDate and re-stamps statusSince (0.7148ms)
+✔ F1.2 a non-status edit does not stamp the task (0.5416ms)
+✔ d1-remote: reads the rows out of a banner + [WARNING] + array-of-results output (5.5107ms)
+✔ d1-remote: clean --json output, empty results, and garbage (4.0841ms)
+✔ d1-remote: refuses anything that is not a single SELECT or PRAGMA (1.0895ms)
+✔ diag-paddle-sub: probes the right host per environment and reads the result (3.0409ms)
+✔ diag-paddle-sub: a pri_ id is probed on /prices/ and a txn_ id is refused (1.2395ms)
+✔ diag-paddle-sub: skips a missing key, rejects a non sub_ id, never echoes the key (1.0022ms)
+(node:2488) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/billing.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ billingStatusActive: active, on_trial and past_due are active (D1 grace) (5.3124ms)
+✔ billingStatusActive: cancelled, expired, paused and unknown are not active (0.67ms)
+✔ billingFreeCap: default is 1 (D3) (0.7817ms)
+✔ billingFreeCap: a positive FREE_PROJECT_CAP overrides the default (0.6423ms)
+✔ billingFreeCap: a non-positive or unreadable override falls back to 1 (0.8321ms)
+✔ deriveTier: maps the enterprise price ID to enterprise (0.6951ms)
+✔ deriveTier: maps the company price ID to company (0.7434ms)
+✔ deriveTier: any other known price ID is contractor (0.5971ms)
+✔ deriveTier: an unrecognised price ID falls back to contractor (never a downgrade) (0.5122ms)
+✔ deriveTier: a missing price ID or env is contractor (0.7999ms)
+✔ deriveTier: maps the estimator price ID to estimator (0.6455ms)
+✔ deriveTier: the pre-rename homeowner price ID is an ALIAS for estimator (0.4197ms)
+✔ deriveTier: the alias applies only to that price, never to contractor (0.3575ms)
+✔ deriveTier: the estimator price wins over a stale homeowner price (0.3274ms)
+✔ periodEndIso: epoch seconds become an ISO string, never 1970 (4.2167ms)
+✔ periodEndIso: missing, zero, negative and junk are null (not 1970) (0.4165ms)
+✔ GET /api/billing/status returns currentPeriodEnd as an ISO string (154.7054ms)
+✔ status: free gets the free cap; every PAID tier reports null (unlimited) (25.1478ms)
+✔ status: the free cap defaults to 1 and past_due still counts as paid (17.1942ms)
+✔ DELETE /api/billing/subscription POSTs to the LIVE cancel operation with the stored sub id and answers with ISO dates (9.9546ms)
+✔ cancel: PADDLE_ENV=sandbox goes to the sandbox host (12.7558ms)
+billing cancel failed: subId=sub_01m4e4v5652cz8vsgsz0eeaq96 env=live http=404 detail=Entity sub_x not found [not_found]
+billing cancel failed: subId=sub_01m4e4v5652cz8vsgsz0eeaq96 env=live http=400 detail=Invalid request. [bad_request]
+✔ cancel: a 404 from the LIVE api names the environment and keeps Paddle's error code (6.4936ms)
+✔ cancel: a 400 without a lock code is still reported as a rejected request, not a missing subscription (5.9194ms)
+billing cancel failed: subId=sub_01m4e4v5652cz8vsgsz0eeaq96 env=live http=403 detail=no scope [forbidden]
+✔ cancel: a 403 is reported as a rejected key, not a missing subscription (8.6648ms)
+✔ cancel: a scheduled PAUSE in the body names the pause date instead of pretending to cancel (2.3511ms)
+✔ cancel: no active row is 404 and never calls Paddle (4.6427ms)
+✔ cancel: refused (400) and never reaches the database or Paddle with no body at all (4.3121ms)
+✔ cancel: refused (400) and never reaches the database or Paddle with an empty body (8.318ms)
+✔ cancel: refused (400) and never reaches the database or Paddle with a body with no confirm field (6.3275ms)
+✔ cancel: refused (400) and never reaches the database or Paddle with the WRONG word (5.8863ms)
+✔ cancel: refused (400) and never reaches the database or Paddle with a near miss (4.0419ms)
+✔ cancel: the word is case-insensitive and tolerates surrounding space (a phone autocapitalises) (7.6401ms)
+✔ checkout: an active subscriber changes plan on the same subscription (two PATCHes) (6.2415ms)
+✔ checkout: an active subscriber with no scheduled cancel needs one PATCH (10.1047ms)
+✔ checkout: the plan the owner already holds answers samePlan and never calls Paddle (8.1623ms)
+✔ checkout: canceled but unexpired opens a NEW checkout (the old one will not renew) (3.5175ms)
+✔ checkout: a canceled or missing row is NOT blocked (4.5135ms)
+billing: ignored canceled event for sub_OLD_duplicate - the owner row holds the active subscription sub_01m4e4v5652cz8vsgsz0eeaq96
+✔ webhook: cancelling an OLD subscription does not strip the live one (9.4275ms)
+✔ webhook: the CURRENT subscription canceling still writes (8.4542ms)
+✔ webhook: first subscription for an owner writes sub id, status and period end in seconds (7.3949ms)
+✔ webhook: a bad signature is 401 and writes nothing (1.3578ms)
+✔ webhook: a LemonSqueezy event with no scheduled cancel binds null, not undefined (8.6243ms)
+✔ subscriptionActive: active statuses are active; canceled keeps the paid period (1.0572ms)
+✔ status: canceled but unexpired is still Premium and says when it ends (3.4132ms)
+✔ status: canceled and past the paid period is free again (1.475ms)
+✔ cancel: a stored cancel_at answers alreadyScheduled and never calls Paddle (3.7782ms)
+✔ cancel: a Paddle-scheduled cancel is remembered as cancel_at (4.0712ms)
+✔ webhook: a scheduled cancel stores cancel_at in seconds (3.2773ms)
+✔ webhook: a resume with no scheduled change clears cancel_at (1.411ms)
+✔ checkout: a lower plan is refused, never a silent mid-period downgrade (1.2903ms)
+(node:43516) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/lib/http.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Content-Length over the cap is refused before the body is read (53.0684ms)
+✔ a chunked stream over the budget is refused even with no Content-Length (2.7132ms)
+✔ a body under the cap parses to the object (1.8613ms)
+✔ a body exactly at the cap passes; one byte over fails (1.3805ms)
+✔ multi-byte characters count as bytes, not characters (4.6643ms)
+✔ malformed JSON under the cap reports bad, not tooLarge (1.6551ms)
+✔ a request with no body reports bad instead of throwing (1.8392ms)
+✔ readCloudBody keeps its 8 MiB contract through the delegate (2.6553ms)
+✔ readJsonBody with no explicit cap falls back to the cloud 8 MiB cap (1.3223ms)
+✔ validateBody honors its maxSize argument (the parameter was dead) (7.1634ms)
+(node:46400) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/cloud/calc-workspace.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ malformed JSON in R2 reads as an empty workspace (76.9887ms)
+✔ a JSON array is not a workspace and is discarded (5.9767ms)
+✔ a JSON string carrying markup is discarded, never echoed (4.6183ms)
+✔ a plain object round-trips unchanged (6.3286ms)
+✔ PUT rejects an array body with 400 (5.1486ms)
+✔ PUT stores an object with a savedAt stamp (17.5628ms)
+(node:13728) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/csp-report.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ query string and fragment are removed, origin and path kept (3.6227ms)
+✔ the literal keywords survive (0.6911ms)
+✔ a non-URL value is stripped textually, not dropped (0.6557ms)
+✔ the real handler logs no query string (87.396ms)
+✔ the Reporting API array shape is stripped too (2.9788ms)
+✔ the logged blocked and document fields are exactly origin + path (3.3992ms)
+✔ inline stays exactly inline in both report shapes (4.8739ms)
+✔ the sweep print keeps the page path out of the blocked value (1.2022ms)
+✔ a field needs a label (1.7874ms)
+✔ an unknown type is refused (0.271ms)
+✔ a select needs at least one option (0.2876ms)
+✔ add creates a stable custom key with the documented defaults (0.7005ms)
+✔ a duplicate label is refused, case-insensitively (0.3343ms)
+✔ update changes only whitelisted properties (0.4163ms)
+✔ update refuses a blank or duplicate label (0.3144ms)
+✔ text coercion trims and caps at 200 characters (0.2ms)
+✔ number coercion keeps finite numbers and rejects junk (0.2381ms)
+✔ date coercion keeps only YYYY-MM-DD (0.4023ms)
+✔ select coercion rejects a value outside the options (0.2458ms)
+✔ checkbox coercion accepts only truthy storage forms (0.2568ms)
+✔ valueOf falls back to the field default when no value is stored (0.343ms)
+✔ setValue writes a coerced value into task.custom (0.4136ms)
+✔ missing returns only empty required fields (0.37ms)
+✔ remove deletes the field, every stored value, and a filter that used it (1.8798ms)
+✔ move respects the edges (0.4374ms)
+✔ prune drops orphan values (0.2988ms)
+✔ the board filter matches only an exact select value and clears on a stale key (0.2799ms)
+✔ a cycle needs a name, two dates, and an end after the start (2.032ms)
+✔ activating a cycle demotes the previous active one in the same write (3.452ms)
+✔ activation takes the commitment once and does not recalculate it (1.7593ms)
+✔ a task joins one cycle at a time and can leave it (1.8331ms)
+✔ a closed cycle keeps its membership and its dates (2.4734ms)
+✔ closing refuses without a choice and while a task has no status (2.1579ms)
+✔ carry forward moves the unfinished work into the next planned cycle (1.2674ms)
+✔ carry forward is refused when no planned cycle follows (0.6976ms)
+✔ return to the backlog clears the pointer and records the counts (0.9484ms)
+✔ a cycle that holds work or is active cannot be deleted (4.3184ms)
+✔ a task with no duration counts as a task and as zero days (0.6618ms)
+✔ a module groups tasks and weights its progress by duration (1.5363ms)
+✔ an empty module has no progress rather than a confident zero (0.6264ms)
+✔ a deleted task disappears from a module on the next read (0.5037ms)
+✔ removing a module leaves its tasks untouched (0.696ms)
+✔ the burn-down draws only recorded days and names the gaps (3.8205ms)
+✔ a cycle with no snapshots says so instead of drawing from two endpoints (0.7591ms)
+✔ scope change splits what was added from what was removed (1.1392ms)
+✔ velocity and the review come only from a closed cycle record (1.1008ms)
+(node:7204) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/cloud/projects.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+purge skipped tables whose migration is not applied here: cloud_project_photos (project p1)
+✔ project purge deletes BOTH R2 prefixes (state and photos) (6.1567ms)
+✔ project purge never touches another project (1.5706ms)
+✔ project purge deletes every project-scoped table (2.8763ms)
+✔ every project-scoped delete is bound to that project id only (2.1484ms)
+✔ account purge removes team memberships, adoptions and pool rows (1.4948ms)
+✔ account purge anonymises the membership audit trail but keeps the events (1.6057ms)
+✔ a database without the audit table still deletes the account (1.0307ms)
+✔ account purge deletes pool links BEFORE pool items (they reference the ids) (0.831ms)
+✔ account purge deletes the calculator workspace blob (3.4488ms)
+✔ a table whose migration is not applied yet does not break the purge (2.2437ms)
+✔ a real database error still propagates (only "no such table" is tolerated) (2.0834ms)
+(node:4604) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/billing.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+billing cancel for deletion failed: subId=sub_403 http=403 detail=no scope
+billing cancel for deletion failed: subId=sub_net http= detail=
+✔ no subscription row: nothing to cancel, no network call (2.5245ms)
+✔ a cancelled subscription does not block deletion (0.4326ms)
+✔ an ACTIVE subscription is cancelled with effective_from immediately (0.6241ms)
+✔ a past_due subscription is cancelled too (billing grace is still billing) (2.0713ms)
+✔ sandbox deployments hit the sandbox API (0.6894ms)
+✔ a refusal from Paddle BLOCKS deletion (ok:false) (0.6822ms)
+✔ a subscription already gone at Paddle counts as cancelled (0.4163ms)
+✔ an unreachable Paddle blocks deletion (never bill a deleted account) (0.6603ms)
+✔ a missing subscription reference blocks deletion (0.3288ms)
+✔ an unreadable database blocks deletion rather than guessing (0.4291ms)
+(node:26272) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/lib/http.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a bare configured address is wrapped name-backed (3.2761ms)
+✔ an already name-backed config passes through byte-identical (0.6514ms)
+✔ no config at all falls back to the dev sender, still name-backed (0.5182ms)
+✔ a non-string config value falls back instead of leaking into from (0.5693ms)
+✔ surrounding whitespace in config is trimmed before wrapping (0.5973ms)
+(node:33340) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/fx.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ rounding lands on the nearest J$100 (3.9539ms)
+✔ a candidate outside the sanity band is refused (0.9169ms)
+✔ a candidate more than 5% from the stored value is refused (0.6307ms)
+✔ a first run with no stored value accepts any in-band rate (0.6196ms)
+✔ the feed shape is read from usd.jmd only (0.6971ms)
+✔ the seed wins when there is no stored record (1.3317ms)
+✔ a stored record newer than the seed is used (2.2692ms)
+✔ data older than 14 days reports unavailable (1.394ms)
+✔ fxRead falls back to the seed and stays available today (0.5299ms)
+✔ fxRead reports unavailable once the newest record is 14 days old (0.7691ms)
+✔ every price on pricing.html carries a USD label (1.14ms)
+✔ the J$ line states that the charge itself is in USD (0.5512ms)
+(node:46368) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/lib/http.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ k-anonymity: only the 5-char prefix leaves, never the suffix (24.1755ms)
+✔ a clean password (suffix absent from range) returns false (1.4987ms)
+✔ HIBP_ENABLED === false is a hard kill-switch: no fetch, false verdict (0.4403ms)
+✔ empty / missing password returns false without fetching (0.3358ms)
+✔ FAIL-OPEN: a thrown network error returns false, not a rejection (2.391ms)
+✔ FAIL-OPEN: a non-200 response returns false (1.1923ms)
+✔ case-insensitive suffix match still detects a pwned password (1.0396ms)
+✔ STAGES keeps the six canvas keys in board order (6.8325ms)
+✔ add trims, defaults and appends to the end of its column (5.3251ms)
+✔ add refuses an empty title and a duplicate id (0.7407ms)
+✔ score weighs impact twice and clamps out-of-range input (0.7665ms)
+✔ update ignores protected keys and an empty title (1.0996ms)
+✔ update appends a stage change to the end of the new column (1.4628ms)
+✔ applyDrop lands a two-card move and numbers both columns from zero (3.934ms)
+✔ applyDrop is all-or-nothing on an unknown id (1.1562ms)
+✔ applyDrop rejects duplicates, bad stages and bad orders (0.4531ms)
+✔ promote records the task link once without changing the stage (1.8646ms)
+✔ unlink clears only the links that point at the deleted task (2.2087ms)
+✔ repair clears a link to a task that is no longer in the state (0.5364ms)
+✔ repair makes an imported row renderable and is idempotent (37.6186ms)
+✔ byStage, filter, tags and stats read the same records (1.1061ms)
+✔ columnTasks sorts by boardPosition, not WBS array order (7.0645ms)
+✔ workItems drops phases and rollup parents (0.7951ms)
+✔ moveTo renumbers the target column and closes the old gap (1.6825ms)
+✔ moveBy moves one slot and refuses at the edges (1.1966ms)
+✔ stampStatus owns completedDate, startedDate, statusSince (0.8302ms)
+✔ wip counts work items, 0 means unlimited, over is a warning flag (1.2858ms)
+✔ matchTask covers text, assignee, overdue and flag (9.0959ms)
+✔ laneGroups puts Unassigned last and keeps every card once (24.5715ms)
+✔ flow averages only cards with both dates (2.4904ms)
+✔ parseQuickAdd reads @assignee and due:date (1.9205ms)
+✔ ensureSettings clamps negative limits and unknown lane modes (0.4109ms)
+✔ normalizePositions fills gaps without moving existing cards (0.3518ms)
+✔ phase rows are the majors and nested descendants count to their top ancestor (7.2024ms)
+✔ a phase row itself is never counted as a work item (0.7637ms)
+✔ without phase rows the task phase labels group the work, in first-appearance order (1.2993ms)
+✔ an unlabelled work item goes to an honest Unassigned group so the points still sum (1.151ms)
+✔ no phase rows and no labels returns no groups, and the dashboard keeps its single ring (0.8272ms)
+✔ an empty project returns no groups at all (0.5065ms)
+✔ a major with no work items beneath it is omitted (0.8309ms)
+✔ the sum of every group points equals the overall completion exactly (0.951ms)
+✔ the rule follows the Kanban work-item definition, not a copy of it (1.1737ms)
+✔ a group keeps its colour when the tasks are reordered (2.2911ms)
+✔ eight or fewer groups never share a colour (2.4343ms)
+✔ more than eight majors keep the seven largest and merge the rest into Other (0.5476ms)
+(node:35464) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/errors.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the error-code set is frozen, unique and 23 long (4.9302ms)
+✔ refusalCode always returns a member of the set (3.027ms)
+✔ applyResultCode: applied=null, skip=SKIPPED_ALREADY, conflict classified (0.3302ms)
+(node:13628) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/server.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ get_budget.evm equals the client computeEVM field for field (10.421ms)
+✔ each line says what actual counts and splits future spend (0.8278ms)
+✔ a line with no spend entries reports the stored lump sum as its basis (0.7125ms)
+✔ evmNote names the real reason EVM is null (0.8391ms)
+✔ a key without the WBS section gets a scope note, not a false no-tasks note (0.3941ms)
+(node:36316) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/model.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ every modelled list has a client creator under test (4.4793ms)
+✔ tasks: create defaults equal the UI creator field set (2.8174ms)
+✔ resources: create defaults equal the UI creator field set (0.4771ms)
+✔ risks: create defaults equal the UI creator field set (0.423ms)
+✔ issues: create defaults equal the UI creator field set (0.5984ms)
+✔ logEntries: create defaults equal the UI creator field set (0.4462ms)
+✔ meetings: create defaults equal the UI creator field set (0.5282ms)
+✔ stakeholders: create defaults equal the UI creator field set (0.5358ms)
+✔ documents: create defaults equal the UI creator field set (0.525ms)
+✔ changes: create defaults equal the UI creator field set (1.2139ms)
+✔ commsEntries: create defaults equal the UI creator field set (3.5706ms)
+✔ tasks.status enum equals the Kanban COLUMNS constant (0.2741ms)
+✔ issue and change enums equal the process model constants (0.1627ms)
+✔ risk and stakeholder scales come from the client selects (1.1161ms)
+✔ resource, document and comms enums come from the client selects (1.2063ms)
+✔ confidence values match the client state contract (0.6634ms)
+✔ risk and issue text is stored as description, name is an input alias (0.3534ms)
+✔ the derived set covers every field the app recomputes (0.2721ms)
+✔ every date field is flagged and every enum is an array (0.3187ms)
+✔ every list names a title field that exists in the model (0.2257ms)
+✔ money tables are not deletable through the generic path (0.1629ms)
+✔ a custom key is not a modelled field, so callers can gate it (0.1602ms)
+(node:42200) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/oauth.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ PKCE S256 is base64url SHA-256, not hex (30.5354ms)
+(node:40112) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/server.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ flag unset: owner-code Bearer still passes the gate and is counted as accepted (74.3558ms)
+✔ flag on: owner-code Bearer is refused with -32001 naming the API key (12.2175ms)
+✔ flag on: a real project API key is not caught by the owner-code gate (42.2054ms)
+✔ no credentials: the counter stays silent (5.1481ms)
+✔ flag on: the gate decides before the credential is looked up (2.4956ms)
+(node:28080) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/server.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ every list and section is described exactly as the model says (9.4451ms)
+✔ the limits are the effective limits for the owner tier (1.1096ms)
+✔ the schema limits follow the tier it is asked for (1.4602ms)
+✔ releaseNotes names each behavior change since the first release (1.7394ms)
+✔ a key with only the Budget section sees only budget tables (0.9514ms)
+✔ a table outside the grant is refused; a granted one is returned alone (0.5149ms)
+✔ an unknown table names the available ones (0.4365ms)
+✔ field flags the agent relies on are present (0.9419ms)
+✔ fires on an unescaped identifier from the function arguments (198.3553ms)
+✔ fires on an unescaped template interpolation (4.4793ms)
+✔ fires inside a map callback that builds a row (3.9221ms)
+✔ fires through insertAdjacentHTML and outerHTML (2.9929ms)
+✔ quiet once the value is escaped (3.1924ms)
+✔ quiet on numbers: Number(), Math.round() and toLocaleString() (3.0254ms)
+✔ quiet on a value read out of a constant table (4.1241ms)
+✔ quiet on a literal array element (2.0903ms)
+✔ quiet on a builder that escapes everything it emits (2.7223ms)
+✔ an `// ok:` marker on the line suppresses the finding (4.3904ms)
+✔ a bare `// ok` is not an allowance (4.179ms)
+✔ a marker on the statement line covers a multi-line template (2.6301ms)
+✔ a new page starts with one paragraph block (4.5489ms)
+✔ pages nest three deep and flatten in tree order (2.1111ms)
+✔ move refuses a page into its own descendant (0.8852ms)
+✔ move reparents and moveSibling reorders (28.8999ms)
+✔ remove deletes every descendant and reports the ids (1.2001ms)
+✔ blocks add, edit, toggle, reorder and remove (4.8754ms)
+✔ an unknown block type and missing fields are repaired on read (0.7414ms)
+✔ empty trailing blocks collapse but a single blank block stays (0.8564ms)
+✔ newPage under a missing parent is refused (0.5651ms)
+✔ the model never stores HTML (1.0194ms)
+✔ resolveTasks filters by phase, status, assignee and window (2.7506ms)
+✔ resolveDocs filters by type and status (0.8683ms)
+✔ a live block stores a filter, never resolved rows (1.4631ms)
+✔ an empty live result names the filter (1.2806ms)
+✔ capturing a template strips ids and keeps the tree (1.4338ms)
+✔ capture, apply and capture again is the same tree (1.762ms)
+✔ applying a template twice creates two independent branches (1.6557ms)
+✔ a template page carries live filters, never rows (1.5411ms)
+✔ an out-of-order template still attaches children to their parent (0.88ms)
+✔ a template with no pages applies nothing (0.4039ms)
+✔ linkDoc and unlinkDoc move the link on the document, not the page (1.1727ms)
+✔ unfiledRows keeps unlinked pages and marks the ancestors that hold them (1.7901ms)
+✔ buildPack walks the branch in order with relative depth (1.958ms)
+✔ buildPack groups the register rows linked from the branch by type (1.4867ms)
+✔ buildPack resolves live blocks at assembly time (1.6189ms)
+(node:45208) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/auth/session.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a legacy two-part hash still signs in and is upgraded to v2 (278.895ms)
+✔ an already-current v2 row is not rewritten (76.0284ms)
+✔ a row stored with a lower iteration count is upgraded on sign-in (54.2769ms)
+✔ a wrong password is refused and upgrades nothing (48.1071ms)
+✔ a malformed hash fails closed instead of throwing (122.4046ms)
+✔ the KDF honours the iteration count it is given (58.97ms)
+(node:9560) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/cloud/photos.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ sniffImageType recognises the five accepted formats (1.5966ms)
+✔ sniffImageType refuses a renamed HTML file (0.2841ms)
+✔ looksLikeMarkup catches a polyglot that hides markup after a real header (0.3154ms)
+✔ stripExif leaves a clean JPEG byte-identical (1.1626ms)
+✔ stripExif removes a JPEG APP1 Exif segment (0.3637ms)
+✔ stripExif removes a PNG eXIf chunk and leaves a clean PNG identical (0.4581ms)
+✔ stripExif removes a WebP EXIF chunk and fixes the RIFF size (0.4999ms)
+✔ stripExif leaves GIF bytes unchanged (no EXIF container) (0.211ms)
+(node:8496) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/cloud/photos.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"ts":"2026-11-20T02:15:31.226Z","level":"info","event":"photo_uploaded"}
+✔ billing dormant: the gate changes nothing, the upload succeeds (266.2982ms)
+✔ billing on, no account to bill: refused 402 and NOTHING is stored (88.8489ms)
+✔ billing on, owner is signed out and has no subscription: refused 402 (69.7494ms)
+{"ts":"2026-11-20T02:15:31.452Z","level":"info","event":"photo_uploaded"}
+✔ billing on, owner subscription active: the upload goes through (64.2269ms)
+{"ts":"2026-11-20T02:15:31.500Z","level":"info","event":"photo_uploaded"}
+✔ billing on, past_due still uploads - a failed payment keeps entitlement (47.9654ms)
+✔ billing on, subscription cancelled or expired: refused 402 (185.5616ms)
+✔ a wrong owner code is still 403, never 402 - auth runs before billing (78.4841ms)
+✔ no credentials at all is still 403, never 402 (110.7485ms)
+✔ a project with no cloud row is still 403 before any billing question (22.7972ms)
+✔ the plan table pins each tier (0.4561ms)
+✔ usage reports the limit that belongs to the active plan (115.4669ms)
+✔ a free account reports zero bytes and still cannot upload (31.5072ms)
+✔ billing dormant still reports the base paid allowance (28.6718ms)
+(node:3808) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/lib/observe.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"ts":"2026-11-20T02:15:31.019Z","level":"info","event":"project_created","first":true}
+{"ts":"2026-11-20T02:15:31.024Z","level":"info","event":"project_created","first":true}
+{"ts":"2026-11-20T02:15:31.028Z","level":"error","event":"api-unhandled","path":"/api/x","message":"boom","stack":"Error: boom |     at TestContext.<anonymous> (file:///C:/Users/Garfield/Downloads/mymanager-fixed/test/privacy-signal.test.mjs:72:36) |     at Test.runInAsyncScope (node:async_hooks:226:14)"}
+✔ Sec-GPC: 1 is honoured (48.9694ms)
+✔ DNT: 1 is honoured (0.3788ms)
+✔ GPC wins on case and wording too (0.3604ms)
+✔ no signal means tracked (0.3211ms)
+✔ a missing request is not treated as a signal (0.2498ms)
+✔ trackEvent writes analytics without a signal (5.4409ms)
+✔ trackEvent writes NOTHING when DNT is set (1.3926ms)
+✔ trackError writes NOTHING when GPC is set (3.6377ms)
+✔ trackError still logs the error when suppressed - a fault must stay diagnosable (1.6829ms)
+(node:16680) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/worker.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the retired rate-data file is GONE, not merely hidden (7.3404ms)
+✔ backend and dev internals are refused (1.3301ms)
+✔ every other internal path is refused too (1.227ms)
+✔ no real runtime asset is caught by the guard (1.0048ms)
+✔ robots.txt and sitemap.xml stay public on their own merits (0.7148ms)
+✔ a root-level dev file added later is caught without editing a list (0.5038ms)
+✔ nested paths are never caught by the root-extension rule (0.5731ms)
+✔ traversal-normalised forms are still refused (0.5018ms)
+(node:31740) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/worker.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ every scanner path is a real 404 with no shell body (83.7578ms)
+✔ the API namespace answers a JSON 404, never a page (2.7577ms)
+✔ real app deep links still answer 200 (2.3861ms)
+✔ a real html page is not mistaken for a probe (2.0005ms)
+✔ a dotfile inside a nested directory is refused too (1.1323ms)
+✔ /.well-known stays public (1.3313ms)
+✔ a submitted change cannot jump straight to approved (2.1709ms)
+✔ approved, rejected and cancelled are final (0.4229ms)
+✔ review needs a name and approval needs a title (0.3327ms)
+✔ a rejection needs a reason in the notes (0.2846ms)
+✔ an accepted move writes exactly one history entry (2.1208ms)
+✔ a second approver is required before an approval (0.4007ms)
+✔ issues resolve with a note, reopen, and close once (0.4851ms)
+✔ history survives the deletion of its record (0.3708ms)
+✔ repair steps an impossible status back and records why (0.8095ms)
+✔ the feed is newest first and filters by kind (42.2941ms)
+✔ a rule raises an issue when a risk score passes a threshold (1.2511ms)
+✔ a disabled rule does nothing (0.2346ms)
+✔ a rule cannot fire on another rule action: the chain stops and says so (1.1049ms)
+✔ a rule fires only on the event it declares (20.8578ms)
+✔ a rule cannot bypass the change guard (0.6491ms)
+✔ raiseIssue is refused for anything but a risk (0.5687ms)
+✔ appendLog fills the record placeholders (0.6389ms)
+✔ requireApproval sets the flag the change guard then honours (0.587ms)
+✔ the approval pack lists approved changes in date order and counts the rest (3.3236ms)
+✔ the pack honours a date range and an explicit status list (1.0234ms)
+✔ the transition summary carries exactly the fields a receiver needs (0.6195ms)
+(node:36060) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/cloud/proposal-diffs.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ parseDiffPath splits array and object leaves (4.3045ms)
+✔ normalizeDiff turns a legacy flat leaf into a record diff (0.5644ms)
+✔ normalizeDiff keeps a structured MCP diff (0.2351ms)
+✔ normalizeProposalDiffs dedupes last-wins and caps (0.4346ms)
+✔ diffKey is stable (0.2266ms)
+✔ valuesEqual treats null and undefined as absent, not stale (0.2593ms)
+✔ normalizeDiff keeps a bare scalar top-level key (0.2954ms)
+✔ enrichDiffs stamps the record id, name and surfaces (1.3088ms)
+✔ enrichDiffs resolves a created record from the next state (0.3362ms)
+✔ applyLeafDiffs applies to current state and detects stale (2.2405ms)
+✔ applyLeafDiffs appends a created record from the submission (0.4218ms)
+✔ applyLeafDiffs starts a missing section for a created record (0.2988ms)
+✔ applyLeafDiffs sets a scalar top-level key (0.1762ms)
+✔ applyLeafDiffs writes a nested object-section field (0.1788ms)
+✔ applyLeafDiffs creates a missing object section (0.1771ms)
+✔ applyLeafDiffs falls back to the array index for legacy diffs (0.4516ms)
+✔ path helpers read, write and delete nested fields (0.383ms)
+✔ addRelation writes the forward and reverse entries (7.8367ms)
+✔ the reverse pair is explicit for every type (1.1633ms)
+✔ a self relation is refused (0.5551ms)
+✔ a duplicate relation is refused (0.7481ms)
+✔ an unknown type is refused (0.5962ms)
+✔ a blocks loop is refused (1.0057ms)
+✔ a precedes loop is refused but a cross-group edge is allowed (0.8046ms)
+✔ removeRelation removes both sides (1.0617ms)
+✔ only an open blocker counts as blocked (0.9222ms)
+✔ lag is clamped to the OpenProject bounds (1.4309ms)
+✔ the board lens filters work items, not phases (2.3696ms)
+✔ setBoardLens refuses an unknown lens (0.574ms)
+(node:21912) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/lib/http.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ stampChangedFieldTs stamps only the fields the accept changed (2.1333ms)
+✔ stampChangedFieldTs creates fieldTs when the blob has none (0.3337ms)
+✔ stampChangedFieldTs ignores bookkeeping keys (0.2524ms)
+(node:33076) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/lib/http.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a valid cache hit answers without touching D1 (62.7757ms)
+✔ a revoked cache hit is refused (4.0647ms)
+✔ a revoked row on a cache miss is refused and cached (4.3904ms)
+✔ a live row on a cache miss answers and fills the cache (4.2339ms)
+✔ a put that never resolves does not hold the response (4.7785ms)
+✔ without a bound context the write is still awaited (correctness first) (4.7454ms)
+✔ the context binding is per request (5.9223ms)
+✔ an unverified email account has no proven address (0.5994ms)
+✔ a verified email account resolves to its address (0.2784ms)
+(node:16640) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/tier-limits.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the five rows are the published matrix (4.6816ms)
+✔ unknown paid tiers read as contractor, an empty tier reads as free (0.9199ms)
+✔ the per-call cap never exceeds the array ceiling (0.5788ms)
+✔ pricing.html publishes the API-key cap for every plan (3.2222ms)
+✔ pricing.html publishes the daily agent-change cap for every plan (1.725ms)
+(node:44604) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/contact.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"ts":"2026-11-20T02:15:31.410Z","level":"warn","event":"contact-turnstile-refused"}
+{"ts":"2026-11-20T02:15:31.430Z","level":"warn","event":"auth-register-turnstile-refused"}
+✔ contact: a missing token is refused before any work (82.5534ms)
+✔ contact: a valid token passes the gate and reaches the mail path (4.3489ms)
+✔ contact: no secret means the gate is off and behaviour is unchanged (1.8423ms)
+✔ register: a missing token is refused before D1 is touched (3.9875ms)
+✔ register: a valid token passes the gate and reaches field validation (2.38ms)
+✔ register: no secret means the gate is off and behaviour is unchanged (0.8926ms)
+✔ shared gate: an oversize token is refused without calling siteverify (0.2537ms)
+✔ shared gate: a failed verification refuses and does not leak the reason (0.4399ms)
+ℹ tests 474
+ℹ suites 0
+ℹ pass 474
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2109.2745
+npm notice run my-manager@1.0.0 verify:sizes
+npm notice run node tools/verify-sizes.cjs
+=== FILE SIZES: 215 files measured ===
+PASS  css/mmgr.css is at or under 632.8 KB
+PASS  css/marketing.css is at or under 171.9 KB
+PASS  js/calculator-page.js is at or under 595.7 KB
+PASS  project.html is at or under 226.1 KB
+PASS  calculator.html is at or under 78.1 KB
+PASS  app.html is at or under 142.6 KB
+PASS  index.html is at or under 58.6 KB
+  largest: css/mmgr.css 629.9 KB, js/calculator-page.js 595.2 KB, js/mmgr-app.js 305.1 KB
+PASS  nothing outside the named files exceeds its directory cap
+
+FILE SIZE GATE PASS
+npm notice run my-manager@1.0.0 verify:major-colors
+npm notice run node tools/verify-major-colors.cjs
+MAJOR CHART COLOURS
+
+  PASS  the light set declares all eight slots and Other
+  PASS  the dark set declares all eight slots and Other
+  PASS  every slot colour already ships elsewhere in the palette (no new hue)
+  PASS  theme light: all nine slots clear 3:1 on its card
+  PASS  theme dark: all nine slots clear 3:1 on its card
+  PASS  theme bento: all nine slots clear 3:1 on its card
+  PASS  theme departure: all nine slots clear 3:1 on its card
+  PASS  theme editorial: all nine slots clear 3:1 on its card
+  PASS  theme guild: all nine slots clear 3:1 on its card
+  PASS  theme obsidian: all nine slots clear 3:1 on its card
+  PASS  theme pegboard: all nine slots clear 3:1 on its card
+  PASS  theme permit: all nine slots clear 3:1 on its card
+  PASS  theme vellum: all nine slots clear 3:1 on its card
+  PASS  skin departure re-points its own slots
+  PASS  skin obsidian re-points its own slots
+  PASS  skin guild re-points its own slots
+  PASS  skin departure uses the dark steps
+  PASS  skin obsidian uses the dark steps
+  PASS  guild deepens the slots its parchment card cannot carry
+
+19 passed, 0 failed
+npm notice run my-manager@1.0.0 verify:registry
+npm notice run node tools/verify-test-registry.cjs
+
+=== TEST REGISTRY: every harness is accounted for ===
+  PASS  all 241 harnesses are registered in docs/CI-TEST-COVERAGE.md
+  PASS  every registered row declares where it runs
+  PASS  no stale registry entries
+
+TEST REGISTRY PASS

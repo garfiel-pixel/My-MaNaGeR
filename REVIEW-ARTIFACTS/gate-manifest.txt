@@ -1,0 +1,49 @@
+# Accountability baseline/final gate manifest.
+# One command per line. Comments (#) and blank lines ignored.
+# All commands run SEQUENTIALLY (never in parallel): browser harnesses share :8765,
+# wrangler harnesses self-start on unique ports. This is the union of the three
+# directives' standard batteries plus their directive-specific harnesses.
+# ---- build (must precede browser gates so serve.cjs computes fresh CSP hashes) ----
+npm run build
+# ---- static / aggregate batteries ----
+npm run verify
+npm test
+node tools/verify-contrast.cjs
+node tools/verify-perf-boot.cjs
+node tools/verify-ci-coverage.cjs
+node tools/verify-sw-cache.cjs
+node tools/verify-eslint.cjs
+node tools/verify-prettier.cjs
+node tools/verify-test-registry.cjs
+# ---- MCP-AGENT-FIRST / MCP-FINAL standard battery ----
+node tools/qa-mcp-agent-first.cjs
+node tools/qa-mcp-write-path.cjs
+node tools/qa-mcp-budget.cjs
+node tools/qa-mcp-parity.cjs
+node tools/qa-appwide-mcp.cjs
+node tools/qa-api-keys.cjs
+node tools/qa-approval.cjs
+node tools/qa-changelog-diffs.cjs
+node tools/qa-cloud-phase1.cjs
+node tools/qa-cloud-phase2.cjs
+node tools/qa-engine-parity.cjs
+node tools/qa-mcp-live-e2e.cjs
+node mcp/qa-mcp.cjs
+# ---- UX-REFINEMENT standard battery + directive harnesses (browser, shared serve.cjs) ----
+node tools/qa-marketing-layout.cjs
+node tools/qa-landing-ui.cjs
+node tools/qa-landing-ai.cjs
+node tools/qa-theme-perf.cjs
+node tools/qa-a11y-axe.cjs
+node tools/qa-ux-landscape.cjs
+node tools/qa-signout-confirm.cjs
+node tools/qa-dashboard-ring.cjs
+node tools/qa-dashboard-links.cjs
+node tools/qa-landing-motion.cjs
+node qa-full.cjs
+node tools/qa-calculator-page.cjs
+node qa-ai.cjs
+node tools/qa-ai-viewonly.cjs
+node tools/qa-ai-theme.cjs
+node tools/qa-controls-ia.cjs
+node tools/qa-scrub-controls.cjs

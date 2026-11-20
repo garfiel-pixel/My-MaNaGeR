@@ -1,0 +1,7 @@
+
+=== TEST REGISTRY: every harness is accounted for ===
+  PASS  all 241 harnesses are registered in docs/CI-TEST-COVERAGE.md
+  PASS  every registered row declares where it runs
+  PASS  no stale registry entries
+
+TEST REGISTRY PASS

@@ -1,0 +1,20 @@
+[a11y-axe] 
+[a11y-axe] ===== axe rules seen in this run =====
+[a11y-axe]   minor  aria-allowed-role  (4 nodes)
+[a11y-axe]   minor  empty-table-header  (2 nodes)
+[a11y-axe]   moderate  heading-order  (25 nodes)
+[a11y-axe]   moderate  landmark-one-main  (4 nodes)
+[a11y-axe]   moderate  region  (74 nodes)
+[a11y-axe] 
+[a11y-axe] ===== gates =====
+[a11y-axe] 
+[a11y-axe] light-only pages (no dark-mode path, dark pass skipped): index.html, features.html, about.html, contact.html, reviews.html, pricing.html, privacy.html, terms.html, refund.html, mymanager-field-guide.html
+[a11y-axe] PASS  dark pass really engaged dark mode (light-only set matches the documented list)
+[a11y-axe] PASS  zero serious or critical axe violations (18 pages; dark measured only where it engages)
+[a11y-axe] PASS  A-6 exactly one visible h1 on signin.html
+[a11y-axe] PASS  A-6 exactly one visible h1 on verify.html
+[a11y-axe] PASS  A-6 exactly one visible h1 on reset.html
+[a11y-axe] PASS  A-6 exactly one visible h1 on admin.html
+[a11y-axe] PASS  public pages have a visible h1
+[a11y-axe] 
+[a11y-axe] ===== a11y-axe: 7 passed, 0 failed =====

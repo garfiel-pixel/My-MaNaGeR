@@ -1,0 +1,11 @@
+[qa-links] PASS  N1 the dashboard carries the full link inventory
+[qa-links] PASS  N1 every link names a panel
+[qa-links] PASS  N2 every link lands on its panel with its target
+[qa-links] PASS  N2 no page error while following every link
+[qa-links] PASS  N7 the link really left the dashboard
+[qa-links] PASS  N7 back returns to the dashboard with its scroll restored
+[qa-links] PASS  N8 a missing record shows a one-line notice, not a blank panel
+[qa-links] PASS  N9 view-only mode navigates the same way
+[qa-links] PASS  N10 a sidebar switch is a history entry too
+[qa-links] 
+[qa-links] 9 passed, 0 failed

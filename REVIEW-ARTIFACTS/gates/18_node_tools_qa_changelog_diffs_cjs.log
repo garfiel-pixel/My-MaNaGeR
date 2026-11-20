@@ -1,0 +1,19 @@
+[cl-diffs] PASS  G1a renders the field path
+[cl-diffs] PASS  G1b renders before/after values
+[cl-diffs] PASS  G1c renders null value
+[cl-diffs] PASS  G1d header row labels the columns
+[cl-diffs] PASS  G1e before gets the old (danger) class, after the new (green) class
+[cl-diffs] PASS  G2a beforeAbsent shows "not set yet"
+[cl-diffs] PASS  G2b afterAbsent shows "removed" (both absent cells rendered)
+[cl-diffs] PASS  G2c whole-record before becomes JSON
+[cl-diffs] PASS  G3a raw HTML value is escaped
+[cl-diffs] PASS  G3b path is escaped
+[cl-diffs] PASS  G4a long value truncated with ellipsis on screen
+[cl-diffs] PASS  G4b full value rides in the title attribute
+[cl-diffs] PASS  G5a empty diffs array -> empty panel
+[cl-diffs] PASS  G5b missing diffs -> empty panel
+[cl-diffs] PASS  G6a panel capped at 60 rows
+[cl-diffs] PASS  G6b footer reports the overflow
+[cl-diffs] PASS  G7a quote value rendered escaped
+----------------------------------------
+[cl-diffs] RESULT: all changelog-diff gates passed

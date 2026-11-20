@@ -9,10 +9,15 @@ version in `sw.js` (`const CACHE = 'mmgr-shell-vNNN'`).
 
 ---
 
-## Unreleased — UI, Spatial & Theme Parity (branch `feat/ui-spatial-theme-parity`)
+## 2026-11-20 — UI, Spatial & Theme Parity
 
-Implements `master_ui_spatial_theme_parity_specification.md` in full. Not yet
-merged or deployed.
+Implements `master_ui_spatial_theme_parity_specification.md` in full.
+
+**Production deploy (2026-11-20):** Worker `my-manager` version
+`4e89d47a-8fea-41d6-b178-ee9a35efbba6`, SW cache `mmgr-shell-v686`, live on
+`mymanagerworkspace.com` and `my-manager.garfieldprocis.workers.dev`. Post-deploy
+smoke 25/25 (health, page routes, CSP/nosniff/HSTS, SW v686, spatial tokens,
+`SKIN_POLARITY`/`data-skin-polarity`, ring geometry, WBS controls).
 
 ### Themes and skins
 

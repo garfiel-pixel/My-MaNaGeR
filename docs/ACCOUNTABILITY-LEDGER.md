@@ -149,6 +149,14 @@ phase2 93/93, engine-parity 19/19). No app regression at baseline.
 
 ---
 
+## 5. Accountability close-out evidence pack (Step 4)
+
+| Step | Requirement (one line) | Status | Evidence |
+|---|---|---|---|
+| 4 | Evidence pack: every Step 1 log + 4 directive/ledger docs + vendor/three in the review export; screenshots of 6 seams, 4 card rows × 3 widths, 4 role cards (3D + Performance), ring/contributors (demo-filled 390/1280 + synthetic >8 majors), sign-out dialog, both AI view-only wordings, calculator tour steps 2 & 5 at 844×390 | DONE | `REVIEW-ARTIFACTS/gates/` holds all 40 numbered Step 1 gate logs + `EXIT-CODES.txt`; `docs/MCP-DIRECTIVE-LOG.md`, `docs/UX-DIRECTIVE-LOG.md`, `docs/CI-TEST-COVERAGE.md`, this ledger, and `vendor/three/three.module.js` are all present and non-empty. `REVIEW-ARTIFACTS/capture-shots.cjs` captures 35 non-empty PNGs into `REVIEW-ARTIFACTS/shots/`: `seam-1..6-*` (6), `cardrow-{steps,audience,why,solutions}-{390,1280,1920}` (12), `role-{gc,pm,super,sub}-{3d,perf}` (8; 3D canvas verified attached + SVG hidden, Performance canvas verified 0, 32.57% pixel diff between the two renders), `ring-demo-filled-{390,1280}` (8 contributor rows each), `ring-multi-major-{390,1280}` (10-major fixture → 8 display slots, "Other" merge, 8 rows), `signout-dialog.png`, `ai-viewonly-{demo,viewer}.png` (both exact wordings + 44px CTA confirmed), `calc-tour-step{2,5}-844x390.png` (step 5 shows "5 of 13" in landscape). GATE: all 35 shots exist, all >1 KB, no zero-byte file. The `review-export/` folder is built per `docs/REVIEW-EXPORT.md` and augmented with these evidence items per this directive |
+
+---
+
 ## Counts (Step 5 will finalize)
 
 - DONE: 76 · PARTIAL: 0 · MISSING: 0 · DEVIATION: 6 (MCP 3.5, MCP 5.2, MCP F5, UX A6, close-out 3b).

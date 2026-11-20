@@ -1458,3 +1458,48 @@ body.dark-mode .ai-byo-status[data-state='untested'] {
   min-width: 0;
 }
 /* SHAPE (owner 2026-10-02): rounded rectangle, not a pill circle. */
+
+/* ---- AI unavailable on a view-only project (close-out 3a) ------------
+   The notice is shown BEFORE typing on the dashboard Ask card and again
+   inside the assistant. The Create-a-project link is a real 44px target
+   that opens the new-project flow. Controls keep their place but are
+   disabled, so nothing can be typed or run. */
+.ai-viewonly {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.ai-viewonly-msg {
+  margin: 0;
+}
+.ai-viewonly-cta {
+  min-height: 44px;
+  padding: 0 16px;
+}
+.ai-cmd-card--viewonly {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ai-cmd-card--viewonly .ai-viewonly {
+  margin: 0;
+}
+#ai-win.ai-viewonly-mode .ai-q:disabled,
+#ai-win.ai-viewonly-mode .ai-send:disabled,
+#ai-win.ai-viewonly-mode .ai-voice-btn:disabled,
+#ai-win.ai-viewonly-mode .ai-tier-badge:disabled,
+#ai-win.ai-viewonly-mode .ai-seg-btn:disabled,
+#ai-win.ai-viewonly-mode .ai-chip:disabled,
+#ai-win.ai-viewonly-mode .ai-run:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -786,7 +786,7 @@
 // both are shell assets, so returning clients must refetch them.
 // v681 - WBS text import 2026-11-20: the import modal gains a copyable prompt
 // for an outside AI (project.html) and the tasks module gains the handler.
-const CACHE = 'mmgr-shell-v681';
+const CACHE = 'mmgr-shell-v682';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

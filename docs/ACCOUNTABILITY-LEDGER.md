@@ -139,7 +139,7 @@ phase2 93/93, engine-parity 19/19). No app regression at baseline.
 
 | Step | Requirement (one line) | Status | Evidence |
 |---|---|---|---|
-| 3a | AI unavailable on view-only projects; notice before typing; exact two wordings; disabled controls; no toast; undo aiRun/aiRunPreset safe; rewrite harness | (pending) | see close-out run log |
+| 3a | AI unavailable on view-only projects; notice before typing; exact two wordings; disabled controls; no toast; undo aiRun/aiRunPreset safe; rewrite harness | DONE | `js/mmgr-app.js` `aiViewOnly()` + `renderAskViewOnly()` + `READONLY_SAFE_ACTIONS` (aiRun/aiRunPreset removed); `js/mmgr-ai.js` `viewOnlyInfo()` + `showViewOnlyNotice()` + guards on open/preset/runPreset/runQuestion/submit/askFromCommandBar/askAboutRisk; `js/mmgr-watch.js` askAboutNotice; `css/src/40-ai.css` notice; `tools/qa-ai-viewonly.cjs` V1–V7 26/26; `qa-ai.cjs` A14 re-baselined (AI23_GATE PASS); `qa-full.cjs` 70b re-baselined (194/194); `npm run verify` green |
 | 3b | Restrict low-risk auto-accept to Company/Enterprise; server refusal; admin disabled + reason; tests every plan; ledger DEVIATION | (pending) | see close-out run log |
 | 3c | Reference `qa-ai-theme.cjs` + `qa-ai-viewonly.cjs` in ci.yml and registry | (pending) | see close-out run log |
 | 3d | Remove stale `qa-pricing-parity.cjs` comment; delete unused exports if unreferenced | (pending) | see close-out run log |
@@ -151,5 +151,5 @@ phase2 93/93, engine-parity 19/19). No app regression at baseline.
 
 ## Counts (Step 5 will finalize)
 
-- DONE: 75 · PARTIAL: 0 · MISSING: 0 · DEVIATION: 5 (MCP 3.5, MCP 5.2, MCP F5, UX A6, plus close-out 3b when set).
+- DONE: 76 · PARTIAL: 0 · MISSING: 0 · DEVIATION: 5 (MCP 3.5, MCP 5.2, MCP F5, UX A6, plus close-out 3b when set).
 - Step 3 rows are resolved to DONE/DEVIATION as each test-first fix lands; this header is updated at Step 5.

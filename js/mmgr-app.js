@@ -188,6 +188,58 @@ var MMGR = window.MMGR || {};
     return ns.scope === 'readonly';
   }
 
+  // UX-2026-11-19 close-out 3a (owner decision): the assistant is NOT
+  // available when the project is view-only for the user, and they are told
+  // BEFORE typing. A demo project has no owner to ask, so its wording points
+  // at creating a project; a viewer on someone else's project is also told to
+  // ask the owner for edit access. Editors get null and see no change.
+  function aiViewOnly() {
+    if (!isReadonly()) {
+      return null;
+    }
+    const pid = String(ns.projectId || '');
+    const demo = pid === 'demo-filled' || pid === 'demo-empty' || /^demo-/.test(pid);
+    return {
+      demo: demo,
+      message: demo
+        ? 'This project is view-only for you, so the AI assistant is not available here. Create your own project to use the AI.'
+        : 'This project is view-only for you, so the AI assistant is not available here. Ask the project owner for edit access, or create your own project to use the AI.'
+    };
+  }
+
+  // Paint the dashboard Ask card as the view-only notice. The input and the
+  // Ask button stay in the DOM but are disabled, so a keyboard user cannot
+  // type and no click can reach an AI action.
+  function renderAskViewOnly(info) {
+    const card = U.$('ai-command-card');
+    if (!card) {
+      return;
+    }
+    card.classList.add('ai-cmd-card--viewonly');
+    let note = U.$('ai-command-viewonly');
+    if (!note) {
+      note = document.createElement('div');
+      note.id = 'ai-command-viewonly';
+      note.className = 'ai-viewonly';
+      note.setAttribute('role', 'status');
+      card.insertBefore(note, card.firstChild);
+    }
+    note.innerHTML =
+      '<p class="ai-viewonly-msg"></p>' +
+      '<a class="btn btn-g ai-viewonly-cta" href="admin.html?new=1">Create a project</a>';
+    note.querySelector('.ai-viewonly-msg').textContent = info.message;
+    const inp = U.$('ai-command-input');
+    if (inp) {
+      inp.disabled = true;
+      inp.setAttribute('aria-disabled', 'true');
+    }
+    const btn = U.$('ai-command-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.setAttribute('aria-disabled', 'true');
+    }
+  }
+
   // PART F T9 (no-offline-copy guarantee): TRUE when this project was opened
   // with a cloud editor/viewer code (session escope role set , the same slot
   // mmgr-cloud.js writes). A recipient must never be able to export the
@@ -429,6 +481,12 @@ var MMGR = window.MMGR || {};
       const banner = U.$('readonly-banner');
       if (banner) {
         banner.classList.remove('is-hide');
+      }
+      // Close-out 3a: tell the user the assistant is unavailable before they
+      // can type in the dashboard Ask card (the panel repeats the notice).
+      const aiVO = aiViewOnly();
+      if (aiVO) {
+        renderAskViewOnly(aiVO);
       }
     }
 
@@ -6132,6 +6190,8 @@ var MMGR = window.MMGR || {};
     // (mmgr-ai.js MCP toggle + relay, mmgr-app.js row keying); without it they
     // read `undefined` and keyed per-project settings to a shared bucket.
     projectId: ns.projectId,
+    // Close-out 3a: the AI-unavailable contract (null for an editor).
+    aiViewOnly: aiViewOnly,
     closeDrw: closeDrw,
     swDtab: swDtab,
     openPacks: openPacks,
@@ -8109,13 +8169,11 @@ window.MMGR = MMGR;
     digestGenerate: 1,
     // AI window: open/close/load/copy/attach are read-only. aiSet* writes
     // state.config (the model choice) and stays blocked in view-only mode.
-    // UX-2026-11-19 A6: aiRun/aiRunPreset are ALSO safe. They read the
-    // project and write only the assistant transcript (state.aiOutputs + the
-    // conversation history) - never a project record. The tester typed a
-    // question, pressed Send and was refused AFTER typing, which is exactly
-    // what the directive forbids: the guard was answering "you may not" to a
-    // question that changes nothing in the project. Applying an AI-proposed
-    // edit is a different path (the MCP accept engine) and stays blocked.
+    // UX-2026-11-19 close-out 3a (owner decision, supersedes A6): the AI is
+    // NOT available on a view-only project, so aiRun/aiRunPreset are no
+    // longer safe. The composer, Send and every preset are disabled and a
+    // notice is shown BEFORE typing (see App.aiViewOnly + AiWin.open), so a
+    // disabled control never reaches the generic refusal toast.
     openAiWin: 1,
     closeAiWin: 1,
     closeAiWinBg: 1,
@@ -8125,8 +8183,6 @@ window.MMGR = MMGR;
     aiHistToggle: 1,
     aiMoreToggle: 1,
     aiPreset: 1,
-    aiRun: 1,
-    aiRunPreset: 1,
     // UX-2026-11-19 B4: expanding the contributor list is view state (a
     // module flag), never project state.
     majorShowAll: 1,

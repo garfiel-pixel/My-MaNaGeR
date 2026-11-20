@@ -16,8 +16,10 @@
        fetch; circuit-break on network failure returns { ok:false }
        without throwing or corrupting state, and only an auth failure
        clears the session key.
-     - Readonly gating: aiRunPreset / aiSet* stay blocked in
-       view-only mode; open/load/copy stay allowed.
+     - Readonly gating: the assistant is unavailable in view-only mode -
+       a notice is shown before typing, the composer and every preset are
+       disabled, and no generic refusal toast is raised; aiSet* stays
+       blocked, open/load/copy stay allowed.
      - DIR-1 layout regression (A17): the one-click presets stay reachable
        via the Chat/Presets tab even after a long conversation at a short
        viewport — the condition that originally hid them entirely.
@@ -1056,29 +1058,50 @@ async function ev(expr) {
     var st0 = MMGR.State.getState();
     var beforeTasks = JSON.stringify(st0.tasks || []);
     var beforeRisks = JSON.stringify(st0.risks || []);
-    // The read-only gate lives in the click delegation (like every other
-    // mutating action) - drive the real button, not the API. The chips are
-    // rendered lazily when the AI window opens, so open it first.
-    document.querySelector('[data-action="openAiWin"]').click();
-    await new Promise(function(r){ setTimeout(r, 300); });
-    document.querySelector('[data-action="aiRunPreset"][data-type="report"]').click();
+    // The AI is unavailable on a view-only project. The dashboard Ask button
+    // is disabled by design, so open the assistant the way the FAB does and
+    // assert the notice BEFORE typing plus the disabled composer/presets.
+    MMGR.AiWin.open();
     await new Promise(function(r){ setTimeout(r, 400); });
+    var note = document.querySelector('#ai-viewonly .ai-viewonly-msg');
+    var runBtn = document.querySelector('[data-action="aiRunPreset"][data-type="report"]');
+    var send = document.getElementById('ai-send');
+    var q = document.getElementById('ai-q');
+    if (runBtn) { runBtn.click(); }
+    await new Promise(function(r){ setTimeout(r, 300); });
     var st1 = MMGR.State.getState();
     var toast = document.querySelector('.toast');
     return {
+      notice: !!note && /not available here/i.test(note.textContent || ''),
+      runDisabled: !!(runBtn && runBtn.disabled),
+      sendDisabled: !!(send && send.disabled),
+      qDisabled: !!(q && q.disabled),
       refused: !!toast && toast.textContent.indexOf('View-only') > -1,
       projectUntouched:
         beforeTasks === JSON.stringify(st1.tasks || []) &&
-        beforeRisks === JSON.stringify(st1.risks || [])
+        beforeRisks === JSON.stringify(st1.risks || []),
+      diag: {
+        href: location.href,
+        pid: window.MMGR && MMGR.App && MMGR.App.projectId,
+        ro: !!(window.MMGR && MMGR.App && MMGR.App.isReadonly && MMGR.App.isReadonly()),
+        scopeKey: localStorage.getItem('mmgr_scope_demo-project'),
+        unlocked: localStorage.getItem('mmgr_unlocked_demo-project'),
+        admin: localStorage.getItem('mmgr_admin_projects')
+      }
     };
   })()`);
-  // UX-2026-11-19 A6 re-baseline: the assistant READS the project and writes
-  // only its own transcript, so a view-only visitor is allowed to run a
-  // preset. The contract this check holds now is the one the tester asked
-  // for: no refusal toast, and no project record touched.
+  // UX-2026-11-19 close-out 3a (owner decision, supersedes A6): the assistant
+  // is NOT available on a view-only project. The notice is shown before
+  // typing, the composer and every preset are disabled, and no generic
+  // "View-only" toast is raised. No project record may change.
   check(
-    'A14 readonly: runPreset answers instead of refusing, and leaves project records alone',
-    !r1.refused && r1.projectUntouched,
+    'A14 readonly: the assistant shows the unavailable notice, disables Send/presets, and touches no project record',
+    r1.notice &&
+      r1.runDisabled &&
+      r1.sendDisabled &&
+      r1.qDisabled &&
+      !r1.refused &&
+      r1.projectUntouched,
     r1
   );
 

@@ -2398,7 +2398,7 @@ async function pickPort(start) {
   await send('Page.navigate', { url: BASE + '/project.html?id=demo-project' });
   await delay(3500);
   await check(
-    '70b v10 readonly: wxLogManual + meetSentiment blocked, AI window allowed',
+    '70b v10 readonly: wxLogManual + meetSentiment blocked, AI opens to the unavailable notice',
     `(function(){
     var banner=document.getElementById('readonly-banner');
     var ro=document.body.classList.contains('readonly-mode');
@@ -2411,10 +2411,18 @@ async function pickPort(start) {
     var n=MMGR.State.getState().weatherLog.length;
     var b=document.querySelector('[data-action=wxLogManual]'); if(b)b.click();
     var logGrew=MMGR.State.getState().weatherLog.length>n;
-    document.querySelector('[data-action=openAiWin]').click();
-    var aiOk=document.getElementById('ai-win').classList.contains('open');
+    // Close-out 3a (owner decision): the assistant is unavailable on a
+    // view-only project. Opening it is allowed but must show the notice
+    // BEFORE typing and disable the composer; the dashboard Ask button is
+    // disabled, so drive the documented open seam.
+    MMGR.AiWin.open();
+    var win=document.getElementById('ai-win');
+    var aiOpen=win.classList.contains('open');
+    var note=win.querySelector('#ai-viewonly .ai-viewonly-msg');
+    var q=document.getElementById('ai-q');
+    var aiUnavailable=!!note && /not available here/i.test(note.textContent||'') && !!(q && q.disabled);
     document.querySelector('[data-action=closeAiWin]').click();
-    return {val: ro && !!banner && !banner.classList.contains('is-hide') && !grew && !logGrew && aiOk, ro:ro, grew:grew, logGrew:logGrew, aiOk:aiOk};
+    return {val: ro && !!banner && !banner.classList.contains('is-hide') && !grew && !logGrew && aiOpen && aiUnavailable, ro:ro, grew:grew, logGrew:logGrew, aiOpen:aiOpen, aiUnavailable:aiUnavailable};
   })()`
   );
   await check(

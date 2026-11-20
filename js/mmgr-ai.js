@@ -204,9 +204,102 @@ var MMGR = window.MMGR || {};
     return result;
   }
 
+  // UX-2026-11-19 close-out 3a: the assistant is unavailable on a view-only
+  // project. App.aiViewOnly() returns the owner's exact wording (demo vs
+  // viewer), or null for an editor. The notice is shown BEFORE typing and
+  // every control is disabled, so no AI action can run or raise the generic
+  // view-only toast.
+  function viewOnlyInfo() {
+    return ns.App && typeof ns.App.aiViewOnly === 'function' ? ns.App.aiViewOnly() : null;
+  }
+
+  function fillPresetChips() {
+    const chips = U.$('ai-presets');
+    if (!chips || chips.dataset.filled) {
+      return;
+    }
+    const types = ns.Prompts && ns.Prompts.list ? ns.Prompts.list() : [];
+    chips.innerHTML =
+      types
+        .map(
+          t =>
+            '<span class="ai-chip-cell">' +
+            '<button class="ai-chip" data-action="aiPreset" data-type="' +
+            U.escapeHtml(t) +
+            '">' +
+            U.escapeHtml(PRESET_LABELS[t] || t) +
+            '</button>' +
+            '<button class="ai-run" data-action="aiRunPreset" data-type="' +
+            U.escapeHtml(t) +
+            '" title="One-click: generate with AI and save to project state">' +
+            '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg></button>' +
+            '</span>'
+        )
+        .join('') || '<span class="txt-sl">No presets available.</span>';
+    chips.dataset.filled = '1';
+  }
+
+  function showViewOnlyNotice(info) {
+    const modal = U.$('ai-win');
+    if (!modal) {
+      return;
+    }
+    modal.classList.add('open');
+    modal.classList.add('ai-viewonly-mode');
+    try {
+      applyAiMode();
+    } catch (e) {
+      /* layout is cosmetic; the notice still shows */
+    }
+    let note = U.$('ai-viewonly');
+    if (!note) {
+      note = document.createElement('div');
+      note.id = 'ai-viewonly';
+      note.className = 'ai-viewonly';
+      note.setAttribute('role', 'status');
+      const head = modal.querySelector('.ai-head');
+      if (head && head.parentNode) {
+        head.parentNode.insertBefore(note, head.nextSibling);
+      } else {
+        modal.appendChild(note);
+      }
+    }
+    note.innerHTML =
+      '<p class="ai-viewonly-msg"></p>' +
+      '<a class="btn btn-g ai-viewonly-cta" href="admin.html?new=1">Create a project</a>';
+    note.querySelector('.ai-viewonly-msg').textContent = info.message;
+    // Presets stay visible so the user can see what is unavailable; they are
+    // rendered once and then disabled with the composer.
+    fillPresetChips();
+    renderQuickPresets();
+    const ids = ['ai-q', 'ai-send', 'ai-voice-btn', 'ai-tier', 'ai-seg-presets', 'ai-seg-chat'];
+    ids.forEach(function (id) {
+      const el = U.$(id);
+      if (el) {
+        el.disabled = true;
+        el.setAttribute('aria-disabled', 'true');
+      }
+    });
+    modal
+      .querySelectorAll('[data-action="aiPreset"],[data-action="aiRunPreset"]')
+      .forEach(function (b) {
+        b.disabled = true;
+        b.setAttribute('aria-disabled', 'true');
+      });
+    const sendWrap = U.$('ai-send-wrap');
+    if (sendWrap) {
+      sendWrap.title = info.message;
+    }
+  }
+
   function open() {
     const modal = U.$('ai-win');
     if (!modal) {
+      return;
+    }
+    const vo = viewOnlyInfo();
+    if (vo) {
+      showViewOnlyNotice(vo);
       return;
     }
     // OWNER 2026-09-19 (signed-in AI): the assistant is part of the
@@ -263,28 +356,7 @@ var MMGR = window.MMGR || {};
       return;
     }
     _aiOpenPending = false;
-    const chips = U.$('ai-presets');
-    if (chips && !chips.dataset.filled) {
-      const types = ns.Prompts && ns.Prompts.list ? ns.Prompts.list() : [];
-      chips.innerHTML =
-        types
-          .map(
-            t =>
-              '<span class="ai-chip-cell">' +
-              '<button class="ai-chip" data-action="aiPreset" data-type="' +
-              U.escapeHtml(t) +
-              '">' +
-              U.escapeHtml(PRESET_LABELS[t] || t) +
-              '</button>' +
-              '<button class="ai-run" data-action="aiRunPreset" data-type="' +
-              U.escapeHtml(t) +
-              '" title="One-click: generate with AI and save to project state">' +
-              '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg></button>' +
-              '</span>'
-          )
-          .join('') || '<span class="txt-sl">No presets available.</span>';
-      chips.dataset.filled = '1';
-    }
+    fillPresetChips();
     syncSettingsUI();
     checkApiHealth(); // live backend-API status badge (plan §3)
     renderQuickPresets();
@@ -356,6 +428,11 @@ var MMGR = window.MMGR || {};
   }
 
   function preset(type) {
+    const vo = viewOnlyInfo();
+    if (vo) {
+      showViewOnlyNotice(vo);
+      return;
+    }
     const q = U.$('ai-q');
     if (!q) {
       return;
@@ -2285,6 +2362,11 @@ var MMGR = window.MMGR || {};
   // ---- submit(): the single seam both tiers share ----
   // opts: { tier (override), type (preset type for local builders) }
   async function submit(prompt, ctx, opts) {
+    const vo = viewOnlyInfo();
+    if (vo) {
+      showViewOnlyNotice(vo);
+      return { ok: false, error: 'view-only' };
+    }
     const cfg = getAiCfg();
     const tier = (opts && opts.tier) || cfg.tier || 'off';
     const type = (opts && opts.type) || null;
@@ -2468,6 +2550,11 @@ var MMGR = window.MMGR || {};
 
   // ---- Agent-style preset run: generate → submit → write to state ----
   async function runPreset(type) {
+    const vo = viewOnlyInfo();
+    if (vo) {
+      showViewOnlyNotice(vo);
+      return { ok: false, error: 'view-only' };
+    }
     const q = U.$('ai-q');
     const c = U.$('ai-ctx');
     const prompt = ns.Prompts && ns.Prompts.generate ? ns.Prompts.generate(type) : '';
@@ -2527,6 +2614,11 @@ var MMGR = window.MMGR || {};
   // ---- Run the free-form question box ----
   let _aiBusy = false; // guards the Send path against rapid double-submits
   async function runQuestion() {
+    const vo = viewOnlyInfo();
+    if (vo) {
+      showViewOnlyNotice(vo);
+      return { ok: false, error: 'view-only' };
+    }
     if (_aiBusy) {
       return { ok: false, error: 'busy' };
     }
@@ -3641,6 +3733,11 @@ var MMGR = window.MMGR || {};
   // The single Ask-your-project entry point: opens the AI assistant with the
   // question pre-filled and runs it right away (one action, no second Send).
   function askFromCommandBar(e) {
+    const vo = viewOnlyInfo();
+    if (vo) {
+      showViewOnlyNotice(vo);
+      return;
+    }
     var inp = document.getElementById('ai-command-input');
     if (!inp) {
       return;
@@ -3681,6 +3778,11 @@ var MMGR = window.MMGR || {};
   // none, the highest-exposure open risk is the subject, which is what the
   // panel header button wants.
   function askAboutRisk(id) {
+    const vo = viewOnlyInfo();
+    if (vo) {
+      showViewOnlyNotice(vo);
+      return;
+    }
     var s = ns.State && ns.State.getState ? ns.State.getState() : null;
     if (!s) {
       return;

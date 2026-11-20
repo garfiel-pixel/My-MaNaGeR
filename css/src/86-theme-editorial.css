@@ -39,6 +39,16 @@ body.db-page[data-skin='editorial'],
   --squircle-lg: 0px;
   --font-head: 'Playfair Display', 'Iowan Old Style', Georgia, serif;
   --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  /* Theme parity tokens. Dot hues stay at the app defaults (owner rule). */
+  --sidebar: #f5f2eb;
+  --sidebar-border: #d9d4c8;
+  --text-secondary: #6e6a62;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
 }
 
 /* Masthead: thick-over-thin rule under the hero title. */

@@ -21,6 +21,31 @@
 
   var SKIN_KEY = 'mmgr_skin'; // e.g. 'vellum' | 'obsidian' | '' (default)
 
+  /* Theme-pack skins carry their own intrinsic light/dark appearance. Locking
+     that polarity stops a light skin from inheriting body.dark-mode's
+     white-on-light component rules, and stops a dark skin from inheriting the
+     cream default rail. ONLY the effective appearance is locked: mmgr_theme
+     (the visitor's saved Light/Dark/System choice) is never written here, so
+     returning to the default skin restores exactly what they picked.
+     mmgr-theme.js.apply() consults getPolarity() - one source of truth. */
+  var SKIN_POLARITY = {
+    vellum: 'light',
+    bento: 'light',
+    permit: 'light',
+    pegboard: 'light',
+    editorial: 'light',
+    obsidian: 'dark',
+    departure: 'dark',
+    guild: 'dark'
+  };
+  var currentSkin = '';
+  function polarityFor(v) {
+    return SKIN_POLARITY[v] || null;
+  }
+  function getPolarity() {
+    return polarityFor(currentSkin);
+  }
+
   function read() {
     try {
       return localStorage.getItem(SKIN_KEY);
@@ -62,6 +87,8 @@
   function applySkin(v) {
     var de = document.documentElement;
     var b = document.body;
+    currentSkin = v || '';
+    var polarity = getPolarity();
     // The skin CSS is scoped to body.db-page[data-skin="<slug>"] (plus
     // .theme-preview[data-skin=...] for the in-modal mini-mocks), so the
     // attribute MUST live on <body class="db-page"> for a surface to
@@ -79,7 +106,25 @@
         b.removeAttribute('data-skin');
       }
     }
+    // Expose the skin's intrinsic polarity as a first-class attribute so CSS
+    // can target it without duplicating the slug list (default skin = none).
+    if (polarity) {
+      de.setAttribute('data-skin-polarity', polarity);
+      if (b) {
+        b.setAttribute('data-skin-polarity', polarity);
+      }
+    } else {
+      de.removeAttribute('data-skin-polarity');
+      if (b) {
+        b.removeAttribute('data-skin-polarity');
+      }
+    }
     emit(v);
+    // mmgr-theme.js owns body.dark-mode; ask it to recompute now that the
+    // polarity changed. apply() never writes localStorage, so no echo loop.
+    if (window.MMGRTheme && window.MMGRTheme.apply) {
+      window.MMGRTheme.apply();
+    }
   }
 
   // Apply saved skin as early as possible (head script, before paint).
@@ -242,7 +287,9 @@
     openModal: openModal,
     closeModal: closeModal,
     applySkin: applySkin,
-    getSkin: read
+    getSkin: read,
+    getPolarity: getPolarity,
+    polarityFor: polarityFor
   };
 
   if (document.readyState === 'loading') {

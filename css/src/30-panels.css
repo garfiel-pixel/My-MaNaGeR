@@ -65,8 +65,8 @@
   background: var(--card);
   border: var(--glass-border);
   border-radius: var(--squircle-md);
-  padding: 20px;
-  margin-bottom: 18px;
+  padding: var(--card-pad-y, 20px) var(--card-pad-x, 24px);
+  margin-bottom: var(--panel-gap, 18px);
   box-shadow: var(--glass-rim), var(--glass-shadow);
   contain: layout paint;
   transition:
@@ -433,21 +433,24 @@
   vertical-align: 1px;
   background: currentColor;
 }
+/* UI/spatial parity spec §5.1: flat, crisp status dots. The old 6px coloured
+   glow read as decoration and smeared into the brand's glass look; the true
+   hue (owner rule) stays, only the halo is dropped. */
 .sdot.g {
   background: var(--dot-green);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-green) 55%, transparent);
+  box-shadow: none;
 }
 .sdot.a {
   background: var(--dot-yellow);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-yellow) 55%, transparent);
+  box-shadow: none;
 }
 .sdot.b {
   background: var(--dot-blue);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-blue) 55%, transparent);
+  box-shadow: none;
 }
 .sdot.r {
   background: var(--dot-red);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-red) 55%, transparent);
+  box-shadow: none;
 }
 /* OWNER 2026-09-15 (dot-mechanism wave): dashboard status rows become
    dot + bold count + label, replacing the circular badge spheres that
@@ -1491,7 +1494,7 @@ body.dark-mode .rm-active {
   align-items: center;
   gap: 3px;
   text-align: center;
-  padding: 12px;
+  padding: var(--tile-pad-y, 16px) var(--tile-pad-x, 20px);
   background: var(--tile-bg);
   border-radius: var(--radius);
   transition:

@@ -1323,9 +1323,12 @@ body.nav-open #nav-scrim {
   top: var(--hdr-h, 64px);
   left: 0;
   bottom: 0;
-  width: 240px;
+  width: var(--rail-w, 272px);
   z-index: 96;
   background: var(--sidebar);
+  /* Keep the scrollbar from crowding the full-width .sec-btn labels. */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--slate) 35%, transparent) transparent;
   border-right: 1px solid var(--border);
   transform: translateX(-105%);
   visibility: hidden;
@@ -1524,7 +1527,7 @@ body.sidebar-open .sb-close .ico {
     visibility: visible;
   }
   body.sidebar-on.sidebar-open #app-main {
-    margin-left: 248px;
+    margin-left: calc(var(--rail-w, 272px) + 8px);
   }
   body.sidebar-on .sec-nav {
     display: none !important;
@@ -1557,7 +1560,7 @@ body.sidebar-open .sb-close .ico {
 
 /* ---- Section Navigation ---- */
 #app-main {
-  padding: 18px 24px;
+  padding: var(--workspace-pad-y, 24px) var(--workspace-pad-x, 32px);
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -1672,6 +1675,25 @@ body.sidebar-open .sb-close .ico {
   }
   .sec-nav .nav-group {
     flex-shrink: 0;
+  }
+}
+/* UI/spatial parity spec §4.2: on narrow/drawer widths the inline section nav
+   was a ragged flex-wrap of uneven 1-2 pill rows. Stack it on one clean left
+   axis instead - every tab aligns, no orphan pill. (Desktop >=769 keeps the
+   horizontal overflow-x row above.) */
+@media (max-width: 768px) {
+  .sec-nav {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .sec-nav .nav-group {
+    width: 100%;
+  }
+  .sec-nav .sec-btn {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 /* MARKET-FEATURE-ROADMAP A1: expiring-compliance count pill on the

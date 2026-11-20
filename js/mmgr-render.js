@@ -52,36 +52,27 @@ var MMGR = window.MMGR || {};
 
   // ---- Greeting ----
   // SINGLE-WRITE (CLOUD-BACKEND-ARCHITECTURE-PLAN §10 self-overwrite bug):
-  // the old implementation wrote "Welcome, {userName}" into #greeting-text,
-  // then IMMEDIATELY overwrote the parent #greeting's innerHTML with a
-  // time-of-day-only message, destroying the name on every render (this is
-  // why the personalized greeting never appeared). Now the icon (time of
-  // day) + text (time label + name suffix) are composed ONCE and written as
-  // a single innerHTML assignment. The name is escapeHtml because it is
-  // interpolated into markup, not set via textContent.
+  // compose the icon + text ONCE and write a single innerHTML assignment, so a
+  // second write cannot clobber the first. The label is escapeHtml because it
+  // is interpolated into markup, not set via textContent. UI/spatial parity
+  // spec §5.6 replaces the generic time-of-day copy with the active project
+  // name (falling back to a concise status word when the project is unnamed).
   function renderGreeting() {
     const g = $('greeting');
     if (!g) {
       return;
     }
     const s = S();
-    const hour = new Date().getHours();
-    let icon = 'i-moon',
-      timeLabel = 'Good Evening';
-    if (hour < 12) {
-      icon = 'i-sun';
-      timeLabel = 'Good Morning';
-    } else if (hour < 18) {
-      icon = 'i-sun';
-      timeLabel = 'Good Afternoon';
-    }
-    const nameSuffix = s && s.userName ? ', ' + U.escapeHtml(String(s.userName)) : '';
+    // UI/spatial parity spec §5.6: the template-style "Good Morning/Afternoon/
+    // Evening" copy was generic and said nothing about the open project. The
+    // header already carries a dedicated status chip, so name the project
+    // here; only fall back to a concise status word when it is unnamed.
+    const name = s && s.projectName ? String(s.projectName).trim() : '';
+    const known = s && PROJ_STATUS_LABELS[s.status] ? s.status : 'active';
+    const label = name ? U.escapeHtml(name) : PROJ_STATUS_LABELS[known];
     g.innerHTML =
-      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#' +
-      icon +
-      '"></use></svg> <span id="greeting-text">' +
-      timeLabel +
-      nameSuffix +
+      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">' +
+      label +
       '</span>';
   }
 

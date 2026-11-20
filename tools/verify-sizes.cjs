@@ -98,7 +98,13 @@ const EXACT = {
   // layer - scrub affordance, active state, solid quick-value popover, chip
   // sizes, coarse-pointer and reduced-motion/transparency/perf fallbacks
   // (644376 measured).
-  'css/mmgr.css': 648000,
+  // 2026-11-20 (ui-spatial-theme-parity): 648000 -> 654000 for the spatial
+  // scale tokens, 272px tokenised rail, tokenised workspace/card/tile padding,
+  // the narrow .sec-nav single-column stack, and full --sidebar/--dot-* token
+  // parity across all eight 86-theme-*.css skins (651304 measured). The prior
+  // cap left only 1.8 KB of headroom; this is a real additive feature wave, so
+  // the raise tracks the file and leaves ~2.7 KB for the next wave.
+  'css/mmgr.css': 654000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

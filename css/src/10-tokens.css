@@ -273,4 +273,30 @@ svg.ico use {
   --toggle-on-fg: #ffffff;
   --toggle-off-bg: rgba(15, 23, 42, 0.07);
   --toggle-off-fg: #334155;
+
+  /* ---- Spatial scale (UI/spatial/theme parity spec §4.1) ----------------
+     One place for the shell rhythm so the rail width, workspace gutters and
+     card/tile padding cannot drift apart. The values are the audited, dense-
+     safe steps: 272px rail prevents label truncation; 9px table cells keep
+     Gantt/WBS/BOQ scannable (~36px rows). Consumers opt in per rule. */
+  --rail-w: 272px;
+  --workspace-pad-y: 24px;
+  --workspace-pad-x: 32px;
+  --panel-gap: 20px;
+  --card-pad-y: 20px;
+  --card-pad-x: 24px;
+  --tile-pad-y: 16px;
+  --tile-pad-x: 20px;
+  --table-cell-y: 9px;
+  --table-cell-x: 12px;
+}
+
+/* Narrow screens tighten the shell gutters and card padding (spec §4.1). */
+@media (max-width: 900px) {
+  :root {
+    --workspace-pad-y: 16px;
+    --workspace-pad-x: 16px;
+    --card-pad-y: 16px;
+    --card-pad-x: 16px;
+  }
 }

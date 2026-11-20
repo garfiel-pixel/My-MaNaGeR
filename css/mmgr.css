@@ -275,6 +275,32 @@ svg.ico use {
   --toggle-on-fg: #ffffff;
   --toggle-off-bg: rgba(15, 23, 42, 0.07);
   --toggle-off-fg: #334155;
+
+  /* ---- Spatial scale (UI/spatial/theme parity spec §4.1) ----------------
+     One place for the shell rhythm so the rail width, workspace gutters and
+     card/tile padding cannot drift apart. The values are the audited, dense-
+     safe steps: 272px rail prevents label truncation; 9px table cells keep
+     Gantt/WBS/BOQ scannable (~36px rows). Consumers opt in per rule. */
+  --rail-w: 272px;
+  --workspace-pad-y: 24px;
+  --workspace-pad-x: 32px;
+  --panel-gap: 20px;
+  --card-pad-y: 20px;
+  --card-pad-x: 24px;
+  --tile-pad-y: 16px;
+  --tile-pad-x: 20px;
+  --table-cell-y: 9px;
+  --table-cell-x: 12px;
+}
+
+/* Narrow screens tighten the shell gutters and card padding (spec §4.1). */
+@media (max-width: 900px) {
+  :root {
+    --workspace-pad-y: 16px;
+    --workspace-pad-x: 16px;
+    --card-pad-y: 16px;
+    --card-pad-x: 16px;
+  }
 }
 /* ---- Dark Mode (opt-in only) ---- */
 /* OWNER 2026-09-07: dark theme is PURE BLACK & WHITE (rose gold stays a
@@ -1601,9 +1627,12 @@ body.nav-open #nav-scrim {
   top: var(--hdr-h, 64px);
   left: 0;
   bottom: 0;
-  width: 240px;
+  width: var(--rail-w, 272px);
   z-index: 96;
   background: var(--sidebar);
+  /* Keep the scrollbar from crowding the full-width .sec-btn labels. */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--slate) 35%, transparent) transparent;
   border-right: 1px solid var(--border);
   transform: translateX(-105%);
   visibility: hidden;
@@ -1802,7 +1831,7 @@ body.sidebar-open .sb-close .ico {
     visibility: visible;
   }
   body.sidebar-on.sidebar-open #app-main {
-    margin-left: 248px;
+    margin-left: calc(var(--rail-w, 272px) + 8px);
   }
   body.sidebar-on .sec-nav {
     display: none !important;
@@ -1835,7 +1864,7 @@ body.sidebar-open .sb-close .ico {
 
 /* ---- Section Navigation ---- */
 #app-main {
-  padding: 18px 24px;
+  padding: var(--workspace-pad-y, 24px) var(--workspace-pad-x, 32px);
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -1950,6 +1979,25 @@ body.sidebar-open .sb-close .ico {
   }
   .sec-nav .nav-group {
     flex-shrink: 0;
+  }
+}
+/* UI/spatial parity spec §4.2: on narrow/drawer widths the inline section nav
+   was a ragged flex-wrap of uneven 1-2 pill rows. Stack it on one clean left
+   axis instead - every tab aligns, no orphan pill. (Desktop >=769 keeps the
+   horizontal overflow-x row above.) */
+@media (max-width: 768px) {
+  .sec-nav {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .sec-nav .nav-group {
+    width: 100%;
+  }
+  .sec-nav .sec-btn {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 /* MARKET-FEATURE-ROADMAP A1: expiring-compliance count pill on the
@@ -2657,8 +2705,8 @@ body.sidebar-open .sb-close .ico {
   background: var(--card);
   border: var(--glass-border);
   border-radius: var(--squircle-md);
-  padding: 20px;
-  margin-bottom: 18px;
+  padding: var(--card-pad-y, 20px) var(--card-pad-x, 24px);
+  margin-bottom: var(--panel-gap, 18px);
   box-shadow: var(--glass-rim), var(--glass-shadow);
   contain: layout paint;
   transition:
@@ -3025,21 +3073,24 @@ body.sidebar-open .sb-close .ico {
   vertical-align: 1px;
   background: currentColor;
 }
+/* UI/spatial parity spec §5.1: flat, crisp status dots. The old 6px coloured
+   glow read as decoration and smeared into the brand's glass look; the true
+   hue (owner rule) stays, only the halo is dropped. */
 .sdot.g {
   background: var(--dot-green);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-green) 55%, transparent);
+  box-shadow: none;
 }
 .sdot.a {
   background: var(--dot-yellow);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-yellow) 55%, transparent);
+  box-shadow: none;
 }
 .sdot.b {
   background: var(--dot-blue);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-blue) 55%, transparent);
+  box-shadow: none;
 }
 .sdot.r {
   background: var(--dot-red);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-red) 55%, transparent);
+  box-shadow: none;
 }
 /* OWNER 2026-09-15 (dot-mechanism wave): dashboard status rows become
    dot + bold count + label, replacing the circular badge spheres that
@@ -4083,7 +4134,7 @@ body.dark-mode .rm-active {
   align-items: center;
   gap: 3px;
   text-align: center;
-  padding: 12px;
+  padding: var(--tile-pad-y, 16px) var(--tile-pad-x, 20px);
   background: var(--tile-bg);
   border-radius: var(--radius);
   transition:
@@ -10561,6 +10612,7 @@ body.db-page .db-user[hidden] {
   cursor: pointer;
   transition: background var(--tr);
 }
+/* UI/spatial parity spec §5.1: flat status dot, no decorative halo. */
 .dirty-ind::before {
   content: '';
   width: 8px;
@@ -10568,7 +10620,7 @@ body.db-page .db-user[hidden] {
   border-radius: 50%;
   flex: 0 0 8px;
   background: var(--dot-yellow);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-yellow) 55%, transparent);
+  box-shadow: none;
 }
 .dirty-ind:hover {
   color: var(--gold-text);
@@ -10605,7 +10657,7 @@ body.db-page .db-user[hidden] {
 }
 .dirty-ind.ci-cloud::before {
   background: var(--dot-green);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot-green) 55%, transparent);
+  box-shadow: none;
 }
 .dirty-ind.ci-cloud:hover {
   background: color-mix(in srgb, var(--dot-green) 12%, transparent);
@@ -11260,7 +11312,9 @@ body.dark-mode .wbs-alert-item {
     grid-template-columns: 1fr;
   }
   #app-main {
-    padding: 12px;
+    /* Token-driven so the phone gutter follows the spec §4.1 scale instead of
+       hard-coding 12px and silently beating the base rule in the cascade. */
+    padding: var(--workspace-pad-y, 16px) var(--workspace-pad-x, 16px);
   }
   .gw {
     grid-template-columns: 1fr;
@@ -19245,7 +19299,10 @@ body.db-page .db-quick:focus-visible {
     transition: margin-left var(--release-duration) var(--ease-ios);
   }
 }
-/* ---- rail body: nav scrolls, footer pinned to the bottom ---- */
+/* ---- rail body: nav scrolls, footer pinned to the bottom ----
+   Short-viewport resilience is already provided by this flex layout:
+   min-height:0 lets the nav shrink and scroll while the .db-side footer
+   stays pinned, so expanding all six groups never pushes it off screen. */
 body.db-page .db-side nav {
   flex: 1;
   overflow-y: auto;
@@ -19277,7 +19334,8 @@ body.db-page [data-rail-toggle] .ico-caret {
   flex-shrink: 0;
   transition: transform 0.18s ease;
 }
-body.db-page [data-rail-toggle].open .ico-caret {
+body.db-page [data-rail-toggle].open .ico-caret,
+body.db-page [data-rail-toggle][aria-expanded='true'] .ico-caret {
   transform: rotate(90deg);
 }
 /* OWNER 2026-11-19 (surface-language): the six rail GROUP headings are
@@ -22328,6 +22386,18 @@ body.db-page[data-skin='bento'],
   --squircle-lg: 22px;
   --font-head: 'Figtree', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+  /* Theme parity tokens. Dot hues stay at the app defaults; both flat
+     attention aliases (--dot-amber/--dot-yellow) were undefined until this
+     block, leaving bento's status ring/dots unresolved. */
+  --sidebar: #f1f5f9;
+  --sidebar-border: #d8dde2;
+  --text-secondary: #6a717b;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
 }
 
 /* Cards: no border, rounded, soft shadow. */
@@ -22456,6 +22526,18 @@ body.db-page[data-skin='departure'],
   --squircle-lg: 0px;
   --font-head: 'DM Mono', 'SFMono-Regular', ui-monospace, monospace;
   --font-body: 'DM Mono', 'SFMono-Regular', ui-monospace, monospace;
+  /* Theme parity tokens. Dot hues are the dark-theme bright steps (owner:
+     true hue in both themes); both flat attention aliases (--dot-amber/
+     --dot-yellow) were undefined until this block. */
+  --sidebar: #0e131a;
+  --sidebar-border: #2a2f33;
+  --text-secondary: #b9bdc2;
+  --gold-text: #f5c344;
+  --dot-green: #3ddc84;
+  --dot-amber: #ffc53d;
+  --dot-yellow: #ffc53d;
+  --dot-red: #ff5f56;
+  --dot-blue: #6db3ff;
 }
 
 /* Cards -> alternating full-width board rows, no box. */
@@ -22576,6 +22658,16 @@ body.db-page[data-skin='editorial'],
   --squircle-lg: 0px;
   --font-head: 'Playfair Display', 'Iowan Old Style', Georgia, serif;
   --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  /* Theme parity tokens. Dot hues stay at the app defaults (owner rule). */
+  --sidebar: #f5f2eb;
+  --sidebar-border: #d9d4c8;
+  --text-secondary: #6e6a62;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
 }
 
 /* Masthead: thick-over-thin rule under the hero title. */
@@ -22716,6 +22808,18 @@ body.db-page[data-skin='guild'],
   --squircle-lg: 6px;
   --font-head: 'Cinzel', 'Trajan Pro', Georgia, serif;
   --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  /* Theme parity tokens. Guild's card is parchment (light) on a dark timber
+     canvas, so its dot hues stay the deep app steps that read on parchment;
+     --gold-text is a deep brass that clears AA on the parchment card. */
+  --sidebar: #141917;
+  --sidebar-border: #2a1d12;
+  --text-secondary: #6f6757;
+  --gold-text: #6b4a12;
+  --dot-green: #2e7d32;
+  --dot-amber: #b45309;
+  --dot-yellow: #b45309;
+  --dot-red: #b91c1c;
+  --dot-blue: #1565c0;
   background-color: #1f3a2e;
   background-image:
     repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 7px),
@@ -23049,8 +23153,11 @@ body.db-page[data-skin='obsidian'],
   --major-7: #50e8f4;
   --major-8: #aeb8ad;
   --major-other: #8f8f97;
-  --card: rgba(22, 29, 37, 0.9);
-  --surface-raised: rgba(28, 36, 46, 0.9);
+  /* UI/spatial parity spec §3.2 Step C: content cards must be opaque, or the
+     canvas bleeds through dense tables in BOTH perf modes (perf-on already
+     forces background: var(--card), so a translucent token defeats it). */
+  --card: #161d25;
+  --surface-raised: #1c242e;
   --border: rgba(212, 162, 76, 0.45);
   --text: #f0e6d2;
   --text-heading: #fbf2dd;
@@ -23081,6 +23188,16 @@ body.db-page[data-skin='obsidian'],
   --squircle-lg: 16px;
   --font-head: 'Inter Tight', 'Inter', system-ui, sans-serif;
   --font-body: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  /* Theme parity tokens. --gold-text is already defined above. Dot hues are
+     the dark-theme bright steps (owner: true hue in both themes). */
+  --sidebar: #11161d;
+  --sidebar-border: rgba(212, 162, 76, 0.45);
+  --text-secondary: #c4b9a2;
+  --dot-green: #3ddc84;
+  --dot-amber: #ffc53d;
+  --dot-yellow: #ffc53d;
+  --dot-red: #ff5f56;
+  --dot-blue: #6db3ff;
   background-image: radial-gradient(120% 80% at 50% 0%, rgba(212, 162, 76, 0.06), transparent 60%);
   background-attachment: fixed;
 }
@@ -23178,6 +23295,16 @@ body.db-page[data-skin='pegboard'],
   --squircle-lg: 4px;
   --font-head: 'Chivo', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Chivo', 'Segoe UI', system-ui, sans-serif;
+  /* Theme parity tokens. Dot hues stay at the app defaults (owner rule). */
+  --sidebar: #f3efe8;
+  --sidebar-border: #8b958a;
+  --text-secondary: #5f6860;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
   background-color: #aeb8ad;
   background-image: radial-gradient(rgba(125, 136, 124, 0.55) 1.4px, transparent 1.6px);
   background-size: 18px 18px;
@@ -23306,6 +23433,16 @@ body.db-page[data-skin='permit'],
   --squircle-lg: 2px;
   --font-head: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
+  /* Theme parity tokens. Dot hues stay at the app defaults (owner rule). */
+  --sidebar: #eff3f6;
+  --sidebar-border: #c7ccc4;
+  --text-secondary: #6a706b;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
 }
 
 /* Card: 6px ink left band, 2px border, 2px radius, same size for all. */
@@ -23409,6 +23546,19 @@ body.db-page[data-skin='vellum'],
   --squircle-lg: 0px;
   --font-head: 'Newsreader', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
   --font-body: 'Newsreader', Georgia, 'Times New Roman', serif;
+  /* Theme parity tokens (all 8 skins define the same semantic set). Dot hues
+     are the app defaults on purpose - this skin keeps the owner's true-hue
+     status dots; both flat attention aliases (--dot-amber/--dot-yellow) are
+     defined so every status-dot consumer resolves the same hue. */
+  --sidebar: #f4efe6;
+  --sidebar-border: #c8cfdb;
+  --text-secondary: #5d6f8a;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
 }
 
 /* Drawing-sheet title block: double rule under the hero title. */

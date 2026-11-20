@@ -20,8 +20,11 @@ body.db-page[data-skin='obsidian'],
   --major-7: #50e8f4;
   --major-8: #aeb8ad;
   --major-other: #8f8f97;
-  --card: rgba(22, 29, 37, 0.9);
-  --surface-raised: rgba(28, 36, 46, 0.9);
+  /* UI/spatial parity spec §3.2 Step C: content cards must be opaque, or the
+     canvas bleeds through dense tables in BOTH perf modes (perf-on already
+     forces background: var(--card), so a translucent token defeats it). */
+  --card: #161d25;
+  --surface-raised: #1c242e;
   --border: rgba(212, 162, 76, 0.45);
   --text: #f0e6d2;
   --text-heading: #fbf2dd;
@@ -52,6 +55,16 @@ body.db-page[data-skin='obsidian'],
   --squircle-lg: 16px;
   --font-head: 'Inter Tight', 'Inter', system-ui, sans-serif;
   --font-body: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  /* Theme parity tokens. --gold-text is already defined above. Dot hues are
+     the dark-theme bright steps (owner: true hue in both themes). */
+  --sidebar: #11161d;
+  --sidebar-border: rgba(212, 162, 76, 0.45);
+  --text-secondary: #c4b9a2;
+  --dot-green: #3ddc84;
+  --dot-amber: #ffc53d;
+  --dot-yellow: #ffc53d;
+  --dot-red: #ff5f56;
+  --dot-blue: #6db3ff;
   background-image: radial-gradient(120% 80% at 50% 0%, rgba(212, 162, 76, 0.06), transparent 60%);
   background-attachment: fixed;
 }

@@ -2913,3 +2913,15 @@ narrower reading of §14.3).
   its card is fully opaque and the rgba dim already separates it. Dropped the
   backdrop-filter, count back to 24. qa-signout-confirm 42/42, qa-a11y-axe
   7/7, qa-controls-ia 12/12, npm run verify exit 0. sw.js v678 -> v679.
+- PR 25 CI REPAIR 2026-11-20 (pull_request run, browser-calc):
+  First red step was qa-chrome C6 "completion ring is bigger at the same
+  stroke weight". That harness pinned the OLD ring geometry as four numbers
+  cross-checked together (box 120 / viewBox 96 / r="39" / stroke 14.4 ->
+  apparent 18px). The owner-approved WBS/ring refinement (same PR) changed the
+  ring to r="37" / stroke 20 -> apparent 25px for visible per-major segments;
+  app change was intentional, so the fix was to re-baseline the harness, not
+  revert the app. Updated the C6 label, comment (new owner/date), radius regex
+  and expected apparent thickness together so the cross-check still fires on
+  the next geometry change. qa-chrome 122/122 locally (private :8771 server),
+  npm run verify exit 0, prettier clean. Durable guard item 18 added to the
+  local skeptical-code-audit skill; re-hashed in skills-lock.json.

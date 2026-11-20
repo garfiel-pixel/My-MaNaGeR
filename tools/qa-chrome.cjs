@@ -255,11 +255,12 @@ const PROBE = arg => {
     badge.slice(0, 260)
   );
 
-  // C6 (owner 2026-11-01): the completion ring grew to 120px WITHOUT getting
-  // thicker. The SVG keeps its 96-unit viewBox and r=39 (circumference 245,
-  // which js/mmgr-render.js depends on), so the scale factor is 1.25 and the
-  // painted stroke must stay 18: 14.4 x 1.25. This arm pins all four numbers
-  // together, so the next person to touch one of them is told what breaks.
+  // C6 (owner 2026-11-01, re-baselined 2026-11-20): the completion ring is a
+  // 120px box over a 96-unit viewBox, so the scale factor is 1.25. The owner
+  // approved a chunkier ring in the WBS/ring refinement: r=37 (circumference
+  // 232.48, which js/mmgr-render.js depends on) and stroke-width 20, giving a
+  // painted 25px: 20 x 1.25. This arm pins all four numbers together, so the
+  // next person to touch one of them is told what breaks.
   const pring = (css.match(/\.pring\s*\{[^}]*\}/) || [''])[0];
   const ringStroke = (css.match(/\.ring-fill\s*\{[^}]*stroke-width:\s*([\d.]+)/) || [])[1];
   const projHtml = fs.readFileSync(path.join(ROOT, 'project.html'), 'utf8');
@@ -269,8 +270,8 @@ const PROBE = arg => {
   const boxPx = Number((pring.match(/width:\s*(\d+)px/) || [])[1] || 0);
   const apparent = viewBox ? Number(ringStroke || 0) * (boxPx / Number(viewBox[1])) : 0;
   check(
-    'C6 the completion ring is bigger at the same stroke weight',
-    boxPx >= 112 && viewBox !== null && /r="39"/.test(projHtml) && Math.abs(apparent - 18) < 0.6,
+    'C6 the completion ring is chunky with visible per-major segments',
+    boxPx >= 112 && viewBox !== null && /r="37"/.test(projHtml) && Math.abs(apparent - 25) < 0.6,
     { box: boxPx, viewBox: viewBox && viewBox[1], stroke: ringStroke, apparent: apparent }
   );
 

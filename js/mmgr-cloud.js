@@ -4782,6 +4782,9 @@ var MMGR = window.MMGR || {};
     }
     const rec = getCopyRecord();
     if (!rec) {
+      // An owner/editor tab holds no copy record. Pull on the push instead of
+      // waiting up to 60s for the next poll tick.
+      syncPollTick();
       return;
     } // no copy on this device , nothing to refresh
     if (_revPullBusy) {
@@ -4989,7 +4992,16 @@ var MMGR = window.MMGR || {};
       } // quiet: watcher never shouts
       const cloudStamp = meta.updatedAt || '';
       const last = getLastSeen();
-      if (!last || cloudStamp === last) {
+      const firstPoll = !last;
+      if (!firstPoll && cloudStamp === last) {
+        return;
+      }
+      // A fresh tab has no last-seen value (sessionStorage is per tab). The
+      // old code recorded the stamp and returned, so anything accepted before
+      // this tab's first poll was never pulled. Pull once instead - the merge
+      // is field-level and a tie keeps local, so it cannot clobber an edit.
+      // Nothing to pull while the cloud holds no snapshot.
+      if (firstPoll && !meta.hasSnapshot) {
         if (cloudStamp) {
           setLastSeen(cloudStamp);
         }

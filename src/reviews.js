@@ -23,7 +23,8 @@ import {
   readJsonBody,
   readCloudBody,
   nextRevision,
-  stateRevision
+  stateRevision,
+  stampChangedFieldTs
 } from './lib/http.js';
 import { structuredLog } from './lib/observe.js';
 import { clientIp, verifyTurnstileToken } from './lib/turnstile.js';
@@ -488,6 +489,7 @@ export async function handleReviewAccept(request, env, projectId, reviewId, push
       }
       merged.next.updatedAt = now;
       merged.next.revision = nextRevision(prev);
+      stampChangedFieldTs(prev, merged.next, now);
       // Encrypt state blob on accept (same envelope as handleCloudSave)
       let r2Payload = JSON.stringify(merged.next);
       if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
@@ -856,6 +858,7 @@ async function acceptMcpLegacy(
     }
     merged.next.updatedAt = now;
     merged.next.revision = nextRevision(prev);
+    stampChangedFieldTs(prev, merged.next, now);
     let r2Payload = JSON.stringify(merged.next);
     if (projRowM && projRowM.owner_code_hash && projRowM.owner_code_salt) {
       try {
@@ -1150,6 +1153,7 @@ async function acceptMcpV2(
     }
     next.updatedAt = now;
     next.revision = nextRevision(prev);
+    stampChangedFieldTs(prev, next, now);
     let r2Payload = JSON.stringify(next);
     if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
       try {
@@ -1659,6 +1663,7 @@ export async function handleChangeSetAccept(request, env, projectId, changeSetId
     }
     next.updatedAt = now;
     next.revision = nextRevision(prev);
+    stampChangedFieldTs(prev, next, now);
     let r2Payload = JSON.stringify(next);
     if (projRow && projRow.owner_code_hash && projRow.owner_code_salt) {
       try {

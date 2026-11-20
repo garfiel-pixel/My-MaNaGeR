@@ -109,7 +109,8 @@ const MULTI = `[
   const { chromium } = resolvePlaywright();
   let executablePath;
   try {
-    executablePath = require(path.join(ROOT, 'tools', 'chrome-launcher.cjs')).chromePath || undefined;
+    executablePath =
+      require(path.join(ROOT, 'tools', 'chrome-launcher.cjs')).chromePath || undefined;
   } catch (e) {}
   let browser = null;
   try {

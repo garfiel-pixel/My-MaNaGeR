@@ -41,6 +41,19 @@ body.db-page[data-skin='vellum'],
   --squircle-lg: 0px;
   --font-head: 'Newsreader', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
   --font-body: 'Newsreader', Georgia, 'Times New Roman', serif;
+  /* Theme parity tokens (all 8 skins define the same semantic set). Dot hues
+     are the app defaults on purpose - this skin keeps the owner's true-hue
+     status dots; both flat attention aliases (--dot-amber/--dot-yellow) are
+     defined so every status-dot consumer resolves the same hue. */
+  --sidebar: #f4efe6;
+  --sidebar-border: #c8cfdb;
+  --text-secondary: #5d6f8a;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
 }
 
 /* Drawing-sheet title block: double rule under the hero title. */

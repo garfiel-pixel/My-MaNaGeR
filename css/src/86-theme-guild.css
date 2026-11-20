@@ -45,6 +45,18 @@ body.db-page[data-skin='guild'],
   --squircle-lg: 6px;
   --font-head: 'Cinzel', 'Trajan Pro', Georgia, serif;
   --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  /* Theme parity tokens. Guild's card is parchment (light) on a dark timber
+     canvas, so its dot hues stay the deep app steps that read on parchment;
+     --gold-text is a deep brass that clears AA on the parchment card. */
+  --sidebar: #141917;
+  --sidebar-border: #2a1d12;
+  --text-secondary: #6f6757;
+  --gold-text: #6b4a12;
+  --dot-green: #2e7d32;
+  --dot-amber: #b45309;
+  --dot-yellow: #b45309;
+  --dot-red: #b91c1c;
+  --dot-blue: #1565c0;
   background-color: #1f3a2e;
   background-image:
     repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 7px),

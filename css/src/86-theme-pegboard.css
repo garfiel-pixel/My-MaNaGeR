@@ -38,6 +38,16 @@ body.db-page[data-skin='pegboard'],
   --squircle-lg: 4px;
   --font-head: 'Chivo', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Chivo', 'Segoe UI', system-ui, sans-serif;
+  /* Theme parity tokens. Dot hues stay at the app defaults (owner rule). */
+  --sidebar: #f3efe8;
+  --sidebar-border: #8b958a;
+  --text-secondary: #5f6860;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
   background-color: #aeb8ad;
   background-image: radial-gradient(rgba(125, 136, 124, 0.55) 1.4px, transparent 1.6px);
   background-size: 18px 18px;

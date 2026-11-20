@@ -103,9 +103,26 @@
   function apply() {
     var dark = isDark();
     var mode = currentMode();
+    // A theme-pack skin locks its intrinsic appearance (vellum/bento/... are
+    // always light, obsidian/departure/guild are always dark). This is the ONE
+    // place body.dark-mode is decided, so the skin helper and the theme control
+    // can never fight over the class. The stored mmgr_theme preference is
+    // untouched - it is restored as soon as the visitor returns to default.
+    var S = window.MMGR_SKIN;
+    var polarity = S && S.getPolarity ? S.getPolarity() : null;
+    if (polarity) {
+      dark = polarity === 'dark';
+    }
     var de = document.documentElement;
     if (document.body) {
       document.body.classList.toggle('dark-mode', dark);
+    }
+    // Keep <html> in step: the pre-paint FOUC script sets html.dark-mode from
+    // the stored theme, and the calculator has html.dark-mode selectors. A skin
+    // can flip the effective appearance away from that stored value, so both
+    // elements must carry the same resolved state.
+    if (de) {
+      de.classList.toggle('dark-mode', dark);
     }
     // Accent modes (cyan / magenta) hang off <html>: css/mmgr.css and
     // css/marketing.css carry [data-theme='cyan'] / [data-theme='magenta']

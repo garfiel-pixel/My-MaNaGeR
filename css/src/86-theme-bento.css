@@ -39,6 +39,18 @@ body.db-page[data-skin='bento'],
   --squircle-lg: 22px;
   --font-head: 'Figtree', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+  /* Theme parity tokens. Dot hues stay at the app defaults; both flat
+     attention aliases (--dot-amber/--dot-yellow) were undefined until this
+     block, leaving bento's status ring/dots unresolved. */
+  --sidebar: #f1f5f9;
+  --sidebar-border: #d8dde2;
+  --text-secondary: #6a717b;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
 }
 
 /* Cards: no border, rounded, soft shadow. */

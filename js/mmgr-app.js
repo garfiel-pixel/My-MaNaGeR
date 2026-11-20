@@ -511,7 +511,9 @@ var MMGR = window.MMGR || {};
       (theme === 'system' &&
         window.matchMedia &&
         window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.body.classList.toggle('dark-mode', dark);
+    // Skin polarity wins over the stored theme (spec §3.2).
+    const pol = window.MMGR_SKIN && window.MMGR_SKIN.getPolarity();
+    document.body.classList.toggle('dark-mode', pol ? pol === 'dark' : dark);
     if (thmTgl) {
       thmTgl.checked = !dark;
     }

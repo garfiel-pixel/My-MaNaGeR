@@ -38,6 +38,16 @@ body.db-page[data-skin='permit'],
   --squircle-lg: 2px;
   --font-head: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
+  /* Theme parity tokens. Dot hues stay at the app defaults (owner rule). */
+  --sidebar: #eff3f6;
+  --sidebar-border: #c7ccc4;
+  --text-secondary: #6a706b;
+  --gold-text: #7a5a0b;
+  --dot-green: #2e7d32;
+  --dot-amber: #e65100;
+  --dot-yellow: #e65100;
+  --dot-red: #d63a3a;
+  --dot-blue: #1565c0;
 }
 
 /* Card: 6px ink left band, 2px border, 2px radius, same size for all. */

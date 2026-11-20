@@ -92,7 +92,10 @@ body.db-page .db-quick:focus-visible {
     transition: margin-left var(--release-duration) var(--ease-ios);
   }
 }
-/* ---- rail body: nav scrolls, footer pinned to the bottom ---- */
+/* ---- rail body: nav scrolls, footer pinned to the bottom ----
+   Short-viewport resilience is already provided by this flex layout:
+   min-height:0 lets the nav shrink and scroll while the .db-side footer
+   stays pinned, so expanding all six groups never pushes it off screen. */
 body.db-page .db-side nav {
   flex: 1;
   overflow-y: auto;
@@ -124,7 +127,8 @@ body.db-page [data-rail-toggle] .ico-caret {
   flex-shrink: 0;
   transition: transform 0.18s ease;
 }
-body.db-page [data-rail-toggle].open .ico-caret {
+body.db-page [data-rail-toggle].open .ico-caret,
+body.db-page [data-rail-toggle][aria-expanded='true'] .ico-caret {
   transform: rotate(90deg);
 }
 /* OWNER 2026-11-19 (surface-language): the six rail GROUP headings are

@@ -786,7 +786,13 @@
 // both are shell assets, so returning clients must refetch them.
 // v681 - WBS text import 2026-11-20: the import modal gains a copyable prompt
 // for an outside AI (project.html) and the tasks module gains the handler.
-const CACHE = 'mmgr-shell-v685';
+// v686 - UI/spatial/theme parity 2026-11-20: the eight 86-theme skins gain
+// --sidebar/--dot-* token parity + intrinsic polarity, css/src gains the
+// spatial scale tokens, tokenised rail/workspace/card/tile spacing, the
+// mobile .sec-nav stack and flat status dots; js/mmgr-skin.js + mmgr-theme.js
+// + mmgr-app.js carry the polarity lock. All ride in the project bundle and
+// css/mmgr.css, so returning clients must refetch.
+const CACHE = 'mmgr-shell-v686';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

@@ -51,6 +51,18 @@ body.db-page[data-skin='departure'],
   --squircle-lg: 0px;
   --font-head: 'DM Mono', 'SFMono-Regular', ui-monospace, monospace;
   --font-body: 'DM Mono', 'SFMono-Regular', ui-monospace, monospace;
+  /* Theme parity tokens. Dot hues are the dark-theme bright steps (owner:
+     true hue in both themes); both flat attention aliases (--dot-amber/
+     --dot-yellow) were undefined until this block. */
+  --sidebar: #0e131a;
+  --sidebar-border: #2a2f33;
+  --text-secondary: #b9bdc2;
+  --gold-text: #f5c344;
+  --dot-green: #3ddc84;
+  --dot-amber: #ffc53d;
+  --dot-yellow: #ffc53d;
+  --dot-red: #ff5f56;
+  --dot-blue: #6db3ff;
 }
 
 /* Cards -> alternating full-width board rows, no box. */

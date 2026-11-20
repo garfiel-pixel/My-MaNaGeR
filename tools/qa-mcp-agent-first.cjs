@@ -260,7 +260,14 @@ async function makeEnv(opts) {
                 return projectRow();
               }
               if (low.includes('from cloud_subscriptions')) {
-                return { status: 'active', tier: 'premium', plan: 'premium' };
+                // Close-out 3b: callers may pin the OWNER's plan so the
+                // Company/Enterprise auto-accept gate can be exercised for
+                // every plan. The default stays the old 'premium' row so no
+                // other check changes behaviour.
+                const t = o.tier || 'premium';
+                return t === 'free'
+                  ? { status: 'inactive', tier: 'free', plan: 'free' }
+                  : { status: 'active', tier: t, plan: t };
               }
               if (low.includes('from cloud_reviews') && low.includes('import_key')) {
                 // MCP-FINAL 2026-11-16 F1.1: honour the status filter the real
@@ -4768,19 +4775,66 @@ function addReview(env, row) {
     );
     const anon = await mod.handleCloudApiKeyPatch(req({ autoAccept: 'low-risk' }), env, PROJECT, 1);
     check('P6m the config route is owner-only', anon.status === 403, { status: anon.status });
+    const goodEnv = await makeEnv({ mod, tier: 'company' });
     const good = await mod.handleCloudApiKeyPatch(
       req({ autoAccept: 'low-risk' }, { 'x-owner-code': OWNER_CODE }),
-      env,
+      goodEnv,
       PROJECT,
       1
     );
     const goodBody = await good.json();
     check(
-      'P6n the owner can raise the policy, and the stored row follows',
+      'P6n a Company owner can raise the policy, and the stored row follows',
       good.status === 200 &&
         goodBody.autoAccept === 'low-risk' &&
-        env.__store.keyRow.auto_accept === 'low-risk',
+        goodEnv.__store.keyRow.auto_accept === 'low-risk',
       { status: good.status, body: goodBody }
+    );
+  }
+  {
+    // Close-out 3b: the server refuses to enable low-risk auto-accept below
+    // Company. One named check per plan; the stored row must stay OFF on a
+    // refusal, and turning the policy OFF is always allowed (a downgraded
+    // owner must be able to undo it).
+    const req = function (body) {
+      return new Request('http://localhost/api/cloud/projects/' + PROJECT + '/api-keys/1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', 'x-owner-code': OWNER_CODE },
+        body: JSON.stringify(body)
+      });
+    };
+    const plans = ['free', 'estimator', 'contractor', 'company', 'enterprise'];
+    for (const t of plans) {
+      const env = await makeEnv({ mod, tier: t });
+      const res = await mod.handleCloudApiKeyPatch(
+        req({ autoAccept: 'low-risk' }),
+        env,
+        PROJECT,
+        1
+      );
+      const body = await res.json();
+      const allowed = t === 'company' || t === 'enterprise';
+      check(
+        'P6o-' + t + ' low-risk auto-accept ' + (allowed ? 'allowed' : 'refused (402)'),
+        allowed
+          ? res.status === 200 &&
+              body.autoAccept === 'low-risk' &&
+              env.__store.keyRow.auto_accept === 'low-risk'
+          : res.status === 402 &&
+              body.upgradeRequired === 'company' &&
+              env.__store.keyRow.auto_accept === 'off',
+        { status: res.status, body: body, stored: env.__store.keyRow.auto_accept }
+      );
+    }
+    const offEnv = await makeEnv({ mod, tier: 'estimator', autoAccept: 'low-risk' });
+    const off = await mod.handleCloudApiKeyPatch(req({ autoAccept: 'off' }), offEnv, PROJECT, 1);
+    const offBody = await off.json();
+    check(
+      'P6p a plan below Company can still turn auto-accept off',
+      off.status === 200 &&
+        offBody.autoAccept === 'off' &&
+        offEnv.__store.keyRow.auto_accept === 'off',
+      { status: off.status, body: offBody }
     );
   }
 

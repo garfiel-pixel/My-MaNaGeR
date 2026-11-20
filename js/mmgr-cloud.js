@@ -619,11 +619,17 @@ var MMGR = window.MMGR || {};
     // Transient 'busy' never toasts, and the explicit err:quiet / warn:quiet
     // suppression (background auto-backup reports via the dirty indicator) is
     // honored exactly as when the node exists.
-    if (quiet || !msg) return;
+    if (quiet || !msg) {
+      return;
+    }
     const A = window.MMGR && window.MMGR.App;
-    if (!A || typeof A.showToast !== 'function') return;
+    if (!A || typeof A.showToast !== 'function') {
+      return;
+    }
     if (s) {
-      if (base === 'err' || base === 'warn') A.showToast(msg, kind);
+      if (base === 'err' || base === 'warn') {
+        A.showToast(msg, kind);
+      }
     } else if (base === 'err' || base === 'warn' || base === 'ok') {
       A.showToast(msg, base);
     }
@@ -2542,18 +2548,32 @@ var MMGR = window.MMGR || {};
           // server's closed set, never free text.
           const autoTxt =
             'Auto-accept: ' + (k.autoAccept === 'low-risk' ? 'low-risk note edits' : 'off');
+          // Close-out 3b: the plan gate follows the OWNER's tier. Below
+          // Company the "raise" control stays visible but disabled, with the
+          // reason in the title and beside it. "Turn off" is never disabled,
+          // so a downgraded owner can always undo the policy.
+          const E = window.MMGR && window.MMGR.Entitlements;
+          const autoAllowed = !E || typeof E.mcpAutoAccept !== 'function' || E.mcpAutoAccept();
+          const autoMode = k.autoAccept === 'low-risk' ? 'off' : 'low-risk';
+          const autoReason =
+            'Low-risk auto-accept needs the Company or Enterprise plan (see /pricing).';
+          const autoBlocked = autoMode === 'low-risk' && !autoAllowed;
           const autoBtn = k.active
             ? '<button class="btn btn-n btn-s" data-action="cloudApiKeyAutoAccept" data-id="' +
               esc(String(k.id)) +
               '" data-mode="' +
-              (k.autoAccept === 'low-risk' ? 'off' : 'low-risk') +
+              autoMode +
+              '"' +
+              (autoBlocked
+                ? ' disabled aria-disabled="true" title="' + esc(autoReason) + '"'
+                : '') +
               '">' +
               (k.autoAccept === 'low-risk'
                 ? 'Turn off auto-accept'
                 : 'Allow low-risk auto-accept') +
               '</button>' +
               '<span class="sr-hint" style="margin:0">' +
-              esc(autoTxt) +
+              esc(autoBlocked ? autoTxt + ' \u00b7 ' + autoReason : autoTxt) +
               '</span>'
             : '';
           return (
@@ -2688,6 +2708,19 @@ var MMGR = window.MMGR || {};
     if (cred.header === 'X-View-Code' || cred.header === 'X-Client-Code') {
       setStatus('Viewer and client codes are read-only , they cannot manage keys.', 'warn');
       return;
+    }
+    // Close-out 3b: match the disabled control and the server's 402. The
+    // server stays authoritative; this only saves a round trip and explains
+    // the reason before the click. Turning the policy off is never blocked.
+    if (mode === 'low-risk') {
+      const E = window.MMGR && window.MMGR.Entitlements;
+      if (!(E && typeof E.mcpAutoAccept === 'function' && E.mcpAutoAccept())) {
+        setStatus(
+          'Low-risk auto-accept needs the Company or Enterprise plan (see /pricing).',
+          'warn'
+        );
+        return;
+      }
     }
     if (
       mode === 'low-risk' &&

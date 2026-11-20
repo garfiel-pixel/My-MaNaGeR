@@ -140,7 +140,7 @@ phase2 93/93, engine-parity 19/19). No app regression at baseline.
 | Step | Requirement (one line) | Status | Evidence |
 |---|---|---|---|
 | 3a | AI unavailable on view-only projects; notice before typing; exact two wordings; disabled controls; no toast; undo aiRun/aiRunPreset safe; rewrite harness | DONE | `js/mmgr-app.js` `aiViewOnly()` + `renderAskViewOnly()` + `READONLY_SAFE_ACTIONS` (aiRun/aiRunPreset removed); `js/mmgr-ai.js` `viewOnlyInfo()` + `showViewOnlyNotice()` + guards on open/preset/runPreset/runQuestion/submit/askFromCommandBar/askAboutRisk; `js/mmgr-watch.js` askAboutNotice; `css/src/40-ai.css` notice; `tools/qa-ai-viewonly.cjs` V1–V7 26/26; `qa-ai.cjs` A14 re-baselined (AI23_GATE PASS); `qa-full.cjs` 70b re-baselined (194/194); `npm run verify` green |
-| 3b | Restrict low-risk auto-accept to Company/Enterprise; server refusal; admin disabled + reason; tests every plan; ledger DEVIATION | (pending) | see close-out run log |
+| 3b | Restrict low-risk auto-accept to Company/Enterprise; server refusal; admin disabled + reason; tests every plan; ledger DEVIATION | DEVIATION | Built without the PHASE6-GO approval the directive names - owner to confirm. Code: `autoAcceptPlanAllowed()` in `src/mcp/tier-limits.js`, server 402 gate in `src/cloud/api-keys.js` `handleCloudApiKeyPatch`, client gate `MMGR.Entitlements.mcpAutoAccept()` in `js/app/entitlements.js`, disabled control + reason in `js/mmgr-cloud.js` `listApiKeys()`. Tests: `test/tier-limits.test.mjs` (all 5 plans, failed on missing export before the fix), `tools/qa-mcp-agent-first.cjs` P6o-free/estimator/contractor/company/enterprise + P6p (3 plan checks failed 200-before / pass 402-now, 192/192), `tools/qa-autoaccept-ui.cjs` U-free..U-enterprise + U-downgrade 6/6. Default stays off on every plan; turning OFF is never blocked |
 | 3c | Reference `qa-ai-theme.cjs` + `qa-ai-viewonly.cjs` in ci.yml and registry | (pending) | see close-out run log |
 | 3d | Remove stale `qa-pricing-parity.cjs` comment; delete unused exports if unreferenced | (pending) | see close-out run log |
 | 3e | Developer Guide: tier table + limitsFor, auto-accept policy + plan restriction, Nav.go inventory | (pending) | see close-out run log |
@@ -151,5 +151,5 @@ phase2 93/93, engine-parity 19/19). No app regression at baseline.
 
 ## Counts (Step 5 will finalize)
 
-- DONE: 76 · PARTIAL: 0 · MISSING: 0 · DEVIATION: 5 (MCP 3.5, MCP 5.2, MCP F5, UX A6, plus close-out 3b when set).
+- DONE: 76 · PARTIAL: 0 · MISSING: 0 · DEVIATION: 6 (MCP 3.5, MCP 5.2, MCP F5, UX A6, close-out 3b).
 - Step 3 rows are resolved to DONE/DEVIATION as each test-first fix lands; this header is updated at Step 5.

@@ -14,7 +14,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { limitsFor, TIER_LIMITS, perCallCap } from '../src/mcp/tier-limits.js';
+import {
+  limitsFor,
+  TIER_LIMITS,
+  perCallCap,
+  autoAcceptPlanAllowed
+} from '../src/mcp/tier-limits.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -51,6 +56,19 @@ test('the per-call cap never exceeds the array ceiling', () => {
   assert.equal(perCallCap(500, limitsFor('contractor')), 250);
   assert.equal(perCallCap(100, limitsFor('enterprise')), 100);
   assert.equal(perCallCap(500, limitsFor('company')), 500);
+});
+
+// Close-out 3b (owner decision): raising low-risk auto-accept is a
+// Company/Enterprise feature. Default stays off on every plan, including the
+// two that may use MCP, so this gate is about ENABLING the policy only.
+test('low-risk auto-accept can only be enabled on Company and Enterprise', () => {
+  assert.equal(autoAcceptPlanAllowed('free'), false, 'free has no MCP');
+  assert.equal(autoAcceptPlanAllowed('estimator'), false, 'estimator');
+  assert.equal(autoAcceptPlanAllowed('contractor'), false, 'contractor');
+  assert.equal(autoAcceptPlanAllowed('company'), true, 'company');
+  assert.equal(autoAcceptPlanAllowed('enterprise'), true, 'enterprise');
+  assert.equal(autoAcceptPlanAllowed('premium'), false, 'unknown paid tier reads as contractor');
+  assert.equal(autoAcceptPlanAllowed(''), false, 'empty tier reads as free');
 });
 
 // The comparison table's column order: Feature, Free, Contractor, Estimator,

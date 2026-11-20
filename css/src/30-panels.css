@@ -207,13 +207,13 @@
 }
 
 /* ---- Progress Ring ---- */
-/* OWNER 2026-11-01: "the circle can be bigger while keeping its thickness - it
-   is in a very large rectangle and it is not taking up anything there." The box
-   grows 96px to 120px. The SVG keeps its 96-unit viewBox (r=39, circumference
-   245, unchanged in the markup and in js/mmgr-render.js), so the browser scales
-   it 1.25x - which is why the stroke is re-specified as 14.4: 14.4 x 1.25 = 18,
-   the exact thickness it painted before. Bigger ring, same weight, and not one
-   number in the arc maths moves. */
+/* OWNER 2026-11-20: "make it thicker" and "make each major task visible".
+   The box stays 120px and the 96-unit viewBox scales it 1.25x. The viewBox
+   stroke goes 14.4 -> 20 (painted 18px -> 25px), and r 39 -> 37 so the outer
+   edge (37+10 = 47) still fits the 48-unit half-viewBox. Circumference is
+   2*pi*37 = 232.48 everywhere (markup, renderRingSlots, renderDash). The
+   faint per-major track goes 22% -> 34% and the gap 2deg -> 4deg so an
+   untouched major task still reads as its own coloured segment. */
 .pring {
   position: relative;
   width: 120px;
@@ -227,19 +227,19 @@
 .ring-bg {
   fill: none;
   stroke: var(--border);
-  stroke-width: 14.4;
+  stroke-width: 20;
 }
 .ring-fill {
   fill: none;
   stroke: var(--green);
-  stroke-width: 14.4;
+  stroke-width: 20;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.5s ease;
 }
 /* OWNER 2026-09-15 (ring polish): gradient fill (set in markup via
    url(#ring-grad), green->lighter green in oklch so both themes hold), a
    soft same-hue glow, and a quarter-turn entry animation that respects
-   reduced motion. Radius + geometry untouched (r=39 / dasharray 245). */
+   reduced motion. Geometry now r=37 / dasharray 232.48 (2026-11-20). */
 .pring svg .ring-fill {
   filter: drop-shadow(0 0 5px color-mix(in oklch, var(--green) 45%, transparent));
 }
@@ -366,7 +366,7 @@
   }
 }
 /* UX-2026-11-19 B3: one arc per major group, drawn over the ring's own
-   geometry (r=39, 14.4px stroke, the whole SVG rotated -90 so 0 is 12
+   geometry (r=37, 20px viewBox stroke, the whole SVG rotated -90 so 0 is 12
    o'clock). These rules add only the affordance - the slot colours come
    from the --major-N tokens, set inline by the renderer. */
 .pring .ring-slots .ring-slot {
@@ -377,7 +377,7 @@
 }
 .pring .ring-slots .ring-slot:hover,
 .pring .ring-slots .ring-slot.is-hot {
-  stroke-width: 16.4;
+  stroke-width: 22;
 }
 /* The list under the ring is the text version of the same data, so a hover
    on either side lights the other. */

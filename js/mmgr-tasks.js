@@ -115,8 +115,12 @@ var MMGR = window.MMGR || {};
       const task = {
         id: U.genId('t'),
         name: f.name || 'New Task',
-        level: 0,
-        indent: 0,
+        // WBS hybrid add model (owner-approved 2026-11-20): callers may ask
+        // for a level/indent explicitly. Default stays top-level so every
+        // existing createTask caller (Kanban quick-add, idea promotion) is
+        // unchanged - a plain add() decides the level itself below.
+        level: f.level || 0,
+        indent: f.indent !== undefined ? f.indent : f.level || 0,
         isPhase: false,
         status: status,
         startDate: f.startDate || '',
@@ -151,8 +155,68 @@ var MMGR = window.MMGR || {};
     return id;
   }
 
+  // WBS hybrid add model (owner-approved 2026-11-20).
+  // The list is flat with indent levels and a level-0 row is a "main".
+  //   - plain "+ Add Task": the first row is a main; every later add becomes
+  //     a subtask of the most recent main, so a user building a plan never
+  //     has to indent each row by hand.
+  //   - "+ Main Task": explicitly start a new top-level row.
+  //   - "+ Subtask" on a main: insert a child directly under that main (after
+  //     its last descendant), so a task can be re-opened and extended later.
+  // All three funnel through createTask so every field stays canonical.
+  function lastMainIndex(tasks) {
+    for (let i = tasks.length - 1; i >= 0; i--) {
+      const t = tasks[i];
+      if (t.isPhase || (t.level || 0) === 0) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   function addTask() {
+    const tasks = S().tasks || [];
+    const mi = lastMainIndex(tasks);
+    if (mi < 0) {
+      createTask({}); // first task of the project is a main
+    } else {
+      const level = Math.min(3, (tasks[mi].level || 0) + 1);
+      createTask({ level: level, indent: level });
+    }
+    R.renderWbs();
+  }
+
+  function addMainTask() {
     createTask({});
+    R.renderWbs();
+  }
+
+  function addSubtask(mainId) {
+    const tasks = S().tasks || [];
+    const idx = tasks.findIndex(t => String(t.id) === String(mainId));
+    if (idx < 0) {
+      return;
+    }
+    const main = tasks[idx];
+    const base = main.level || 0;
+    const level = Math.min(3, base + 1);
+    // Insert after the main's last existing descendant so the flat order
+    // stays depth-first (a later main is never swallowed as a child).
+    let insertAt = idx + 1;
+    for (let i = idx + 1; i < tasks.length; i++) {
+      const t = tasks[i];
+      if (t.isPhase || (t.level || 0) <= base) {
+        break;
+      }
+      insertAt = i + 1;
+    }
+    // createTask always appends, so build the task through it (one canonical
+    // factory), then move the just-created row into place.
+    createTask({ level: level, indent: level });
+    ns.State.updateState(function (s) {
+      const created = s.tasks.pop();
+      s.tasks.splice(insertAt, 0, created);
+    });
     R.renderWbs();
   }
 
@@ -1307,6 +1371,8 @@ var MMGR = window.MMGR || {};
   // ---- API ----
   ns.Tasks = {
     addTask: addTask,
+    addMainTask: addMainTask,
+    addSubtask: addSubtask,
     addTaskFromIdea: addTaskFromIdea,
     createTask: createTask,
     durationFromDates: durationFromDates,

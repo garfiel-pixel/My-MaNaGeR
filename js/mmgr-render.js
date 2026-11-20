@@ -141,12 +141,16 @@ var MMGR = window.MMGR || {};
 
   // ---- Dashboard ----
   // ---- UX-2026-11-19 B3: the completion ring, one arc per major group ----
-  // Geometry is unchanged (r=39, circ 245.04, the 14.4px stroke and the
-  // quarter-turn entry sweep), so the centre percentage reads exactly as it
-  // did. With no groups the original single #rf stroke is used, untouched.
-  const RING_R = 39;
+  // Owner 2026-11-20: "make it thicker" + "make each major task visible".
+  // r 39 -> 37 and the viewBox stroke 14.4 -> 20 (outer edge 37+10 = 47, inside
+  // the 48-unit half-viewBox; the ring still paints at 120px so this is 25px on
+  // screen vs 18px before). The gap widens 2deg -> 4deg and the faint track
+  // 22% -> 34% so every major-task slot reads even before any is completed.
+  // The centre percentage maths is identical: it uses the same circumference
+  // constant everywhere (markup + renderRingSlots + renderDash).
+  const RING_R = 37;
   const RING_CIRC = 2 * Math.PI * RING_R;
-  const RING_GAP_DEG = 2;
+  const RING_GAP_DEG = 4;
 
   function ringData(state) {
     const M = ns.MajorTasks;
@@ -218,13 +222,14 @@ var MMGR = window.MMGR || {};
         cy: 48,
         r: RING_R,
         fill: 'none',
-        'stroke-width': 14.4,
+        'stroke-width': 20,
         'stroke-linecap': 'butt'
       };
-      // The faint track: the slot's own colour at about 22%.
+      // The faint track: the slot's own colour at 34% so a major task with
+      // nothing done yet is still visible as a distinct coloured segment.
       const track = svgEl('circle', common);
       track.setAttribute('class', 'ring-slot-track');
-      track.style.stroke = 'color-mix(in oklch, ' + token + ' 22%, transparent)';
+      track.style.stroke = 'color-mix(in oklch, ' + token + ' 34%, transparent)';
       track.setAttribute('stroke-dasharray', trackLen + ' ' + (RING_CIRC - trackLen));
       track.setAttribute('stroke-dashoffset', String(-startLen));
       layer.appendChild(track);
@@ -456,8 +461,8 @@ var MMGR = window.MMGR || {};
     ).length;
 
     // Ring (STRUCTURAL-IA §1: brand-new project != 0%, quiet the empty zero)
-    // circ = 2pi*r with r=39, matches the ring markup (thicker 18px stroke,
-    // owner 2026-08-15).
+    // circ = 2pi*r with r=37 = 232.48, matches the ring markup (20px viewBox
+    // stroke, owner 2026-11-20).
     // UX-2026-11-19 B3: when the project has major groups the ring and its
     // stat speak in WORK ITEMS (phase rows are containers, not tasks), so the
     // centre percentage is exactly the sum of the group points. Without
@@ -471,7 +476,8 @@ var MMGR = window.MMGR || {};
       : total
         ? Math.round((done / total) * 100)
         : 0;
-    const circ = 245;
+    // Must match the #rf dasharray in project.html (r=37 -> 2*pi*37 = 232.48).
+    const circ = 232.48;
     const offset = circ - (circ * pct) / 100;
     const rf = $('rf');
     if (rf) {
@@ -2888,6 +2894,7 @@ var MMGR = window.MMGR || {};
         <td style="white-space:nowrap">
           <button class="btn btn-s ${t.weatherSensitive ? 'btn-wx' : 'btn-n'}" data-action="tglWeather" data-id="${U.escapeHtml(t.id)}" title="${t.weatherSensitive ? 'Weather-sensitive, buffer added for regional windows during cascade' : 'Mark weather-sensitive, adds selective buffer for regional windows during cascade'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-cloud-rain"></use></svg></button>
           <button class="btn btn-s ${t.leadTime ? 'btn-lt' : 'btn-n'}" data-action="tglLeadTime" data-id="${U.escapeHtml(t.id)}" title="${t.leadTime ? 'Lead-Time, tracked by Submitted/Expected dates (click to unmark)' : 'Mark as Lead-Time, vendor/third-party wait tracked by Submitted/Expected dates (procurement, permits, deliveries)'}" style="padding:5px 8px"><svg class="ico" aria-hidden="true" style="font-size:.62rem"><use href="css/mmgr-icons.svg#i-clock"></use></svg></button>
+          ${isPhase ? `<button class="btn btn-s btn-n" data-action="addSubtask" data-id="${U.escapeHtml(t.id)}" title="Add a subtask under ${U.escapeHtml(t.name)}">+ Subtask</button>` : ''}
           <button class="btn btn-s btn-n" data-action="indentTask" data-id="${U.escapeHtml(t.id)}" title="Indent">&rarr;</button>
           <button class="btn btn-s btn-n" data-action="outdentTask" data-id="${U.escapeHtml(t.id)}" title="Outdent">&larr;</button>
           <button class="btn btn-s btn-d" data-action="delTask" data-id="${U.escapeHtml(t.id)}" title="Delete">&times;</button>

@@ -6404,6 +6404,8 @@ window.MMGR = MMGR;
       window.MMGR.App.swDtab(el.getAttribute('data-tab'), el);
     },
     addTask: () => window.MMGR.Tasks.addTask(),
+    addMainTask: () => window.MMGR.Tasks.addMainTask(),
+    addSubtask: el => window.MMGR.Tasks.addSubtask(el.getAttribute('data-id')),
     delTask: el => window.MMGR.Tasks.delTask(el.getAttribute('data-id')),
     indentTask: el => window.MMGR.Tasks.indentTask(el.getAttribute('data-id')),
     // T-07 (UI-IA-AND-MCP 2026-11-11): Controls drawer accordion toggle. The

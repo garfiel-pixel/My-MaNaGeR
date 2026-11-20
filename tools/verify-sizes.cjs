@@ -134,7 +134,9 @@ const EXACT = {
   // 2026-11-19 (ux B5): 227000 -> 230000. The seven health counters became
   // links, the EVM tiles became links, four panels gained their #section
   // anchor and the WBS gained its view-filter bar (228995 measured).
-  'project.html': 230000,
+  // 2026-11-20: 230000 -> 231500 for the WBS import modal's copyable AI prompt
+  // block (~1.1 KB, 230154 measured). Static markup only.
+  'project.html': 231500,
   'calculator.html': 80000,
   // 2026-11-10 (Theme pack): raised 140000 -> 143000 for the Customize modal
   // markup (themes grid, appearance/performance rows, account section) added to

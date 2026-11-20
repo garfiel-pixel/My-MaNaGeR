@@ -647,6 +647,41 @@ var MMGR = window.MMGR || {};
     }
   }
 
+  // A ready-to-copy instruction for an outside AI. The importer reads
+  // indentation only (two spaces per level, bullets and "1." prefixes are
+  // stripped), so the prompt asks for exactly that and nothing else.
+  function wiPromptText() {
+    return (
+      'Reformat the task list I paste after this message for import into a project manager.\n\n' +
+      'Return ONLY the reformatted list - no introduction, no commentary, no numbering, no bullet characters.\n\n' +
+      'Rules:\n' +
+      '1. Each main task starts at the beginning of a line.\n' +
+      '2. Each subtask is indented exactly two spaces under its main task.\n' +
+      '3. A sub-subtask is indented four spaces.\n' +
+      '4. One item per line. Keep my wording. Do not add, merge, split or reorder tasks.\n' +
+      '5. Leave one blank line between main task groups.\n\n' +
+      'Example:\n' +
+      'Site setup\n' +
+      '  Mobilise plant\n' +
+      '  Site offices\n' +
+      '\n' +
+      'Substructure\n' +
+      '  Excavate\n' +
+      '  Footings\n\n' +
+      'Here is my list:\n'
+    );
+  }
+
+  function wiCopyPrompt() {
+    const status = U.$('wi-prompt-status');
+    U.copyToClipboard(wiPromptText()).then(function () {
+      if (status) {
+        status.textContent =
+          'Prompt copied. Paste it into your AI tool, then add your task list under it.';
+      }
+    });
+  }
+
   function wiPreview() {
     const source = U.$('wi-source');
     const preview = U.$('wi-preview');
@@ -1292,6 +1327,7 @@ var MMGR = window.MMGR || {};
     openWbsImport: openWbsImport,
     closeWbsImport: closeWbsImport,
     wiPreview: wiPreview,
+    wiCopyPrompt: wiCopyPrompt,
     wiCommit: wiCommit,
     openImportDates: openImportDates,
     closeImportDates: closeImportDates,
@@ -1319,6 +1355,7 @@ var MMGR = window.MMGR || {};
     openWbsImport: openWbsImport,
     closeWbsImport: closeWbsImport,
     wiPreview: wiPreview,
+    wiCopyPrompt: wiCopyPrompt,
     wiCommit: wiCommit
   };
   ns.ImportDates = {

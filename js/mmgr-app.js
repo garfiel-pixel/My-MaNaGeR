@@ -6690,6 +6690,7 @@ window.MMGR = MMGR;
     tglLeadTime: el => window.MMGR.Tasks.tglLeadTime(el.getAttribute('data-id')),
     openWbsImport: () => window.MMGR.Tasks.openWbsImport(),
     wiPreview: () => window.MMGR.Tasks.wiPreview(),
+    wiCopyPrompt: () => window.MMGR.Tasks.wiCopyPrompt(),
     wiCommit: () => window.MMGR.Tasks.wiCommit(),
     openImportDates: () => window.MMGR.Tasks.openImportDates(),
     idPreview: () => window.MMGR.Tasks.idPreview(),

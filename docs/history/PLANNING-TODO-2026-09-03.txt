@@ -2925,3 +2925,15 @@ narrower reading of §14.3).
   the next geometry change. qa-chrome 122/122 locally (private :8771 server),
   npm run verify exit 0, prettier clean. Durable guard item 18 added to the
   local skeptical-code-audit skill; re-hashed in skills-lock.json.
+- PR 25 CI REPAIR 2026-11-20 (second pull_request run, browser-app):
+  First red step was qa-landing-motion C3c "a click opens the card and
+  announces it" - read h=95 against its h > 120 gate while the card was
+  already correctly open (open:1, which:[gc], aria-expanded=true). Three
+  local runs on the same SHA passed 47/47 - a fixed delay(380) racing the
+  reveal animation on a loaded CI runner (the item 15 green-local/red-CI
+  shape), NOT a broken feature. Fix: bounded page.waitForFunction on the
+  detail height > 120 (timeout 3000, .catch no-op) before the measurement;
+  the h > 120 assertion is unchanged so a genuinely unopened panel still
+  fails with its real height. qa-landing-motion 47/47 x3 locally via QA_BASE,
+  prettier clean. Durable guard item 19 added to the local
+  skeptical-code-audit skill; re-hashed in skills-lock.json.

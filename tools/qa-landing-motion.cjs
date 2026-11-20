@@ -701,6 +701,21 @@ function resolvePlaywright() {
         await delay(380);
       };
       await click('gc');
+      // The detail panel animates its height open. A fixed delay races the
+      // reveal on a loaded CI runner (h was read at 95 mid-transition while
+      // the card was already open). Wait for the panel to finish opening - a
+      // bounded wait, NOT a change to the h > 120 assertion below, so a card
+      // that genuinely fails to open still fails with its real height.
+      await page
+        .waitForFunction(
+          () => {
+            const d = document.querySelector('#role-gc-detail');
+            return !!d && d.getBoundingClientRect().height > 120;
+          },
+          null,
+          { timeout: 3000 }
+        )
+        .catch(() => {});
       const one = await page.evaluate(() => ({
         open: document.querySelectorAll('.role-card.is-open').length,
         which: Array.from(document.querySelectorAll('.role-card.is-open')).map(c =>

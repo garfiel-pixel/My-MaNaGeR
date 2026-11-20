@@ -36,15 +36,6 @@ import { budgetWriteAllowed, BUDGET_WRITE_REFUSAL } from './budget-access.js';
 import { refusalCode } from './errors.js';
 import { limitsFor, perCallCap, upsellFor } from './tier-limits.js';
 
-// MCP-AGENT-FIRST addendum A1 (2026-11-13): per API key per project abuse
-// limits. A key may hold at most MCP_MAX_PENDING_PER_KEY proposals in status
-// pending or accepting, and at most MCP_MAX_DAILY_OPS_PER_KEY ops (sum of
-// ops_count) across pending, accepting or accepted rows proposed on the
-// current UTC day. A withdrawn or rejected row frees both its pending slot
-// and its daily ops. Exceeding either refuses the whole apply_changes call.
-export const MCP_MAX_PENDING_PER_KEY = 50;
-export const MCP_MAX_DAILY_OPS_PER_KEY = 2000;
-
 // MCP-DIRECTIVE 2026-11-11 P0: validate the apply_changes envelope BEFORE
 // loading project state. An empty or malformed envelope must return a tool
 // error in microseconds - never load and decrypt a multi-megabyte snapshot

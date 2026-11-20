@@ -9,7 +9,7 @@
 
    Values are the owner's published plan matrix. This table is the ONLY
    place they are written down: pricing.html is checked against it by
-   tools/qa-pricing-parity.cjs, so a plan change edits this file and the
+   test/tier-limits.test.mjs, so a plan change edits this file and the
    page together.
    ============================================================ */
 

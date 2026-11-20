@@ -1,0 +1,52 @@
+[cloud1] wrangler at: C:\Users\Garfield\Downloads\mymanager-fixed\node_modules\wrangler\bin\wrangler.js
+[cloud1] starting wrangler dev on :8765 (local D1 + R2 emulation, persist C:\Users\Garfield\AppData\Local\Temp\mmgr-cloud-wstate-1795151669288)…
+[cloud1] --- wrangler dev log (last 500 chars) ---
+[cloud1] LE_CLIENT_ID ("297970704704-m05hgt93lfaq286q90br8c96...")            Environment Variable          local
+env.ADMIN_CODE ("(hidden)")                                                  Environment Variable          local
+env.EMAIL_RECOVERY_ENABLED (false)                                           Environment Variable          local
+
+⎔ Starting local server...
+[wrangler:info] Ready on http://127.0.0.1:8765
+[wrangler:info] GET /api/health 200 OK (4595ms)
+[wrangler:info] GET /api/health 200 OK (84ms)
+
+[cloud1] --- end wrangler log ---
+[cloud1] DIAG health: status=200 ct=application/json; charset=utf-8
+[cloud1] DIAG health body: {"ok":true,"status":"ok","app":"my-manager","time":"2026-11-20T05:14:55.377Z"}
+[cloud1] DIAG create: status=200 ct=application/json; charset=utf-8
+[cloud1] DIAG create body: {"ok":true,"projectId":"diag-test","ownerCode":"Q5NY-VZQ9-F2GP-8ZKE","linked":false,"status":"active","syncMode":"auto"}
+[cloud1] PASS  C1a create returns ok + ownerCode
+[cloud1] PASS  C1b owner code format XXXX-XXXX-XXXX-XXXX (no 0/O/1/I/L)
+[cloud1] PASS  C1c D1 row written (project_id + label)
+[cloud1] PASS  C1d D1 row exists before any save (latest_r2_key NULL)
+[cloud1] PASS  C2a save returns ok
+[cloud1] PASS  C2b save reports the expected R2 key
+[cloud1] PASS  C2c D1 row now references the R2 key
+[cloud1] PASS  C2d state blob found in local R2 emulation
+[cloud1] PASS  C2e R2 blob content equals the saved state
+[cloud1] PASS  C3a stored salt is 32 hex chars
+[cloud1] PASS  C3b stored hash is 64 hex chars (PBKDF2-SHA256 256-bit)
+[cloud1] PASS  C3c stored hash is NOT the plaintext code
+[cloud1] PASS  C3d PBKDF2 recompute matches the stored hash
+[cloud1] PASS  C3e plaintext code absent from ALL D1 + R2 bytes
+[cloud1] PASS  C4a correct code loads the saved state (fresh HTTP context)
+[cloud1] PASS  C5a wrong code rejected with 403
+[cloud1] PASS  C5b malformed code rejected with 403
+[cloud1] PASS  C5c unknown project id rejected with 403 (load)
+[cloud1] PASS  C5d unknown project id rejected with 403 (meta)
+[cloud1] PASS  C5e all four responses share the SAME body (no existence leak)
+[cloud1] PASS  C3f plaintext code absent from wrangler dev logs
+[cloud1] DIAG page-load console errors: []
+[cloud1] PASS  C4b Controls drawer renders the Cloud section (create button)
+[cloud1] PASS  C4c create stores the owner code in sessionStorage (session-only)
+[cloud1] DIAG browser-fetch /api/health from Chrome context: "ok"
+[cloud1] DIAG browser console errors (if captured): []
+[cloud1] DIAG post-save console errors: []
+[cloud1] PASS  C4d Save to Cloud succeeded from the UI (status ok)
+[cloud1] PASS  C4e fresh device shows the "Load with Code" entry (no code in session)
+[cloud1] PASS  C4f wrong code rejected on fresh device (status err)
+[cloud1] PASS  C4g wrong code left local state untouched
+[cloud1] PASS  C4h fresh device pulled the creator’s cloud snapshot into the workspace
+[cloud1] PASS  C3g UI-created owner code also absent from wrangler dev logs
+[cloud1] ──────────────────────────────────────────────
+[cloud1] CLOUD_PHASE1 PASS (29/29 checks)

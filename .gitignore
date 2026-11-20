@@ -71,8 +71,11 @@ web-research/
 # Accountability evidence: the Step 1/Step 5 gate logs are the review
 # record and must be committable. Transient server files stay ignored.
 !REVIEW-ARTIFACTS/gates/*.log
+!REVIEW-ARTIFACTS/gates-final/*.log
 REVIEW-ARTIFACTS/gates/serve-static.log
 REVIEW-ARTIFACTS/gates/serve.pid
+REVIEW-ARTIFACTS/gates-final/serve-static.log
+REVIEW-ARTIFACTS/gates-final/serve.pid
 *.bak
 *.tmp
 *.DS_Store

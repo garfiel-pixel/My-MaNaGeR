@@ -1,0 +1,37 @@
+(node:18056) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/Garfield/Downloads/mymanager-fixed/src/mcp/server.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\Garfield\Downloads\mymanager-fixed\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+--- P1 — every project tool is shared or intentionally absent ---
+PASS  no unexpected project tool is missing from the app-wide catalog
+PASS  intentional-absent list names real project tools
+
+--- P2 — app-wide adds exactly list_projects + create_project ---
+PASS  app-wide-only tools are exactly list_projects + create_project
+
+--- P2b — validate_changes and get_schema are registered in both catalogs ---
+PASS  validate_changes is in the project catalog
+PASS  app-wide validate_changes requires a string projectId
+PASS  get_schema is in both catalogs and takes an optional table
+
+--- P3 — schema parity for every shared tool ---
+PASS  shared tool schemas match (plus a required projectId)
+PASS  apply_changes keeps its project description as the prefix
+PASS  both surfaces state the untrusted-record-text sentence from the shared constant
+
+--- P4 — no forked executor / pipeline / validator ---
+PASS  app-wide does not define its own executeTool
+PASS  app-wide does not define its own queueMcpProposal
+PASS  app-wide does not define its own validateProposalEnvelope
+PASS  app-wide imports the shared engine from ./server.js
+
+--- P5 — projectId is inert in the shared engine (output parity) ---
+PASS  every shared tool projects identically with and without projectId
+
+--- P6 — refusal constants are shared, not duplicated ---
+PASS  MCP_AUTH_REFUSAL stays the project refusal; app-wide answers the 401 challenge
+PASS  MCP_PREMIUM_REFUSAL is exported by server.js and used verbatim by app-wide
+PASS  shared envelope validator refuses an empty proposal with a stable message
+
+========== QA-MCP-PARITY RESULT: 17 passed, 0 failed ==========

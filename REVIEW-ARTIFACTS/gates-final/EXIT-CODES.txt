@@ -1,0 +1,44 @@
+01_npm_run_build                                             0
+02_npm_run_verify                                            1
+03_npm_test                                                  0
+04_node_tools_verify_contrast_cjs                            1
+05_node_tools_verify_perf_boot_cjs                           0
+06_node_tools_verify_ci_coverage_cjs                         0
+07_node_tools_verify_sw_cache_cjs                            0
+08_node_tools_verify_eslint_cjs                              0
+09_node_tools_verify_prettier_cjs                            1
+10_node_tools_verify_test_registry_cjs                       0
+11_node_tools_qa_mcp_agent_first_cjs                         0
+12_node_tools_qa_mcp_write_path_cjs                          0
+13_node_tools_qa_mcp_budget_cjs                              0
+14_node_tools_qa_mcp_parity_cjs                              0
+15_node_tools_qa_appwide_mcp_cjs                             0
+16_node_tools_qa_api_keys_cjs                                0
+17_node_tools_qa_approval_cjs                                0
+18_node_tools_qa_changelog_diffs_cjs                         0
+19_node_tools_qa_cloud_phase1_cjs                            1
+20_node_tools_qa_cloud_phase2_cjs                            1
+21_node_tools_qa_engine_parity_cjs                           0
+22_node_tools_qa_mcp_live_e2e_cjs                            0
+23_node_mcp_qa_mcp_cjs                                       0
+24_node_tools_qa_marketing_layout_cjs                        0
+25_node_tools_qa_landing_ui_cjs                              0
+26_node_tools_qa_landing_ai_cjs                              0
+27_node_tools_qa_theme_perf_cjs                              0
+28_node_tools_qa_a11y_axe_cjs                                0
+29_node_tools_qa_ux_landscape_cjs                            0
+30_node_tools_qa_signout_confirm_cjs                         0
+31_node_tools_qa_dashboard_ring_cjs                          0
+32_node_tools_qa_dashboard_links_cjs                         0
+33_node_tools_qa_landing_motion_cjs                          0
+34_node_qa_full_cjs                                          0
+35_node_tools_qa_calculator_page_cjs                         0
+36_node_qa_ai_cjs                                            0
+37_node_tools_qa_ai_viewonly_cjs                             0
+38_node_tools_qa_ai_theme_cjs                                0
+39_node_tools_qa_controls_ia_cjs                             0
+40_node_tools_qa_scrub_controls_cjs                          0
+02_npm_run_verify (rerun after prettier fix)                 0
+09_verify_prettier (rerun after prettier fix)                0
+19_qa_cloud_phase1 (rerun standalone, port free)             0
+20_qa_cloud_phase2 (rerun standalone, port free)             0

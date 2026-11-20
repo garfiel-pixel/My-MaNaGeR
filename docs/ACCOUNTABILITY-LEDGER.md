@@ -157,7 +157,34 @@ phase2 93/93, engine-parity 19/19). No app regression at baseline.
 
 ---
 
-## Counts (Step 5 will finalize)
+## 6. Step 5 final gate reconciliation
 
-- DONE: 76 · PARTIAL: 0 · MISSING: 0 · DEVIATION: 6 (MCP 3.5, MCP 5.2, MCP F5, UX A6, close-out 3b).
-- Step 3 rows are resolved to DONE/DEVIATION as each test-first fix lands; this header is updated at Step 5.
+Final run: `bash REVIEW-ARTIFACTS/run-gates.sh REVIEW-ARTIFACTS/gate-manifest.txt REVIEW-ARTIFACTS/gates-final final`
+(40 gates, sequential, one shared `serve.cjs` on `:8765`; runner exit 0). Logs + exit
+codes in `REVIEW-ARTIFACTS/gates-final/`.
+
+The raw first pass showed 5 red. All five are reconciled below, each with a named
+re-run log:
+
+| Gate | First-pass | Re-run | Reason |
+|---|---|---|---|
+| 02 `npm run verify` | 1 | **0** (`02_npm_run_verify_rerun.log`) | Same root as 09: `capture-shots.cjs` was formatted 35 s after the gate ran (log 23:36:28, file 23:37:03). Re-run on the committed tree is green |
+| 09 `verify-prettier` | 1 | **0** (`09_verify_prettier_rerun.log`) | Identical cause: the harness was committed unformatted in `c8beec9` and fixed in `4487ca8` after the pass. `npx prettier --check REVIEW-ARTIFACTS/capture-shots.cjs` passes |
+| 19 `qa-cloud-phase1` | 1 | **0** — 29/29 (`19_qa_cloud_phase1_rerun.log`) | `chrome-launcher.cjs` `PORT` defaults to `8765`; wrangler could not bind over the shared static `serve.cjs`, so every `/api/cloud/*` returned 404. Run standalone (port free) it is green — the exact class the baseline hit and cleared |
+| 20 `qa-cloud-phase2` | 1 | **0** — 93/93 (`20_qa_cloud_phase2_rerun.log`) | Same `:8765` collision as 19; standalone re-run green |
+| 04 `verify-contrast` | 1 | 1 (unchanged) | Pre-existing, recorded at Step 3g. Byte-identical to baseline: 15 passed / 2 failed, both `gold on card` = 2.10:1. No color changed |
+
+**Result: 39 green + 1 pre-existing known-red (04) = the same effective state as the
+Step 1 baseline** (baseline was also 39 green + 1 after its clean re-runs). No gate is
+worse than baseline.
+
+The disposable review export (724 files, 18 MB: `REVIEW-ARTIFACTS/` + the four
+directive/ledger docs + `vendor/three`) is held outside the repo tree so
+tree-walking gates (`verify-prettier`, `verify-assistant-wording`, asset scan) stay
+green; it is a copy-only folder to be taken away, per `docs/REVIEW-EXPORT.md`.
+
+## Counts (final)
+
+- **DONE: 88 · PARTIAL: 0 · MISSING: 0 · DEVIATION: 5**
+- DEVIATIONS: MCP 3.5 (post-apply recompute), MCP 5.2 (XSS browser sweep escape hatch), MCP F5 (optional auto-accept), UX A6 (view-only AI decision replaced by close-out 3a), close-out 3b (auto-accept built without the named `PHASE6-GO`).
+- GATE: zero MISSING rows; every PARTIAL row has a stated reason (none exist); no gate worse than the Step 1 baseline.

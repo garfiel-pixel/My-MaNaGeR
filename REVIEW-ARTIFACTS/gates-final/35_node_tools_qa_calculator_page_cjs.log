@@ -1,0 +1,258 @@
+[calc-page] PASS  C0 calculator page boots with form + output
+[calc-page] PASS  C1 slab 10x8x150 -> 12.6 m3 (5% waste, exact)
+[calc-page] PASS  C2 breakdown carries tax 15% line + total
+[calc-page] PASS  C2b money invariant mat+lab+tax = total, with no unconverted banner on a pinned-USD estimate
+[calc-page] PASS  C2c with NO exchange rate the fields stay EMPTY and the honest note names the gap (E1 never a relabel)
+[calc-page] PASS  C3 custom tax override (8.25%) replaces JM 15%
+[calc-page] PASS  C4 rebar 50 m3 -> 4.25 t (85 kg/m3, exact)
+[calc-page] PASS  C5 missing dimensions -> inline guidance, no crash
+[calc-page] PASS  C6 Calculate saves to device history
+[calc-page] PASS  C7 Recall restores inputs + recomputes
+[calc-page] PASS  C8 Clear history empties storage + list
+[calc-page] PASS  C9 theme toggle flips + persists
+[calc-page] PASS  B1 top bar: icon-only back + title h1 + theme button present
+[calc-page] PASS  B2 theme pair: one sun use + one moon use in the theme button
+[calc-page] PASS  B3 old header gone: no .bcp-head block remains
+[calc-page] PASS  B4 CSS: sun/moon dark-mode switch rules exist
+[calc-page] PASS  B5 CSS: back button is icon-only (no Back text node)
+[calc-page] PASS  G1 guide card renders with 13 steps + counter + text (W6: business card + invoice sheet added)
+[calc-page] PASS  G2 guide order: step 1 is work item (never overhead first)
+[calc-page] PASS  G3 next/prev cycles steps + one active dot follows
+[calc-page] PASS  G4 hide sets flag + reopen shows again
+[calc-page] PASS  N1 linear basis labels present (pipe, conduit, skirting, shingle)
+[calc-page] PASS  N2 new optgroups: Plumbing + Electrical exist
+[calc-page] PASS  N3 pipe-supply 12 m run -> 12 m linear quantity
+[calc-page] PASS  N4 shingle-roof 10x9.2903 m -> 10 squares + m2 aside
+[calc-page] PASS  N5 fixture count math: 3 each at 130+150 = 840
+[calc-page] PASS  E1 doc type + title fields exist, Estimate default, hook live
+[calc-page] PASS  E2 filename base follows type+title; print title says Invoice
+[calc-page] PASS  E3 history row carries docType+docTitle (exact recall)
+[calc-page] PASS  E4 estimate recall restores doc fields + print title follows
+[calc-page] PASS  T1 start tour: overlay opens, step 1 anchors the work item (13 steps since W6)
+[calc-page] PASS  T2 steps walk the form in guide order (units, dims, currency, quality, oh, rates, brand, boq, companions, prelims, run)
+[calc-page] PASS  T3 final step ends the tour + sets the done flag
+[calc-page] PASS  T4 skip AND Escape both end the tour + set the flag
+[calc-page] PASS  BQ1 engine hook: two lines priced + rolled up
+[calc-page] PASS  BQ2 add-line stores form state into the current bill (2 lines)
+[calc-page] PASS  P7 Request-prices writes the RFQ handoff with canonical qty/unit and confirms on screen
+[calc-page] PASS  BQ3 bill card renders 2 line rows + non-zero totals row
+[calc-page] PASS  BQ4 recall re-fills the form; recomputed total matches the line
+[calc-page] PASS  BQ5 remove line + clear bill persist
+[calc-page] PASS  IN1 instancesQty: 10x2.4 x2 + 6x2.4 = 62.4 m2
+[calc-page] PASS  IN2 measuredQty 62.4 m2 prices without dims (mat 1372.8, lab 1747.2)
+[calc-page] PASS  IN3 waste/quality/rates still apply on measured quantity (premium + 30/m2)
+[calc-page] PASS  IN4 editor shows for blockwall (1 seeded row), hidden for rebar
+[calc-page] PASS  IN5 total-override: typing 50 drives the estimate (50 m2)
+[calc-page] PASS  SX1 off by default: no statutory line renders
+[calc-page] PASS  SX2 12.5% of 672 labor = 84.00 on-cost; subtotal 1284 + OH = 1412.40 total
+[calc-page] PASS  SX3 on-cost capped at 25%
+[calc-page] PASS  SX4 breakdown line renders with pct; CSV carries the row
+[calc-page] PASS  SX5 JM shows levy note + suggests 12.5; US hides the note
+[calc-page] PASS  PM1 fixed 250 + pct 1000 + weekly 1200 = 2450 exact
+[calc-page] PASS  PM2 preset loads 6 items; on-top-of line renders
+[calc-page] PASS  PM3 6 rows render; rename persists to storage
+[calc-page] PASS  PM4 remove drops to 5; clear empties + empty state returns
+[calc-page] PASS  RG1 waterfall (re-baselined 2026-10-01): base 107k; contingencies + esc ride the discounted base; 100k + 7k + 10700 + 5350 + 5350 = 128400 exact
+[calc-page] PASS  RG2 defaults restored: design 10, constr 5, esc 5, months 12
+[calc-page] PASS  RG3 waterfall lines render; the escalation line appears with the 12-month default
+[calc-page] PASS  CF1 straight-line: 12 months x 10000, cumulative ends at total
+[calc-page] PASS  CF2 S-curve: sums to total, middle months far exceed ends
+[calc-page] PASS  CF3 table renders 6 months; even months rebuild the cumulative total
+[calc-page] PASS  FA1 slab 2x20x0.1 = 4.0 m2; footing 2x10.5x0.5 = 10.5 m2
+[calc-page] PASS  FA2 non-concrete trades refuse (null)
+[calc-page] PASS  FA3 (re-baselined 2026-10-01) formwork box derives 4 m2, line PRICES AS FORMWORK via measuredQty (derived 55/m2 -> mat 220; trade labor 33/m -> lab 132; total 352), laps field rides rebar only
+[calc-page] PASS  LP1 seeds: US + JM + GB present; picker populated
+[calc-page] PASS  LP2 JM pack: JMD + 15% tax; index != 1 scales the material rate; note shows
+[calc-page] PASS  LP3 import merges 1 (currency normalized) + skips 2 invalid
+[calc-page] PASS  FM1 choosing Structure filters the picker to its group and jumps to a Structure trade
+[calc-page] PASS  FM2 family hint names the family scope in plain language
+[calc-page] PASS  FM3 a foreign trade selected directly (recall path) flips the family - never fights the work item
+[calc-page] PASS  FM4 All trades shows every group and clears the memory; work item untouched
+[calc-page] PASS  FM5 picker carries exactly the 43 user trades (38 + the 5 2025-2027 book trades) - formwork pickable, derived lines stay invisible
+[calc-page] PASS  FM6 the 5 book trades are in the picker
+[calc-page] PASS  CP1 companion map: blockwall/fencing/siteprep covered; skirt none; lineout derives run; slab cart3 = pour m3
+[calc-page] PASS  CP2 fencing 25 m run -> 10 post holes at 2.5 m spacing
+[calc-page] PASS  CP3 pricing a blockwall shows its companion chips: 4 related trades + the material-lines chip
+[calc-page] PASS  CP4 chip click adds a REAL priced bill line (measuredQty path, tagged, editable); chips thin out
+[calc-page] PASS  CP5 accepting every related-trade suggestion leaves only the material chip, and the render line prices
+[calc-page] PASS  CP5b the material chip opens the split and adds NOTHING to the bill (never priced silently)
+[calc-page] PASS  DC1 discount math: 5% of 106k = 5300; fixed 8000 wins; caps at pool; negatives clamp
+[calc-page] PASS  DC2 waterfall: contingencies + escalation ride the DISCOUNTED base
+[calc-page] PASS  DC3 discount settings persist and rehydrate after reload
+[calc-page] PASS  DC4 legacy prefs without disc keys: no discount, no error, fields blank
+[calc-page] PASS  DC5 CSV carries the discount row; waterfall shows the discount line with pct
+[calc-page] PASS  BD1 brand store starts empty; shape complete (logo, name, phone, email, addr, trn, sig)
+[calc-page] PASS  BD2 legacy mmgr_calc_biz_name migrates into the brand card on first load and is retired
+[calc-page] PASS  BD3 logo cap: ~1MB dataURL fails, 100KB passes, garbage rejected (bytes = b64*3/4)
+[calc-page] PASS  BD4 doc numbers format per type: INV-0001 / QUO-0012 / EST-0003
+[calc-page] PASS  BD5 client field fills bill-to, rides saved state and the CSV (with business + contact rows)
+[calc-page] PASS  SG1 signature lines default: ON for Invoice, OFF for Estimate
+[calc-page] PASS  SG2 the checkbox forces signature lines on/off for any doc type; choice persists
+[calc-page] PASS  SG3 document date defaults to today; due date starts blank
+[calc-page] PASS  ET1 entitlement seam: known features allowed on free, unknown refused, plan starts free
+[calc-page] PASS  ET2 setPlan(pro): known features stay allowed (forward window) and plan reports pro
+[calc-page] PASS  ET3 setPlan(empty) resets the plan to free
+[calc-page] PASS  WS1 wsCollect returns all eleven sections each carrying an updatedAt stamp (sheets + fx + books + your own uploaded books follow the account)
+[calc-page] PASS  WS2 wsMerge: cloud newer wins, local newer kept, empty local adopts, equal keeps local, corrupt cloud skipped
+[calc-page] PASS  WS3 wsApplyProbe: plan set from payload, cloud section merged + stamped, junk sections skipped
+[calc-page] PASS  WS4 scheduleWsPut coalesces: 3 schedules inside the debounce window -> exactly 1 PUT
+[calc-page] PASS  RF1 typed rate 41234 prices the m2 at exactly that rate (model discarded, override flagged, recall-stable)
+[calc-page] PASS  DW1 drywall per board: 950 over a 1.22x2.44 sheet = 319.13/m2 exact, waste defaults 10, order count in boards
+[calc-page] PASS  TX1 tax off entirely: typing 0 in the override kills the 15% JM tax, total drops to the pre-tax subtotal, CSV carries Tax rate % 0, sheet says no tax
+[calc-page] PASS  NT1 per-each trade math: 3 doors = 3 each, mat 3x550 lab 3x650 exact, family follows, all 9 new trades in the picker
+[calc-page] PASS  NT2 floor screed: 5x4x50mm = 1 m3 base, 5% screed waste -> 1.05; bag-of-mix piece reuses the volume divisor (9200/20L = 460,000/m3)
+[calc-page] PASS  OP1 openings deduction: blockwall 10x2.4 = 24 m2 with one 1.2x1.2 window -> 22.56 m2 exact, openings reported, editor visible
+[calc-page] PASS  OP2 deduction before waste: drywall same wall, cuts 10 -> 22.56 x 1.1 = 24.816 (waste applies to what is laid, not the void)
+[calc-page] PASS  OP3 spread across wall trades: blockwall/brickwall/framing/render/paint/drywall ALL deduct the same 1.44 m2 void (waste-normalized)
+[calc-page] PASS  OP4 imperial conversion: a 10 ft x 8 ft opening on a 100 ft x 10 ft wall deducts 7.43 m2 (3.048 x 2.4384)
+[calc-page] PASS  OP5 CSV artifacts: carries "Openings deducted","1 (1.44 m2)" with rows; the none line is dropped (G-8 d)
+[calc-page] PASS  OP6 floored at zero: 100 m2 of voids on a 24 m2 wall -> quantity exactly 0, finite, never negative
+[calc-page] PASS  OP7 editor lifecycle: hidden on slab / shown on blockwall, add-row defaults to Window, sum line deducts 1.44 m2, breakdown shows the Minus note, delete empties
+[calc-page] PASS  EV1 variant selector: hidden on slab, shown on excavation, model variant labelled plainly (never a book row)
+[calc-page] PASS  EV2 variant rides readState and survives a trade round-trip
+[calc-page] PASS  EV3 excavation variant conversion: picked variant = legacy save = the pre-conversion model total (1600)
+[calc-page] PASS  FX1 FX table: base=1, unset=null, saved rate renders a dated chip
+[calc-page] PASS  FX2 with a rate set, JMD prefill converts (150x157.5=23625, 85x157.5=13387.5) and the total is J$536,311 with no banner
+[calc-page] PASS  FX3 with no rate, JMD fields stay EMPTY and the page REFUSES to print a total (audit C2)
+[calc-page] PASS  FX4 typed rate is the user's own money: JMD 4000 prices 12.6 m3 at exactly 50,400 - never converted
+[calc-page] PASS  BOOK1 import validates: valid book merges, unknown work key rejected, negative rate skipped, checksum stamped
+[calc-page] PASS  BOOK2 active book drives the prefill (slab 200/100 -> mat 2520) and Use-model-rates restores the model
+[calc-page] PASS  BOOK3 book currency honoured: JMD estimate reads JMD book rates as-is; USD estimate with no FX pair leaves fields empty + names the book currency
+[calc-page] PASS  BOOK4 an expired book shows the expiry banner
+[calc-page] PASS  BOOK5 a checksum mismatch (edited file) is skipped, not trusted
+[calc-page] PASS  LM1 labour-only: materials excluded, labor priced (12.6x85=1071), CSV names the exclusion, flag rides readState
+[calc-page] PASS  LM2 labour-only with a typed material rate: the user's own materials still price (12.6x100=1260)
+[calc-page] PASS  AB0 measured is the default and hides both new input groups (default-inert)
+[calc-page] PASS  AB1 all-in prices the whole line, KEEPS the split visible under the headline (owner 2026-10-12 G1), and the output + CSV still print ONE combined row (D3 unchanged)
+[calc-page] PASS  AB2 a book-filled all-in rate says so on the form (D4/D7 note)
+[calc-page] PASS  AB3 typing over the book wins and drops the published-rate note (D4 - the book is a default, never a lock)
+[calc-page] PASS  AB4 clearing the all-in field falls back to the split rates (320/720)
+[calc-page] PASS  AB5 all-in beats piece pricing and labour-only rather than erroring or double-applying
+[calc-page] PASS  AB6 an all-in line recalled from its snapshot reproduces its total exactly (D4 recall fidelity)
+[calc-page] PASS  AB7 the shipped Jamaica book imports 100 all-in rates with skipped 0 / badKeys 0 and its checksum round-trips
+[calc-page] PASS  NC1 we are not a converter: no seeded FX rate, JMD default, the published book fills its own all-in rate in J$, and an uncovered trade stays empty with the honest note
+[calc-page] PASS  AB8 with the Jamaica book active but no JMD rate set, the all-in field stays EMPTY and the note names JMD (E1 currency honesty)
+[calc-page] PASS  AB9 the all-in headline carries a VISIBLE split that sums to it exactly and is still book-noted (G1)
+[calc-page] PASS  AB10 editing either side moves the all-in headline with it; a typed headline re-derives the split (G1)
+[calc-page] PASS  DB1 days x rate lands in labour, material untouched, ONE labour total labelled with days x rate (D1/D2)
+[calc-page] PASS  DB2 the finish multiplier scales material only and NEVER a typed day rate (D8: 800 not 1080, mat 320->432)
+[calc-page] PASS  DB3 blank / zero / negative / non-numeric / absurd days all fall back safely - never NaN into a total
+[calc-page] PASS  DB4 bought material AND crew days on one line, with employer on-costs still on the day rate (320+800+100=1220)
+[calc-page] PASS  DB5 the "not recommended" note appears only on the confirmed finish list, and never blocks (D9/D7)
+[calc-page] PASS  DB6 quarter-days land exactly, days round to a 0.25 step, and a day line recalls identically
+[calc-page] PASS  SLIP1 slip rules: 0.15 in a mm box suggests 150, 6 suggests 152, 30 m suggests 9.14 m (feet), clean dims flag nothing
+[calc-page] PASS  SLIP3 UI: 0.15 thickness flags with a one-tap Use 150 fix that applies and clears the flag
+[calc-page] PASS  NV1 variant trades: rebar-size shows 5 bar sizes; rate labels speak book units (per lb / per dozen / per yd2)
+[calc-page] PASS  NV2 engine conversions: 120 stirrups at 8/15 per dozen = 80/150; 50 m2 mesh at 5.5/2.5 per yd2 = 328.9/149.5 (audit fix: entry-per-engine factors)
+[calc-page] PASS  NV3 variant sets: blockwall 9 book masonry, excavation 9 book soils, formwork 9 book carpentry; first formwork variant = the old derived rates (20 m2 = 1100)
+[calc-page] PASS  NV4 concrete labour: rod-and-settle 12 m3 = lab 660, mat 0 (a labour-only trade by rate, not by mode)
+[calc-page] PASS  RB1 top bar carries the rate book link (brand mark + product name)
+[calc-page] PASS  RB-Auth1 signed out: the button shows the sign-in card (not the book) with a Sign in CTA
+[calc-page] PASS  RB0a the picker needs no whole-book seed (inline rows only)
+[calc-page] PASS  RB0 the card opens on the 100 inline planning rows (no whole-book load)
+[calc-page] PASS  RB2 the link opens the rate book popup titled "My MaNaGeR Rate Book 2025-2027"
+[calc-page] PASS  RB3 the card opens on the 100 inline planning rows across 11 trade groups
+[calc-page] PASS  RB4 the heading carries no line-item/source blurb; the currency note stays
+[calc-page] PASS  RB5 the card offers a metric/imperial toggle
+[calc-page] PASS  RB9 the open popup is VISIBLE (not display:none from a stray print rule)
+[calc-page] PASS  RB10 opening the popup moves focus INTO it (keyboard users land in the dialog)
+[calc-page] PASS  RB6 the imperial toggle flips the units and keeps every row
+[calc-page] PASS  RB7 Close removes the rate book card
+[calc-page] PASS  RB11 Escape closes the popup and releases the scroll lock
+[calc-page] PASS  RB12 the top-bar toggle closes the popup and leaves no leaked state
+[calc-page] PASS  RB8 the card leaves nothing behind after closing
+[calc-page] PASS  RB13 the rate book card reopens on the 100 inline planning rows
+[calc-page] PASS  RB14 search by word returns only matching rates, and every row shown matches
+[calc-page] PASS  RB15 search by PRICE finds the rate at that price (149 -> Fabric)
+[calc-page] PASS  RB16 the trade picker scopes the book to one trade (Welding, 9 inline rows)
+[calc-page] PASS  RB17 per-trade search only searches inside the picked trade
+[calc-page] PASS  RB18 a search with no match shows the empty message, not a blank table
+[calc-page] PASS  RB19 the inline set carries no converted rows and the C legend is present
+[calc-page] PASS  WU1 the book payload prices welding per INCH per row (1/8in = J$50/in #1, 1in = J$117/in #7) and metric rows keep their pairs
+[calc-page] WU-DUMP {"metric":{"sub":"5,300","allin":"3000","variant":"Handle, mark, cut & sand smooth 1/8 in thick metal, torch (planning model)","raw":"Cut length (inches)100 inHandle mark cut and sand smooth by thickness and method (2025-2027 book, all 9 welding rates)Materials$5,000Labor - 0.75 days at 400 per day$300Subtotal$5,300Tax (0%)$0Estimated total$5,300Planning-grade estimate for USD. Not a quote - every line becomes editable in the app once the project starts.","label":"100 in"},"imperial":{"sub":"5,300","allin":"3000","variant":"Handle, mark, cut & sand smooth 1/8 in thick metal, torch (planning model)","raw":"Cut length (inches)100 inHandle mark cut and sand smooth by thickness and method (2025-2027 book, all 9 welding rates)Materials$5,000Labor - 0.75 days at 400 per day$300Subtotal$5,300Tax (0%)$0Estimated total$5,300Planning-grade estimate for USD. Not a quote - every line becomes editable in the app once the project starts.","label":"100 in"}}
+[calc-page] PASS  WU2 metric: 100 in prices the book per-inch rate (materials J$5,000, subtotal J$5,300 with the book labour)
+[calc-page] PASS  WU3 imperial: the SAME input prices the SAME J$5,300 (the FT default no longer rewrites inches)
+[calc-page] PASS  WU4 assistant grounding is scoped to the current estimate (no whole-book scope or row dump)
+[calc-page] PASS  UR0 the book reopens on the 100 inline planning rows for the row-action family
+[calc-page] PASS  UR1 all 100 inline rows carry a Use action (header Ref/Description/Unit/Rate/Use, named SVG button per row)
+[calc-page] PASS  UR2 Use prefills Custom from the shown row: ref-first name <=60, shown unit + rate, qty cleared, popup closed, focus in quantity
+[calc-page] PASS  UR3 the custom line prices 5 x the book rate EXACTLY
+[calc-page] PASS  UR4 the SAME row in the other book unit system prefills its own unit + rate (metric 198 vs imperial 50 differ) and prices 5 x that exactly
+[calc-page] PASS  UR5 the landed bill line carries the book ref for traceability
+[calc-page] PASS  UR6 offline: the inline 100-row fallback renders Use actions and the prefill still works (book route blocked, no offline copy)
+[calc-page] PASS  LX1 linter rules: steel-no-concrete, pour-no-formwork, wall-no-footing + wall-no-render, excav-no-cart, roof-no-gutter, roof-no-fascia, tile-no-screed + floor-no-skirting, linings-no-paint + linings-no-skirting fire; a complete bill and an empty bill lint clean
+[calc-page] PASS  LX2 UI: a slab-only bill flags the missing formwork; the one-tap fix adds the derived 5.4 m2 edge-formwork line and the flag clears
+[calc-page] PASS  JP0 the book choice exists under Other; picking it shows the picker (11 book trades, row select waits for a trade)
+[calc-page] PASS  JP1 the picker carries the book sign-in gate: signed out online it reverts to the previous item and shows the sign-in card
+[calc-page] PASS  JP2 picking a trade seeds its first rate: option unit + rate == the rate field, book note on, Quantity label carries the row unit
+[calc-page] PASS  JP3 walker: all 11 book trades price 3 x their displayed first rate EXACTLY (all-in identity, zero mat/lab, normal tax)
+[calc-page] PASS  JP4 the bill line and the CSV both name the book ref for traceability
+[calc-page] PASS  JP5 imperial display: the option, the seeded rate and the priced total all speak the imperial side, exactly
+[calc-page] PASS  JP6 typing over the book rate: note drops, flagged your rate (CSV says so); the snapshot roundtrip re-creates the exact total with the pick restored
+[calc-page] PASS  JP7 offline: the inline 100-row set carries all 11 trades, the pick + exact price still work, and the hint says the built-in set is shown
+[calc-page] PASS  RATEID a priced book line names its specific rate in state, notice and CSV
+[calc-page] PASS  UB1 a CSV rate book uploads as its own picker group with one row per rate line
+[calc-page] PASS  UB2 a line priced from the user book names the book and row in state, notice and CSV
+[calc-page] PASS  UB3 an .xlsx rate book reads its rows (description, unit, rate) from a real spreadsheet
+[calc-page] PASS  UB4 a .docx rate book reads the rates out of its Word table
+[calc-page] PASS  UB5 removing an uploaded book drops it from storage and the picker falls back to the next one
+[calc-page] PASS  U1 imperial toggle: labels (ft)/(in), stored, aria-pressed
+[calc-page] PASS  U2 imperial slab 33x26x6in -> 16.7 cu yd hero + metric reading
+[calc-page] PASS  I1 unit-primary hero: 39.6 m2 metric / 40 sq ft imperial
+[calc-page] PASS  U3 metric restore: label (m), storage metric
+[calc-page] PASS  X1 valid result reveals print/CSV/save actions
+[calc-page] PASS  X2 CSV export: BOM bytes + total + work item in blob
+[calc-page] PASS  S1 Save stores the named estimate
+[calc-page] PASS  S2 Open restores inputs + recomputes
+[calc-page] PASS  S3 Delete removes the named estimate
+[calc-page] PASS  S4 history row delete removes exactly one row
+[calc-page] PASS  U4 unit choice survives reload (labels imperial, form clean)
+[calc-page] PASS  R1 rate prefill: slab 150/85, per m3 labels
+[calc-page] PASS  R2 material rate override raises total + your-rate note
+[calc-page] PASS  R3 reset-to-model clears override (back to 150, no note)
+[calc-page] PASS  R4 tile per-piece 950 / (0.3x0.6) = 5277.78/m2 exact
+[calc-page] PASS  R5 piece row follows the trade: area on tile (behind its opt-in), bag-yield on slab
+[calc-page] PASS  PC1 blockwork/tile/paint hide price-per-piece behind a "not in the rate sheet" opt-in; slab keeps its fields
+[calc-page] PASS  E1 exact recall restores EVERY setting (sum replicates)
+[calc-page] PASS  E2 legacy JMD row recalls: units inferred (m), rate converted by the DISCLOSED seeded rate (never a raw USD number), still priced
+[calc-page] PASS  W1 tile waste defaults to 10, allowance line renders
+[calc-page] PASS  W2 waste 20 raises effective quantity (36 -> 43.2 m2)
+[calc-page] PASS  W3 non-waste trade hides field; roof label = laps
+[calc-page] PASS  C1 tile count: ceil(39.6/0.18) = 220 tiles at 30 x 60 cm
+[calc-page] PASS  C2 size-only count keeps showing; slab yield 20 -> 788 bags
+[calc-page] PASS  E1 equipment 10/m3 on 12.6 m3 adds 126 to subtotal
+[calc-page] PASS  E2 overhead 10% line + tax on sub+oh
+[calc-page] PASS  E3 empty equipment/overhead = today's four-line breakdown
+[calc-page] PASS  T1 export downloads JSON carrying the saved sheet
+[calc-page] PASS  T2 import merges: replaces qa-low-bid, adds qa-sustain
+[calc-page] PASS  T3 garbage import rejected with message, storage intact
+[calc-page] PASS  P0 two named saves seeded (economy + premium)
+[calc-page] PASS  P1 compare with 0 ticked -> guidance, no table
+[calc-page] PASS  P2 compare table renders both columns, cheapest highlighted
+[calc-page] PASS  P3 comparison leaves the live form untouched
+[calc-page] PASS  Q1 (re-baselined 2026-10-01) business name saves into the BRAND store + quote head fills (name, work, date)
+[calc-page] PASS  Q2 quote head: screen none, print block under body.print-estimate
+[calc-page] PASS  X3 CSV carries used rates + piece pricing lines
+[calc-page] PASS  P1 blocks 800 / (0.4x0.2) = 10,000/m2 exact
+[calc-page] PASS  P2 bricks 140 / (0.2x0.1) = 7,000/m2 exact
+[calc-page] PASS  P3 roof sheets 6120 / (0.85x3.6) = 2,000/m2 exact
+[calc-page] PASS  P4 fencing panel 9500 / 2.5m = 3,800/m run (width-div)
+[calc-page] PASS  P5 piece placeholders follow the trade
+[calc-page] PASS  RS1 save rate sheet stores name+rates+piece
+[calc-page] PASS  RS2 apply restores rates + piece + recomputes
+[calc-page] PASS  RS3 quick-picker select applies + resets selection
+[calc-page] PASS  RS4 delete removes the sheet + shows empty state
+[calc-page] PASS  V1 slab per-bag 9,200 / 20 L -> 460,000/m3 exact
+[calc-page] PASS  V2 paint per gallon-can 9,000 / 3.785 L -> 2,377.81/L exact
+[calc-page] PASS  V3 volume rows on slab/footings, area rows on tile, labels follow
+[calc-page] PASS  V4 invalid yield -> clean model-rate fallback, no crash
+[calc-page] PASS  V5 imperial dims recompute; yield label unit-free
+[calc-page] PASS  PL0 project booted with Watch module
+[calc-page] PASS  PL1 kickoff nudge fires for in-progress + ready peer
+[calc-page] PASS  PL2 nudge names both tasks + shared window
+[calc-page] PASS  PL3 same-assignee -> crew-split advice
+[calc-page] PASS  PL4 cluster summary fires for 3 independent same-day starts
+[calc-page] PASS  PL5 dependent group -> no cluster notice (correct refusal)
+[calc-page] PASS  PL6 severity classes + dots render (caution/info/attention)
+[calc-page] PASS  PL7 rerun dedupes parallel notices
+[calc-page] 256/256 gates passed

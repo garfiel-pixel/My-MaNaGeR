@@ -1,0 +1,20 @@
+[engine-parity] PASS  A1 email session minted
+[engine-parity] PASS  A2 cloud project created (session-linked, ownerCode back)
+[engine-parity] PASS  A3 owner save (real snapshot for scoped reads)
+[engine-parity] PASS  A4 full-scope key minted (sk-mmgr-)
+[engine-parity] PASS  A4b free owner + valid key -> MCP_PREMIUM_REFUSAL (isError, HTTP 200, no data)
+[engine-parity] PASS  A4c billing webhook seeds an active subscription for the owner
+[engine-parity] PASS  B1 MCP initialize
+[engine-parity] PASS  B2 tools/list carries the B3 wave (get_table + run_monte_carlo) and the H-5 budget tools
+[engine-parity] PASS  B3 get_tasks returns seeded tasks with fiction intact
+[engine-parity] PASS  B3b get_table(tasks) returns the full raw table
+[engine-parity] PASS  B3c get_table refuses an unknown/owner-only table with isError
+[engine-parity] PASS  B3d run_monte_carlo returns percentiles + target probability over the real route
+[engine-parity] PASS  B3e a WBS-only key can still run the simulation
+[engine-parity] PASS  B3f a WBS-only key is refused a table outside its grant
+[engine-parity] PASS  C1 /load projects tasks with predecessors
+[engine-parity] PASS  D1 project booted with the REAL schedule engine
+[engine-parity] PASS  D2 real engine runs over MCP-loaded state
+[engine-parity] PASS  D3 engine catches the violation: p2 start corrected to 2026-10-12
+[engine-parity] PASS  E1 apply_changes queues the engine-derived fix
+[engine-parity] 19/19 gates passed

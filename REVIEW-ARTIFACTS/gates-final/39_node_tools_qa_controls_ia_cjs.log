@@ -1,0 +1,14 @@
+[PASS] C1 controls: exactly 7 [data-ctl-group] nodes
+[PASS] C1 controls: every group has >= 2 [data-ctl-tab]
+[PASS] C2 controls: exactly one visible [data-ctl-panel] per group
+[PASS] C3 controls: every preserved slot id exists inside #db-ctrl exactly once
+[PASS] C4 controls: no .sr / .fmt-card / #errlog-body / #data-account / #template-list orphaned outside a panel
+[PASS] C5 controls: no nested accordion inside a panel
+[PASS] C6 controls: Enter toggles the heading
+[PASS] C6 controls: Space toggles the heading
+[PASS] C6 controls: Escape closes the drawer (the heading lives in it)
+[PASS] C7 controls: no horizontal overflow at 390 / 768 / 1440
+[PASS] C8 status menu opens under the chip, not at the viewport corner
+[PASS] C9 MCP is top-level with Review/Allow tabs and an allow deep link
+========================================
+12 checks, 0 failed

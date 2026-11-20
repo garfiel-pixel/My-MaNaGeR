@@ -1,0 +1,22 @@
+[landing-ai] PASS  hero headline is present
+[landing-ai] PASS  #landing-ai mount node is present
+[landing-ai] PASS  assistant module is NOT loaded at first paint (cannot be LCP)
+[landing-ai] PASS  mount is idle at first paint
+[landing-ai] PASS  static Open the app fallback is present before load
+[landing-ai] PASS  module loaded after the section neared the viewport
+[landing-ai] PASS  widget passed through a loading phase before ready
+[landing-ai] PASS  widget is ready and interactive
+[landing-ai] PASS  intro answer is shown
+[landing-ai] PASS  starter question chips are shown
+[landing-ai] PASS  no /api/ai/chat call before interaction
+[landing-ai] PASS  tapping a chip produces an assistant answer
+[landing-ai] PASS  the answer explains the product
+[landing-ai] PASS  qualifying questions appear after the first answer
+[landing-ai] PASS  local answer still makes no /api/ai/chat call
+[landing-ai] PASS  no uncaught page errors (online)
+[landing-ai] PASS  offline: widget takes the offline branch
+[landing-ai] PASS  offline: it says so
+[landing-ai] PASS  offline: it offers Open the app
+[landing-ai] PASS  offline: no /api/ai/chat call
+[landing-ai] 
+[landing-ai] ALL GREEN - 20/20 gates

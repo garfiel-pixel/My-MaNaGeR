@@ -1,0 +1,44 @@
+[ai23] PASS A01 boot: AiWin.submit + runPreset + Net.post + TIERS registered
+[ai23] PASS A02 config: default tier=local (AI on by default), provider=openai, provider defaults exist
+[ai23] PASS A03 toggle: setAiCfg(local) -> state.config.ai.tier=local, schema unchanged, aiOutputs exists
+[ai23] PASS A04 local: runPreset(report) ok + state.aiOutputs.report written with trace
+[ai23] PASS A05 local: free-form lookup answered from state with trace
+[ai23] PASS A06 local: digest output contains no fabricated values
+[ai23] PASS B01 vault: isConnected false when sessionStorage empty, no localStorage write
+[ai23] PASS B02 vault: setKey -> connected + provider/key stored; project state has NO key fields
+[ai23] PASS B03 vault: clearKey -> disconnected, still nothing in localStorage
+[ai23] PASS B04 vault: whitespace key rejected, stays disconnected
+[ai23] PASS B06 vault: anthropic is a first-class provider (whitelist round-trip)
+[ai23] PASS A07 cloud: vault key -> relay-first, 404 fallback -> direct OpenAI POST with Bearer + system/user messages
+[ai23] PASS A08 cloud: Google Gemini POST with x-goog-api-key + systemInstruction/contents (vault provider wins)
+[ai23] PASS A08b cloud: relay 200 -> text rendered, NO direct fallback call
+[ai23] PASS A08c cloud: 429 on primary -> ladder falls back to flash-lite-latest, reports actual model + fallback trace
+[ai23] PASS A08d cloud: 401 on first model -> ladder STOPS (no lite attempt), session key cleared
+[ai23] PASS A08e cloud: relay 429 on primary -> ladder retries flash-lite-latest THROUGH the relay, reports actual model
+[ai23] PASS A08f cloud: OpenAI 429 on gpt-4o-mini -> ladder falls back to gpt-5-mini, reports actual model
+[ai23] PASS A08g cloud: Anthropic direct POST uses x-api-key + anthropic-version + max_tokens/system, parses content[0].text
+[ai23] PASS A08h cloud: Anthropic 429 on sonnet -> ladder falls back to haiku, reports actual model
+[ai23] PASS A08i cloud: Anthropic Connect probe hits /v1/models with x-api-key + anthropic-version
+[ai23] PASS A08j UI: fallback bubble renders a visible .ai-fallback badge naming both models
+[ai23] PASS A08t topic gate: chit-chat answered locally on both tiers, zero model calls, polite refusal
+[ai23] PASS A08u free-text assist: local tier rides the relay with system prompt + project context
+[ai23] PASS A08k static: Gemini ladder avoids the dead 2.0/2.5- families and keeps a -latest alias rung
+[ai23] PASS A09 cloud: network failure -> ok:false + error logged, state intact, session key KEPT (only auth failure clears it)
+[ai23] PASS A10 local: zero network calls for the local tier
+[ai23] PASS A11 ui: tier select + per-preset run buttons + result panel render
+[ai23] PASS A16 api: /api/health badge exists and reports online against the dev server
+[ai23] PASS A17 ui: presets reachable via Chat/Presets tab after a long conversation on a short viewport
+[ai23] PASS B05 ui: Connect & Test -> verified "Connected · Google Gemini" chip, raw key cleared, cloud Send enabled
+[ai23] PASS B06 ui: Clear -> Disconnected chip, session key gone, cloud Send disabled + native tooltip (no red hint)
+[ai23] PASS B07a ui: unreachable provider -> key KEPT, "Key saved — not tested", Send stays blocked
+[ai23] PASS B07a tooltip: saved_untested message renders plain "&" (no literal &amp;)
+[ai23] PASS B07b ui: 401 from provider -> key CLEARED, Disconnected, status not_connected
+[ai23] PASS DIR-2 export/import: apiKey stripped from outgoing export AND from re-adopted legacy imports
+[ai23] PASS A12 ui: cloud tier reveals BYO connect flow (provider select, status chip, Connect/Clear, security copy)
+[ai23] PASS A13 ui: back to local hides cloud fields
+[ai23] PASS A14 readonly: the assistant shows the unavailable notice, disables Send/presets, and touches no project record
+[ai23] PASS A15 readonly: aiCopyOut stays allowed (read-only)
+[ai23] PASS A18a resize: width save/apply round-trip (persisted, applied, default-restorable)
+[ai23] PASS A18b resize: dragging the left edge widens the drawer (mid-drag + final), persists, never repositions, panel stays in the viewport, .mb fills it
+[ai23] PASS A19 size: AI window renders as the right-docked sidebar (modal ~520px wide, full height, docked right within the rail border, left-edge resize strip, no saved pref)
+[ai23] AI23_GATE PASS

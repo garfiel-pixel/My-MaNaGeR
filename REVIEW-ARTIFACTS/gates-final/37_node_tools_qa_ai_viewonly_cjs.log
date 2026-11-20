@@ -1,0 +1,28 @@
+[qa-ai-viewonly] PASS  V1 the demo fixture is a view-only session
+[qa-ai-viewonly] PASS  V2a the demo notice is shown before typing
+[qa-ai-viewonly] PASS  V2b the Create-a-project link opens the new-project flow
+[qa-ai-viewonly] PASS  V2c the Create-a-project button is 44px
+[qa-ai-viewonly] PASS  V2d the Ask input is disabled
+[qa-ai-viewonly] PASS  V2e the Ask button is disabled
+[qa-ai-viewonly] PASS  V3a the assistant panel opens with the notice
+[qa-ai-viewonly] PASS  V3b the panel shows the demo wording
+[qa-ai-viewonly] PASS  V3c the composer is disabled
+[qa-ai-viewonly] PASS  V3d Send is disabled
+[qa-ai-viewonly] PASS  V3e voice input is disabled
+[qa-ai-viewonly] PASS  V3f the tier select is disabled
+[qa-ai-viewonly] PASS  V3g the Presets tab is disabled
+[qa-ai-viewonly] PASS  V3h presets are rendered
+[qa-ai-viewonly] PASS  V3i every preset is disabled
+[qa-ai-viewonly] PASS  V4 an AI action never shows the view-only toast
+[qa-ai-viewonly] PASS  V7 a project-writing action is still refused in view-only mode
+[qa-ai-viewonly] PASS  V5a the viewer fixture is a view-only session
+[qa-ai-viewonly] PASS  V5b the viewer wording is shown before typing
+[qa-ai-viewonly] PASS  V5c the viewer notice still offers Create a project
+[qa-ai-viewonly] PASS  V5d the panel shows the viewer wording
+[qa-ai-viewonly] PASS  V6a the editor fixture is editable
+[qa-ai-viewonly] PASS  V6b the editor sees no view-only notice
+[qa-ai-viewonly] PASS  V6c the editor Ask input stays enabled
+[qa-ai-viewonly] PASS  V6d the editor assistant opens without the notice
+[qa-ai-viewonly] PASS  V6e the editor composer stays enabled
+[qa-ai-viewonly] 
+[qa-ai-viewonly] 26 passed, 0 failed

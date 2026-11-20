@@ -1,0 +1,59 @@
+[cloud2] starting wrangler dev on :8765 (local D1 + R2, ADMIN_CODE configured)…
+[cloud2] FAIL  P2.9a /api/cloud/sections returns ok + sections array   <-- "404|null"
+[cloud2] FAIL  P2.9b canonical sections include wbs/bud/risk with labels   <-- null
+[cloud2] FAIL  P2.1a owner create ok + owner code   <-- "404|null"
+[cloud2] FAIL  P2.1b editor code created with label + scope   <-- "404|null"
+[cloud2] FAIL  P2.1c editor code format XXXX-XXXX-XXXX-XXXX   <-- ""
+[cloud2] P2.1d: row not visible on attempt 1, retrying in 200ms…
+[cloud2] P2.1d: row not visible on attempt 2, retrying in 200ms…
+[cloud2] P2.1d: row not visible on attempt 3, retrying in 200ms…
+[cloud2] P2.1d DIAGNOSTIC (all retries exhausted): edCreate.body=null
+[cloud2] P2.1d DIAGNOSTIC: edRows=[]
+[cloud2] P2.1d DIAGNOSTIC: PID=qa-cloud2-mwohqbv8
+[cloud2] FAIL  P2.1d editor row stored with scope JSON   <-- null
+[cloud2] FAIL  P2.1e editor salt/hash shapes (32/64 hex)   <-- {"edSalt":"","edHash":""}
+[cloud2] FAIL  P2.1f editor hash is NOT the plaintext code   <-- ""
+[cloud2] FAIL  P2.1g PBKDF2 recompute matches stored editor hash   <-- "64a868d4b23a vs "
+[cloud2] FAIL  P2.1h editor code plaintext absent from D1 bytes   <-- ["C:\\Users\\Garfield\\AppData\\Local\\Temp\\mmgr-cloud-wstate2-1795149594425\\v3\\d1\\miniflare-D1DatabaseObject\\6c98bea77991ed111df5193a25db9034807c8da966e20f93a586839d329ae525.sqlite"]
+[cloud2] FAIL  P2.2a editor list (owner) returns the row without code fields   <-- "404|null"
+[cloud2] FAIL  P2.2b editor list without auth -> generic 403   <-- "404|null"
+[cloud2] FAIL  P2.2c editor list with wrong owner code -> 403   <-- 404
+[cloud2] FAIL  P2.4a owner first save ok (Phase 1 regression)   <-- "404|null"
+[cloud2] FAIL  P2.4d first save returns revision 1   <-- null
+[cloud2] FAIL  P2.4e a save on the current revision succeeds and returns revision 2   <-- "404|null"
+[cloud2] FAIL  P2.4f a save from a stale revision is refused 409 with the live revision   <-- "404|null"
+[cloud2] FAIL  P2.3a editor load returns role/editorLabel/scope   <-- "404|null"
+[cloud2] FAIL  P2.3b editor load returns the owner snapshot (charter + risks readable)   <-- null
+[cloud2] FAIL  P2.4b editor in-scope save ok (review pending, actor editor)   <-- "404|null"
+[cloud2] FAIL  P2.4c editor save reports would-be applied:["wbs"]   <-- null
+[cloud2] FAIL  P2.5a editor save that touches out-of-scope section still ok (proposal)   <-- "404|null"
+[cloud2] FAIL  P2.5b out-of-scope change reported as blocked:["risk"]   <-- null
+[cloud2] FAIL  P2.5c REVIEW QUEUE: editor save did NOT move the blob yet   <-- null
+[cloud2] FAIL  harness crashed   <-- "Cannot read properties of null (reading 'reviewId')"
+[cloud2] ──────────────────────────────────────────────
+[cloud2] CLOUD_PHASE2 FAIL (25/25 broken)
+[cloud2]   broken: P2.9a /api/cloud/sections returns ok + sections array
+[cloud2]   broken: P2.9b canonical sections include wbs/bud/risk with labels
+[cloud2]   broken: P2.1a owner create ok + owner code
+[cloud2]   broken: P2.1b editor code created with label + scope
+[cloud2]   broken: P2.1c editor code format XXXX-XXXX-XXXX-XXXX
+[cloud2]   broken: P2.1d editor row stored with scope JSON
+[cloud2]   broken: P2.1e editor salt/hash shapes (32/64 hex)
+[cloud2]   broken: P2.1f editor hash is NOT the plaintext code
+[cloud2]   broken: P2.1g PBKDF2 recompute matches stored editor hash
+[cloud2]   broken: P2.1h editor code plaintext absent from D1 bytes
+[cloud2]   broken: P2.2a editor list (owner) returns the row without code fields
+[cloud2]   broken: P2.2b editor list without auth -> generic 403
+[cloud2]   broken: P2.2c editor list with wrong owner code -> 403
+[cloud2]   broken: P2.4a owner first save ok (Phase 1 regression)
+[cloud2]   broken: P2.4d first save returns revision 1
+[cloud2]   broken: P2.4e a save on the current revision succeeds and returns revision 2
+[cloud2]   broken: P2.4f a save from a stale revision is refused 409 with the live revision
+[cloud2]   broken: P2.3a editor load returns role/editorLabel/scope
+[cloud2]   broken: P2.3b editor load returns the owner snapshot (charter + risks readable)
+[cloud2]   broken: P2.4b editor in-scope save ok (review pending, actor editor)
+[cloud2]   broken: P2.4c editor save reports would-be applied:["wbs"]
+[cloud2]   broken: P2.5a editor save that touches out-of-scope section still ok (proposal)
+[cloud2]   broken: P2.5b out-of-scope change reported as blocked:["risk"]
+[cloud2]   broken: P2.5c REVIEW QUEUE: editor save did NOT move the blob yet
+[cloud2]   broken: harness crashed

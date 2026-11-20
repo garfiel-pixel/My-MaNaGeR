@@ -1,0 +1,54 @@
+PASS  H1 initialize returns protocol + capabilities + serverInfo
+PASS  H2 tools/list returns the full catalog (33 tools)
+PASS  R1 list_projects finds the fixture
+PASS  R2 overview returns health + EVM + counts
+PASS  R3 context is the sectioned Markdown dump
+PASS  R4 get_tasks filters by status
+PASS  R5 answer_question LOCAL intent with trace
+PASS  R6 answer_question honestly declines without a cloud key
+PASS  R7 get_resources returns resources array
+PASS  R8 get_stakeholders returns stakeholders array
+PASS  R9 get_meetings returns meetings array
+PASS  R10 get_decisions returns decisions array
+PASS  R11 get_documents returns documents array
+PASS  R12 get_bids returns bidPackages array
+PASS  R13 get_closure returns closure object
+PASS  R14 get_sprint returns sprint object
+PASS  R15 get_dmaic returns dmaic object
+PASS  R16 get_spend_log returns entries array
+PASS  R17 get_weather_log returns entries array
+PASS  C1 list_cloud_projects answers (clean toolError when cloud off)
+PASS  C2 choose_cloud_project answers (clean toolError when cloud off)
+PASS  C3 propose_change has ONE description listing meeting ops (B4 dedup)
+PASS  W1 write tools gated off without MMGR_MCP_ALLOW_WRITES=1
+PASS  W4 invalid op value rejected pre-staging
+PASS  W4b non-whitelisted field rejected
+PASS  W4c unknown op rejected
+PASS  W3a propose returns a token + preview
+PASS  W3b reject succeeds
+PASS  W3c file untouched after reject
+PASS  W3d consumed token cannot be replayed
+PASS  W5 approve refuses when file changed on disk
+PASS  W2a propose stages task.update
+PASS  W2b approve applies + returns changelog entry id
+PASS  W2c state actually changed on disk (status completed)
+PASS  W2d changelog has the edit entry (cloud shape: entry_type + diffs_json)
+PASS  W6a revert applies
+PASS  W6b state restored (status back to inprogress)
+PASS  W6c revert logged as new row (history preserved)
+PASS  W6d re-reverting is refused
+PASS  W7a add op lands with generated id
+PASS  W7b add diff uses beforeAbsent (cloud shape)
+PASS  W7c add revert removes the record
+PASS  W7d risk removed after revert
+PASS  W8 approve writes a real pre-change backup
+PASS  W8b add-op changelog records the real written id
+PASS  W8c revert of that add uses the recorded id
+PASS  W9a index-shifting delete lands
+PASS  W9b revert hits the right record by id after index drift
+PASS  W9c target record deleted before revert
+PASS  W9d skipped revert leaves other records untouched
+PASS  W10a field-add lands on the existing record
+PASS  W10b field-add revert keeps the record and removes the field
+
+========== QA-MCP RESULT: 52 passed, 0 failed ==========

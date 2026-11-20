@@ -1,0 +1,49 @@
+[qa-motion] PASS  S1 the seam is 64px tall on desktop
+[qa-motion] PASS  S1 the seam is 48px tall on a phone
+[qa-motion] PASS  S2 both drift keyframes exist and animate transform only
+[qa-motion] PASS  S3 the edge and the stroke both drift, at different speeds
+[qa-motion] PASS  S3 both layers actually move on screen
+[qa-motion] PASS  S3 the edge and the stroke drift in opposite directions
+[qa-motion] PASS  S4 reduced motion stops the drift
+[qa-motion] PASS  S4 reduced motion keeps the wave and the stroke drawn
+[qa-motion] PASS  S5 Performance Mode stops the drift
+[qa-motion] PASS  S5 Performance Mode keeps the wave drawn
+[qa-motion] PASS  S6 no seam is given --page-progress any more
+[qa-motion] PASS  S6 the seam rules do not read --page-progress
+[qa-motion] PASS  S7 the seam contributes no layout shift while it drifts
+[qa-motion] PASS  S8 no seam paints the gold line or halo
+[qa-motion] PASS  S8 the seam is a solid band colour, not a gradient through black
+[qa-motion] PASS  C2a the four step numerals sit fully inside the card @1280
+[qa-motion] PASS  C2a the four step numerals sit fully inside the card @390
+[qa-motion] PASS  C2a the four step numerals sit fully inside the card @1920
+[qa-motion] PASS  C2b no decorative glyph overlaps the copy @1280
+[qa-motion] PASS  C2b no decorative glyph overlaps the copy @390
+[qa-motion] PASS  C2b no decorative glyph overlaps the copy @1920
+[qa-motion] PASS  C2c the reveal stagger restarts at 0 for every row
+[qa-motion] PASS  C2d hover lifts the card 4px
+[qa-motion] PASS  C2d hover tilts at most 3 degrees toward the pointer
+[qa-motion] PASS  C2d hover scales the icon to 1.06
+[qa-motion] PASS  C2d nothing animates a layout property
+[qa-motion] PASS  C2e a coarse pointer never gets a tilt
+[qa-motion] PASS  C2f reduced keeps the card still on hover
+[qa-motion] PASS  C2f perf keeps the card still on hover
+[qa-motion] PASS  C2g the card rows are centred @1280
+[qa-motion] PASS  C2g the card rows are centred @1440
+[qa-motion] PASS  C2g the card rows are centred @1920
+[qa-motion] PASS  C3a the four role cards are buttons that start collapsed
+[qa-motion] PASS  C3a every role description is in the DOM while collapsed
+[qa-motion] PASS  C3b nothing 3D exists before #builtfor nears the viewport
+[qa-motion] PASS  C3b the bundle loads once #builtfor is on screen, and still draws nothing
+[qa-motion] PASS  C3c a click opens the card and announces it
+[qa-motion] PASS  C3c opening a second card closes the first
+[qa-motion] PASS  C3c Escape closes every card
+[qa-motion] PASS  C3c Enter opens and Space closes the focused card
+[qa-motion] PASS  C3d a tap opens the card and a second tap closes it
+[qa-motion] PASS  C3e perf keeps the SVG silhouette and opens the card
+[qa-motion] PASS  C3e nogl keeps the SVG silhouette and opens the card
+[qa-motion] PASS  C3f the figure stops drawing once the pop has finished
+[qa-motion] PASS  C3f every figure is at or under 1500 triangles
+[qa-motion] PASS  C3f the device pixel ratio is capped at 1.5
+[qa-motion] PASS  C3g the role-figure bundle is at most 25 KB gzipped
+[qa-motion] 
+[qa-motion] 47 passed, 0 failed

@@ -1,0 +1,6 @@
+
+1 file(s) need formatting:
+  REVIEW-ARTIFACTS/capture-shots.cjs
+
+PRETTIER GATE FAIL: 1 file(s) need formatting - run `npx prettier --write .` to fix
+  REVIEW-ARTIFACTS/capture-shots.cjs

@@ -28,7 +28,7 @@ Source plans:
 - [x] **I. RACI matrix UI pass** — `:83` — `c217e53` (`qa-raci-matrix` 11/11 new; `qa-full` 196/196; `npm run verify` green; registry + `ci.yml` T4 wired)
 - [x] **J. Photo description + undersized inputs** — `:93` — `867a98c` on `feat/photo-caption` (`qa-project-photos` 23/23 re-run here incl. new G2d; owner reports `qa-full` 196/196 with check 43 re-baselined; `Utils.autoGrow` + delegated `[data-autogrow]`)
 - [x] **K. Status-chip outline** — remove border, keep arrow — `:101` — `0fcb4d8` (`npm run verify` green; CSS source + dist rebuilt)
-- [x] **L. Project on-hold notice** — in-app banner + finalize gate — `:106` — `7a6f293` (`qa-onhold-gate` 8/8 new; `qa-full` 196/196; `npm run verify` green; registry + `ci.yml` T4 wired; acknowledgement is per-project localStorage, front-end only)
+- [x] **L. Project on-hold notice** — in-app banner + finalize gate — `:106` — `7a6f293` (`qa-onhold-gate` 8/8 new; `qa-full` 196/196; `npm run verify` green; `qa-consent` 38/38 after registering `mmgr_onhold_ack_<id>` in `docs/STORAGE-INVENTORY.md` — S1 caught the missing entry; registry + `ci.yml` T4 wired; acknowledgement is per-project localStorage, front-end only)
 - [x] **M. Perf-mode + dark sidebar transparency** — `:114` — `0fcb4d8` (`npm run verify` green; opaque fallback on `.db-side`)
 - [x] **N. Cookie-consent polish** — remove gold outline — `:119` — `0fcb4d8` (`npm run verify` green; neutral hover/currentColor focus, marketing.css kept under its byte cap)
 - [x] **P. Admin MCP panel + chrome-free controls** — `:129` — `ad12703` on `feat/admin-mcp-panel` (`qa-mcp-admin-panel` 30/30 re-run here; loading/ready/failed states, failed-clients message, ghost Copy/Refresh/New/Import, gold pill gone, popover spacing, ChatGPT + Gemini copy)

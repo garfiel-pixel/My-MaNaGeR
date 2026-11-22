@@ -932,6 +932,16 @@
   outline: none;
   font-family: inherit;
 }
+/* item J: a description box in a table cell is taller than one line, so the
+   row aligns to its top and the text starts where the reader's eye does. */
+.dt td textarea {
+  min-height: 34px;
+  padding: 5px 0;
+  vertical-align: top;
+}
+.dt td:has(> textarea) {
+  vertical-align: top;
+}
 .dt tbody tr {
   transition: background var(--tr);
 }

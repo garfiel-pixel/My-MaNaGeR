@@ -319,7 +319,7 @@ var MMGR = window.MMGR || {};
         '</textarea></div>';
     } else if (block.type === 'callout') {
       body =
-        '<div class="pg-callout"><textarea class="pg-in" rows="2" data-action="setBlockText" ' +
+        '<div class="pg-callout"><textarea class="pg-in" rows="2" data-autogrow data-action="setBlockText" ' +
         base +
         ' aria-label="Callout text" placeholder="Read this before you price it">' +
         esc(block.text) +
@@ -341,7 +341,7 @@ var MMGR = window.MMGR || {};
         '</textarea></div>';
     } else {
       body =
-        '<textarea class="pg-in" rows="2" data-action="setBlockText" ' +
+        '<textarea class="pg-in" rows="2" data-autogrow data-action="setBlockText" ' +
         base +
         ' aria-label="Paragraph text" placeholder="Write here">' +
         esc(block.text) +

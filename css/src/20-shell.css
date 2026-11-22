@@ -293,6 +293,14 @@ body.dark-mode .photo-item a:hover .photo-thumb {
   border-radius: var(--radius);
   background: var(--surface);
 }
+/* item J: the description is a sentence or two, so it owns the whole row and
+   starts tall enough to read what was typed (it grows from there). */
+.photos-form textarea.in {
+  grid-column: 1 / -1;
+  min-height: 46px;
+  padding: 7px 9px;
+  line-height: 1.45;
+}
 .photos-form-actions {
   display: flex;
   gap: 8px;

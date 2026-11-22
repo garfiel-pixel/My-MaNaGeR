@@ -203,11 +203,11 @@ var MMGR = window.MMGR || {};
           U.escapeHtml(it.id || '') +
           '"><td>' +
           U.escapeHtml(it.id || '') +
-          '</td><td><input type="text" value="' +
-          U.escapeHtml(it.description || '') +
-          '" data-action="updField" data-module="Issues" data-field="description" data-idx="' +
+          '</td><td><textarea rows="2" data-autogrow data-action="updField" data-module="Issues" data-field="description" data-idx="' +
           i +
-          '" aria-label="Issue description" style="min-width:180px"></td><td><input type="text" value="' +
+          '" aria-label="Issue description" style="min-width:220px">' +
+          U.escapeHtml(it.description || '') +
+          '</textarea></td><td><input type="text" value="' +
           U.escapeHtml(it.owner || '') +
           '" data-action="updField" data-module="Issues" data-field="owner" data-idx="' +
           i +
@@ -269,6 +269,23 @@ var MMGR = window.MMGR || {};
             '<option value="' + lv + '"' + (lv === sel ? ' selected' : '') + '>' + lv + '</option>'
         )
         .join('');
+    // A risk description is a sentence or three, not a label: at 150px wide a
+    // single-line input showed about ten words and hid the rest. These two
+    // cells are auto-growing boxes (item J) that fit what was written.
+    const areaCell = (field, value, idx, placeholder, width) =>
+      '<textarea rows="2" data-autogrow data-action="updField" data-module="Risks" data-field="' +
+      field +
+      '" data-idx="' +
+      idx +
+      '" placeholder="' +
+      placeholder +
+      '" aria-label="' +
+      placeholder +
+      '"' +
+      (width ? ' style="min-width:' + width + 'px"' : '') +
+      '>' +
+      U.escapeHtml(value == null ? '' : String(value)) +
+      '</textarea>';
     const textCell = (field, value, idx, placeholder, width) =>
       '<input type="text" value="' +
       U.escapeHtml(value == null ? '' : String(value)) +
@@ -315,7 +332,7 @@ var MMGR = window.MMGR || {};
           U.escapeHtml(r.id || '-') +
           '</td>' +
           '<td>' +
-          textCell('description', r.description, i, 'Risk description', 150) +
+          areaCell('description', r.description, i, 'Risk description', 210) +
           '</td>' +
           '<td><select data-action="updField" data-module="Risks" data-field="probability" data-idx="' +
           i +
@@ -328,7 +345,7 @@ var MMGR = window.MMGR || {};
           opts(r.impact) +
           '</select></td>' +
           '<td>' +
-          textCell('mitigation', r.mitigation, i, 'Mitigation plan', 140) +
+          areaCell('mitigation', r.mitigation, i, 'Mitigation plan', 200) +
           '</td>' +
           '<td><select data-action="updField" data-module="Risks" data-field="linkedTaskId" data-idx="' +
           i +

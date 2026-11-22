@@ -597,6 +597,14 @@ body.dark-mode .photo-item a:hover .photo-thumb {
   border-radius: var(--radius);
   background: var(--surface);
 }
+/* item J: the description is a sentence or two, so it owns the whole row and
+   starts tall enough to read what was typed (it grows from there). */
+.photos-form textarea.in {
+  grid-column: 1 / -1;
+  min-height: 46px;
+  padding: 7px 9px;
+  line-height: 1.45;
+}
 .photos-form-actions {
   display: flex;
   gap: 8px;
@@ -3571,6 +3579,16 @@ body.sidebar-open .sb-close .ico {
   width: 100%;
   outline: none;
   font-family: inherit;
+}
+/* item J: a description box in a table cell is taller than one line, so the
+   row aligns to its top and the text starts where the reader's eye does. */
+.dt td textarea {
+  min-height: 34px;
+  padding: 5px 0;
+  vertical-align: top;
+}
+.dt td:has(> textarea) {
+  vertical-align: top;
 }
 .dt tbody tr {
   transition: background var(--tr);
@@ -10154,6 +10172,18 @@ body.dark-mode .share-card {
 /* ---- Form Elements ---- */
 textarea {
   resize: vertical;
+}
+/* item J: a box that fits its own content (js/mmgr-utils.js autoGrow) does not
+   also offer a drag handle - two ways to set the height fight each other. */
+textarea[data-autogrow] {
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.45;
+}
+/* At the height cap the box scrolls instead of growing. Keep the scroll inside
+   it so the page does not jump when the wheel reaches the end. */
+textarea.at-cap {
+  overscroll-behavior: contain;
 }
 select {
   appearance: none;

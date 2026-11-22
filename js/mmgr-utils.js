@@ -435,6 +435,120 @@ var MMGR = window.MMGR || {};
     return n != null ? sym + Number(n).toLocaleString() : sym + '0';
   }
 
+  // ---- Auto-growing text boxes (item J) ----
+  // One helper for every box that has to fit what is in it: the photo
+  // description, a risk description, an incident write-up. It measures the
+  // content, grows to fit up to a cap so a long note never swallows the page,
+  // then lets the box scroll with a visible cue (the .at-cap class).
+  const AUTOGROW_CAP = 160;
+  function autoGrow(el) {
+    if (!el || el.tagName !== 'TEXTAREA') {
+      return;
+    }
+    const cap = Number(el.getAttribute('data-grow-cap')) || AUTOGROW_CAP;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, cap) + 'px';
+    el.classList.toggle('at-cap', el.scrollHeight > el.offsetHeight + 2);
+  }
+
+  // The wiring lives beside the helper, not in mmgr-app.js: that file is the
+  // repo's named split candidate and sits right at its size cap, so a shared
+  // behaviour belongs with the shared function it calls.
+  function isGrowBox(node) {
+    return !!(
+      node &&
+      node.tagName === 'TEXTAREA' &&
+      node.hasAttribute &&
+      node.hasAttribute('data-autogrow')
+    );
+  }
+  function growTarget(evt) {
+    if (isGrowBox(evt.target)) {
+      autoGrow(evt.target);
+    }
+  }
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    // Grow while typing, and re-fit on focus so a restored value is never
+    // clipped by the height the box had when it was empty.
+    document.addEventListener('input', growTarget);
+    document.addEventListener('focusin', growTarget);
+    // A one-line table cell shows a clipped stub of a long note. On focus,
+    // give the field a title carrying its full value, so the whole note is
+    // readable without widening the row. Set at focus time, so it always
+    // matches what is in the field.
+    document.addEventListener('focusin', function (evt) {
+      const t = evt.target;
+      if (!t || !t.matches || !t.matches('.dt td input[type="text"]')) {
+        return;
+      }
+      if (t.value && t.scrollWidth > t.clientWidth) {
+        t.setAttribute('title', t.value);
+      } else {
+        t.removeAttribute('title');
+      }
+    });
+  }
+
+  // Render-time fit (item J). Fitting only when someone types leaves restored
+  // text clipped until they happen to click it, so the module also fits boxes
+  // as they appear and when their panel becomes visible. One observer does
+  // both: childList for a freshly rendered table, class changes for the panel
+  // switch (a box rendered while its panel was hidden has no height to
+  // measure, so it must be fitted again once it is on screen).
+  function autoGrowAll(root) {
+    if (!root || !root.querySelectorAll) {
+      return;
+    }
+    const boxes = root.querySelectorAll('textarea[data-autogrow]');
+    for (let i = 0; i < boxes.length; i++) {
+      autoGrow(boxes[i]);
+    }
+  }
+
+  function fitOnScreen(root) {
+    // A hidden element has no layout to measure: its scrollHeight is 0, and
+    // writing a height from it would collapse the box. Leave it for the pass
+    // that runs when its panel is shown.
+    if (!root || root === document || !root.offsetParent) {
+      return;
+    }
+    if (isGrowBox(root)) {
+      autoGrow(root);
+    }
+    autoGrowAll(root);
+  }
+
+  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+    try {
+      const observer = new MutationObserver(function (records) {
+        for (let i = 0; i < records.length; i++) {
+          const rec = records[i];
+          if (rec.type === 'attributes') {
+            const panel = rec.target;
+            if (panel.classList && panel.classList.contains('active')) {
+              fitOnScreen(panel);
+            }
+            continue;
+          }
+          for (let j = 0; j < rec.addedNodes.length; j++) {
+            const node = rec.addedNodes[j];
+            if (node.nodeType === 1) {
+              fitOnScreen(node);
+            }
+          }
+        }
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class']
+      });
+    } catch (e) {
+      /* no observer: typing still fits the box */
+    }
+  }
+
   // ---- API ----
   ns.Utils = {
     parseDL: parseDL,
@@ -460,6 +574,8 @@ var MMGR = window.MMGR || {};
     debounce: debounce,
     throttle: throttle,
     rerenderPreservingFocus: rerenderPreservingFocus,
+    autoGrow: autoGrow,
+    autoGrowAll: autoGrowAll,
     sanitize: sanitize,
     copyToClipboard: copyToClipboard,
 

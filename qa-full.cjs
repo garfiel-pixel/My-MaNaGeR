@@ -1097,11 +1097,15 @@ async function pickPort(start) {
     });
     MMGR.Render.renderRisks();
     var rows=Array.prototype.slice.call(document.querySelectorAll('#risk-body tr'));
-    // The description now lives in an <input value> (editable cell), so match
-    // it the way check 44 reads a change title - by the input's value, not by
-    // row textContent.
-    var row=rows.filter(function(r){var d=r.querySelector('input[data-field=description]');return d&&d.value==='Ripple risk';})[0];
+    // The description lives in an editable cell, so match it the way check 44
+    // reads a change title - by the field's value, not by row textContent.
+    // Item J (2026-11-22) turned that cell from a one-line input into an
+    // auto-growing textarea, so the selector now accepts either element and
+    // the gate also proves the box is the growing kind.
+    var row=rows.filter(function(r){var d=r.querySelector('input[data-field=description], textarea[data-field=description]');return d&&d.value==='Ripple risk';})[0];
     var late=!!row && row.textContent.indexOf('LATE')>-1;
+    var dbox=row?row.querySelector('textarea[data-field=description]'):null;
+    var grows=!!dbox && dbox.hasAttribute('data-autogrow');
     var lsel=row?row.querySelector('select[data-field=linkedTaskId]'):null;
     var hasLink=!!lsel && lsel.value==='rp1';
     MMGR.Render.renderWbs();
@@ -1109,7 +1113,7 @@ async function pickPort(start) {
     var dw=wrows.filter(function(r){return r.textContent.indexOf('Downstream Task')>-1;})[0];
     var chain=!!dw && dw.textContent.indexOf('CHAIN')>-1;
     MMGR.State.updateState(function(s){s.tasks=s.tasks.filter(function(t){return t.id!=='rp1'&&t.id!=='rp2';});s.risks=s.risks.filter(function(r){return r.id!=='rpR';});});
-    return {val: late && hasLink && chain, late:late, hasLink:hasLink, chain:chain};
+    return {val: late && hasLink && chain && grows, late:late, hasLink:hasLink, chain:chain, grows:grows};
   })()`
   );
   await check(

@@ -1269,6 +1269,18 @@ body.dark-mode .share-card {
 textarea {
   resize: vertical;
 }
+/* item J: a box that fits its own content (js/mmgr-utils.js autoGrow) does not
+   also offer a drag handle - two ways to set the height fight each other. */
+textarea[data-autogrow] {
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.45;
+}
+/* At the height cap the box scrolls instead of growing. Keep the scroll inside
+   it so the page does not jump when the wheel reaches the end. */
+textarea.at-cap {
+  overscroll-behavior: contain;
+}
 select {
   appearance: none;
   -webkit-appearance: none;

@@ -331,7 +331,7 @@ var MMGR = window.MMGR || {};
       '<span class="photo-meta" id="photos-file-name">No photos chosen</span>' +
       '</div>' +
       '<div class="photos-preview" id="photos-preview" aria-live="polite"></div>' +
-      '<input class="in" type="text" id="photos-caption-input" maxlength="200" placeholder="Description for this set (what and where)" aria-label="Description for this set of photos">' +
+      '<textarea class="in" rows="1" id="photos-caption-input" maxlength="200" data-autogrow placeholder="Description for this set (what and where)" aria-label="Description for this set of photos"></textarea>' +
       '<input class="in" type="date" id="photos-date-input" aria-label="Date taken">' +
       '<select class="in" id="photos-stage-input" aria-label="Stage">' +
       '<option value="">Stage (optional)</option>' +
@@ -357,7 +357,7 @@ var MMGR = window.MMGR || {};
       '</div>' +
       '<p class="photo-meta" id="photos-bundle-caption"></p>' +
       '<div class="photo-dialog-edit is-hide" id="photos-bundle-edit">' +
-      '<input class="in" type="text" id="photos-bundle-caption-input" maxlength="200" placeholder="Description for this bundle" aria-label="Bundle description">' +
+      '<textarea class="in" rows="1" id="photos-bundle-caption-input" maxlength="200" data-autogrow placeholder="Description for this bundle" aria-label="Bundle description"></textarea>' +
       '<button class="btn btn-g btn-s" type="button" data-bundle-save="1">Save description</button>' +
       '</div>' +
       '<div class="photo-dialog-body" id="photos-bundle-body"></div>' +
@@ -1540,6 +1540,9 @@ var MMGR = window.MMGR || {};
     var input = $('photos-bundle-caption-input');
     if (input) {
       input.value = description;
+      if (ns.Utils && ns.Utils.autoGrow) {
+        ns.Utils.autoGrow(input);
+      }
     }
     var body = $('photos-bundle-body');
     if (body) {

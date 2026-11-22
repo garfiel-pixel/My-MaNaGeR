@@ -631,6 +631,84 @@ async function main() {
       g2c
     );
 
+    // ---- G2d (item J): the description is a box that fits the note ----
+    // The owner's report was a one-line box that hid the end of a caption.
+    // Prove the field is a textarea, that it keeps its id/maxlength/aria-label
+    // (the upload path reads them), that it starts tall enough to read, that
+    // it grows when text is typed, and that the shared helper stops at the cap
+    // and marks the box instead of letting it swallow the page.
+    const g2d = await (async () => {
+      await page.click('#photos-add-btn');
+      await page.waitForSelector('#photos-caption-input', { timeout: 10000 });
+      const before = await page.$eval('#photos-caption-input', el => ({
+        tag: el.tagName,
+        autogrow: el.hasAttribute('data-autogrow'),
+        maxlength: el.getAttribute('maxlength'),
+        label: el.getAttribute('aria-label'),
+        height: Math.round(el.getBoundingClientRect().height),
+        resize: getComputedStyle(el).resize
+      }));
+      await page.fill(
+        '#photos-caption-input',
+        'Ground floor slab poured and screeded. Formwork struck after 48 hours, ' +
+          'curing compound applied, edges protected before the scaffold went up.'
+      );
+      await delay(200);
+      const after = await page.$eval('#photos-caption-input', el => ({
+        height: Math.round(el.getBoundingClientRect().height),
+        scroll: el.scrollHeight,
+        client: el.clientHeight
+      }));
+      // The cap itself, on a throwaway box (the real caption caps at 200 chars,
+      // which is shorter than the 160px limit, so it would never reach it).
+      const cap = await page.evaluate(() => {
+        const t = document.createElement('textarea');
+        t.setAttribute('data-autogrow', '');
+        t.style.width = '200px';
+        document.body.appendChild(t);
+        t.value = 'one line';
+        MMGR.Utils.autoGrow(t);
+        const short = Math.round(t.getBoundingClientRect().height);
+        t.value = 'line of text '.repeat(200);
+        MMGR.Utils.autoGrow(t);
+        const out = {
+          short: short,
+          tall: Math.round(t.getBoundingClientRect().height),
+          mark: t.classList.contains('at-cap')
+        };
+        t.remove();
+        // And the delegated listener, not just the helper: an input event on
+        // any [data-autogrow] box has to reach MMGR.Utils.autoGrow by itself.
+        const w = document.createElement('textarea');
+        w.setAttribute('data-autogrow', '');
+        w.style.width = '200px';
+        document.body.appendChild(w);
+        const was = Math.round(w.getBoundingClientRect().height);
+        w.value = 'line of text '.repeat(200);
+        w.dispatchEvent(new Event('input', { bubbles: true }));
+        out.wired = Math.round(w.getBoundingClientRect().height) > was;
+        w.remove();
+        return out;
+      });
+      await page.click('#photos-cancel-btn').catch(() => {});
+      return { before: before, after: after, cap: cap };
+    })();
+    check(
+      'G2d the photo description is a growing box, not a one-line field',
+      g2d.before.tag === 'TEXTAREA' &&
+        g2d.before.autogrow === true &&
+        g2d.before.maxlength === '200' &&
+        /Description for this set/.test(String(g2d.before.label)) &&
+        g2d.before.height >= 40 &&
+        g2d.before.resize === 'none' &&
+        g2d.after.scroll <= g2d.after.client + 2 &&
+        g2d.cap.tall > g2d.cap.short &&
+        g2d.cap.tall <= 162 &&
+        g2d.cap.mark === true &&
+        g2d.cap.wired === true,
+      g2d
+    );
+
     // ---- G3: upload 1 through the real picker ----------------------
     async function upload(name, caption, stage) {
       const addVisible = await page.evaluate(() => {

@@ -27,6 +27,7 @@ const sum = (rows, key) => rows.reduce((n, r) => n + r[key], 0);
 // helper test/agenda-model.test.mjs uses).
 const plain = v => JSON.parse(JSON.stringify(v));
 const round = n => Math.round(n * 1000) / 1000;
+const stateOf = tasks => ({ tasks });
 
 // ---- 1. phases with nested subtasks --------------------------------------
 test('phase rows are the majors and nested descendants count to their top ancestor', () => {
@@ -105,8 +106,10 @@ test('an unlabelled work item goes to an honest Unassigned group so the points s
   assert.equal(round(sum(out.groups, 'points')), round(out.overall));
 });
 
-// ---- 3. the no-groups fallback ------------------------------------------
-test('no phase rows and no labels returns no groups, and the dashboard keeps its single ring', () => {
+// ---- 3. the flat / older-project path (UI-WAVE D) ------------------------
+// No phase rows and no phase labels: each top-level main task is a segment,
+// every segment gets an equal arc, and the arc fills by its own subtasks.
+test('flat project: each parentless task is its own main-task segment', () => {
   const state = {
     tasks: [
       { id: 'a', name: 'One', status: 'completed' },
@@ -114,11 +117,81 @@ test('no phase rows and no labels returns no groups, and the dashboard keeps its
     ]
   };
   const out = M.getMajorGroups(state);
-  // Every item is unlabelled, so there is exactly one bucket - not a ring of
-  // one. grouped stays false and the renderer draws today's stroke.
-  assert.equal(out.grouped, false);
+  assert.equal(out.grouped, true);
+  assert.deepEqual(plain(out.groups.map(g => g.name)), ['One', 'Two']);
+  assert.deepEqual(plain(out.groups.map(g => g.share)), [0.5, 0.5]);
+  assert.deepEqual(plain(out.groups.map(g => g.fraction)), [1, 0]);
+  assert.deepEqual(plain(out.groups.map(g => g.points)), [50, 0]);
+  assert.equal(out.overall, 50, 'the mean of the two main-task fractions');
+});
+
+test('flat project: a completed task with many subtasks cannot dominate the ring', () => {
+  const tasks = [
+    { id: 'm1', name: 'Big done', level: 0 },
+    { id: 'm2', name: 'Small open', level: 0 }
+  ];
+  for (let i = 0; i < 10; i++) {
+    tasks.push({
+      id: 'b' + i,
+      name: 'b' + i,
+      parentName: 'Big done',
+      level: 1,
+      status: 'completed'
+    });
+  }
+  tasks.push({
+    id: 's1',
+    name: 's1',
+    parentName: 'Small open',
+    level: 1,
+    status: 'todo'
+  });
+  const out = M.getMajorGroups(stateOf(tasks));
+  assert.deepEqual(plain(out.groups.map(g => g.name)), ['Big done', 'Small open']);
+  // Equal arc width, whatever the subtask count.
+  assert.deepEqual(plain(out.groups.map(g => g.share)), [0.5, 0.5]);
+  assert.deepEqual(plain(out.groups.map(g => g.total)), [10, 1]);
+  assert.deepEqual(plain(out.groups.map(g => g.fraction)), [1, 0]);
+  // The work-item rate would be 10/11 = 90.9%; equal weighting keeps the
+  // completed task from claiming the whole ring.
+  assert.deepEqual(plain(out.groups.map(g => g.points)), [50, 0]);
+  assert.equal(out.overall, 50);
+  assert.equal(round(sum(out.groups, 'points')), round(out.overall));
+  assert.equal(round(sum(out.groups, 'share')), 1);
+});
+
+test('flat project groups a deeper descendant under its top-level main task', () => {
+  const state = stateOf([
+    { id: 'm1', name: 'Main A', level: 0 },
+    { id: 'mid', name: 'Mid', parentName: 'Main A', level: 1 },
+    { id: 'leaf', name: 'Leaf', parentId: 'mid', level: 2, status: 'completed' },
+    { id: 'm2', name: 'Main B', level: 0 },
+    { id: 'leaf2', name: 'Leaf 2', parentName: 'Main B', level: 1, status: 'todo' }
+  ]);
+  const out = M.getMajorGroups(state);
+  assert.deepEqual(plain(out.groups.map(g => g.name)), ['Main A', 'Main B']);
+  // Mid is level 1, so the Kanban rule still counts it as a work item (only a
+  // level-0 rollup is a container); both Mid and Leaf sit under Main A.
+  assert.deepEqual(plain(out.groups.map(g => g.total)), [2, 1]);
+  assert.deepEqual(plain(out.groups.map(g => g.completed)), [1, 0]);
+});
+
+test('flat project with a single main task draws one full-width segment', () => {
+  const state = stateOf([
+    { id: 'm1', name: 'Only', level: 0 },
+    { id: 's1', name: 's1', parentName: 'Only', level: 1, status: 'completed' },
+    { id: 's2', name: 's2', parentName: 'Only', level: 1, status: 'todo' }
+  ]);
+  const out = M.getMajorGroups(state);
+  // The flat branch applies its main-task model even for one group, so the
+  // ring fills by the subtasks (1/2) instead of counting the container row.
+  assert.equal(out.grouped, true);
   assert.equal(out.groups.length, 1);
-  assert.equal(out.groups[0].name, 'Unassigned');
+  assert.equal(out.groups[0].name, 'Only');
+  assert.equal(out.groups[0].share, 1);
+  assert.equal(round(out.groups[0].fraction), 0.5);
+  assert.equal(out.groups[0].points, 50);
+  assert.equal(out.overall, 50);
 });
 
 test('an empty project returns no groups at all', () => {

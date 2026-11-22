@@ -47,6 +47,7 @@
       { keys: 'Ctrl/⌘ + Shift + Z', what: 'Redo' },
       { keys: 'Esc', what: 'Close drawer / modals' },
       { keys: 'Enter / Space', what: 'Change the RACI letter in the cell you are on' },
+      { keys: 'R / A / C / I', what: 'Set that RACI letter directly in the cell you are on' },
       { keys: '← / →', what: 'Go back or forward through the RACI letters' },
       { keys: '← / →', what: 'On an idea card: move it one stage to the left or right' },
       { keys: '↑ / ↓', what: 'On an idea card: move it up or down its column' },

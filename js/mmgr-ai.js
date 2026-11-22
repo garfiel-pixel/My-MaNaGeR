@@ -836,8 +836,8 @@ var MMGR = window.MMGR || {};
     syncMcpToggle();
     syncSendGate();
     // Engine-status pill in the chat header. AI-CLOUD-CONNECT-UI (DIR-1): the
-    // cloud label reads the SAME canonical status field as the chip and the
-    // Send gate , no two indicators can disagree anymore.
+    // cloud label reads the SAME canonical status field as the Send gate, so
+    // no two indicators can disagree anymore.
     const pill = U.$('ai-engine-pill');
     if (pill) {
       pill.setAttribute('data-tier', cfg.tier || 'off');
@@ -845,12 +845,11 @@ var MMGR = window.MMGR || {};
     const pillLbl = U.$('ai-engine-pill-label');
     const tier = cfg.tier || 'off';
     if (pillLbl) {
-      // UI-DECLUTTER: the engine pill names the TIER only , the live
-      // BYO key connection detail lives in the ONE smart status chip
-      // next to the provider dropdown (ai-byo-status). The backend
-      // health pill (ai-api-pill) is independent , it checks server
-      // reachability, not key connection, so they can legitimately
-      // show different states (e.g. 'Backend · online' + 'Disconnected').
+      // UI-DECLUTTER: the engine pill names the TIER only; live BYO key
+      // connection detail is conveyed by the connect banner and the Send
+      // gate. The backend health pill (ai-api-pill) is independent , it
+      // checks server reachability, not key connection, so the two can
+      // legitimately show different states.
       pillLbl.textContent =
         tier === 'local' ? 'Local · zero-key' : tier === 'cloud' ? 'Cloud' : 'Off · copy-first';
     }
@@ -934,31 +933,11 @@ var MMGR = window.MMGR || {};
     row.classList.toggle('is-hide', !needKey || row.dataset.dismissed === '1');
   }
 
+  // UI-WAVE 2026-11-20 C: the tiny "Disconnected" status chip was removed.
+  // Keep this entry point so every key/tier change still re-evaluates the
+  // connect banner. The canonical state is announced by the header engine
+  // pill and enforced by the Send gate, so no second indicator is needed.
   function syncByoStatus() {
-    const st = U.$('ai-byo-status');
-    if (!st) {
-      syncConnRow();
-      return;
-    }
-    const txt = st.querySelector('.ai-byo-status-txt');
-    const status = getConnectionState();
-    if (status === 'connected') {
-      st.setAttribute('data-state', 'on');
-      if (txt) {
-        txt.textContent = 'Connected · ' + providerLabel(BYO.getProvider());
-      }
-    } else if (status === 'saved_untested') {
-      st.setAttribute('data-state', 'untested');
-      if (txt) {
-        txt.textContent = 'Key saved , not tested';
-      }
-    } else {
-      st.setAttribute('data-state', 'off');
-      if (txt) {
-        txt.textContent = 'Disconnected';
-      }
-    }
-    // The banner exists for the missing-key state; a verified key retires it.
     syncConnRow();
   }
 
@@ -2915,7 +2894,7 @@ var MMGR = window.MMGR || {};
     card.appendChild(body);
   }
   function botAvatar() {
-    return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>';
+    return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg></div>';
   }
   // AI-FALLBACK-BADGE: ONE shared chip builder , renderThread and
   // seedThreadFromState both call it, so the two render paths can never

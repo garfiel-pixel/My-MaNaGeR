@@ -339,33 +339,51 @@ var MMGR = window.MMGR || {};
             `<span><span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:4px;font-weight:800;background:${U.escapeHtml(Raci.raciCellBg(k))};color:${U.escapeHtml(Raci.raciCellFg(k))};border:1px solid ${U.escapeHtml(Raci.raciCellFg(k))}">${U.escapeHtml(k)}</span> ${U.escapeHtml(Raci.RACI_LABELS[k].split(' , ')[0])}</span>`
         )
         .join('') +
-      '<span style="margin-left:auto">Click a cell to cycle R → A → C → I → blank · Right-click to go back</span></div>';
+      '<span style="margin-left:auto">Click a cell to cycle R → A → C → I → blank · Right-click to go back · or press R, A, C, I</span></div>';
+    // UI-WAVE 2026-11-20 I: the matrix was a bare table with 90px name inputs
+    // and a dark "remove" button under every column. It is a bounded scroll
+    // area now (so the header and the task column can stick), the column
+    // header reads as a name with a role subtitle and only shows its border
+    // while it is being edited, and the column action moved into a small menu.
     let html =
-      legend + '<table class="dt"><thead><tr><th style="min-width:200px">Task / Deliverable</th>';
+      legend +
+      '<div class="raci-scroll"><table class="dt raci-matrix"><thead><tr>' +
+      '<th class="raci-task-col">Task / Deliverable</th>';
     persons.forEach((p, pi) => {
       const info = Raci.raciPersonInfo(p);
+      const who = esc(info.name) + (info.role ? ' , ' + esc(info.role) : '');
       const head = info.live
-        ? `<div style="font-size:.7rem;font-weight:700">${esc(info.name)}</div><div style="font-size:.65rem;color:var(--slate)">${esc(info.role) || '&nbsp;'}</div><div class="raci-live-tag"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> ${info.tag}</div>`
-        : `<input value="${esc(info.name)}" data-action="updRaciPerson" data-idx="${pi}" data-field="name" style="font-size:.7rem;font-weight:700;width:90px"><div><input value="${esc(info.role)}" data-action="updRaciPerson" data-idx="${pi}" data-field="role" style="font-size:.65rem;color:var(--slate);width:90px" placeholder="Role"></div>`;
-      html += `<th style="min-width:110px">${head}<button class="btn btn-s btn-d" data-action="delRaciPerson" data-idx="${pi}" style="margin-top:2px">remove</button></th>`;
+        ? `<div class="raci-person"><div class="raci-person-name" title="${who}">${esc(info.name)}</div><div class="raci-person-role">${esc(info.role) || '&nbsp;'}</div><div class="raci-live-tag"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> ${info.tag}</div></div>`
+        : `<div class="raci-person"><input class="raci-person-name" value="${esc(info.name)}" data-action="updRaciPerson" data-idx="${pi}" data-field="name" title="${who}" aria-label="Name"><input class="raci-person-role" value="${esc(info.role)}" data-action="updRaciPerson" data-idx="${pi}" data-field="role" placeholder="Role" title="${who}" aria-label="Role"></div>`;
+      html += `<th class="raci-person-col">${head}<button type="button" class="raci-col-menu" popovertarget="raci-col-pop-${pi}" aria-label="Column actions for ${esc(info.name)}" title="Column actions"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-more"></use></svg></button><div class="raci-pop" id="raci-col-pop-${pi}" popover><button type="button" class="raci-pop-item raci-pop-danger" data-action="delRaciPerson" data-idx="${pi}">Remove column</button></div></th>`;
     });
     html += '</tr></thead><tbody>';
     tasks.forEach((t, ti) => {
       const info = Raci.raciTaskInfo(t);
+      // One amber mark per row that has no Accountable person, right where the
+      // row is named. The text alerts below stay - this is the same fact,
+      // where the eye already is.
+      const hasA = persons.some(p => matrix[t.id + '_' + p.id] === 'A');
+      const warn = hasA
+        ? ''
+        : '<span class="raci-gate" title="No Accountable person on this row"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg></span>';
       const cell = info.live
-        ? `<div style="min-width:190px;font-size:.78rem"><span style="color:var(--gold);font-size:.65rem">${esc(info.wbs)}</span> ${esc(info.name)} <span class="raci-live-tag"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> WBS</span></div>`
-        : `<input value="${esc(info.name)}" data-action="updRaciTask" data-idx="${ti}" style="min-width:190px">`;
-      html += `<tr><td>${cell}</td>`;
+        ? `<div class="raci-task"><span class="raci-task-wbs">${esc(info.wbs)}</span> <span class="raci-task-name" title="${esc(info.name)}">${esc(info.name)}</span> ${warn}<span class="raci-live-tag"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-link"></use></svg> WBS</span></div>`
+        : `<div class="raci-task"><input class="raci-task-name" value="${esc(info.name)}" data-action="updRaciTask" data-idx="${ti}" title="${esc(info.name)}" aria-label="Task name">${warn}</div>`;
+      html += `<tr><td class="raci-task-td">${cell}</td>`;
       persons.forEach(p => {
         const key = `${t.id}_${p.id}`;
         const val = matrix[key] || '';
-        html += `<td style="text-align:center">
-          <button type="button" class="raci-cell" tabindex="0" data-action="cycleRaci" data-task="${U.escapeHtml(t.id)}" data-person="${U.escapeHtml(p.id)}" title="${esc(Raci.RACI_LABELS[val])}" style="background:${Raci.raciCellBg(val)};color:${Raci.raciCellFg(val)};border:1.5px solid ${val ? Raci.raciCellFg(val) : 'var(--border)'}">${val || '·'}</button>
+        const fg = Raci.raciCellFg(val);
+        // The border colour rides a custom property so the empty state can be
+        // a dashed outline without fighting an inline border.
+        html += `<td class="raci-cell-td">
+          <button type="button" class="raci-cell${val ? '' : ' is-empty'}" tabindex="0" data-action="cycleRaci" data-task="${U.escapeHtml(t.id)}" data-person="${U.escapeHtml(p.id)}" title="${esc(Raci.RACI_LABELS[val])}" style="background:${val ? Raci.raciCellBg(val) : 'transparent'};color:${fg};--raci-fg:${val ? fg : 'var(--border)'}">${val}</button>
         </td>`;
       });
-      html += `<td><button class="btn btn-s btn-d" data-action="delRaciTask" data-idx="${ti}">×</button></td></tr>`;
+      html += `<td class="raci-del-td"><button class="raci-row-menu" data-action="delRaciTask" data-idx="${ti}" title="Remove this row" aria-label="Remove ${esc(info.name)}"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button></td></tr>`;
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     con.innerHTML = html;
     renderRaciAlerts();
     renderRaciHeatmap();

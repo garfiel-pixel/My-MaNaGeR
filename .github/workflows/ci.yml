@@ -1367,6 +1367,26 @@ jobs:
         id: qa-dashboard-ring
         run: node tools/qa-dashboard-ring.cjs
 
+      # UI-WAVE 2026-11-20 G: the sticky date header, the named Today line,
+      # drag-to-pan and the drag / duration cascades that re-time successors
+      # and refresh the board.
+      - name: "T4: Gantt header, pan and cascade (qa-gantt-cascade)"
+        id: qa-gantt-cascade
+        run: node tools/qa-gantt-cascade.cjs
+
+      # UI-WAVE 2026-11-20 I: sticky header + task column, zebra, the column
+      # menu, dashed empty cells, direct R/A/C/I keys and the amber
+      # zero-Accountable mark.
+      - name: "T4: RACI matrix surface and keys (qa-raci-matrix)"
+        id: qa-raci-matrix
+        run: node tools/qa-raci-matrix.cjs
+
+      # UI-WAVE 2026-11-20 L: the on-hold banner, the finalize gate and the
+      # per-project acknowledgement.
+      - name: "T4: On-hold banner and finalize gate (qa-onhold-gate)"
+        id: qa-onhold-gate
+        run: node tools/qa-onhold-gate.cjs
+
       # UX-2026-11-19 A1-A5: short screens, landscape phones, the tour card,
       # touch targets and the sign-out confirmation. Registered as CI since
       # the A wave but never actually wired - D1 closed that gap.

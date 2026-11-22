@@ -1340,6 +1340,26 @@ async function pickPort(start) {
     return {val: ok && hidden, ok:ok, hidden:hidden, txt:tip?tip.textContent:''};
   })()`
   );
+  // UI-WAVE 2026-11-20 B: the definition tooltip must show term + meaning
+  // only (no Execution/Scheduling taxonomy pill), and the methodology hover
+  // card must not swallow clicks meant for the tabs it floats over.
+  await check(
+    '54b tooltip: no taxonomy pill; methodology hover card is click-through',
+    `(function(){
+    var el=document.querySelector('[data-def]');
+    if(!el){return {val:false,why:'no data-def element'};}
+    el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));
+    var tip=document.getElementById('def-tooltip');
+    var noPill=!!tip && !tip.querySelector('.def-badge');
+    el.dispatchEvent(new MouseEvent('mouseout',{bubbles:true}));
+    var card=document.getElementById('meth-learn-card');
+    var close=card?card.querySelector('.dc'):null;
+    var cardPE=card?getComputedStyle(card).pointerEvents:null;
+    var closePE=close?getComputedStyle(close).pointerEvents:null;
+    return {val:noPill && cardPE==='none' && closePE==='auto',
+      noPill:noPill, cardPE:cardPE, closePE:closePE};
+  })()`
+  );
   await check(
     '55 gantt export: exports a PNG blob + toast',
     `(function(){
@@ -1759,6 +1779,24 @@ async function pickPort(start) {
   await check(
     '39e def: new-feature terms render (Decision Engine + SRI)',
     `(function(){var d=MMGR.Defs.DATA.map(function(x){return x.term;});var txt=document.getElementById('def-container').textContent;return {val: d.indexOf('Today\u2019s Decision Engine')>-1 && d.indexOf('Schedule Reliability Index')>-1 && txt.indexOf('Decision Engine')>-1 && txt.indexOf('Schedule Reliability Index')>-1, count: d.length};})()`
+  );
+  // UI-WAVE 2026-11-20 H: a programmatic open of Change Control Register
+  // (as used by in-app links) must light up "you are here" in BOTH the hidden
+  // original rail and the visible cloned rail. The clone observer used to
+  // strip the class again because it only mirrored is-hide.
+  await ev(`MMGR.Render.showSection('chg')`);
+  await delay(250);
+  await check(
+    '39f chg: programmatic open highlights Changes in both rails',
+    `(function(){
+      var all=[].slice.call(document.querySelectorAll('.sec-btn[data-section="chg"]'));
+      var vis=[].slice.call(document.querySelectorAll('#app-sidebar .sec-btn[data-section="chg"]'));
+      var active=all.filter(function(b){return b.classList.contains('active');}).length;
+      var visActive=vis.filter(function(b){return b.classList.contains('active');}).length;
+      var panel=document.getElementById('panel-chg');
+      return {val: active===all.length && all.length>=2 && visActive===1 && !!panel && panel.classList.contains('active'),
+        rails:all.length, active:active, visActive:visActive};
+    })()`
   );
 
   // ---- V10 features (ACTION-PLAN 3.2/3.3, item 23, 7.3, manual override, AI window) ----

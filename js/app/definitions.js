@@ -36,10 +36,11 @@ var MMGR = window.MMGR || {};
       _defTipEl.className = 'def-tooltip';
       document.body.appendChild(_defTipEl);
     }
+    // UI-WAVE 2026-11-20 B: keep the term + meaning only; the taxonomy group
+    // pill (Execution / Scheduling / ...) is noise the owner asked to drop.
     _defTipEl.innerHTML =
       '<div class="dt-term">' +
       U.escapeHtml(entry.term) +
-      (entry.group ? '<span class="def-badge">' + U.escapeHtml(entry.group) + '</span>' : '') +
       '</div>' +
       '<div class="dt-body">' +
       U.escapeHtml(entry.meaning) +

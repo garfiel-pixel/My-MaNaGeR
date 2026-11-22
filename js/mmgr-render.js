@@ -71,7 +71,7 @@ var MMGR = window.MMGR || {};
     const known = s && PROJ_STATUS_LABELS[s.status] ? s.status : 'active';
     const label = name ? U.escapeHtml(name) : PROJ_STATUS_LABELS[known];
     g.innerHTML =
-      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">' +
+      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> <span id="greeting-text">' +
       label +
       '</span>';
   }
@@ -275,7 +275,9 @@ var MMGR = window.MMGR || {};
 
   function majorRows(state) {
     const out = ringData(state);
-    if (!out || !out.grouped || !out.groups.length) {
+    // A one-row "what is driving completion" list is noise; the ring already
+    // shows the single segment. Hide it until there are two majors to compare.
+    if (!out || !out.grouped || out.groups.length < 2) {
       return null;
     }
     const groups = out.groups.slice();
@@ -309,11 +311,19 @@ var MMGR = window.MMGR || {};
       // and every other value here is escaped or numeric
       const token = g.color ? 'var(--major-' + Number(g.color) + ')' : 'var(--major-other)';
       const width = Math.max(0, Math.min(100, Math.round((g.fraction || 0) * 100)));
+      // UI-WAVE 2026-11-20 D: a flat/older project groups by main task, so the
+      // group id is a dashboard key (group:main:i:T4), not a WBS row id. navFocus
+      // can only flash a real row; point it at the main task instead of a
+      // target that does not exist. Other group kinds keep their own id.
+      const flashId =
+        g.id && g.id.indexOf('group:main:') === 0
+          ? (g.members && g.members[0]) || g.id.replace(/^group:main:i:/, '')
+          : g.id;
       html +=
         '<a class="major-row" href="#wbs" data-major-id="' +
         U.escapeHtml(g.id) +
         '" data-nav="major" data-nav-id="' +
-        U.escapeHtml(g.id) +
+        U.escapeHtml(flashId) +
         '">' +
         '<span class="major-dot" style="background:' +
         token +
@@ -456,8 +466,11 @@ var MMGR = window.MMGR || {};
     // stroke, owner 2026-11-20).
     // UX-2026-11-19 B3: when the project has major groups the ring and its
     // stat speak in WORK ITEMS (phase rows are containers, not tasks), so the
-    // centre percentage is exactly the sum of the group points. Without
-    // groups nothing changes: today's all-tasks number.
+    // centre percentage is exactly the sum of the group points. The flat /
+    // older-project path (UI-WAVE 2026-11-20 D) weights each main task
+    // equally instead: the centre is then the mean main-task fraction (the
+    // sum of the arcs), while the stat still counts the work items behind
+    // them. Without groups nothing changes: today's all-tasks number.
     const ringOut = ringData(s);
     const useGroups = !!(ringOut && ringOut.grouped && ringOut.groups.length);
     const baseTotal = useGroups ? ringOut.total : total;
@@ -2062,6 +2075,12 @@ var MMGR = window.MMGR || {};
       });
     }
     mirrorStatusToRegistry(known);
+    // UI-WAVE 2026-11-20 L: the on-hold banner follows the same status value,
+    // so it is painted wherever the chip is - boot, a status change, and the
+    // acknowledgement itself.
+    if (ns.OnHold && ns.OnHold.render) {
+      ns.OnHold.render();
+    }
   }
 
   function renderDirtyIndicator() {
@@ -2377,10 +2396,19 @@ var MMGR = window.MMGR || {};
     if (_tip) {
       _tip.classList.remove('vis');
     }
-    // Update nav buttons
+    // Update nav buttons.
+    // UI-WAVE 2026-11-20 H: the visible rail is a CLONE of #sec-nav, and the
+    // clone's MutationObserver only mirrors `is-hide`. Marking just `btn`
+    // left the visible "you are here" unset when a section was opened from
+    // an in-app link (e.g. Change Control Register -> chg). Worse, the
+    // observer then saw the hidden original lose `active` and stripped it
+    // from the clone again. Resolve by section and mark BOTH rails here.
     document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('active'));
-    if (btn) {
-      btn.classList.add('active');
+    const activeSec = (btn && btn.getAttribute && btn.getAttribute('data-section')) || section;
+    if (activeSec) {
+      document
+        .querySelectorAll('.sec-btn[data-section="' + activeSec + '"]')
+        .forEach(b => b.classList.add('active'));
     }
     // Show panel
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -3157,6 +3185,9 @@ var MMGR = window.MMGR || {};
     if (!gc) {
       return;
     }
+    // UI-WAVE G: the chart scrolls internally (bounded height), so the sticky
+    // date header stays put and the label column follows the rows.
+    wireGanttScrollSync();
     // B6: one lookup for the whole chart - the bar's 4px accent.
     const majorOf =
       ns.MajorTasks && ns.MajorTasks.assignments ? ns.MajorTasks.assignments(s) : null;
@@ -3559,6 +3590,32 @@ var MMGR = window.MMGR || {};
     // Draw dependency arrows (SVG overlay) from the VIEW's link list, so the
     // arrows on screen are the same edges the export draws.
     drawDependencyArrows(view);
+  }
+
+  // UI-WAVE 2026-11-20 G: one delegated listener on the stable #gantt-chart
+  // element. The chart is its own vertical scroll area (see .gc max-height),
+  // so the date header can stick; the label column has no header, so it is
+  // scrolled by the chart's offset minus that header's height.
+  let _ganttScrollWired = false;
+  function wireGanttScrollSync() {
+    if (_ganttScrollWired) {
+      return;
+    }
+    const gc = $('gantt-chart');
+    const gl = $('gantt-labels');
+    if (!gc || !gl) {
+      return;
+    }
+    _ganttScrollWired = true;
+    gc.addEventListener(
+      'scroll',
+      function () {
+        const gh = gc.querySelector('.gh');
+        const off = gh ? gh.offsetHeight : 0;
+        gl.scrollTop = Math.max(0, gc.scrollTop - off);
+      },
+      { passive: true }
+    );
   }
 
   // ---- Dependency Arrows (SVG overlay) ----
@@ -4386,6 +4443,7 @@ var MMGR = window.MMGR || {};
   // dependency arrows, hover tooltip with float / weather padding.
   // ==================================================================
   let _ganttDrag = null; // { taskId, startX, origStartDate, origEndDate, minAllowed, moved }
+  let _ganttPan = null; // { gc, startX, startLeft, moved } - drag-to-pan the chart
 
   function ganttBarById(id) {
     const gc = $('gantt-chart');
@@ -4559,11 +4617,37 @@ var MMGR = window.MMGR || {};
     if (ns.Schedule && ns.Schedule.annotateSchedule) {
       ns.Schedule.annotateSchedule();
     }
+    // UI-WAVE 2026-11-20 G: the moved task's successors follow it. The
+    // schedule engine holds completed / in-progress actuals anchored and asks
+    // before a shift larger than five tasks. skipUndo reuses the drag's own
+    // snapshot; render:false lets this handler paint once.
+    const successors = (s.tasks || []).filter(function (t) {
+      return (t.predecessors || []).some(function (p) {
+        return String(p) === String(d.taskId);
+      });
+    });
+    if (successors.length && ns.Schedule && ns.Schedule.cascade) {
+      ns.Schedule.cascade(undefined, {
+        threshold: 5,
+        skipUndo: true,
+        quiet: true,
+        render: false
+      });
+    }
     ns.Render.renderGantt();
     ns.Render.renderWbs();
     ns.Render.renderDash();
+    // UI-WAVE G: the board carries the dates too; a drag that skipped it left
+    // Kanban stale until the next unrelated render.
+    ns.Render.renderKanban();
     if (ns.App && ns.App.showToast) {
-      ns.App.showToast('Task moved to start ' + newStart + '.', 'ok');
+      ns.App.showToast(
+        'Task moved to start ' +
+          newStart +
+          '.' +
+          (successors.length ? ' Successors rescheduled.' : ''),
+        'ok'
+      );
     }
   }
 
@@ -4621,21 +4705,57 @@ var MMGR = window.MMGR || {};
     tip.style.top = y + 'px';
   }
 
-  // Drag via pointer events (delegated, no inline handlers)
+  // Drag via pointer events (delegated, no inline handlers).
+  // A pointerdown on a bar reschedules that task; a pointerdown on the empty
+  // chart background pans the chart. Milestones and dependency links keep
+  // their own click handlers. Touch keeps native scrolling.
   document.addEventListener('pointerdown', function (e) {
     const gc = $('gantt-chart');
-    if (gc && e.target.closest && e.target.closest('.gb') && gc.contains(e.target)) {
-      ganttDragStart(e);
+    if (!gc || !gc.contains(e.target)) {
+      return;
     }
+    const bar = e.target.closest && e.target.closest('.gb');
+    if (bar) {
+      ganttDragStart(e);
+      return;
+    }
+    if (e.target.closest && e.target.closest('.gb-milestone, .gan-link')) {
+      return;
+    }
+    if (e.pointerType === 'touch') {
+      return;
+    }
+    e.preventDefault();
+    _ganttPan = {
+      gc: gc,
+      startX: e.clientX,
+      startLeft: gc.scrollLeft,
+      moved: false
+    };
+    document.body.classList.add('gantt-panning');
   });
   document.addEventListener('pointermove', function (e) {
     if (_ganttDrag) {
       ganttDragMove(e);
+      return;
     }
+    if (!_ganttPan) {
+      return;
+    }
+    const dx = e.clientX - _ganttPan.startX;
+    if (Math.abs(dx) > 3) {
+      _ganttPan.moved = true;
+    }
+    _ganttPan.gc.scrollLeft = _ganttPan.startLeft - dx;
   });
   document.addEventListener('pointerup', function (e) {
     if (_ganttDrag) {
       ganttDragEnd(e);
+      return;
+    }
+    if (_ganttPan) {
+      _ganttPan = null;
+      document.body.classList.remove('gantt-panning');
     }
   });
   document.addEventListener('pointercancel', function () {
@@ -4647,6 +4767,10 @@ var MMGR = window.MMGR || {};
         tip.classList.remove('vis');
       }
       ns.Render.renderGantt();
+    }
+    if (_ganttPan) {
+      _ganttPan = null;
+      document.body.classList.remove('gantt-panning');
     }
   });
 

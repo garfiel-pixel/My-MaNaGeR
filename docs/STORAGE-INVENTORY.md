@@ -57,6 +57,7 @@ fails the gate.
 | `mmgr_demos_hidden` | Whether demo projects are hidden. | necessary |
 | `mmgr_device_id` | Anonymous id that ties cloud saves to this device. | necessary |
 | `mmgr_mcp_toggle_<id>` | MCP connector preference per project. | necessary |
+| `mmgr_onhold_ack_<id>` | Whether you have read a project's on-hold notice and chosen to continue. Edits stay blocked until it is set; it is per project and survives a reload. | necessary |
 | `mmgr_signin_next` | Page to return to after signing in. | necessary |
 | `mmgr_admin_recovery_created_at` , `mmgr_admin_recovery_hash` , `mmgr_admin_recovery_attempts` , `mmgr_admin_recovery_locked_until` | Admin recovery code state and its retry lockout. | necessary |
 | `mmgr_recent_codes` | Recently used access codes, for quick re-entry. | necessary |

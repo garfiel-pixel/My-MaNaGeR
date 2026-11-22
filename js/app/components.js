@@ -100,7 +100,7 @@ var MMGR = window.MMGR || {};
       t +
       '>' +
       '<svg class="ico" aria-hidden="true">' +
-      '<use href="css/mmgr-icons.svg#i-sparkle"></use></svg> ' +
+      '<use href="css/mmgr-icons.svg#i-mpw"></use></svg> ' +
       (label || 'MCP AI') +
       '</span>'
     );

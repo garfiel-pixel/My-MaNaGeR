@@ -125,7 +125,15 @@ const EXACT = {
   // uploaded-book picker group, the upload/remove actions and the workspace
   // section. The next calculator feature should split a render family rather
   // than raise this again.
-  'js/calculator-page.js': 610000,
+  // 2026-11-22 (UI-WAVE E, first-run tour): raised 610000 -> 614000
+  // (611782 measured). The walkthrough gained a centred intro card, a
+  // reduced-motion-gated smooth scroll with a re-place after it settles, a
+  // cut-out that rings the whole .bcp-field instead of the bare input, and a
+  // dim fallback for a viewport-sized target. The tour block is ~330 lines
+  // and shares this file's IIFE helpers ($, clampX, the gap constants), so it
+  // could not be lifted out inside the wave; the next calculator feature
+  // should move the tour engine to js/calc-tour.js rather than raise this.
+  'js/calculator-page.js': 614000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.
   // 2026-11-08 (C3 Phase 1): raised 215000 -> 220000 for the Documents view

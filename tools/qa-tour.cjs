@@ -170,6 +170,18 @@ async function walk(page, label, shots) {
   if (bigSpread && darkLayer) ok('dim-is-a-cut-out');
   else bad('dim-is-a-cut-out', String(shadow));
 
+  // OWNER 2026-11-21 (E): the walk now opens on a CENTRED intro card, so the
+  // "a targeted step is not a flat dim" arm has to read a step that has a
+  // target. Step 1 is the intro - prove it is centred, then advance.
+  const intro = await page.evaluate(() => {
+    const cur = MMGR.Tour.current();
+    return cur ? { centred: !cur.target, title: cur.title, text: !!cur.title } : null;
+  });
+  if (intro && intro.centred) ok('intro-card-centred');
+  else bad('intro-card-centred', JSON.stringify(intro));
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(220);
+
   const rootBg = await page.evaluate(
     () => getComputedStyle(document.getElementById('tour-root')).backgroundColor
   );
@@ -192,6 +204,13 @@ async function walk(page, label, shots) {
   if (t1 !== t2 && t1 === t3) ok('keyboard-walk');
   else bad('keyboard-walk', JSON.stringify({ t1, t2, t3 }));
 
+  // The plan's own total, read before walking: the walk starts from whatever
+  // step the keyboard arm left the tour on, so the number of cards it SEES is
+  // not the plan length.
+  const fullTotal = await page.evaluate(() => {
+    const cur = MMGR.Tour.current();
+    return cur ? cur.total : 0;
+  });
   const seen = await walk(page, '1280-dark', true);
   if (seen.length >= 6) ok('walk-covers-steps');
   else bad('walk-covers-steps', 'only ' + seen.length + ' steps');
@@ -214,8 +233,8 @@ async function walk(page, label, shots) {
   const skipWalk = await walk(page, 'skip', false);
   if (skipWalk.indexOf('Collaborate') === -1) ok('missing-target-skipped');
   else bad('missing-target-skipped', 'Collaborate still appears: ' + skipWalk.join(' / '));
-  if (skipInfo.total === seen.length - 1) ok('count-reflects-skip');
-  else bad('count-reflects-skip', 'total=' + skipInfo.total + ' fullWalk=' + seen.length);
+  if (skipInfo.total === fullTotal - 1) ok('count-reflects-skip');
+  else bad('count-reflects-skip', 'total=' + skipInfo.total + ' fullTotal=' + fullTotal);
   await ctx.close();
 
   // ---------- 390: phone sheet never covers the target ----------

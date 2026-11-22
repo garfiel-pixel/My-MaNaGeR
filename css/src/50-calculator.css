@@ -991,6 +991,12 @@ body.dark-mode .bcp-run:focus-visible {
   inset: 0;
   z-index: 400;
 }
+/* OWNER 2026-11-21 (E): a target that really fills the viewport cannot have a
+   cut-out, so the overlay carries the dim itself. Without this those steps
+   were undimmed and the card floated over a fully lit page. */
+.bcp-tour-overlay.is-huge {
+  background: var(--lit-black-45);
+}
 /* OWNER 2026-09-30 report: the tour dimmed everything but highlighted
    NOTHING - the field being talked about was invisible under the wash.
    The spotlight is a positioned cutout: the element itself is transparent
@@ -1005,16 +1011,9 @@ body.dark-mode .bcp-run:focus-visible {
   box-shadow: 0 0 0 9999px var(--lit-black-45);
   pointer-events: none;
 }
-.bcp-tour-spot::after {
-  content: '';
-  position: absolute;
-  inset: -6px;
-  border-radius: 14px;
-  border: 2px solid var(--gold);
-  box-shadow:
-    0 0 0 4px color-mix(in oklch, var(--gold) 30%, transparent),
-    0 0 18px color-mix(in oklch, var(--gold) 45%, transparent);
-}
+/* OWNER 2026-11-21 (E): the spotlight carried a 2px gold border plus two gold
+   glows on a ::after. The dim cut-out is the highlight now: the target's own
+   border and background show through the hole, and nothing gold is drawn. */
 .bcp-tour-spot[hidden] {
   display: none !important;
 }

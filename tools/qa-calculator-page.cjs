@@ -737,13 +737,26 @@ async function withChrome(fn) {
       var nudge = document.getElementById('calc-tour-nudge');
       window.__calcTour.start();
       var pop = document.getElementById('calc-tour-pop');
-      return { nudgeWas: !nudge.hidden, anchor: pop.getAttribute('data-anchor'),
-               overlay: !document.getElementById('calc-tour-overlay').hidden,
-               count: document.getElementById('calc-tour-count').textContent };
+      var first = { nudgeWas: !nudge.hidden, anchor: pop.getAttribute('data-anchor'),
+                    overlay: !document.getElementById('calc-tour-overlay').hidden,
+                    count: document.getElementById('calc-tour-count').textContent,
+                    final: pop.classList.contains('is-final') };
+      document.querySelector('[data-action="calcTourNext"]').click();
+      var second = { anchor: pop.getAttribute('data-anchor'),
+                     count: document.getElementById('calc-tour-count').textContent,
+                     final: pop.classList.contains('is-final') };
+      return { first: first, second: second };
     })()`);
     check(
-      'T1 start tour: overlay opens, step 1 anchors the work item (13 steps since W6)',
-      tut1 && tut1.anchor === '#calc-work' && tut1.overlay && tut1.count === '1 of 13',
+      'T1 start tour: overlay opens on the centred intro, then anchors the work item (14 steps since E)',
+      tut1 &&
+        tut1.first.overlay &&
+        tut1.first.count === '1 of 14' &&
+        tut1.first.anchor === null &&
+        tut1.first.final === true &&
+        tut1.second.anchor === '#calc-work' &&
+        tut1.second.count === '2 of 14' &&
+        tut1.second.final === false,
       tut1
     );
     const tut2 = await ev(`(function(){
@@ -769,7 +782,7 @@ async function withChrome(fn) {
         tut2.anchors[9] === '#calc-prelims-card' &&
         tut2.anchors[10] === '.bcp-run' &&
         tut2.anchors[11] === null &&
-        tut2.count === '13 of 13',
+        tut2.count === '14 of 14',
       tut2.anchors
     );
     const tut3 = await ev(`(function(){

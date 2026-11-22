@@ -9,21 +9,21 @@
 
 A follow-up UI/UX wave from the owner, continuing the current UI work. Fifteen work areas:
 
-- [ ] **A. Sparkle icon** — generic sparkle on "AI Assistant" and across the app → My MaNaGeR's own brand mark.
-- [ ] **B. Definition pills / methodology popup** — hover card overlays tabs and blocks clicks; tooltips append an annoying taxonomy pill.
-- [ ] **C. AI panel "Disconnected" chip** — remove.
-- [ ] **D. Old-project ring** — flat projects show one green circle → per-**main-task** segments, equal weighting.
-- [ ] **E. Tours** (calculator + project UI) — remove gold ring, full-target spotlight incl. mobile, smooth scroll, centred intro; buttons stay plain.
-- [ ] **F. Theme** — remove sign-in gate on Customize (skins are device-local).
-- [ ] **G. Gantt chart** — explain red line, sticky header, drag-to-pan, auto-cascade on drag/duration (confirm >5, actuals anchored), cross-view consistency.
-- [ ] **H. Sidebar active section** — "Changes" (Change Control Register) has no "you are here" highlight.
-- [ ] **I. RACI matrix** — truncated names/roles, wide gaps, no sticky headers, dark `[remove]` buttons, look-clickable empty cells, slow cycle, passive warnings → full UI pass.
-- [ ] **J. Photo description + undersized inputs** — tiny single-line description box → auto-grow textarea; audit similar fields.
-- [ ] **K. Status-chip outline** — remove the border around the Active/Planning/On-hold selector; keep the dropdown arrow.
+- [x] **A. Sparkle icon** — generic sparkle on "AI Assistant" and across the app → My MaNaGeR's own brand mark.
+- [x] **B. Definition pills / methodology popup** — hover card overlays tabs and blocks clicks; tooltips append an annoying taxonomy pill.
+- [x] **C. AI panel "Disconnected" chip** — remove.
+- [x] **D. Old-project ring** — flat projects show one green circle → per-**main-task** segments, equal weighting.
+- [x] **E. Tours** (calculator + project UI) — remove gold ring, full-target spotlight incl. mobile, smooth scroll, centred intro; buttons stay plain.
+- [x] **F. Theme** — remove sign-in gate on Customize (skins are device-local).
+- [x] **G. Gantt chart** — explain red line, sticky header, drag-to-pan, auto-cascade on drag/duration (confirm >5, actuals anchored), cross-view consistency.
+- [x] **H. Sidebar active section** — "Changes" (Change Control Register) has no "you are here" highlight.
+- [x] **I. RACI matrix** — truncated names/roles, wide gaps, no sticky headers, dark `[remove]` buttons, look-clickable empty cells, slow cycle, passive warnings → full UI pass.
+- [x] **J. Photo description + undersized inputs** — tiny single-line description box → auto-grow textarea; audit similar fields.
+- [x] **K. Status-chip outline** — remove the border around the Active/Planning/On-hold selector; keep the dropdown arrow.
 - [x] **L. Project on-hold notice** — in-app banner to collaborators + explicit "finalize" acknowledgement before edits (no email, no backend/CF changes).
-- [ ] **M. Perf-mode + dark sidebar transparency bug** — launcher rail becomes see-through when Performance mode is on; give it an opaque fallback.
-- [ ] **N. Cookie-consent polish** — remove the gold outline on the consent buttons; simple accent-style buttons.
-- [ ] **O. Checkbox tracking file** — one canonical checklist (tickable) covering all items; this plan file is also tickable above.
+- [x] **M. Perf-mode + dark sidebar transparency bug** — launcher rail becomes see-through when Performance mode is on; give it an opaque fallback.
+- [x] **N. Cookie-consent polish** — remove the gold outline on the consent buttons; simple accent-style buttons.
+- [x] **O. Checkbox tracking file** — one canonical checklist (tickable) covering all items; this plan file is also tickable above.
 
 Greeting note: project-name greeting is **approved** — no change except its sparkle → brand mark.
 
@@ -92,12 +92,14 @@ Branch: fresh `feat/` branch off `origin/main`; commit in logical groups; PR →
 - [x] Edit CSS **sources**, rebuild. Re-baseline `qa-full.cjs:759-792,1149-1165,1297-1314`; add checks for sticky/zebra/direct keys/warning icon; register new harnesses. → new `tools/qa-raci-matrix.cjs` 11/11 (R1/R1b/R2 sticky, R3 zebra, R4/R4b menu, R5 empty cell, R6 keys, R7/R7b mark, R8 no error); `qa-full` 196/196; `npm run verify` green; registry + `ci.yml` T4 wired; `verify-ci-coverage` 12/12. — `c217e53`
 
 ### J. Photo description + undersized inputs (audit & optimize)
-- [ ] **Photo description = tiny single-line box (confirmed):** `js/cloud/photos-ui.js:334` `<input class="in" type="text" id="photos-caption-input" maxlength="200">`; bundle twin `:360`. No height, one grid cell, truncated at 200 chars (`:1275`,`:1621`). Rendered by `scaffold()` `:308-369` into `#photos-body` (`project.html:323-331`).
-- [ ] Convert both caption fields to `<textarea>` + auto-grow, keeping `id`/`maxlength=200`/`aria-label` so `tools/qa-project-photos.cjs:643-652,845,911` (`page.fill`) still passes. CSS for `.photos-form` `css/src/20-shell.css:285-295`, `:489-491`.
-- [ ] **Add one reusable `autoGrow(el)` helper** in `js/mmgr-utils.js` (mirror the inline `grow()` in `js/mmgr-ai.js:3136-3146`, cap ~160px, toggle `.at-cap`); wire via the existing delegated `input` listener in `js/mmgr-app.js:8554`. No shared helper exists today except the unshipped reference (`monolith html to reference from all features.html:2247-2249`).
-- [ ] **Similar high-priority cases to fix with the same helper:** risk description + mitigation (`js/render/risks.js:318,331`, helper `:272-282`) and issue description (`:208-210`); incident "What happened" (`js/render/closure.js:276`); notes inputs (`documents.js`, `closure.js`, `financials.js`, `people.js`, `resources.js` — expand-on-focus or `title`); `pg-in` paragraph/callout (`js/render/pages.js:322,344`) and `team-bulk`/`calc-ai` rows=3 — bump min-height. Charter/closure `.cf-ta` (130px) and `ai-q` (auto-grows) are fine — leave.
-- [ ] CSS constraints: `.dt td input,select,textarea{width:100%}` `css/src/30-panels.css:918-934`; `textarea{resize:vertical}` `35-workspace.css:1269-1271`; `.cf-ta` `:1452-1466`. Edit sources, rebuild.
-- [ ] Re-baseline `tools/qa-project-photos.cjs`; add a check that the caption is a textarea that grows on input; register in `docs/CI-TEST-COVERAGE.md`.
+- [x] **Photo description = tiny single-line box (confirmed):** `js/cloud/photos-ui.js:334` `<input class="in" type="text" id="photos-caption-input" maxlength="200">`; bundle twin `:360`. No height, one grid cell, truncated at 200 chars (`:1275`,`:1621`). Rendered by `scaffold()` `:308-369` into `#photos-body` (`project.html:323-331`).
+- [x] Convert both caption fields to `<textarea>` + auto-grow, keeping `id`/`maxlength=200`/`aria-label` so `tools/qa-project-photos.cjs:643-652,845,911` (`page.fill`) still passes. CSS for `.photos-form` `css/src/20-shell.css:285-295`, `:489-491`.
+- [x] **Add one reusable `autoGrow(el)` helper** in `js/mmgr-utils.js` (mirror the inline `grow()` in `js/mmgr-ai.js:3136-3146`, cap ~160px, toggle `.at-cap`); wire via the existing delegated `input` listener in `js/mmgr-app.js:8554`. No shared helper exists today except the unshipped reference (`monolith html to reference from all features.html:2247-2249`).
+- [x] **Similar high-priority cases to fix with the same helper:** risk description + mitigation (`js/render/risks.js:318,331`, helper `:272-282`) and issue description (`:208-210`); incident "What happened" (`js/render/closure.js:276`); notes inputs (`documents.js`, `closure.js`, `financials.js`, `people.js`, `resources.js` — expand-on-focus or `title`); `pg-in` paragraph/callout (`js/render/pages.js:322,344`) and `team-bulk`/`calc-ai` rows=3 — bump min-height. Charter/closure `.cf-ta` (130px) and `ai-q` (auto-grows) are fine — leave.
+- [x] CSS constraints: `.dt td input,select,textarea{width:100%}` `css/src/30-panels.css:918-934`; `textarea{resize:vertical}` `35-workspace.css:1269-1271`; `.cf-ta` `:1452-1466`. Edit sources, rebuild.
+- [x] Re-baseline `tools/qa-project-photos.cjs`; add a check that the caption is a textarea that grows on input; register in `docs/CI-TEST-COVERAGE.md`.
+
+**Shipped** in `867a98c` on branch `feat/photo-caption` (Auth-Agent, delegated by this wave and rebased onto it). `MMGR.Utils.autoGrow` fits the content, caps at 160px and sets `.at-cap`; a delegated `input`/`focusin` listener picks up any `[data-autogrow]` box, so `js/mmgr-app.js` — the named split candidate at its size cap — stays untouched. Applied to the photo set description, bundle description, risk description and mitigation, issue description, incident "What happened", page paragraphs and callouts; one-line table-cell notes keep their input and carry the full value as a `title` on focus. Gates re-run here on that branch: `tools/qa-project-photos.cjs` 23/23 with the new G2d (textarea keeps `id`/`maxlength`/`aria-label`, grows, caps, `.at-cap`, and the delegated listener reaches the helper); branch owner also reports `qa-full` 196/196 with check 43 re-baselined to the growing box.
 
 ### K. Status-chip outline — remove border, keep arrow
 - [x] The selector is a custom button `project.html:180` (`.status-chip#status-chip`, `popovertarget="status-pop"`) with children: `.sdot` dot, `#status-chip-lbl` label, and `<svg class="ico"><use ...#i-arrow-down>` — the arrow to KEEP. Menu `project.html:181-186`; render `js/mmgr-render.js:2038-2064`; handler `js/mmgr-app.js:4859-4883`. — `0fcb4d8`
@@ -113,7 +115,7 @@ Owner decision: **in-app banner only** (no email, no backend/CF changes) + **war
 - [x] Added `tools/qa-onhold-gate.cjs` (8 gates: banner inside `#app-header`, owner sentence + single control, `setProjStatus` refused while locked, finalize unlocks and the same click then applies, survives re-read and reload, per-project key, no page error), registered in `docs/CI-TEST-COVERAGE.md` and as a `T4:` step in `.github/workflows/ci.yml`. — `7a6f293`
 
 ### M. Perf-mode + dark sidebar transparency bug
-- [ ] Cause: Performance mode sets `data-perf='on'` on `<html>` (`js/mmgr-perf.js:52-57`) and globally forces `backdrop-filter:none !important` (`css/src/85-performance-mode.css:14-21`). Its solid-fill compensation list (`:43-50`) covers `.top,.dock,#drw,.db-sheet,.drw-sheet,.bcp-top` but **omits `.db-side`**, the launcher rail. In dark mode `.db-side` is `background: var(--glass-fill-dark)` = `rgba(255,255,255,0.04)` + blur (`70-chrome.css:62`, token `20-shell.css:86-88`, `10-tokens.css:45`) — blur off, no opaque fallback → see-through. Light mode uses opaque `var(--card)` (`:358-370`), hence dark-only.
+- [x] Cause: Performance mode sets `data-perf='on'` on `<html>` (`js/mmgr-perf.js:52-57`) and globally forces `backdrop-filter:none !important` (`css/src/85-performance-mode.css:14-21`). Its solid-fill compensation list (`:43-50`) covers `.top,.dock,#drw,.db-sheet,.drw-sheet,.bcp-top` but **omits `.db-side`**, the launcher rail. In dark mode `.db-side` is `background: var(--glass-fill-dark)` = `rgba(255,255,255,0.04)` + blur (`70-chrome.css:62`, token `20-shell.css:86-88`, `10-tokens.css:45`) — blur off, no opaque fallback → see-through. Light mode uses opaque `var(--card)` (`:358-370`), hence dark-only.
 - [x] Minimal fix: added `[data-perf='on'] body.dark-mode.db-page .db-side { background: var(--db-surface-raised) !important; }` in `css/src/85-performance-mode.css` beside the existing solid-fill list, mirroring the proven `prefers-reduced-transparency` fallback. `--db-surface-raised: #1d1d20` is opaque. — `0fcb4d8`
 - [x] Added `qa-glass` G03c: forces `[data-perf='on']` + dark + `db-page`, reads the **computed** `.db-side` background alpha (must be 1), then restores state. `GLASS35_GATE PASS`; `tools/verify-perf-boot.cjs` PASS. CSS source + `node build.js`, no inline-script change. — `4194177`
 
@@ -124,15 +126,15 @@ Owner decision: **in-app banner only** (no email, no backend/CF changes) + **war
 - [x] Rebuilt `dist/marketing.min.css` via `node build.js`. `css/marketing.css` is under a fixed 176000-byte size cap — the first verbose version went over, so the final edit uses the page's existing tokens and stays at 175976 bytes. Added `tools/qa-consent` B1b (no gold focus ring / hover fill in the applied CSSOM) — 38/38; axe clean both palettes. — `0fcb4d8`, `4194177`
 
 ### O. Canonical checkbox tracking file
-- [ ] Create `docs/UI-WAVE-CHECKLIST-2026-11-20.md`: status legend (`[ ]` OPEN, `[~]` IN PROGRESS, `[x]` DONE, `[?]` NEEDS OWNER DECISION), one checkbox per item A–N + sub-items, grouped by area, with responsible files. Leave all boxes unchecked initially ("empty/ready" file). This plan file is tickable directly above too.
-- [ ] Follow `docs/history/REFINEMENT-PROGRESS.md:23-28` / `PLANNING-TODO...txt:2`: flip a box only with commit hash + gate result. Link from read-order lists (`AGENTS.md` READ ORDER, `CONTINUATION-DIRECTIVE.md:3`, `EXECUTION-PLAN.md:10-22`). `.md` deploy-excluded — never ships.
+- [x] Create `docs/UI-WAVE-CHECKLIST-2026-11-20.md`: status legend (`[ ]` OPEN, `[~]` IN PROGRESS, `[x]` DONE, `[?]` NEEDS OWNER DECISION), one checkbox per item A–N + sub-items, grouped by area, with responsible files. Leave all boxes unchecked initially ("empty/ready" file). This plan file is tickable directly above too.
+- [x] Follow `docs/history/REFINEMENT-PROGRESS.md:23-28` / `PLANNING-TODO...txt:2`: flip a box only with commit hash + gate result. Link from read-order lists (`AGENTS.md` READ ORDER, `CONTINUATION-DIRECTIVE.md:3`, `EXECUTION-PLAN.md:10-22`). `.md` deploy-excluded — never ships.
 
 ### P. Admin MCP panel loading state + chrome-free top-bar controls
 Owner report 2026-11-21. Two separate problems: the MCP panel announces a verdict
 before it has one, and five controls carry outline/pill chrome the owner does not
 want. The lower "start a project" empty state is out of scope by owner request.
 
-- [ ] **Never open on the word "Unavailable".** `load()` (`js/app/mcp-admin.js:742-800`)
+- [x] **Never open on the word "Unavailable".** `load()` (`js/app/mcp-admin.js:742-800`)
 sets the chip to `Checking...`, keeps `#mcp-admin-body` hidden until
 `/api/mcp/config` resolves, and on any non-auth failure jumps straight to
 `setChip('Unavailable', 'err')` with an error line and an empty card. Replace it
@@ -142,46 +144,46 @@ with three explicit states: **loading** (chip `Loading...`, status
 `Press Refresh`, retry visible). Remove `Unavailable` as a label: it is a
 conclusion the user cannot act on and reads as "this feature does not exist".
 Keep `Offline` for `navigator.onLine === false`.
-- [ ] **A failed client fetch must not look like zero clients.** In `load()`'s
+- [x] **A failed client fetch must not look like zero clients.** In `load()`'s
 `/api/mcp/clients` branch the rejection path calls `renderClients([])`
 (`js/app/mcp-admin.js:775-790`), so a network error renders
 `No client has connected yet.` Replace with `Could not load connected clients.
 Press Refresh.` and keep the count badge hidden.
-- [ ] **Copy connection URL is a plain control.** `admin.html:587`
+- [x] **Copy connection URL is a plain control.** `admin.html:587`
 (`.btn.btn-g.btn-s`) and the inner `Copy` at `admin.html:607` lose the green fill
 and the border; keep the clipboard icon and the accessible name. Hover gives a
 subtle tint and the text underlines only if the surrounding panel already does
 that; `:focus-visible` keeps the standard ring.
-- [ ] **Refresh is a plain control.** `admin.html:596-598`
+- [x] **Refresh is a plain control.** `admin.html:596-598`
 (`.btn.btn-n.btn-s` in `.mcp-admin-statusline`) loses its outline and keeps the
 hover tint and focus ring.
-- [ ] **Premium badge loses the pill.** `#plan-badge` (`app.html:447-450`; the rail
+- [x] **Premium badge loses the pill.** `#plan-badge` (`app.html:447-450`; the rail
 mirror is built in `js/mmgr-billing-manage.js:119-127`) drops the gold border and
 fill from `css/src/89-code-names.css:88-118` and
 `css/src/82-launcher.css:1189-1204`. Keep the icon, the gold text and the
 hover/focus behaviour. If a state genuinely needs a container (for example the
 paid-through date), use spacing, not an outline.
-- [ ] **New Project and Import Project lose their outline and fill.**
+- [x] **New Project and Import Project lose their outline and fill.**
 `admin.html:512-513`. They stay first in the toolbar, keep their icons, and show
 themselves as buttons on hover only. Do not touch the empty-state start block
 further down the page.
-- [ ] **Check the MCP chip against the live page before restyling it.**
+- [x] **Check the MCP chip against the live page before restyling it.**
 `.mcp-admin-chip` is already plain text with state colour only
 (`css/src/37-mcp-admin.css:13-31`, task #12 on 2026-11-18). If the live admin
 page still shows a pill, the deployed bundle predates that change; fix the
 deploy, not the CSS.
-- [ ] **Premium popover breathing room.** `.plan-pop` is 300px wide with 14px
+- [x] **Premium popover breathing room.** `.plan-pop` is 300px wide with 14px
 padding, `.plan-pop-h` has 8px below it, and the `.bmg-*` rows sit at 3-6px
 margins (`css/src/89-code-names.css:119-152`; cancel block in
 `css/src/82-launcher.css`). Raise the popover padding to 18-20px, put 12-14px
 under the header, 10-12px between plan rows, and 14px above the action buttons;
 confirm the paid-through line and "Premium - manage your subscription" still fit
 without touching at 300px and never exceed 100vw on a phone.
-- [ ] **Prove the controls still behave like controls.** Pointer cursor, hover tint
+- [x] **Prove the controls still behave like controls.** Pointer cursor, hover tint
 and the focus ring in light and dark, on all 8 skins. A control that reads as
 text must still give feedback on hover; do not remove the focus ring to achieve
 the flat look.
-- [ ] **Admin copy names the four clients.** `admin.html:582` still says "Connect
+- [x] **Admin copy names the four clients.** `admin.html:582` still says "Connect
 Claude, Cursor or your own scripts", and `.mcp-admin-steps` (`admin.html:611-620`)
 only walks through Claude. Add ChatGPT and Gemini to the lede and the steps,
 and state the external limits plainly: ChatGPT needs Business, Enterprise or Edu
@@ -189,10 +191,12 @@ for write tools; Gemini needs an eligible personal account (US, 18+). Plain
 language, no promises about plan availability. The card is served HTML but holds
 no inline script, so no CSP hash changes; the admin page's own inline script is
 untouched.
-- [ ] Rebuild with `node build.js` (admin/app CSS + any touched source), then
+- [x] Rebuild with `node build.js` (admin/app CSS + any touched source), then
 re-baseline `tools/qa-mcp-admin-panel.cjs` (chip/status strings and the
 copy/refresh selectors) and `tools/qa-billing-orphan.cjs`; run `qa-full` and
 `qa-glass` for the rail and popover.
+
+**Shipped** in `ad12703` on branch `feat/admin-mcp-panel` (Auth-Agent, delegated by this wave). Three explicit panel states — loading with two dim skeleton rows, ready, and failed naming its reason and pointing at Refresh — with `Unavailable` gone and `Offline` kept for a real offline browser. A failed client fetch keeps the count badge hidden instead of reading as "no client yet". The five controls lose fill and outline via a doubled `.btn` selector (the workspace layer redefines `.btn` later in the cascade), the Premium badge drops its gold pill in the header, rail and app mounts, the plan popover gains spacing, and the admin copy names ChatGPT and Gemini with their real limits. Gates re-run here at that commit: `tools/qa-mcp-admin-panel.cjs` 30/30, including the four new state gates and the record-name/before-after queue gates; branch owner also reports `qa-billing-orphan` 21/21, CSS integrity, sizes, gold, registry and 496 unit tests green.
 
 ### Q. Pricing copy: 33% launch offer + free trials on all plans (owner addition 2026-11-22)
 Owner changed the Paddle discount from 100% off to **33% off**, code **KRAFO0TJEO**,

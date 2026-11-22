@@ -447,7 +447,20 @@ var MMGR = window.MMGR || {};
     }
     const cap = Number(el.getAttribute('data-grow-cap')) || AUTOGROW_CAP;
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, cap) + 'px';
+    const want = el.scrollHeight;
+    // A cap that lands mid-line cuts the last line through the glyphs, which
+    // reads as broken text rather than as a box that scrolls. Round the limit
+    // DOWN to whole lines so a capped box always ends between two lines.
+    let limit = cap;
+    if (want > cap) {
+      const cs = getComputedStyle(el);
+      const lh = parseFloat(cs.lineHeight) || 0;
+      const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+      if (lh > 1) {
+        limit = pad + Math.max(1, Math.floor((cap - pad) / lh)) * lh;
+      }
+    }
+    el.style.height = Math.min(want, limit) + 'px';
     el.classList.toggle('at-cap', el.scrollHeight > el.offsetHeight + 2);
   }
 
@@ -547,6 +560,24 @@ var MMGR = window.MMGR || {};
     } catch (e) {
       /* no observer: typing still fits the box */
     }
+  }
+
+  // A width change rewraps every box, so the height fitted at the old width is
+  // wrong by a line or more. Refit once the browser has settled the new layout.
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    let pending = 0;
+    window.addEventListener('resize', function () {
+      if (pending) {
+        return;
+      }
+      const run = function () {
+        pending = 0;
+        autoGrowAll(document);
+      };
+      pending = window.requestAnimationFrame
+        ? window.requestAnimationFrame(run)
+        : setTimeout(run, 16);
+    });
   }
 
   // ---- API ----

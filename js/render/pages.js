@@ -312,7 +312,7 @@ var MMGR = window.MMGR || {};
         ' aria-label="Done: ' +
         esc(block.text || 'checklist item') +
         '">' +
-        '<textarea class="pg-in" rows="1" data-action="setBlockText" ' +
+        '<textarea class="pg-in" rows="1" data-autogrow data-action="setBlockText" ' +
         base +
         ' aria-label="Checklist item text" placeholder="Checklist item">' +
         esc(block.text) +
@@ -326,7 +326,7 @@ var MMGR = window.MMGR || {};
         '</textarea></div>';
     } else if (block.type === 'heading') {
       body =
-        '<textarea class="pg-in pg-in-h" rows="1" data-action="setBlockText" ' +
+        '<textarea class="pg-in pg-in-h" rows="1" data-autogrow data-action="setBlockText" ' +
         base +
         ' aria-label="Heading text" placeholder="Heading">' +
         esc(block.text) +
@@ -334,7 +334,7 @@ var MMGR = window.MMGR || {};
     } else if (block.type === 'bullet') {
       body =
         '<div class="pg-bul"><span class="pg-bul-dot" aria-hidden="true"></span>' +
-        '<textarea class="pg-in" rows="1" data-action="setBlockText" ' +
+        '<textarea class="pg-in" rows="1" data-autogrow data-action="setBlockText" ' +
         base +
         ' aria-label="Bullet text" placeholder="Bullet">' +
         esc(block.text) +

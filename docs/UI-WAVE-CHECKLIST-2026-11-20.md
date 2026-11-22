@@ -23,7 +23,7 @@ Source plans:
 - [x] **D. Old-project ring** — per-main-task equal-width segments — `:51` — `c8c9270` (`node --test test/major-groups.test.mjs` 15/15 incl. 4 flat cases; `tools/qa-dashboard-ring.cjs` 52/52 incl. D1-D7; `qa-full` 196/196; `npm run verify` green)
 - [ ] **E. Tours** — remove gold ring, full-target spotlight, smooth scroll, centred intro — `:57`
 - [x] **F. Theme available without sign-in** — `:64` — `0fcb4d8` (`npm run verify` green; signed-out Customize probe PASS, modal opens with no redirect; CSP hashes regenerated)
-- [ ] **G. Gantt chart** — today legend, sticky header, drag-to-pan, auto-cascade — `:69`
+- [x] **G. Gantt chart** — today legend, sticky header, drag-to-pan, auto-cascade — `:69` — `67f60ae` (`qa-gantt-cascade` 9/9 new; `qa-full` 196/196; `verify-gantt-view` 125/125; `qa-date-wiring` 13/13; `npm run verify` green; registry + `ci.yml` T4 wired, `verify-ci-coverage` 12/12)
 - [x] **H. Sidebar active-section highlight** — `:79` — `2660d78` (`qa-full` 196/196; check 39f: `#app-sidebar .sec-btn.active` after `showSec('chg')`)
 - [ ] **I. RACI matrix UI pass** — `:83`
 - [ ] **J. Photo description + undersized inputs** — `:93`

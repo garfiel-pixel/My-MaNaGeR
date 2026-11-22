@@ -28,7 +28,7 @@ Source plans:
 - [x] **I. RACI matrix UI pass** — `:83` — `c217e53` (`qa-raci-matrix` 11/11 new; `qa-full` 196/196; `npm run verify` green; registry + `ci.yml` T4 wired)
 - [ ] **J. Photo description + undersized inputs** — `:93`
 - [x] **K. Status-chip outline** — remove border, keep arrow — `:101` — `0fcb4d8` (`npm run verify` green; CSS source + dist rebuilt)
-- [ ] **L. Project on-hold notice** — in-app banner + finalize gate — `:106`
+- [x] **L. Project on-hold notice** — in-app banner + finalize gate — `:106` — `7a6f293` (`qa-onhold-gate` 8/8 new; `qa-full` 196/196; `npm run verify` green; registry + `ci.yml` T4 wired; acknowledgement is per-project localStorage, front-end only)
 - [x] **M. Perf-mode + dark sidebar transparency** — `:114` — `0fcb4d8` (`npm run verify` green; opaque fallback on `.db-side`)
 - [x] **N. Cookie-consent polish** — remove gold outline — `:119` — `0fcb4d8` (`npm run verify` green; neutral hover/currentColor focus, marketing.css kept under its byte cap)
 - [ ] **P. Admin MCP panel + chrome-free controls** — `:129`

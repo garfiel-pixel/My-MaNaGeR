@@ -4,6 +4,11 @@
 <symbol id="i-unlock" viewBox="0 0 24 24"><path d="M6 11V7a6 6 0 0 1 11-3.5"/><rect x="4" y="11" width="16" height="10" rx="2"/></symbol>
 <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></symbol>
+<!-- Microsoft sign-in mark: four filled tiles. Filled on purpose (every other
+     symbol here is a stroke icon); the inline style wins over .ico's fill:none
+     so the tiles actually paint. One shared symbol, never an emoji stand-in
+     and never a duplicated path per page (owner SVG-only gate). -->
+<symbol id="i-ms" viewBox="0 0 24 24"><g style="fill:currentColor;stroke:none"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></g></symbol>
 <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></symbol>
 <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/><path d="M13 15h4"/></symbol>
 <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><rect x="9" y="2.5" width="6" height="3.5" rx="1"/><path d="M9 11h6M9 15h6"/></symbol>

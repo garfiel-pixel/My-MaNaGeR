@@ -90,6 +90,18 @@
          the owner asked for. -->
     <div id="google-signin-button" class="signin-google" data-gis-theme="outline" data-gis-shape="pill" data-gis-size="large" data-gis-text="continue_with" data-gis-width="fill"></div>
 
+    <!-- 1b. MICROSOFT (owner 2026-11-22). A plain link, not a script: the
+         Worker runs the whole OAuth dance server-side
+         (/api/auth/microsoft/start), so this page keeps its no-inline-script
+         property and the CSP hash set is untouched. js/signin.js rewrites the
+         href with the validated ?next= target; without JS the link still
+         works and lands on the app. -->
+    <a class="signin-provider" id="signin-microsoft" href="/api/auth/microsoft/start?next=/app.html">
+      <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-ms"></use></svg>
+      <span>Sign in with Microsoft</span>
+    </a>
+    <p class="signin-provider-status" id="signin-microsoft-status" hidden></p>
+
     <div class="email-auth-divider signin-divider"><span>or use your email</span></div>
 
     <!-- 2. EMAIL, behind a disclosure. The shared form mounts here. -->

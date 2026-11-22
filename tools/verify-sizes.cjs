@@ -126,7 +126,11 @@ const EXACT = {
   // live in the stylesheet, so the markup stays unchanged) and C2 added the
   // shared card-motion block plus the numeral/glyph corner fixes
   // (172805 measured).
-  'css/marketing.css': 176000,
+  // 2026-11-22 (Microsoft sign-in): 176000 -> 178000. The sign-in page gained
+  // a second provider link (same stack shape as the Google pill) and one
+  // shared refusal-status line; the two plain CSS blocks are ~1.3 KB
+  // (177315 measured). No runtime behaviour beyond the new link.
+  'css/marketing.css': 178000,
   // 2026-11-17 (rate book, user's own book): raised 600000 -> 610000. The
   // file readers were SPLIT OUT into js/book-import.js first (288 lines), so
   // this raise covers only what stayed: the per-line rate identity, the

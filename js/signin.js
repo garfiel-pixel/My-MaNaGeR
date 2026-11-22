@@ -298,6 +298,40 @@
     }
   }
 
+  /* Microsoft door. The OAuth round trip leaves this page entirely, so
+     sessionStorage cannot carry RETURN_TO across it: the return path has to
+     travel in the href. safeNext() is applied again here, so the link is only
+     ever given a same-site path. */
+  var msLink = document.getElementById('signin-microsoft');
+  if (msLink) {
+    var msTarget = safeNext(RETURN_TO);
+    msLink.href =
+      '/api/auth/microsoft/start' + (msTarget ? '?next=' + encodeURIComponent(msTarget) : '');
+  }
+
+  /* A refused Microsoft attempt comes back as ?microsoft=failed (or
+     =unavailable when no client secret is configured). Say so in plain words
+     rather than returning to a page that looks untouched - the same lesson
+     the Google button learned on 2026-10-31. The reason itself is logged in
+     the Worker and never printed here. */
+  var msStatus = document.getElementById('signin-microsoft-status');
+  if (msStatus) {
+    var msState = '';
+    try {
+      msState = new URLSearchParams(window.location.search).get('microsoft') || '';
+    } catch (e) {
+      msState = '';
+    }
+    if (msState === 'failed') {
+      msStatus.textContent = 'Microsoft sign-in did not finish. Please try again.';
+      msStatus.hidden = false;
+    } else if (msState === 'unavailable') {
+      msStatus.textContent =
+        'Microsoft sign-in is not available right now. Use Google or your email instead.';
+      msStatus.hidden = false;
+    }
+  }
+
   /* Expose the validated return target for tests and harnesses. Reading it
      off a data attribute keeps it inspectable without a global. */
   document.body.setAttribute('data-signin-next', safeNext(RETURN_TO));

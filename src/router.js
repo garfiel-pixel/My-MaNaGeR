@@ -187,6 +187,7 @@ import {
   handleAuthLogoutAll,
   mintSession
 } from './auth/google.js';
+import { handleMicrosoftStart, handleMicrosoftCallback } from './auth/microsoft.js';
 import {
   handleAdminRecoveryStatus,
   handleAdminRecoverySend,
@@ -1313,6 +1314,18 @@ export async function routeApi(request, env, url) {
     if (path === '/api/auth/google' && request.method === 'POST') {
       structuredLog(env, 'info', 'auth-google-start');
       return handleAuthGoogle(request, env);
+    }
+    // MICROSOFT (owner 2026-11-22): server-side authorization-code flow.
+    // Both legs are GET because the browser is redirected, and neither takes
+    // a body, so no rate bucket is needed: /start only mints cookies and a
+    // 302, and /callback refuses without a matching HttpOnly state cookie.
+    if (path === '/api/auth/microsoft/start' && request.method === 'GET') {
+      structuredLog(env, 'info', 'auth-microsoft-start');
+      return handleMicrosoftStart(request, env);
+    }
+    if (path === '/api/auth/callback/microsoft' && request.method === 'GET') {
+      structuredLog(env, 'info', 'auth-microsoft-callback');
+      return handleMicrosoftCallback(request, env);
     }
     if (path === '/api/auth/me' && request.method === 'GET') {
       return handleAuthMe(request, env);

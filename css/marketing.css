@@ -4694,6 +4694,56 @@ body.dark-mode #f-voice {
   width: 100%;
 }
 
+/* Microsoft door (owner 2026-11-22). Same shape and height as the Google
+   button above it, because the two sit in one stack and a mismatched pair
+   reads as a layout bug. A link, not a button: the Worker handles the OAuth
+   redirect, so no script is involved on this page. */
+.signin-provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--lit-white-16);
+  background: rgba(14, 14, 16, 0.55);
+  color: var(--lit-white);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    border-color var(--tr),
+    background var(--tr),
+    transform var(--tr);
+}
+.signin-provider:hover {
+  border-color: rgba(var(--gold-rgb), 0.7);
+  background: rgba(14, 14, 16, 0.72);
+  color: var(--lit-white);
+}
+.signin-provider:active {
+  transform: scale(0.99);
+}
+.signin-provider .ico {
+  color: var(--gold-text);
+  flex-shrink: 0;
+}
+/* One plain line for BOTH providers' refusals, so a failure is never silent
+   (the 2026-10-31 lesson) and never prints a provider error string. */
+.signin-provider-status {
+  margin: 2px 0 6px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #fca5a5;
+  text-align: center;
+}
+.signin-provider-status[hidden] {
+  display: none;
+}
+
 .signin-divider {
   margin: 18px 0 14px;
 }

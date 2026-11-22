@@ -52,7 +52,11 @@ const EXCEPTIONS = {
   'https://api.resend.com': 'Worker-side email call, not browser-fetched',
   'https://api.pwnedpasswords.com': 'Worker-side HIBP call, not browser-fetched',
   'https://cdn.jsdelivr.net': 'Worker-side FX feed, not browser-fetched',
-  'https://latest.currency-api.pages.dev': 'Worker-side FX fallback feed, not browser-fetched'
+  'https://latest.currency-api.pages.dev': 'Worker-side FX fallback feed, not browser-fetched',
+  'https://login.microsoftonline.com':
+    'Worker-side Microsoft OAuth calls, plus a 302 the browser follows as a top-level navigation; no script, frame or fetch is made from the page',
+  'https://sts.windows.net':
+    'Microsoft issuer-format string inside the ID token validation regex, never fetched'
 };
 
 const URL_RE = /https?:\/\/[A-Za-z0-9._~:/?#[\]@!$&()*+,;=%-]+/g;

@@ -34,10 +34,10 @@ Branch: fresh `feat/` branch off `origin/main`; commit in logical groups; PR →
 ## Changes
 
 ### A. Sparkle → My Manager brand icon (full audit)
-- [ ] Reuse existing monochrome `i-mpw` symbol (`css/mmgr-icons.svg:88`, `css/mpw-mark.svg`) — the "small black skeleton" mark. No new asset.
-- [ ] Replace `#i-sparkle` → `#i-mpw` where it marks the app/AI: greeting `js/mmgr-render.js:74`; AI header `project.html:1737`, FAB `:1689`, chat/welcome/drawer `:1821,1835,1847,1952,2112`, command card `:354`; bot avatar `js/mmgr-ai.js:2918`; MCP badge `js/app/components.js:103`; cloud `js/cloud/review.js:224`, `js/mmgr-cloud.js:2942`; billing `js/mmgr-billing-manage.js:88,120`; search `js/app/search.js:89,1180,1303`; plan badges `app.html:448` / `admin.html:439`; calculator `calculator.html:801`; marketing `index.html:379`, `features.html:199`, `js/marketing*.js`.
-- [ ] **Keep** `i-star` for genuine ratings (`index.html:463`, `reviews.html`). Skip stale snapshot `images/pages/project-source.html`.
-- [ ] `node build.js`; bump calculator `?v=`.
+- [x] Reuse existing monochrome `i-mpw` symbol (`css/mmgr-icons.svg:88`, `css/mpw-mark.svg`) — the "small black skeleton" mark. No new asset.
+- [x] Replace `#i-sparkle` → `#i-mpw` where it marks the app/AI: greeting `js/mmgr-render.js:74`; AI header `project.html:1737`, FAB `:1689`, chat/welcome/drawer `:1821,1835,1847,1952,2112`, command card `:354`; bot avatar `js/mmgr-ai.js:2918`; MCP badge `js/app/components.js:103`; cloud `js/cloud/review.js:224`, `js/mmgr-cloud.js:2942`; billing `js/mmgr-billing-manage.js:88,120`; search `js/app/search.js:89,1180,1303`; plan badges `app.html:448` / `admin.html:439`; calculator `calculator.html:801`; marketing `index.html:379`, `features.html:199`, `js/marketing*.js`.
+- [x] **Keep** `i-star` for genuine ratings (`index.html:463`, `reviews.html`). Skip stale snapshot `images/pages/project-source.html`.
+- [x] `node build.js`; bump calculator `?v=`. — `792adaa` (`verify-icons` ARM 3: 0 generic `i-sparkle` across 205 served files; `qa-full` 196/196)
 
 ### B. Definition pills + methodology popup
 - [x] `js/app/definitions.js:42` — drop the `entry.group` `<span class="def-badge">`, keep term + meaning. Same pill in `js/mmgr-defs.js:428` (`renderDefs()`). Keep `group` in data, stop rendering it. — `0fcb4d8`
@@ -49,10 +49,10 @@ Branch: fresh `feat/` branch off `origin/main`; commit in logical groups; PR →
 - [x] Keep the separate `#ai-api-pill` health dot (`project.html:1747`). Rebuilt. `qa-ai` AI23_GATE PASS 0 fails + `qa-ai-polish` 13/13 after re-baselining both onto banner visibility / canonical state / Send gate. — `0fcb4d8`
 
 ### D. Old-project ring — per-main-task segments
-- [ ] Cause: `getMajorGroups()` (`js/mmgr-major-tasks.js:128-217`) groups by `isPhase` rows else `phase` labels; flat old projects have neither → one "Unassigned" group → `grouped:false` → `ringData()` null (`js/mmgr-render.js:146-157`) → single green circle.
-- [ ] Add a third branch: no phase rows **and** no phase labels → group each work item under its **top-level main task** (level-0 rollup parent / `parentName` root; parentless = own main task). One group per main task; complete when all subtasks are.
-- [ ] **Weighting (owner's concern):** equal arc width per main task (`share = 1/N`) so a subtask-heavy completed task can't dominate; arc **fill** = subtask completion (0–1), so incomplete tasks stay visible. `points = fill / N` keeps centre % consistent. Reuse 8 hashed colours (`withColors()`, `:282-296`) + neutral "Other" (`mergeOther()`, `:240-280`).
-- [ ] No state migration (render-time grouping). Do **not** touch phase branch; **no** status segments (would duplicate Health + Kanban). Reuse `renderRingSlots()` / `renderMajorList()` / `wireRingHover()`. Unit test in `test/major-groups.test.mjs`.
+- [x] Cause: `getMajorGroups()` (`js/mmgr-major-tasks.js:128-217`) groups by `isPhase` rows else `phase` labels; flat old projects have neither → one "Unassigned" group → `grouped:false` → `ringData()` null (`js/mmgr-render.js:146-157`) → single green circle.
+- [x] Add a third branch: no phase rows **and** no phase labels → group each work item under its **top-level main task** (level-0 rollup parent / `parentName` root; parentless = own main task). One group per main task; complete when all subtasks are.
+- [x] **Weighting (owner's concern):** equal arc width per main task (`share = 1/N`) so a subtask-heavy completed task can't dominate; arc **fill** = subtask completion (0–1), so incomplete tasks stay visible. `points = fill / N` keeps centre % consistent. Reuse 8 hashed colours (`withColors()`, `:282-296`) + neutral "Other" (`mergeOther()`, `:240-280`).
+- [x] No state migration (render-time grouping). Do **not** touch phase branch; **no** status segments (would duplicate Health + Kanban). Reuse `renderRingSlots()` / `renderMajorList()` / `wireRingHover()`. Unit test in `test/major-groups.test.mjs`. — `c8c9270` (unit 15/15 incl. 4 flat cases; `qa-dashboard-ring` 52/52 incl. D1-D7; `qa-full` 196/196; verify green)
 
 ### E. Tours — calculator (`js/calculator-page.js`) + project UI (`js/mmgr-tour.js`)
 - [ ] **Remove gold ring/glow:** calculator `.bcp-tour-spot::after` `css/src/50-calculator.css:1008-1017` drop gold border+glows, keep dim `:1005` + native border; project `#tour-ring` inline shadow `js/mmgr-tour.js:210-223` drop two gold rings, keep `9999px` dim. Active dot stays gold.
@@ -77,8 +77,8 @@ Branch: fresh `feat/` branch off `origin/main`; commit in logical groups; PR →
 - [ ] Re-baseline/add: `tools/verify-gantt-view.cjs`, `qa-full.cjs:612-716,1344-1469`, `tools/qa-date-wiring.cjs` — add test: successor `startDate` shifts after predecessor drag/duration change and Kanban shows new date. Register new harness in `docs/CI-TEST-COVERAGE.md` + `ci.yml` (AGENTS lesson 14).
 
 ### H. Sidebar active-section highlight
-- [ ] "Change Control Register" = `chg` panel (`project.html:1164-1166`); sidebar item = "Changes" (`data-section="chg"`, `project.html:288`). Bug: `showSection()` (`js/mmgr-render.js:2329-2413`, active `:2381-2384`) marks only passed button; programmatic opens pass hidden `#sec-nav` original; clone observer (`js/app/sidebar.js:299-319`) syncs only `is-hide`, never `active`; desktop `#sec-nav` is `display:none` (`20-shell.css:1532-1534`).
-- [ ] Fix after `mmgr-render.js:2384`: also toggle `active` on twin `#app-sidebar .sec-btn[data-section="<section>"]` (or extend `sidebar.js` observer). CSS `.sec-btn.active` exists (`20-shell.css:1631-1636`). Harness guard: `#app-sidebar .sec-btn.active` after `showSec('chg')`.
+- [x] "Change Control Register" = `chg` panel (`project.html:1164-1166`); sidebar item = "Changes" (`data-section="chg"`, `project.html:288`). Bug: `showSection()` (`js/mmgr-render.js:2329-2413`, active `:2381-2384`) marks only passed button; programmatic opens pass hidden `#sec-nav` original; clone observer (`js/app/sidebar.js:299-319`) syncs only `is-hide`, never `active`; desktop `#sec-nav` is `display:none` (`20-shell.css:1532-1534`).
+- [x] Fix after `mmgr-render.js:2384`: also toggle `active` on twin `#app-sidebar .sec-btn[data-section="<section>"]` (or extend `sidebar.js` observer). CSS `.sec-btn.active` exists (`20-shell.css:1631-1636`). Harness guard: `#app-sidebar .sec-btn.active` after `showSec('chg')`. — `2660d78` (`qa-full` 196/196, check 39f)
 
 ### I. RACI matrix UI pass
 - [ ] **Truncated names/roles:** person inputs `width:90px`, task input `min-width:190px` at `people.js:349,357` clip text. Widen task column + allow wrapping; render name bold + role as subtle subtitle (display span, edit border only on hover/focus) instead of stacked inputs; remove inline min-widths; add `title` attributes. CSS near `css/src/30-panels.css:858-934`.

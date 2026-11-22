@@ -17,14 +17,14 @@ Source plans:
 
 ## 1. UI polish wave (A-P) — ACTIVE
 
-- [ ] **A. Sparkle → My Manager brand icon** (full audit) — `docs/UI-POLISH-WAVE-PLAN-2026-11-20.md:36`
+- [x] **A. Sparkle → My Manager brand icon** (full audit) — `:36` — `792adaa` (`npm run verify` green; `qa-full` 196/196; `verify-icons` ARM 3: 0 generic `i-sparkle` across 205 served files)
 - [x] **B. Definition pills / methodology popup** — `:42` — `0fcb4d8` (`npm run verify` green; group pill dropped from tooltip + glossary, hover card click-through)
 - [x] **C. AI panel "Disconnected" chip** — `:47` — `0fcb4d8` (`qa-ai` AI23_GATE PASS 0 fails, `qa-ai-polish` 13/13; harnesses re-baselined onto banner + canonical state + Send gate)
-- [ ] **D. Old-project ring** — per-main-task equal-width segments — `:51`
+- [x] **D. Old-project ring** — per-main-task equal-width segments — `:51` — `c8c9270` (`node --test test/major-groups.test.mjs` 15/15 incl. 4 flat cases; `tools/qa-dashboard-ring.cjs` 52/52 incl. D1-D7; `qa-full` 196/196; `npm run verify` green)
 - [ ] **E. Tours** — remove gold ring, full-target spotlight, smooth scroll, centred intro — `:57`
 - [x] **F. Theme available without sign-in** — `:64` — `0fcb4d8` (`npm run verify` green; signed-out Customize probe PASS, modal opens with no redirect; CSP hashes regenerated)
 - [ ] **G. Gantt chart** — today legend, sticky header, drag-to-pan, auto-cascade — `:69`
-- [ ] **H. Sidebar active-section highlight** — `:79`
+- [x] **H. Sidebar active-section highlight** — `:79` — `2660d78` (`qa-full` 196/196; check 39f: `#app-sidebar .sec-btn.active` after `showSec('chg')`)
 - [ ] **I. RACI matrix UI pass** — `:83`
 - [ ] **J. Photo description + undersized inputs** — `:93`
 - [x] **K. Status-chip outline** — remove border, keep arrow — `:101` — `0fcb4d8` (`npm run verify` green; CSS source + dist rebuilt)

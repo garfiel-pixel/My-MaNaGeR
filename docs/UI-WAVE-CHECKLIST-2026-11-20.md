@@ -18,20 +18,21 @@ Source plans:
 ## 1. UI polish wave (A-P) — ACTIVE
 
 - [ ] **A. Sparkle → My Manager brand icon** (full audit) — `docs/UI-POLISH-WAVE-PLAN-2026-11-20.md:36`
-- [ ] **B. Definition pills / methodology popup** — `:42`
-- [ ] **C. AI panel "Disconnected" chip** — `:47`
+- [x] **B. Definition pills / methodology popup** — `:42` — `0fcb4d8` (`npm run verify` green; group pill dropped from tooltip + glossary, hover card click-through)
+- [x] **C. AI panel "Disconnected" chip** — `:47` — `0fcb4d8` (`qa-ai` AI23_GATE PASS 0 fails, `qa-ai-polish` 13/13; harnesses re-baselined onto banner + canonical state + Send gate)
 - [ ] **D. Old-project ring** — per-main-task equal-width segments — `:51`
 - [ ] **E. Tours** — remove gold ring, full-target spotlight, smooth scroll, centred intro — `:57`
-- [ ] **F. Theme available without sign-in** — `:64`
+- [x] **F. Theme available without sign-in** — `:64` — `0fcb4d8` (`npm run verify` green; signed-out Customize probe PASS, modal opens with no redirect; CSP hashes regenerated)
 - [ ] **G. Gantt chart** — today legend, sticky header, drag-to-pan, auto-cascade — `:69`
 - [ ] **H. Sidebar active-section highlight** — `:79`
 - [ ] **I. RACI matrix UI pass** — `:83`
 - [ ] **J. Photo description + undersized inputs** — `:93`
-- [ ] **K. Status-chip outline** — remove border, keep arrow — `:101`
+- [x] **K. Status-chip outline** — remove border, keep arrow — `:101` — `0fcb4d8` (`npm run verify` green; CSS source + dist rebuilt)
 - [ ] **L. Project on-hold notice** — in-app banner + finalize gate — `:106`
-- [ ] **M. Perf-mode + dark sidebar transparency** — `:114`
-- [ ] **N. Cookie-consent polish** — remove gold outline — `:119`
+- [x] **M. Perf-mode + dark sidebar transparency** — `:114` — `0fcb4d8` (`npm run verify` green; opaque fallback on `.db-side`)
+- [x] **N. Cookie-consent polish** — remove gold outline — `:119` — `0fcb4d8` (`npm run verify` green; neutral hover/currentColor focus, marketing.css kept under its byte cap)
 - [ ] **P. Admin MCP panel + chrome-free controls** — `:129`
+- [x] **Q. Pricing copy: 33% off code + trials on all plans** — owner addition 2026-11-22 — `6f810c2` (`npm run verify` green; promo code `KRAFO0TJEO`, 33% until June 2027, free trial on every paid plan; text only, no billing logic)
 
 ## 2. UX refinement directive (Parts A-D) — SHIPPED
 

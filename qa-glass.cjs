@@ -264,6 +264,36 @@ async function ev(expr) {
     c1b
   );
 
+  // UI-WAVE 2026-11-20 M: Performance Mode strips EVERY backdrop-filter, so
+  // the dark launcher rail needs an opaque fallback. Without it .db-side fell
+  // back to the translucent --glass-fill-dark and went see-through (owner
+  // report 2026-11-20). Check the COMPUTED alpha, not just the CSS source.
+  const c1c = await ev(`(function(){
+    var html = document.documentElement;
+    var body = document.body;
+    var side = document.querySelector('.db-side');
+    if (!side) return { side: false };
+    var prevPerf = html.getAttribute('data-perf');
+    var wasDark = body.classList.contains('dark-mode');
+    var wasDb = body.classList.contains('db-page');
+    html.setAttribute('data-perf', 'on');
+    body.classList.add('dark-mode', 'db-page');
+    var bg = getComputedStyle(side).backgroundColor;
+    var m = /rgba?\\(([^)]+)\\)/.exec(bg);
+    var parts = m ? m[1].split(',').map(function(s){ return parseFloat(s); }) : [];
+    var alpha = parts.length === 4 ? parts[3] : 1;
+    if (prevPerf === null) html.removeAttribute('data-perf');
+    else html.setAttribute('data-perf', prevPerf);
+    if (!wasDark) body.classList.remove('dark-mode');
+    if (!wasDb) body.classList.remove('db-page');
+    return { side: true, bg: bg, alpha: alpha, opaque: alpha === 1 };
+  })()`);
+  check(
+    'G03c perf-mode: dark launcher rail (.db-side) stays opaque when blur is stripped',
+    !!(c1c.side && c1c.opaque),
+    c1c
+  );
+
   // Capability floor: force low-end while pref stays premium -> CSS wins.
   const c2 = await ev(`(function(){
     window.__mmgrForceHighEnd = false;

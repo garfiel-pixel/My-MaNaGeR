@@ -1340,6 +1340,26 @@ async function pickPort(start) {
     return {val: ok && hidden, ok:ok, hidden:hidden, txt:tip?tip.textContent:''};
   })()`
   );
+  // UI-WAVE 2026-11-20 B: the definition tooltip must show term + meaning
+  // only (no Execution/Scheduling taxonomy pill), and the methodology hover
+  // card must not swallow clicks meant for the tabs it floats over.
+  await check(
+    '54b tooltip: no taxonomy pill; methodology hover card is click-through',
+    `(function(){
+    var el=document.querySelector('[data-def]');
+    if(!el){return {val:false,why:'no data-def element'};}
+    el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));
+    var tip=document.getElementById('def-tooltip');
+    var noPill=!!tip && !tip.querySelector('.def-badge');
+    el.dispatchEvent(new MouseEvent('mouseout',{bubbles:true}));
+    var card=document.getElementById('meth-learn-card');
+    var close=card?card.querySelector('.dc'):null;
+    var cardPE=card?getComputedStyle(card).pointerEvents:null;
+    var closePE=close?getComputedStyle(close).pointerEvents:null;
+    return {val:noPill && cardPE==='none' && closePE==='auto',
+      noPill:noPill, cardPE:cardPE, closePE:closePE};
+  })()`
+  );
   await check(
     '55 gantt export: exports a PNG blob + toast',
     `(function(){

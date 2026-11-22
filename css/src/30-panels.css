@@ -1342,13 +1342,18 @@ body.dark-mode .rm-active {
   padding: 6px;
   border-radius: var(--radius);
 }
-.btn-ghost {
+/* OWNER 2026-11-21 (item P): the plain control. Doubled class on purpose:
+   css/src/35-workspace.css §6.1 redefines .btn with a glass fill and border
+   later in the cascade, which silently beat this rule - a .btn-ghost button
+   rendered as a filled, outlined one. .btn.btn-ghost outranks it, so a control
+   with no chrome really has none at rest, and still tints on hover. */
+.btn.btn-ghost {
   background: transparent;
   border: none;
   color: var(--slate);
   padding: 6px 10px;
 }
-.btn-ghost:hover {
+.btn.btn-ghost:hover {
   color: var(--gold-text);
   background: rgba(var(--gold-rgb), 0.06);
 }

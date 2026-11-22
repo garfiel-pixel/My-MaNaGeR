@@ -1704,8 +1704,10 @@ body.db-page .db-user[hidden] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Shared Premium pill (app pages): rendered into [data-plan-badge] mounts by    mmgr-google-auth.js refreshPlan() - project.html header chip, admin rail.
-   Mirrors body.db-page .db-plan-badge from app.html's rail footer. */
+/* Shared Premium badge (app pages): rendered into [data-plan-badge] mounts by    mmgr-google-auth.js refreshPlan() - project.html header chip, admin rail.
+   Mirrors body.db-page .db-plan-badge from app.html's rail footer.
+   OWNER 2026-11-21 (item P): every instance drops the gold border and fill -
+   same treatment as .dirty-ind above. Icon, gold text and spacing carry it. */
 .plan-pill {
   display: inline-flex;
   align-items: center;
@@ -1715,10 +1717,9 @@ body.db-page .db-user[hidden] {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--gold-text);
-  border: 1px solid var(--gold);
-  border-radius: 100px;
+  border-radius: var(--radius);
   padding: 2px 8px;
-  background: rgba(var(--gold-rgb), 0.12);
+  background: transparent;
   white-space: nowrap;
 }
 .plan-pill .ico {

@@ -85,14 +85,16 @@ button.code-which:focus-visible {
   display: inline-flex;
   align-items: center;
 }
+/* OWNER 2026-11-21 (item P): the badge is a control, not a container. The
+   gold outline and fill are gone, so it reads as the gold text and icon it
+   is; the hover tint and the focus ring are the feedback that says it can be
+   pressed. Colour, weight, icon and spacing carry the meaning now. */
 .plan-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 4px 9px;
-  border: 1px solid color-mix(in oklch, var(--gold) 32%, transparent);
-  border-radius: 100px;
-  background: color-mix(in oklch, var(--gold) 10%, transparent);
+  border-radius: var(--radius);
   color: var(--gold-text);
   font-family: inherit;
   font-size: 0.68rem;
@@ -102,7 +104,7 @@ button.code-which:focus-visible {
   cursor: pointer;
 }
 .plan-badge:hover {
-  background: color-mix(in oklch, var(--gold) 16%, transparent);
+  background: color-mix(in oklch, var(--gold) 12%, transparent);
 }
 .plan-badge:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -125,7 +127,7 @@ button.code-which:focus-visible {
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 96px);
   overflow-y: auto;
-  padding: 14px;
+  padding: 19px;
   border: var(--glass-border);
   border-radius: var(--squircle-md);
   background: var(--card);
@@ -149,7 +151,16 @@ button.code-which:focus-visible {
   font-size: 0.78rem;
   font-weight: 800;
   color: var(--text-heading);
-  margin-bottom: 8px;
+  margin-bottom: 13px;
+}
+/* OWNER 2026-11-21 (item P): breathing room inside the plan popover. Rows are
+   separated by space, never by outlines; the action row gets the widest gap
+   so a thumb lands on it and not on the row above. */
+#plan-body > * + * {
+  margin-top: 11px;
+}
+#plan-body > *:last-child {
+  margin-top: 14px;
 }
 /* Header backup control (admin panel). OWNER 2026-11-05: the badge is a
    button now - hover (pointer devices) or tap opens the backup panel. It

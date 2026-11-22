@@ -1185,7 +1185,10 @@ body.db-page .db-avatar.is-in .db-avatar-txt {
     display: none;
   }
 }
-/* ---- rail footer: plan status ---- */
+/* ---- rail footer: plan status ----
+   OWNER 2026-11-21 (item P): the rail badge was a gold pill - outline plus
+   fill - for a line of text that is not a container. It now paints only the
+   gold label; the popover holds the detail. */
 body.db-page .db-plan-badge {
   display: inline-flex;
   align-items: center;
@@ -1193,12 +1196,12 @@ body.db-page .db-plan-badge {
   gap: 6px;
   width: 100%;
   padding: 9px 10px;
-  border-radius: 100px;
+  border-radius: 0;
   font-size: 0.74rem;
   font-weight: 800;
   color: var(--gold-text);
-  background: color-mix(in oklch, var(--gold) 10%, transparent);
-  border: 1px solid color-mix(in oklch, var(--gold) 32%, transparent);
+  background: transparent;
+  border: none;
 }
 /* UI-IA Phase 5: the plan and the paid-through date are two lines by design.
    One long pill split "2026" onto a line of its own in the 211px popover. */
@@ -1236,7 +1239,7 @@ body.db-page .db-upgrade-note {
    to type, so the requirement is never a guess. */
 .bmg-label {
   display: block;
-  margin: 6px 0 3px;
+  margin: 12px 0 4px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1246,7 +1249,7 @@ body.db-page .db-upgrade-note {
   display: block;
   width: 100%;
   max-width: 190px;
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   padding: 5px 8px;
   font: inherit;
   font-size: 0.72rem;
@@ -1262,7 +1265,7 @@ body.db-page .db-upgrade-note {
   cursor: not-allowed;
 }
 .bmg-why {
-  margin: 0 0 6px;
+  margin: 0;
   opacity: 0.8;
 }
 /* ---- sign-in modal (#siom): light theme ----
@@ -1358,8 +1361,8 @@ body.dark-mode.db-page .db-backup {
 }
 body.dark-mode.db-page .db-plan-badge {
   color: var(--db-accent);
-  background: color-mix(in oklch, var(--db-accent) 10%, transparent);
-  border-color: color-mix(in oklch, var(--db-accent) 35%, transparent);
+  background: transparent;
+  border: none;
 }
 body.dark-mode.db-page .db-backup-auto select {
   background: var(--db-surface-raised);

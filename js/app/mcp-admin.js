@@ -12,6 +12,12 @@
   var clientList = [];
   var pendingList = [];
   var activeTab = 'pending';
+  // Item P (owner report 2026-11-21): the chip may only count clients once the
+  // client request has actually answered. Until then the panel is loading, not
+  // "On, no client yet" - that sentence is a verdict about a question nobody
+  // asked yet, and it is the same bug class as the old "Unavailable".
+  var clientsKnown = false;
+  var clientsFailed = false;
 
   function $(sel) {
     return card ? card.querySelector(sel) : null;
@@ -54,6 +60,16 @@
     var cfg = state.config || {};
     if (cfg.enabled === 0 || cfg.enabled === false) {
       setChip('Off', 'muted');
+      return;
+    }
+    if (!clientsKnown) {
+      setChip('Loading...', 'busy');
+      return;
+    }
+    // A count of clients we could not fetch would be a guess. Say the server is
+    // on and leave the number out.
+    if (clientsFailed) {
+      setChip('On', 'ok');
       return;
     }
     var live = (clientList || []).filter(function (c) {
@@ -144,8 +160,33 @@
     });
   }
 
+  // Item P: a failed client fetch used to render "No client has connected yet."
+  // - a network error dressed up as an empty account. It now says what
+  // happened, keeps the count badge hidden, and leaves the chip on "On"
+  // because the server state did load; only the list did not.
+  function renderClientsFailed() {
+    clientList = [];
+    clientsKnown = true;
+    clientsFailed = true;
+    var count = document.getElementById('mcp-client-count');
+    if (count) {
+      count.textContent = '0';
+      count.hidden = true;
+    }
+    var host = $('#mcp-clients');
+    if (host) {
+      host.textContent = '';
+      host.appendChild(
+        el('div', 'mcp-admin-empty', 'Could not load connected clients. Press Refresh.')
+      );
+    }
+    syncChip();
+  }
+
   function renderClients(clients) {
     clientList = Array.isArray(clients) ? clients : [];
+    clientsKnown = true;
+    clientsFailed = false;
     syncChip();
     var count = document.getElementById('mcp-client-count');
     if (count) {
@@ -226,13 +267,26 @@
     host.appendChild(wrap);
   }
 
+  // Item P: three explicit panel states, one owner. "Loading" holds the card
+  // open with two dim rows, "ready" is the real panel, "failed" hides both and
+  // leaves the status line naming the reason next to Refresh. "Unavailable" is
+  // gone: it was a conclusion the user could not act on and it read as "this
+  // feature does not exist".
+  function setPanelState(kind) {
+    var loading = document.getElementById('mcp-admin-loading');
+    if (loading) {
+      loading.hidden = kind !== 'loading';
+    }
+    var body = document.getElementById('mcp-admin-body');
+    if (body) {
+      body.hidden = kind !== 'ready';
+    }
+  }
+
   function applyConfig(data) {
     state = data;
     var cfg = data.config || {};
-    var body = $('#mcp-admin-body');
-    if (body) {
-      body.hidden = false;
-    }
+    setPanelState('ready');
     var enabled = $('#mcp-enabled');
     if (enabled) {
       enabled.checked = cfg.enabled !== 0 && cfg.enabled !== false;
@@ -749,26 +803,27 @@
     if (urlInput) {
       urlInput.value = location.origin + '/api/mcp';
     }
+    clientsKnown = false;
+    clientsFailed = false;
+    setPanelState('loading');
     setStatus('Loading MCP settings...');
-    setChip('Checking...', 'busy');
+    setChip('Loading...', 'busy');
     api('/api/mcp/config')
       .then(function (r) {
         if (r.status === 403 || r.status === 401) {
           state = null;
           syncChip();
           setStatus(
-            'Sign in to your account to manage the MCP server: open the app, use Sign in, then press Retry. The connection URL above still works: Claude sends you here to sign in.',
+            'Sign in to your account to manage the MCP server: open the app, use Sign in, then press Refresh. The connection URL above still works: Claude sends you here to sign in.',
             'muted'
           );
-          var body = $('#mcp-admin-body');
-          if (body) {
-            body.hidden = true;
-          }
+          setPanelState('failed');
           return null;
         }
         if (!r.ok || !r.data.ok) {
-          setChip('Unavailable', 'err');
-          setStatus(errorText(r), 'err');
+          setChip('Could not load', 'err');
+          setStatus(errorText(r) + ' Press Refresh.', 'err');
+          setPanelState('failed');
           return null;
         }
         applyConfig(r.data);
@@ -779,11 +834,11 @@
               if (c.ok && c.data.ok) {
                 renderClients(c.data.clients);
               } else {
-                renderClients([]);
+                renderClientsFailed();
               }
             },
             function () {
-              renderClients([]);
+              renderClientsFailed();
             }
           )
           .then(function () {
@@ -792,13 +847,14 @@
       })
       .catch(function () {
         var offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        setChip(offline ? 'Offline' : 'Unavailable', 'err');
+        setChip(offline ? 'Offline' : 'Could not load', 'err');
         setStatus(
           offline
-            ? 'You are offline. Reconnect, then press Retry.'
-            : 'Could not reach the MCP settings service. Press Retry.',
+            ? 'You are offline. Reconnect, then press Refresh.'
+            : 'Could not reach the MCP settings service. Press Refresh.',
           'err'
         );
+        setPanelState('failed');
       });
   }
 

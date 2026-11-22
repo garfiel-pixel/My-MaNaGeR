@@ -509,8 +509,11 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
            its one live lesson (cloud rows push with Update Cloud Snapshot)
            now lives in the row states themselves, and the full story is in
            the field guide where deep copy belongs. -->
-      <button class="btn btn-g" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
-      <button class="btn btn-n" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
+      <!-- OWNER 2026-11-21 (item P): the two creation actions stay first and
+           keep their icons, but hold no fill or outline at rest - they show
+           themselves as buttons on hover, where the pointer already is. -->
+      <button class="btn btn-ghost" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
+      <button class="btn btn-ghost" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
       <input type="file" id="import-project-file" accept=".json,.js,application/json,application/javascript,text/plain" style="display:none" aria-hidden="true">
     </div>
 
@@ -579,12 +582,12 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
           <span class="mcp-admin-mark"><svg class="ico mcp-brand-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg></span>
           <div>
             <h2 class="card-title mcp-admin-title" id="mcp-admin-title">MCP server</h2>
-            <p class="hint mcp-admin-lede">Connect Claude, Cursor or your own scripts. They read only the sections you grant, and every change they propose waits for your click here.</p>
+            <p class="hint mcp-admin-lede">Connect Claude, ChatGPT, Gemini, Cursor or your own scripts. They read only the sections you grant, and every change they propose waits for your click here.</p>
           </div>
         </div>
         <div class="mcp-admin-head-r">
-          <span class="mcp-admin-chip" id="mcp-admin-chip" data-kind="">Checking...</span>
-          <button type="button" class="btn btn-g btn-s" data-mcp-act="copy-url"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy connection URL</button>
+          <span class="mcp-admin-chip" id="mcp-admin-chip" data-kind="">Loading...</span>
+          <button type="button" class="btn btn-ghost btn-s" data-mcp-act="copy-url"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy connection URL</button>
         </div>
       </div>
       <div class="mcp-admin-tabs" role="tablist" aria-label="MCP server views">
@@ -594,7 +597,14 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       </div>
       <div class="mcp-admin-statusline">
         <span class="t-xs" id="mcp-admin-status" role="status"></span>
-        <button type="button" class="btn btn-n btn-s" data-mcp-act="reload" style="margin-left:auto">Refresh</button>
+        <button type="button" class="btn btn-ghost btn-s" data-mcp-act="reload" style="margin-left:auto">Refresh</button>
+      </div>
+      <!-- OWNER 2026-11-21 (item P): the panel is honest about being in flight.
+           The status line above says "Loading MCP settings..." to a screen
+           reader; these two rows hold the space so nothing flashes empty. -->
+      <div class="mcp-admin-loading" id="mcp-admin-loading" aria-hidden="true">
+        <span class="mcp-admin-skel-row"></span>
+        <span class="mcp-admin-skel-row"></span>
       </div>
       <div id="mcp-admin-body" hidden>
         <div class="mcp-admin-panel" id="mcp-panel-pending" role="tabpanel" aria-labelledby="mcp-tab-pending" data-mcp-panel="pending">
@@ -604,7 +614,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
           <div class="mcp-admin-connect">
             <div class="sr" style="padding:0;border:0;margin:0 0 6px">
               <span class="sl">Connection URL</span>
-              <button type="button" class="btn btn-n btn-s" data-mcp-act="copy-url" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>
+              <button type="button" class="btn btn-ghost btn-s" data-mcp-act="copy-url" style="margin-left:auto"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>
             </div>
             <input type="text" id="mcp-connect-url" class="ctl-in mcp-admin-url" readonly value="https://mymanagerworkspace.com/api/mcp" aria-label="MCP connection URL">
             <p class="hint" style="margin:8px 0 0">Paste this into Claude, Cursor or any MCP connector that supports OAuth. The connector sends you here to sign in, you press Allow, and it is connected.</p>
@@ -618,6 +628,25 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
                 <li>Click <b>Add</b>, then <b>Connect</b>. Sign in to My MaNaGeR and press <b>Allow</b>.</li>
               </ol>
               <p class="hint">Claude reaches this URL from its own servers, so the site must be online while you connect. The full walkthrough is in the <a href="mymanager-field-guide.html#connect-ai">field guide, sheet A-27</a>.</p>
+            </details>
+            <!-- OWNER 2026-11-21 (item P): the steps walked through Claude only.
+                 The other two clients are named with their real plan limits, and
+                 the limits are stated plainly instead of promised away. -->
+            <details class="mcp-admin-how">
+              <summary>How to add it in ChatGPT</summary>
+              <p class="hint">Changing a project needs a Business, Enterprise or Education plan. Pro can read but cannot make changes. The web app is the only place the connector runs.</p>
+              <ol class="mcp-admin-steps">
+                <li>In ChatGPT, add the URL above as a custom connector.</li>
+                <li>Choose the sign-in option, then sign in here and press <b>Allow</b>.</li>
+              </ol>
+            </details>
+            <details class="mcp-admin-how">
+              <summary>How to add it in Gemini</summary>
+              <p class="hint">Gemini custom connectors need a personal Google account, not a work or school one. Google lists them as US only, 18 and over, English interface, in the web app. Check the account first, because a work account cannot finish the connection.</p>
+              <ol class="mcp-admin-steps">
+                <li>In Gemini, add the URL above as a custom connector and pick <b>Dynamic Client Registration</b>.</li>
+                <li>Sign in here and press <b>Allow</b>.</li>
+              </ol>
             </details>
           </div>
           <div class="sr">

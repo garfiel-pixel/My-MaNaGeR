@@ -441,16 +441,12 @@ var MMGR = window.MMGR || {};
   // content, grows to fit up to a cap so a long note never swallows the page,
   // then lets the box scroll with a visible cue (the .at-cap class).
   const AUTOGROW_CAP = 160;
-  function autoGrow(el) {
-    if (!el || el.tagName !== 'TEXTAREA') {
-      return;
-    }
+  // The fitted height for a box whose content needs `want` pixels. A cap that
+  // lands mid-line cuts the last line through the glyphs, which reads as broken
+  // text rather than as a box that scrolls, so the limit rounds DOWN to whole
+  // lines and a capped box always ends between two lines.
+  function growHeight(el, want) {
     const cap = Number(el.getAttribute('data-grow-cap')) || AUTOGROW_CAP;
-    el.style.height = 'auto';
-    const want = el.scrollHeight;
-    // A cap that lands mid-line cuts the last line through the glyphs, which
-    // reads as broken text rather than as a box that scrolls. Round the limit
-    // DOWN to whole lines so a capped box always ends between two lines.
     let limit = cap;
     if (want > cap) {
       const cs = getComputedStyle(el);
@@ -460,8 +456,18 @@ var MMGR = window.MMGR || {};
         limit = pad + Math.max(1, Math.floor((cap - pad) / lh)) * lh;
       }
     }
-    el.style.height = Math.min(want, limit) + 'px';
-    el.classList.toggle('at-cap', el.scrollHeight > el.offsetHeight + 2);
+    return Math.min(want, limit);
+  }
+
+  function autoGrow(el) {
+    if (!el || el.tagName !== 'TEXTAREA') {
+      return;
+    }
+    el.style.height = 'auto';
+    const want = el.scrollHeight;
+    const fitted = growHeight(el, want);
+    el.style.height = fitted + 'px';
+    el.classList.toggle('at-cap', want > fitted + 2);
   }
 
   // The wiring lives beside the helper, not in mmgr-app.js: that file is the
@@ -513,8 +519,40 @@ var MMGR = window.MMGR || {};
       return;
     }
     const boxes = root.querySelectorAll('textarea[data-autogrow]');
-    for (let i = 0; i < boxes.length; i++) {
-      autoGrow(boxes[i]);
+    if (!boxes.length) {
+      return;
+    }
+    // Three passes, so the browser lays the page out once instead of once per
+    // box: every height to auto first, every measurement second, the fitted
+    // heights last. The measurement pass caches the geometry, because a style
+    // or layout read after the first height write puts the thrash straight back
+    // (that version measured 260ms for the 240 boxes of a 120-risk table).
+    const n = boxes.length;
+    for (let i = 0; i < n; i++) {
+      boxes[i].style.height = 'auto';
+    }
+    const wants = new Array(n);
+    const caps = new Array(n);
+    const lines = new Array(n);
+    const pads = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const el = boxes[i];
+      wants[i] = el.scrollHeight;
+      caps[i] = Number(el.getAttribute('data-grow-cap')) || AUTOGROW_CAP;
+      const cs = getComputedStyle(el);
+      lines[i] = parseFloat(cs.lineHeight) || 0;
+      pads[i] = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    }
+    for (let i = 0; i < n; i++) {
+      const want = wants[i];
+      const cap = caps[i];
+      let limit = cap;
+      if (want > cap && lines[i] > 1) {
+        limit = pads[i] + Math.max(1, Math.floor((cap - pads[i]) / lines[i])) * lines[i];
+      }
+      const fitted = Math.min(want, limit);
+      boxes[i].style.height = fitted + 'px';
+      boxes[i].classList.toggle('at-cap', want > fitted + 2);
     }
   }
 

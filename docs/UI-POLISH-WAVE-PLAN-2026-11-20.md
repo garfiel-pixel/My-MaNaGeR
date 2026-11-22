@@ -40,13 +40,13 @@ Branch: fresh `feat/` branch off `origin/main`; commit in logical groups; PR →
 - [ ] `node build.js`; bump calculator `?v=`.
 
 ### B. Definition pills + methodology popup
-- [ ] `js/app/definitions.js:42` — drop the `entry.group` `<span class="def-badge">`, keep term + meaning. Same pill in `js/mmgr-defs.js:428` (`renderDefs()`). Keep `group` in data, stop rendering it.
-- [ ] `.mlc-card` `css/src/35-workspace.css:3059-3075` is `position:fixed; z-index:500` with no `pointer-events`, over the tabs → add `pointer-events:none` and shift below tab row (def-tooltip already does this at `30-panels.css:2800`).
-- [ ] Edit CSS **sources**, rebuild. Re-baseline `qa-full.cjs:1329-1342` (no `.def-badge`) + add methodology-tab-clickable check.
+- [x] `js/app/definitions.js:42` — drop the `entry.group` `<span class="def-badge">`, keep term + meaning. Same pill in `js/mmgr-defs.js:428` (`renderDefs()`). Keep `group` in data, stop rendering it. — `0fcb4d8`
+- [x] `.mlc-card` `css/src/35-workspace.css:3059-3075` is `position:fixed; z-index:500` with no `pointer-events`, over the tabs → added `pointer-events:none` (close control `.dc` keeps `pointer-events:auto` so it stays usable). — `0fcb4d8`
+- [x] Edit CSS **sources**, rebuild. No harness asserted `.def-badge`, so no re-baseline was needed; added `qa-full` 54b (no pill + hover card click-through, 195/195) in `4194177`. The card deliberately still floats over the tabs visually — it is a hover explainer, and clicks now pass through.
 
 ### C. Remove AI "Disconnected" chip
-- [ ] Remove `#ai-byo-status` markup `project.html:1799`, `.ai-byo-status*` CSS `css/src/40-ai.css:1183-1208`, dead `syncByoStatus()` state writes `js/mmgr-ai.js:937-963`.
-- [ ] Keep the separate `#ai-api-pill` health dot (`project.html:1747`). Rebuild.
+- [x] Remove `#ai-byo-status` markup `project.html:1799`, `.ai-byo-status*` CSS `css/src/40-ai.css` + `css/src/50-calculator.css`, dead `syncByoStatus()` state writes `js/mmgr-ai.js` (kept `syncConnRow()`). — `0fcb4d8`
+- [x] Keep the separate `#ai-api-pill` health dot (`project.html:1747`). Rebuilt. `qa-ai` AI23_GATE PASS 0 fails + `qa-ai-polish` 13/13 after re-baselining both onto banner visibility / canonical state / Send gate. — `0fcb4d8`
 
 ### D. Old-project ring — per-main-task segments
 - [ ] Cause: `getMajorGroups()` (`js/mmgr-major-tasks.js:128-217`) groups by `isPhase` rows else `phase` labels; flat old projects have neither → one "Unassigned" group → `grouped:false` → `ringData()` null (`js/mmgr-render.js:146-157`) → single green circle.
@@ -62,9 +62,9 @@ Branch: fresh `feat/` branch off `origin/main`; commit in logical groups; PR →
 - [ ] **Buttons stay plain** (squircle) per owner.
 
 ### F. Theme available without sign-in
-- [ ] Remove the `signedIn()` redirect block in `app.html:2310-2323` (`case 'customize'`), leaving `MMGR_SKIN.openModal()`.
-- [ ] Skins are device-only (`js/mmgr-skin.js:22,49-128`; `js/mmgr-theme.js:16,46,162-169`); no cloud/premium gate. Both entry points (`app.html:427,:494`) funnel here.
-- [ ] `app.html` inline scripts → **regenerate CSP hashes** (worker.js header command; update `INLINE_SCRIPT_HASHES` + `serve.cjs`). Check: signed-out Customize opens modal, no redirect.
+- [x] Remove the `signedIn()` redirect block in `app.html:2310-2323` (`case 'customize'`), leaving `MMGR_SKIN.openModal()`. — `0fcb4d8`
+- [x] Skins confirmed device-only (`js/mmgr-skin.js:22,49-128`; `js/mmgr-theme.js:16,46,162-169`); no cloud/premium gate. Both entry points funnel here. — `0fcb4d8`
+- [x] `app.html` inline scripts → **regenerated CSP hashes** via `node tools/regen-csp-hashes.cjs` (updated `INLINE_SCRIPT_HASHES` in `worker.js` + `serve.cjs`, restarted the QA server). Signed-out Customize probe: modal opens, `#theme-grid` present, no signin redirect. — `0fcb4d8`
 
 ### G. Gantt chart — clarity, panning, auto-cascade
 - [ ] Custom renderer: `js/mmgr-gantt-view.js:337 build()`, `js/mmgr-render.js:3150 renderGantt()`, markup `project.html:656-689`.
@@ -99,9 +99,9 @@ Branch: fresh `feat/` branch off `origin/main`; commit in logical groups; PR →
 - [ ] Re-baseline `tools/qa-project-photos.cjs`; add a check that the caption is a textarea that grows on input; register in `docs/CI-TEST-COVERAGE.md`.
 
 ### K. Status-chip outline — remove border, keep arrow
-- [ ] The selector is a custom button `project.html:180` (`.status-chip#status-chip`, `popovertarget="status-pop"`) with children: `.sdot` dot, `#status-chip-lbl` label, and `<svg class="ico"><use ...#i-arrow-down>` — the arrow to KEEP. Menu `project.html:181-186`; render `js/mmgr-render.js:2038-2064`; handler `js/mmgr-app.js:4859-4883`.
-- [ ] Remove the persistent `border: 1px solid var(--border)` at `css/src/20-shell.css:999` and the now-redundant hover `border-color: var(--gold)` at `:1012`. Keep `.status-chip .ico` arrow styling (`:1019-1023`) and the `:focus-visible` focus ring (`:1015-1018`, accessibility). No JS/markup change.
-- [ ] Rebuild CSS. Harnesses to sanity-check: `tools/qa-cloud-identity.cjs:121-153`, `tools/qa-controls-ia.cjs:357-375`, `tools/qa-ux-landscape.cjs:314` (hit-area unaffected).
+- [x] The selector is a custom button `project.html:180` (`.status-chip#status-chip`, `popovertarget="status-pop"`) with children: `.sdot` dot, `#status-chip-lbl` label, and `<svg class="ico"><use ...#i-arrow-down>` — the arrow to KEEP. Menu `project.html:181-186`; render `js/mmgr-render.js:2038-2064`; handler `js/mmgr-app.js:4859-4883`. — `0fcb4d8`
+- [x] Replaced the persistent `border: 1px solid var(--border)` with `1px solid transparent` (keeps hit area + focus-ring geometry) and dropped the hover `border-color: var(--gold)`. Kept `.status-chip .ico` arrow styling and the `:focus-visible` ring. — `0fcb4d8`
+- [x] Rebuilt CSS. `tools/qa-cloud-identity.cjs` 16/16 and `tools/qa-controls-ia.cjs` 12/12 (status menu still opens under the chip). — `0fcb4d8`
 
 ### L. Project on-hold notice to collaborators
 Owner decision: **in-app banner only** (no email, no backend/CF changes) + **warn with explicit "finalize" acknowledgement** before edits (not a hard server lock).
@@ -113,14 +113,14 @@ Owner decision: **in-app banner only** (no email, no backend/CF changes) + **war
 
 ### M. Perf-mode + dark sidebar transparency bug
 - [ ] Cause: Performance mode sets `data-perf='on'` on `<html>` (`js/mmgr-perf.js:52-57`) and globally forces `backdrop-filter:none !important` (`css/src/85-performance-mode.css:14-21`). Its solid-fill compensation list (`:43-50`) covers `.top,.dock,#drw,.db-sheet,.drw-sheet,.bcp-top` but **omits `.db-side`**, the launcher rail. In dark mode `.db-side` is `background: var(--glass-fill-dark)` = `rgba(255,255,255,0.04)` + blur (`70-chrome.css:62`, token `20-shell.css:86-88`, `10-tokens.css:45`) — blur off, no opaque fallback → see-through. Light mode uses opaque `var(--card)` (`:358-370`), hence dark-only.
-- [ ] Minimal fix: add `[data-perf='on'] body.dark-mode.db-page .db-side { background: var(--db-surface-raised) !important; }` in `css/src/85-performance-mode.css` beside `:43-50`, mirroring the proven `prefers-reduced-transparency` fallback (`70-chrome.css:344-350`). Check obsidian skin: its `--glass-fill-dark` is translucent (`86-theme-obsidian.css:44`) but `--card` is forced opaque (`:23-26`) — verify the chosen token is opaque across all 8 skins.
-- [ ] Add a QA assertion: `[data-perf='on']` + dark → computed `.db-side` background is opaque (alpha = 1), text readable. Extend `tools/verify-perf-boot.cjs` / `qa-glass.cjs` (no existing check covers this). Edit CSS source + `node build.js` (no inline-script change → no CSP regen needed).
+- [x] Minimal fix: added `[data-perf='on'] body.dark-mode.db-page .db-side { background: var(--db-surface-raised) !important; }` in `css/src/85-performance-mode.css` beside the existing solid-fill list, mirroring the proven `prefers-reduced-transparency` fallback. `--db-surface-raised: #1d1d20` is opaque. — `0fcb4d8`
+- [x] Added `qa-glass` G03c: forces `[data-perf='on']` + dark + `db-page`, reads the **computed** `.db-side` background alpha (must be 1), then restores state. `GLASS35_GATE PASS`; `tools/verify-perf-boot.cjs` PASS. CSS source + `node build.js`, no inline-script change. — `4194177`
 
 ### N. Cookie-consent polish — remove gold outline
-- [ ] The consent card is JS-injected (`js/consent.js:238-275 build()`, appended to body at `:270`; gated by `<body data-consent-banner="on">`). Buttons at `js/consent.js:254-258`: "Accept all" / "Necessary only" / "Choose". Shared across 12 public pages (index/about/contact/features/reviews/privacy/terms/refund/pricing/signin/team-accept); `privacy.html:229` reuses `.consent-btn`.
-- [ ] CSS lives in `css/marketing.css:5488-5644` (authored directly there, NOT in `css/src/`). Remove the gold bits: `.consent-btn:hover` `border-color: var(--gold)` + `--gold-50` bg (`:5550-5553`), dark hover `border-color: var(--gold-300)` (`:5622-5625`), and the literal `.consent-btn:focus-visible { outline: 2px solid var(--gold-deep) }` (`:5554-5557`) — replace focus with a neutral accessible ring (`var(--focus-ring)`). Keep `accent-color` on `.consent-check` (`:5577`) or switch to the accent token.
-- [ ] Owner wants a simple corner card with plain accent buttons. Use the standard marketing accent CTA `.btn-gold` (`:995-1012`) / base `.btn` (`:973-991`) styling for the primary action rather than bespoke gold outlines; note public pages' accent IS gold, so "regular accent button" reads as the normal filled CTA, not a gold ring. Keep the neutral base `.consent-btn` (`:5537-5549`) for the other actions. No copy change (labels stay "Accept all" / "Necessary only" / "Choose").
-- [ ] Rebuild `dist/marketing.min.css` via `node build.js`. Re-baseline `tools/qa-consent.cjs:521-529` (B1 asserts exact labels) and axe (`:920-939`); add a check that no gold border/outline is computed on `.consent-btn`.
+- [x] The consent card is JS-injected (`js/consent.js:238-275 build()`, appended to body at `:270`; gated by `<body data-consent-banner="on">`). Buttons: "Accept all" / "Necessary only" / "Choose". Shared across 12 public pages; `privacy.html:229` reuses `.consent-btn`. — `0fcb4d8`
+- [x] CSS lives in `css/marketing.css` (authored directly there, NOT in `css/src/`). Removed the gold hover fill/border and the gold focus outline; hover now uses the existing neutral `--lit-navy-05` / `--lit-white-05` tokens and focus uses `currentColor` (the global marketing `:focus-visible` is gold, so the override is required). Kept `accent-color` on `.consent-check` and the base neutral `.consent-btn`. — `0fcb4d8`
+- [x] Owner wants a simple corner card with plain buttons, no gold ring. Kept the neutral base button and copy unchanged ("Accept all" / "Necessary only" / "Choose"). — `0fcb4d8`
+- [x] Rebuilt `dist/marketing.min.css` via `node build.js`. `css/marketing.css` is under a fixed 176000-byte size cap — the first verbose version went over, so the final edit uses the page's existing tokens and stays at 175976 bytes. Added `tools/qa-consent` B1b (no gold focus ring / hover fill in the applied CSSOM) — 38/38; axe clean both palettes. — `0fcb4d8`, `4194177`
 
 ### O. Canonical checkbox tracking file
 - [ ] Create `docs/UI-WAVE-CHECKLIST-2026-11-20.md`: status legend (`[ ]` OPEN, `[~]` IN PROGRESS, `[x]` DONE, `[?]` NEEDS OWNER DECISION), one checkbox per item A–N + sub-items, grouped by area, with responsible files. Leave all boxes unchecked initially ("empty/ready" file). This plan file is tickable directly above too.
@@ -193,10 +193,19 @@ re-baseline `tools/qa-mcp-admin-panel.cjs` (chip/status strings and the
 copy/refresh selectors) and `tools/qa-billing-orphan.cjs`; run `qa-full` and
 `qa-glass` for the rail and popover.
 
+### Q. Pricing copy: 33% launch offer + free trials on all plans (owner addition 2026-11-22)
+Owner changed the Paddle discount from 100% off to **33% off**, code **KRAFO0TJEO**,
+valid until **June 2027**, and enabled a free trial on **every** paid subscription
+so anyone can test the app before paying. Text only — no Paddle or pricing logic.
+- [x] Promo note: "33% off until June 2027", code `KRAFO0TJEO`, 33% off the plan. — `6f810c2`
+- [x] Billing: "Every paid plan starts with a free trial" replaces the Contractor-only first month; end-of-trial prices stated. — `6f810c2`
+- [x] Refunds: generic "free trial is not a payment" replaces the Contractor-only line. — `6f810c2`
+- [x] `npm run verify` green; SW cache bumped. No inline-script change in `pricing.html` → no CSP hash change. — `6f810c2`
+
 ---
 
 ## Critical files
-`js/app/mcp-admin.js` · `css/src/37-mcp-admin.css` · `js/mmgr-billing-manage.js` · `css/src/89-code-names.css` · `css/src/82-launcher.css` · `js/mmgr-render.js` · `js/mmgr-major-tasks.js` · `js/mmgr-schedule.js` · `js/mmgr-tasks.js` · `js/mmgr-gantt-view.js` · `js/mmgr-raci.js` · `js/render/people.js` · `js/render/risks.js` · `js/cloud/photos-ui.js` · `js/mmgr-utils.js` · `js/calculator-page.js` · `js/mmgr-tour.js` · `js/app/sidebar.js` · `js/app/definitions.js` · `js/mmgr-defs.js` · `project.html` · `app.html` · `calculator.html` · `worker.js` · `serve.cjs` · `css/src/{20-shell,30-panels,35-workspace,40-ai,50-calculator,70-chrome,85-performance-mode}.css` · `css/marketing.css` · `js/mmgr-perf.js` · `js/consent.js` · `docs/UI-WAVE-CHECKLIST-2026-11-20.md`
+`js/app/mcp-admin.js` · `css/src/37-mcp-admin.css` · `js/mmgr-billing-manage.js` · `css/src/89-code-names.css` · `css/src/82-launcher.css` · `js/mmgr-render.js` · `js/mmgr-major-tasks.js` · `js/mmgr-schedule.js` · `js/mmgr-tasks.js` · `js/mmgr-gantt-view.js` · `js/mmgr-raci.js` · `js/render/people.js` · `js/render/risks.js` · `js/cloud/photos-ui.js` · `js/mmgr-utils.js` · `js/calculator-page.js` · `js/mmgr-tour.js` · `js/app/sidebar.js` · `js/app/definitions.js` · `js/mmgr-defs.js` · `project.html` · `app.html` · `calculator.html` · `pricing.html` · `worker.js` · `serve.cjs` · `sw.js` · `css/src/{20-shell,30-panels,35-workspace,40-ai,50-calculator,70-chrome,85-performance-mode}.css` · `css/marketing.css` · `js/mmgr-perf.js` · `js/consent.js` · `qa-full.cjs` · `qa-glass.cjs` · `qa-ai.cjs` · `tools/qa-ai-polish.cjs` · `tools/qa-consent.cjs` · `tools/qa-cloud-identity.cjs` · `tools/qa-controls-ia.cjs` · `docs/UI-WAVE-CHECKLIST-2026-11-20.md`
 
 ## Verification gates
 - [ ] `node build.js` → `npm run verify` (CSP + SW + registry + doc-size gates).

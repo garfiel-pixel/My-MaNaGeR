@@ -561,29 +561,40 @@ var MMGR = window.MMGR || {};
   // When more than CASCADE_CONFIRM_THRESHOLD tasks would be rewritten, the
   // write-back is gated behind a confirmation dialog listing the affected ids.
   function cascade(regionId, opts) {
+    const quiet = !!(opts && opts.quiet);
+    const skipUndo = !!(opts && opts.skipUndo);
+    const doRender = !opts || opts.render !== false;
     const tasks = getTasks();
     if (!tasks.length) {
-      ns.App.showToast('No tasks to cascade.', 'err');
+      if (!quiet) {
+        ns.App.showToast('No tasks to cascade.', 'err');
+      }
       return false;
     }
 
     // Check for tasks without durations
     const noDuration = tasks.filter(t => !t.duration && !t.isPhase);
     if (noDuration.length > 0) {
-      ns.App.showToast(
-        noDuration.length + ' task(s) have no duration. Set durations first.',
-        'err'
-      );
+      if (!quiet) {
+        ns.App.showToast(
+          noDuration.length + ' task(s) have no duration. Set durations first.',
+          'err'
+        );
+      }
       return false;
     }
 
     // Cycle check BEFORE any computation , never allow a partial plan.
     const cyclic = findCycles(tasks);
     if (cyclic.length > 0) {
-      ns.App.showToast(
-        'Cyclic predecessor links detected: ' + cyclic.join(', ') + '. Break the loop to cascade.',
-        'err'
-      );
+      if (!quiet) {
+        ns.App.showToast(
+          'Cyclic predecessor links detected: ' +
+            cyclic.join(', ') +
+            '. Break the loop to cascade.',
+          'err'
+        );
+      }
       console.warn('Schedule cascade aborted , cycle involving:', cyclic);
       return false;
     }
@@ -595,23 +606,34 @@ var MMGR = window.MMGR || {};
     const plan = computePlan(region, 5);
     const affected = plan.changes;
 
-    const proceed = function () {
-      // Capture the pre-cascade plan so the whole rewrite is undoable.
-      ns.State.pushUndo();
+    const proceed = function (render) {
+      // Capture the pre-cascade plan so the whole rewrite is undoable. A drag
+      // or a WBS edit has already pushed its own snapshot, so it passes
+      // skipUndo and the one undo restores both the edit and the cascade.
+      if (!skipUndo) {
+        ns.State.pushUndo();
+      }
       applyPlan(region);
       ns.State.save(true);
-      ns.Render.renderWbs();
-      ns.Render.renderGantt();
-      ns.Render.renderDash();
-      const critTasks = tasks.filter(t => t.critical && !t.isPhase);
-      const skippedN = (plan.skipped || []).length;
-      ns.App.showToast(
-        'Cascade complete. ' +
-          critTasks.length +
-          ' tasks on critical path.' +
-          (skippedN ? ' ' + skippedN + ' completed or in-progress task(s) left untouched.' : ''),
-        'ok'
-      );
+      if (render !== false) {
+        ns.Render.renderWbs();
+        ns.Render.renderGantt();
+        ns.Render.renderDash();
+        // UI-WAVE G: the board shows dates too - a cascade that skipped it
+        // left Kanban stale until the next unrelated render.
+        ns.Render.renderKanban();
+      }
+      if (!quiet) {
+        const critTasks = tasks.filter(t => t.critical && !t.isPhase);
+        const skippedN = (plan.skipped || []).length;
+        ns.App.showToast(
+          'Cascade complete. ' +
+            critTasks.length +
+            ' tasks on critical path.' +
+            (skippedN ? ' ' + skippedN + ' completed or in-progress task(s) left untouched.' : ''),
+          'ok'
+        );
+      }
       return true;
     };
 
@@ -632,12 +654,14 @@ var MMGR = window.MMGR || {};
         danger: true,
         confirmLabel: 'Cascade Dates',
         cancelLabel: 'Cancel',
-        onOk: proceed,
+        onOk: function () {
+          return proceed(true);
+        },
         onCancel: (opts && opts.cancel) || null
       });
       return false;
     }
-    return proceed();
+    return proceed(doRender);
   }
 
   // ---- Mark Critical (annotate live tasks from a sched array) ----

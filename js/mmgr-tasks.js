@@ -427,6 +427,25 @@ var MMGR = window.MMGR || {};
     if (evtType === 'input') {
       return;
     }
+    // UI-WAVE 2026-11-20 G: a duration commit re-times its successors. The
+    // engine holds completed / in-progress actuals anchored and asks before a
+    // shift larger than five tasks. render:false lets the focus-preserving
+    // render below paint once.
+    if (field === 'duration' && ns.Schedule && ns.Schedule.cascade) {
+      const st = ns.State.getState();
+      const hasSucc = (st.tasks || []).some(function (t) {
+        return (t.predecessors || []).some(function (p) {
+          return String(p) === String(id);
+        });
+      });
+      if (hasSucc) {
+        ns.Schedule.cascade(undefined, {
+          threshold: 5,
+          quiet: true,
+          render: false
+        });
+      }
+    }
     // Date-commit discipline (user-reported "the dates are fighting me" bug):
     // the native date picker is anchored to the focused input element. On a
     // date commit Chrome fires `change`; rebuilding the WBS table from that

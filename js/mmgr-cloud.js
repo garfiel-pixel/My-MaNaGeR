@@ -2939,7 +2939,7 @@ var MMGR = window.MMGR || {};
             esc(String(en.id)) +
             '</span>' +
             (isMCP
-              ? '<span class="badge-ai" title="Imported from the MCP AI changelog , reverts resolve by stable record id"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI · MCP</span>'
+              ? '<span class="badge-ai" title="Imported from the MCP AI changelog , reverts resolve by stable record id"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> AI · MCP</span>'
               : '') +
             '<span>' +
             esc(who) +

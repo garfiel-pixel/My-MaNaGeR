@@ -1295,12 +1295,15 @@ body.db-page[data-skin] #app-header {
    the greeting, outline only (no pill, no fill), opening a native popover.
    The value lives in state.status and is mirrored into the launcher registry
    and the cloud row so every card names the same state. */
+/* UI-WAVE 2026-11-20 K: owner asked to drop the resting outline around the
+   status selector while keeping the dropdown arrow. Transparent border keeps
+   the hit area and focus-ring geometry identical; only the visible line is gone. */
 .status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 9px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
@@ -1308,12 +1311,9 @@ body.db-page[data-skin] #app-header {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition:
-    border-color var(--tr),
-    color var(--tr);
+  transition: color var(--tr);
 }
 .status-chip:hover {
-  border-color: var(--gold);
   color: var(--text);
 }
 .status-chip:focus-visible {
@@ -3496,10 +3496,195 @@ body.sidebar-open .sb-close .ico {
 }
 
 /* ---- RACI ---- */
+/* UI-WAVE 2026-11-20 I: bounded scroll area so the header and task column
+   stick; names read as text; empty cells invite; the column action is a menu. */
+.raci-scroll {
+  overflow: auto;
+  max-height: min(70vh, 640px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.raci-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.raci-matrix .raci-task-col,
+.raci-matrix .raci-task-td {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--card);
+  min-width: 240px;
+  max-width: 380px;
+  white-space: normal;
+}
+.raci-matrix thead .raci-task-col {
+  z-index: 4;
+  background: var(--lit-fog);
+}
+.raci-matrix tbody tr:nth-child(even) .raci-cell-td,
+.raci-matrix tbody tr:nth-child(even) .raci-del-td {
+  background: color-mix(in srgb, var(--slate) 5%, transparent);
+}
+.raci-matrix tbody tr:nth-child(even) .raci-task-td {
+  background: color-mix(in srgb, var(--slate) 5%, var(--card));
+}
+.raci-matrix tbody tr:hover .raci-cell-td,
+.raci-matrix tbody tr:hover .raci-del-td,
+.raci-matrix tbody tr:hover .raci-task-td {
+  background: var(--lit-fog);
+}
+.raci-person {
+  display: grid;
+  gap: 1px;
+  min-width: 96px;
+}
+.raci-person-name,
+.raci-person-role {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 1px 4px;
+  font-family: inherit;
+  color: var(--text);
+}
+.raci-person-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.raci-person-role {
+  font-size: 0.66rem;
+  color: var(--slate);
+}
+.raci-person-name:hover,
+.raci-person-role:hover {
+  border-color: var(--border);
+}
+.raci-person-name:focus,
+.raci-person-role:focus {
+  border-color: var(--focus-ring);
+  background: var(--card);
+  outline: none;
+}
+.raci-col-menu,
+.raci-row-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--slate);
+  cursor: pointer;
+}
+.raci-col-menu {
+  opacity: 0;
+  transition: opacity 120ms var(--ease-ios);
+}
+.raci-person-col:hover .raci-col-menu,
+.raci-col-menu:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .raci-col-menu {
+    opacity: 1;
+  }
+}
+.raci-col-menu:hover,
+.raci-row-menu:hover {
+  background: color-mix(in srgb, var(--slate) 16%, transparent);
+  color: var(--text);
+}
+.raci-row-menu {
+  color: color-mix(in srgb, var(--slate) 70%, transparent);
+}
+.raci-row-menu:hover {
+  color: var(--danger);
+}
+.raci-pop {
+  min-width: 168px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 12px 32px var(--lit-black-18);
+}
+.raci-pop-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+.raci-pop-item:hover {
+  background: var(--lit-fog);
+}
+.raci-pop-danger {
+  color: var(--danger);
+}
+.raci-task {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.raci-task-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+.raci-task-name:hover {
+  border-color: var(--border);
+}
+.raci-task-name:focus {
+  border-color: var(--focus-ring);
+  background: var(--card);
+  outline: none;
+}
+.raci-task-wbs {
+  flex-shrink: 0;
+  /* gold as WORDS, so it takes the text token, not the fill token */
+  color: var(--gold-text);
+  font-size: 0.65rem;
+}
+.raci-cell-td,
+.raci-del-td {
+  text-align: center;
+  width: 1%;
+  white-space: nowrap;
+}
 .raci-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 46px;
   height: 34px;
   border-radius: 8px;
+  border: 1.5px solid var(--raci-fg, var(--border));
   font-weight: 800;
   font-size: 0.85rem;
   cursor: pointer;
@@ -3511,6 +3696,22 @@ body.sidebar-open .sb-close .ico {
     background-color 120ms var(--ease-ios),
     border-color 120ms var(--ease-ios);
   font-family: inherit;
+}
+/* An unassigned cell is an invitation: dashed outline, faint plus. */
+.raci-cell.is-empty {
+  border-style: dashed;
+  color: transparent;
+}
+.raci-cell.is-empty::after {
+  content: '+';
+  color: var(--slate);
+  opacity: 0.32;
+  font-weight: 600;
+  transition: opacity 120ms var(--ease-ios);
+}
+.raci-cell.is-empty:hover::after,
+.raci-cell.is-empty:focus-visible::after {
+  opacity: 0.8;
 }
 .raci-cell:hover {
   transform: scale(1.1);
@@ -3940,12 +4141,27 @@ body.dark-mode .rm-active {
 }
 .gl {
   border-right: 2px solid var(--border);
+  /* UI-WAVE 2026-11-20 G: the chart is its own vertical scroll area so the
+     date header can stick. The label column clips and is scrolled in sync by
+     renderGantt's listener (offset by the sticky header height). */
+  overflow: hidden;
+  max-height: min(72vh, 760px);
 }
 .gc {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: min(72vh, 760px);
   position: relative;
+  cursor: grab;
+}
+body.gantt-panning,
+body.gantt-panning .gc {
+  cursor: grabbing;
+  user-select: none;
 }
 .gh {
+  position: sticky;
+  top: 0;
+  z-index: 6;
   display: flex;
   background: var(--lit-fog);
   border-bottom: 1px solid var(--border);
@@ -5705,6 +5921,22 @@ body.dark-mode .dmaic-chip {
   border-right: 5px solid transparent;
   border-top: 6px solid var(--danger, #dc2626);
 }
+/* UI-WAVE 2026-11-20 G: the red line is Today - name it in the toolbar so it
+   is never a mystery stripe. */
+.gv-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--slate);
+  white-space: nowrap;
+}
+.gv-key-line {
+  width: 2px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--danger, #dc2626);
+}
 .gd-wknd {
   background: rgba(148, 163, 184, 0.06);
 }
@@ -6523,6 +6755,27 @@ button.rel-badge {
 }
 #readonly-banner.is-hide {
   display: none;
+}
+/* UI-WAVE 2026-11-20 L: the on-hold notice. Row placement comes from the
+   [id$='-banner'] rule below; this block owns the tone and the button. */
+#onhold-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  color: var(--text);
+  background: color-mix(in srgb, var(--amber) 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+}
+#onhold-banner.is-hide {
+  display: none;
+}
+#onhold-banner .btn {
+  padding: 3px 10px;
+  font-size: 0.7rem;
 }
 /* Banner stack (2026-09-16): all chrome banners render as full-width rows
    INSIDE the sticky #app-header (flex-wrap). Position static + 100% basis so
@@ -10460,18 +10713,27 @@ hr.div {
 .wbs-lowconf {
   border-left: 2px dotted var(--amber) !important;
 }
+/* UI-WAVE 2026-11-20 I: this rule was dead. It now carries the RACI row
+   warning - a row with no Accountable person - so the mark sits beside the
+   task name instead of only in the alert list below the matrix. Amber, not
+   red: a gap to fix, not a failure. */
 .raci-gate {
-  display: inline-block;
-  background: rgba(239, 68, 68, 0.2);
-  color: var(--danger);
-  border: 1px solid var(--danger);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  background: color-mix(in srgb, var(--amber) 22%, transparent);
+  color: var(--amber);
+  border: 1px solid color-mix(in srgb, var(--amber) 55%, transparent);
   border-radius: 50%;
-  padding: 0 4px;
-  margin-left: 3px;
-  font-size: 0.6rem;
-  font-weight: 700;
+  margin-left: 4px;
   line-height: 1;
   cursor: help;
+}
+.raci-gate .ico {
+  font-size: 10px;
 }
 .wi-sub-upd {
   color: var(--amber) !important;
@@ -11964,6 +12226,13 @@ body.dark-mode .wbs-alert-item {
   max-width: 90vw;
   box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
   font-size: 0.78rem;
+  /* UI-WAVE 2026-11-20 B: this is a passive hover explainer. It must not
+     swallow clicks meant for the methodology tabs it floats over. */
+  pointer-events: none;
+}
+/* Keep the close control usable even though the card body is click-through. */
+.mlc-card .dc {
+  pointer-events: auto;
 }
 .mlc-body {
   color: var(--text);
@@ -14712,54 +14981,10 @@ body.dark-mode .ai-conn-row {
 body.dark-mode .ai-byo-pop {
   background: var(--lit-black-18);
 }
-/* BYO-AI-KEY-SESSION-ONLY-v1 - Connect flow (STEP-2): status chip,
-   session-only key input, security copy, and the send gate. */
-.ai-byo-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.66rem;
-  font-weight: 700;
-  border-radius: var(--radius-control);
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  background: var(--tile-bg);
-  color: var(--slate);
-  white-space: nowrap;
-  transition:
-    color var(--tr),
-    border-color var(--tr),
-    background var(--tr);
-}
-.ai-byo-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--slate);
-  transition:
-    background var(--tr),
-    box-shadow var(--tr);
-}
-.ai-byo-status[data-state='on'] {
-  color: var(--green);
-  border-color: var(--green);
-}
-.ai-byo-status[data-state='on'] .ai-byo-dot {
-  background: var(--green);
-  box-shadow: 0 0 6px var(--green);
-}
-/* AI-CLOUD-CONNECT-UI (DIR-1): */
-.ai-byo-status[data-state='untested'] {
-  color: var(--gold-text);
-  border-color: var(--gold);
-}
-.ai-byo-status[data-state='untested'] .ai-byo-dot {
-  background: var(--gold);
-  box-shadow: 0 0 6px var(--gold);
-}
-body.dark-mode .ai-byo-status[data-state='untested'] {
-  background: rgba(var(--gold-rgb, 212, 175, 55), 0.08);
-}
+/* BYO-AI-KEY-SESSION-ONLY-v1 - Connect flow (STEP-2): session-only key input,
+   security copy, and the send gate.
+   UI-WAVE 2026-11-20 C: the status chip (.ai-byo-status / .ai-byo-dot) was
+   removed; the connect banner's visibility and the Send gate carry the state. */
 .ai-byo-key {
   width: 190px;
 }
@@ -16030,6 +16255,12 @@ body.dark-mode .bcp-run:focus-visible {
   inset: 0;
   z-index: 400;
 }
+/* OWNER 2026-11-21 (E): a target that really fills the viewport cannot have a
+   cut-out, so the overlay carries the dim itself. Without this those steps
+   were undimmed and the card floated over a fully lit page. */
+.bcp-tour-overlay.is-huge {
+  background: var(--lit-black-45);
+}
 /* OWNER 2026-09-30 report: the tour dimmed everything but highlighted
    NOTHING - the field being talked about was invisible under the wash.
    The spotlight is a positioned cutout: the element itself is transparent
@@ -16044,16 +16275,9 @@ body.dark-mode .bcp-run:focus-visible {
   box-shadow: 0 0 0 9999px var(--lit-black-45);
   pointer-events: none;
 }
-.bcp-tour-spot::after {
-  content: '';
-  position: absolute;
-  inset: -6px;
-  border-radius: 14px;
-  border: 2px solid var(--gold);
-  box-shadow:
-    0 0 0 4px color-mix(in oklch, var(--gold) 30%, transparent),
-    0 0 18px color-mix(in oklch, var(--gold) 45%, transparent);
-}
+/* OWNER 2026-11-21 (E): the spotlight carried a 2px gold border plus two gold
+   glows on a ::after. The dim cut-out is the highlight now: the target's own
+   border and background show through the hole, and nothing gold is drawn. */
 .bcp-tour-spot[hidden] {
   display: none !important;
 }
@@ -17784,9 +18008,6 @@ body.dark-mode .ai-adv .ai-adv-body {
 body.dark-mode .ai-head-tier {
   background-color: var(--lit-black-25);
   border-color: var(--lit-white-14);
-}
-body.dark-mode .ai-byo-status {
-  background: var(--lit-white-05);
 }
 body.dark-mode .ai-byo-key {
   background: var(--lit-black-25);
@@ -22248,6 +22469,13 @@ body.view-3d .view-deck {
 [data-perf='on'] .drw-sheet,
 [data-perf='on'] .bcp-top {
   background: var(--card) !important;
+}
+/* UI-WAVE 2026-11-20 M: the launcher rail (.db-side) leans on blur for its
+   dark fill. Performance Mode removes all blur globally, so in dark mode it
+   fell back to the translucent --glass-fill-dark and went see-through. Give
+   it the same opaque fallback the prefers-reduced-transparency path uses. */
+[data-perf='on'] body.dark-mode.db-page .db-side {
+  background: var(--db-surface-raised) !important;
 }
 [data-perf='on'] canvas.bg-stars,
 [data-perf='on'] #marketing-globe canvas,

@@ -423,9 +423,9 @@ var MMGR = window.MMGR || {};
     el.innerHTML = DEFINITIONS.map(function (d) {
       return (
         '<div class="def-card">' +
+        // UI-WAVE 2026-11-20 B: no taxonomy group pill, term + meaning only.
         '<div class="def-term">' +
         U.escapeHtml(d.term) +
-        (d.group ? '<span class="def-badge">' + U.escapeHtml(d.group) + '</span>' : '') +
         '</div>' +
         '<div class="def-body">' +
         U.escapeHtml(d.meaning) +

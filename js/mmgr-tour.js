@@ -37,6 +37,15 @@
   // no spotlight (the calculator's final step works the same way).
   const STEPS = [
     {
+      // OWNER 2026-11-21 (E): the walk used to open already pointing at the
+      // rail, so the first thing a person met was a ring on a control nobody
+      // had introduced. The opening card is centred and explains the walk
+      // itself - the same treatment the closing card already uses.
+      sel: null,
+      title: 'A quick look around',
+      text: 'A short walk through this project - one control per card, then out. Nothing here is a setup step, and you can close it at any time.'
+    },
+    {
       // The rail is #app-sidebar on desktop and #sec-nav in the compact
       // layout; aim at a nav group inside it, because the rail containers
       // themselves report no box while their children do. The desktop rail is
@@ -214,11 +223,11 @@
       'position:absolute',
       'pointer-events:none',
       'border-radius:14px',
-      // First shadow paints on top: a gold halo, then the 3px gold ring, then
-      // the 9999px dim. The border box itself is the hole, so the control
-      // under the spotlight keeps its full colour while everything outside
-      // is covered.
-      'box-shadow:0 0 26px 4px rgba(212,175,55,.35),0 0 0 3px var(--gold,#D4AF37),0 0 0 9999px rgba(8,9,11,.72)',
+      // OWNER 2026-11-21 (E): the ring used to paint a gold halo and a 3px
+      // gold outline. The 9999px dim alone is the spotlight now - the border
+      // box is the hole, so the control under it keeps its full colour and
+      // nothing gold is drawn around it.
+      'box-shadow:0 0 0 9999px rgba(8,9,11,.72)',
       'transition:none'
     ].join(';');
 
@@ -238,7 +247,9 @@
       'max-width:340px',
       'background:var(--card,#15171b)',
       'color:var(--text,#e8eaee)',
-      'border:1px solid rgba(212,175,55,.45)',
+      // OWNER 2026-11-21 (E): the card carried a gold hairline. It is a
+      // neutral surface now, like every other panel in the app.
+      'border:1px solid var(--border,rgba(255,255,255,.14))',
       'border-radius:12px',
       'padding:16px 16px 12px',
       'box-shadow:0 18px 48px rgba(0,0,0,.55)',
@@ -250,9 +261,11 @@
       '<div id="tour-title" style="font-weight:600;margin-bottom:6px"></div>',
       '<div id="tour-text" style="margin-bottom:12px"></div>',
       '<div style="display:flex;gap:8px;justify-content:flex-end">',
-      '<button type="button" id="tour-skip" style="background:transparent;border:0;color:var(--text-secondary);font:inherit;cursor:pointer;padding:6px 8px">Skip</button>',
-      '<button type="button" id="tour-back" style="background:transparent;border:0;color:var(--text,#e8eaee);font:inherit;cursor:pointer;padding:6px 8px">Back</button>',
-      '<button type="button" id="tour-next" style="background:var(--gold,#D4AF37);border:0;border-radius:8px;color:#111;font:inherit;font-weight:600;cursor:pointer;padding:7px 12px">Next</button>',
+      '<button type="button" id="tour-skip" style="background:transparent;border:0;border-radius:8px;color:var(--text-secondary);font:inherit;cursor:pointer;padding:6px 8px">Skip</button>',
+      '<button type="button" id="tour-back" style="background:transparent;border:0;border-radius:8px;color:var(--text,#e8eaee);font:inherit;cursor:pointer;padding:6px 8px">Back</button>',
+      // OWNER 2026-11-21 (E): "buttons stay plain". Next is a quiet squircle
+      // with a hairline, not a gold pill - the weight comes from the label.
+      '<button type="button" id="tour-next" style="background:transparent;border:1px solid var(--border,rgba(255,255,255,.22));border-radius:8px;color:var(--text,#e8eaee);font:inherit;font-weight:600;cursor:pointer;padding:6px 12px">Next</button>',
       '</div>'
     ].join('');
 
@@ -327,10 +340,16 @@
     root.style.background = 'transparent';
     const r = el.getBoundingClientRect();
     ring.style.display = 'block';
-    ring.style.left = Math.round(r.left - 6) + 'px';
-    ring.style.top = Math.round(r.top - 6) + 'px';
-    ring.style.width = Math.round(r.width + 12) + 'px';
-    ring.style.height = Math.round(r.height + 12) + 'px';
+    // OWNER 2026-11-21 (E): a control smaller than the ring's padding got a
+    // hole barely bigger than itself, which read as a speck on the dim rather
+    // than a spotlight. Keep a 32px floor, centred on the target, so the
+    // cut-out always encloses what the card names.
+    const w = Math.max(r.width + 12, 32);
+    const h = Math.max(r.height + 12, 32);
+    ring.style.left = Math.round(r.left + r.width / 2 - w / 2) + 'px';
+    ring.style.top = Math.round(r.top + r.height / 2 - h / 2) + 'px';
+    ring.style.width = Math.round(w) + 'px';
+    ring.style.height = Math.round(h) + 'px';
 
     // Narrow screens: the card is a full-width sheet. Put it on the OPPOSITE
     // half from the target (top half target -> sheet at the bottom, and the

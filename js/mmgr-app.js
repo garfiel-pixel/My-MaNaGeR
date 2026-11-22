@@ -7688,6 +7688,8 @@ window.MMGR = MMGR;
     bkCloud: () => window.MMGR.App.bkCloud(),
     bkCloseSnapshot: () => window.MMGR.App.bkCloseSnapshot(),
     setProjStatus: el => window.MMGR.App.setProjStatus(el),
+    // L: acknowledge the notice; safe while locked (see READONLY_SAFE_ACTIONS).
+    onholdFinalize: () => window.MMGR.OnHold && window.MMGR.OnHold.acknowledge(),
     // PART F T9 (no-offline-copy): export/download are refused while a cloud
     // share code is held , the recipient must not leave with the project file.
     saveProjectFile: () => {
@@ -8023,6 +8025,8 @@ window.MMGR = MMGR;
   // views, report generation). Everything else is refused with a toast.
   const READONLY_SAFE_ACTIONS = {
     showSec: 1,
+    // L: the way OUT of the on-hold gate must work while it is closed.
+    onholdFinalize: 1,
     // Idea intake: opening the sheet, closing it, and switching the board /
     // list or the tag filter write no project record. Every action that
     // touches state.ideas or state.tasks is deliberately absent.
@@ -8341,23 +8345,26 @@ window.MMGR = MMGR;
     cloudReviewToggleDiffs: 1
   };
   function guardReadonly(action) {
-    // The ACTION_MAP delegation IIFE has no closure over the App module's
-    // isReadonly() , route through the published API (MMGR.App.isReadonly).
-    const ro =
-      window.MMGR.App &&
-      typeof window.MMGR.App.isReadonly === 'function' &&
-      window.MMGR.App.isReadonly();
-    if (!ro) {
+    // No closure over the App module here, so both reads go through the
+    // published API. L: an on-hold project reuses the view-only safe set.
+    const A = window.MMGR.App;
+    const ro = A && typeof A.isReadonly === 'function' && A.isReadonly();
+    const hold =
+      window.MMGR.OnHold &&
+      typeof window.MMGR.OnHold.locked === 'function' &&
+      window.MMGR.OnHold.locked();
+    if (!ro && !hold) {
       return true;
     }
     if (READONLY_SAFE_ACTIONS[action]) {
       return true;
     }
-    if (window.MMGR.App && typeof window.MMGR.App.showToast === 'function') {
-      window.MMGR.App.showToast(
-        'View-only mode , read-only access. Contact the admin for full access.',
-        'err'
-      );
+    if (ro) {
+      if (A && typeof A.showToast === 'function') {
+        A.showToast('View-only mode , read-only access. Contact the admin for full access.', 'err');
+      }
+    } else {
+      window.MMGR.OnHold.refused();
     }
     return false;
   }

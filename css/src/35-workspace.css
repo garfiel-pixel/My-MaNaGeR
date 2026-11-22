@@ -1569,18 +1569,27 @@ hr.div {
 .wbs-lowconf {
   border-left: 2px dotted var(--amber) !important;
 }
+/* UI-WAVE 2026-11-20 I: this rule was dead. It now carries the RACI row
+   warning - a row with no Accountable person - so the mark sits beside the
+   task name instead of only in the alert list below the matrix. Amber, not
+   red: a gap to fix, not a failure. */
 .raci-gate {
-  display: inline-block;
-  background: rgba(239, 68, 68, 0.2);
-  color: var(--danger);
-  border: 1px solid var(--danger);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  background: color-mix(in srgb, var(--amber) 22%, transparent);
+  color: var(--amber);
+  border: 1px solid color-mix(in srgb, var(--amber) 55%, transparent);
   border-radius: 50%;
-  padding: 0 4px;
-  margin-left: 3px;
-  font-size: 0.6rem;
-  font-weight: 700;
+  margin-left: 4px;
   line-height: 1;
   cursor: help;
+}
+.raci-gate .ico {
+  font-size: 10px;
 }
 .wi-sub-upd {
   color: var(--amber) !important;
@@ -3073,6 +3082,13 @@ body.dark-mode .wbs-alert-item {
   max-width: 90vw;
   box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
   font-size: 0.78rem;
+  /* UI-WAVE 2026-11-20 B: this is a passive hover explainer. It must not
+     swallow clicks meant for the methodology tabs it floats over. */
+  pointer-events: none;
+}
+/* Keep the close control usable even though the card body is click-through. */
+.mlc-card .dc {
+  pointer-events: auto;
 }
 .mlc-body {
   color: var(--text);

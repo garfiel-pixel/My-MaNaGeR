@@ -173,12 +173,15 @@ async function ev(expr) {
     var row = document.getElementById('ai-cfg-cloud');
     return { shown: row && !row.classList.contains('is-hide'),
       labelGone: !document.querySelector('.ai-conn-row-label'),
-      chip: !!document.getElementById('ai-byo-status'),
+      // UI-WAVE 2026-11-20 C: the tiny status chip is gone; the banner text
+      // and the settings gear carry the affordance instead.
+      gear: !!document.getElementById('ai-byo-gear'),
+      chipGone: !document.getElementById('ai-byo-status'),
       prov: (document.getElementById('ai-byo-provider')||{}).value };
   })()`);
   check(
-    'polish: cloud tier shows compact connect row (no label, chip + provider intact)',
-    cld.shown && cld.labelGone && cld.chip && cld.prov === 'openai',
+    'polish: cloud tier shows compact connect row (no label, no status chip, gear + provider intact)',
+    cld.shown && cld.labelGone && cld.gear && cld.chipGone && cld.prov === 'openai',
     cld
   );
   await ev('MMGR.AiWin.setAiCfg({ tier: "local" }); MMGR.AiWin.syncSettingsUI();');

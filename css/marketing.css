@@ -5547,12 +5547,13 @@ body.dark-mode .pricing-card .pc-list li {
   color: var(--text-primary);
   cursor: pointer;
 }
+/* UI-WAVE N: no gold ring. */
 .consent-btn:hover {
-  background: var(--gold-50);
-  border-color: var(--gold);
+  background: var(--lit-navy-05);
+  border-color: var(--border);
 }
 .consent-btn:focus-visible {
-  outline: 2px solid var(--gold-deep);
+  outline: 2px solid currentColor;
   outline-offset: 2px;
 }
 .consent-btn:active {
@@ -5620,8 +5621,7 @@ body.dark-mode .consent-btn {
   color: var(--on-navy);
 }
 body.dark-mode .consent-btn:hover {
-  background: rgba(212, 175, 55, 0.16);
-  border-color: var(--gold-300);
+  background: var(--lit-white-05);
 }
 body.dark-mode .consent-choose {
   border-top-color: var(--lit-white-14);

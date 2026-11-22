@@ -2377,10 +2377,19 @@ var MMGR = window.MMGR || {};
     if (_tip) {
       _tip.classList.remove('vis');
     }
-    // Update nav buttons
+    // Update nav buttons.
+    // UI-WAVE 2026-11-20 H: the visible rail is a CLONE of #sec-nav, and the
+    // clone's MutationObserver only mirrors `is-hide`. Marking just `btn`
+    // left the visible "you are here" unset when a section was opened from
+    // an in-app link (e.g. Change Control Register -> chg). Worse, the
+    // observer then saw the hidden original lose `active` and stripped it
+    // from the clone again. Resolve by section and mark BOTH rails here.
     document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('active'));
-    if (btn) {
-      btn.classList.add('active');
+    const activeSec = (btn && btn.getAttribute && btn.getAttribute('data-section')) || section;
+    if (activeSec) {
+      document
+        .querySelectorAll('.sec-btn[data-section="' + activeSec + '"]')
+        .forEach(b => b.classList.add('active'));
     }
     // Show panel
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));

@@ -1780,6 +1780,24 @@ async function pickPort(start) {
     '39e def: new-feature terms render (Decision Engine + SRI)',
     `(function(){var d=MMGR.Defs.DATA.map(function(x){return x.term;});var txt=document.getElementById('def-container').textContent;return {val: d.indexOf('Today\u2019s Decision Engine')>-1 && d.indexOf('Schedule Reliability Index')>-1 && txt.indexOf('Decision Engine')>-1 && txt.indexOf('Schedule Reliability Index')>-1, count: d.length};})()`
   );
+  // UI-WAVE 2026-11-20 H: a programmatic open of Change Control Register
+  // (as used by in-app links) must light up "you are here" in BOTH the hidden
+  // original rail and the visible cloned rail. The clone observer used to
+  // strip the class again because it only mirrored is-hide.
+  await ev(`MMGR.Render.showSection('chg')`);
+  await delay(250);
+  await check(
+    '39f chg: programmatic open highlights Changes in both rails',
+    `(function(){
+      var all=[].slice.call(document.querySelectorAll('.sec-btn[data-section="chg"]'));
+      var vis=[].slice.call(document.querySelectorAll('#app-sidebar .sec-btn[data-section="chg"]'));
+      var active=all.filter(function(b){return b.classList.contains('active');}).length;
+      var visActive=vis.filter(function(b){return b.classList.contains('active');}).length;
+      var panel=document.getElementById('panel-chg');
+      return {val: active===all.length && all.length>=2 && visActive===1 && !!panel && panel.classList.contains('active'),
+        rails:all.length, active:active, visActive:visActive};
+    })()`
+  );
 
   // ---- V10 features (ACTION-PLAN 3.2/3.3, item 23, 7.3, manual override, AI window) ----
   await check(

@@ -68,7 +68,8 @@ All steps PASS in `docs/UX-DIRECTIVE-LOG.md`; merged to `main` in `a97838a`
 
 ## Verification gates (this wave)
 
-- [ ] `node build.js` → `npm run verify` (CSP + SW + registry + size gates)
-- [ ] Targeted harnesses: `qa-full`, tour harnesses, `verify-gantt-view`, `qa-date-wiring`, `qa-project-photos`, `qa-consent`, `verify-perf-boot`, `qa-glass`, `qa-mcp-admin-panel`, `qa-billing-orphan`, major-groups unit test, sidebar + RACI checks
+- [x] `node build.js` → `npm run verify` (CSP + SW + registry + size gates) — green on : CSP 25 hashes 1:1 with the live header, SW , registry 245 harnesses, sizes within their measured caps
+- [x] `node build.js` → `npm run verify` (CSP + SW + registry + size gates) — green on `579e34e`: CSP 25 hashes 1:1 with the live header, SW `mmgr-shell-v693`, registry 245 harnesses, sizes within their measured caps
+- [x] Targeted harnesses (all green on `579e34e` unless a branch is named): `qa-full` 196/196, tour harnesses 61/61 + 13/13, `verify-gantt-view` 125/125, `qa-date-wiring` 13/13, `qa-project-photos` 23/23 on `feat/photo-caption`, `qa-consent` 38/38, `verify-perf-boot` PASS, `qa-glass` PASS, `qa-mcp-admin-panel` 30/30 on `feat/admin-mcp-panel`, `qa-billing-orphan` 21/21, major-groups unit test 15/15, sidebar (qa-full check 39f) + RACI (`qa-raci-matrix` 11/11) checks
 - [ ] Manual browser pass (owner decisions already recorded in the plan file)
 - [ ] Conventional commits (no AI credit), push branch, PR → CI GREEN → merge to `main` (AGENTS #10)

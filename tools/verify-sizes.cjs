@@ -104,7 +104,15 @@ const EXACT = {
   // parity across all eight 86-theme-*.css skins (651304 measured). The prior
   // cap left only 1.8 KB of headroom; this is a real additive feature wave, so
   // the raise tracks the file and leaves ~2.7 KB for the next wave.
-  'css/mmgr.css': 654000,
+  // 2026-11-22 (UI-WAVE I, RACI matrix): raised 654000 -> 668000
+  // (663764 measured). The matrix gained a bounded scroll frame with both axes
+  // sticky, zebra rows, a name/role header that only shows its edit border on
+  // hover or focus, a column popover menu, a dashed unassigned cell and the
+  // amber zero-Accountable mark (~11 KB). Note for the next wave: splitting a
+  // css/src layer CANNOT reduce this cap - build.js concatenates every layer
+  // into css/mmgr.css, so the cap is a total CSS budget. Trim or raise, and
+  // say which in the commit body.
+  'css/mmgr.css': 668000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

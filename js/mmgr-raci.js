@@ -136,20 +136,45 @@ var MMGR = window.MMGR || {};
     R.renderRaci();
   }
 
+  // UI-WAVE 2026-11-20 I: a focused cell takes the letter directly. Cycling
+  // stays the mouse/touch path and the Enter/Space path, so nothing that
+  // already worked changes; typing R, A, C or I just skips the cycle.
+  const RACI_DIRECT = { r: 'R', a: 'A', c: 'C', i: 'I' };
+  function setRaci(taskId, personId, val) {
+    ns.State.updateState(function (s) {
+      if (!s.raci) {
+        s.raci = { tasks: [], persons: [], matrix: {} };
+      }
+      s.raci.matrix[taskId + '_' + personId] = val;
+    });
+    R.renderRaci();
+  }
+
   // Keyboard navigation for a focused RACI cell (Enter/Space forward,
-  // Backspace/ArrowLeft back, ArrowRight forward) , delegated, no inline
-  // handlers, so the CSP stays intact.
+  // Backspace/ArrowLeft back, ArrowRight forward, R/A/C/I direct) , delegated,
+  // no inline handlers, so the CSP stays intact.
   document.addEventListener('keydown', function (e) {
     const cell = e.target.closest && e.target.closest('[data-action="cycleRaci"]');
     if (!cell) {
       return;
     }
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
+    const taskId = cell.getAttribute('data-task');
+    const personId = cell.getAttribute('data-person');
+    const direct = RACI_DIRECT[String(e.key || '').toLowerCase()];
+    if (direct && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
-      cycleRaci(cell.getAttribute('data-task'), cell.getAttribute('data-person'), {});
-    } else if (e.key === 'Backspace' || e.key === 'ArrowLeft') {
+      setRaci(taskId, personId, direct);
+    } else if (e.key === 'Backspace') {
+      // I: Backspace clears the cell. ArrowLeft still walks the letters, so
+      // the documented "← / →" contract is unchanged.
       e.preventDefault();
-      cycleRaci(cell.getAttribute('data-task'), cell.getAttribute('data-person'), { button: 2 });
+      setRaci(taskId, personId, '');
+    } else if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      cycleRaci(taskId, personId, {});
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      cycleRaci(taskId, personId, { button: 2 });
     }
   });
 
@@ -345,6 +370,7 @@ var MMGR = window.MMGR || {};
     refreshRaciPersonPicker: refreshRaciPersonPicker,
     addRaciPersonFromPicker: addRaciPersonFromPicker,
     cycleRaci: cycleRaci,
+    setRaci: setRaci,
     raciCellBg: raciCellBg,
     raciCellFg: raciCellFg,
     raciExportBlock: raciExportBlock,

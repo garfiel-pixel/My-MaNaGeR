@@ -1295,12 +1295,15 @@ body.db-page[data-skin] #app-header {
    the greeting, outline only (no pill, no fill), opening a native popover.
    The value lives in state.status and is mirrored into the launcher registry
    and the cloud row so every card names the same state. */
+/* UI-WAVE 2026-11-20 K: owner asked to drop the resting outline around the
+   status selector while keeping the dropdown arrow. Transparent border keeps
+   the hit area and focus-ring geometry identical; only the visible line is gone. */
 .status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 9px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
@@ -1308,12 +1311,9 @@ body.db-page[data-skin] #app-header {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition:
-    border-color var(--tr),
-    color var(--tr);
+  transition: color var(--tr);
 }
 .status-chip:hover {
-  border-color: var(--gold);
   color: var(--text);
 }
 .status-chip:focus-visible {
@@ -11958,6 +11958,13 @@ body.dark-mode .wbs-alert-item {
   max-width: 90vw;
   box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
   font-size: 0.78rem;
+  /* UI-WAVE 2026-11-20 B: this is a passive hover explainer. It must not
+     swallow clicks meant for the methodology tabs it floats over. */
+  pointer-events: none;
+}
+/* Keep the close control usable even though the card body is click-through. */
+.mlc-card .dc {
+  pointer-events: auto;
 }
 .mlc-body {
   color: var(--text);
@@ -14686,54 +14693,10 @@ body.dark-mode .ai-conn-row {
 body.dark-mode .ai-byo-pop {
   background: var(--lit-black-18);
 }
-/* BYO-AI-KEY-SESSION-ONLY-v1 - Connect flow (STEP-2): status chip,
-   session-only key input, security copy, and the send gate. */
-.ai-byo-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.66rem;
-  font-weight: 700;
-  border-radius: var(--radius-control);
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  background: var(--tile-bg);
-  color: var(--slate);
-  white-space: nowrap;
-  transition:
-    color var(--tr),
-    border-color var(--tr),
-    background var(--tr);
-}
-.ai-byo-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--slate);
-  transition:
-    background var(--tr),
-    box-shadow var(--tr);
-}
-.ai-byo-status[data-state='on'] {
-  color: var(--green);
-  border-color: var(--green);
-}
-.ai-byo-status[data-state='on'] .ai-byo-dot {
-  background: var(--green);
-  box-shadow: 0 0 6px var(--green);
-}
-/* AI-CLOUD-CONNECT-UI (DIR-1): */
-.ai-byo-status[data-state='untested'] {
-  color: var(--gold-text);
-  border-color: var(--gold);
-}
-.ai-byo-status[data-state='untested'] .ai-byo-dot {
-  background: var(--gold);
-  box-shadow: 0 0 6px var(--gold);
-}
-body.dark-mode .ai-byo-status[data-state='untested'] {
-  background: rgba(var(--gold-rgb, 212, 175, 55), 0.08);
-}
+/* BYO-AI-KEY-SESSION-ONLY-v1 - Connect flow (STEP-2): session-only key input,
+   security copy, and the send gate.
+   UI-WAVE 2026-11-20 C: the status chip (.ai-byo-status / .ai-byo-dot) was
+   removed; the connect banner's visibility and the Send gate carry the state. */
 .ai-byo-key {
   width: 190px;
 }
@@ -17758,9 +17721,6 @@ body.dark-mode .ai-adv .ai-adv-body {
 body.dark-mode .ai-head-tier {
   background-color: var(--lit-black-25);
   border-color: var(--lit-white-14);
-}
-body.dark-mode .ai-byo-status {
-  background: var(--lit-white-05);
 }
 body.dark-mode .ai-byo-key {
   background: var(--lit-black-25);
@@ -22219,6 +22179,13 @@ body.view-3d .view-deck {
 [data-perf='on'] .drw-sheet,
 [data-perf='on'] .bcp-top {
   background: var(--card) !important;
+}
+/* UI-WAVE 2026-11-20 M: the launcher rail (.db-side) leans on blur for its
+   dark fill. Performance Mode removes all blur globally, so in dark mode it
+   fell back to the translucent --glass-fill-dark and went see-through. Give
+   it the same opaque fallback the prefers-reduced-transparency path uses. */
+[data-perf='on'] body.dark-mode.db-page .db-side {
+  background: var(--db-surface-raised) !important;
 }
 [data-perf='on'] canvas.bg-stars,
 [data-perf='on'] #marketing-globe canvas,

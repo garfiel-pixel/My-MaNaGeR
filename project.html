@@ -1743,7 +1743,8 @@
            #ai-api-pill-label (visually hidden) and is mirrored to title and
            aria-label, so the state is still announced and asserted.
            NOTE: this is the BACKEND server health, not the user's AI key
-           connection , that lives in ai-byo-status below. -->
+           connection , which is conveyed by the connect banner and the
+           Send gate in the window body below. -->
       <button type="button" class="ai-api-dot" id="ai-api-pill" data-state="checking" title="Backend API connection, click to re-check" aria-label="Backend checking"><span class="ai-pill-dot"></span><span id="ai-api-pill-label" class="sr-only">Backend · checking</span></button>
       <div class="ai-head-right">
         <button type="button" class="ai-icon-btn" data-action="aiClear" title="New chat" aria-label="New chat"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg></button>
@@ -1778,17 +1779,15 @@
          is-hide on #ai-cfg-cloud by tier. Wired directly in mmgr-ai.js , no
          action-map entries, so connecting a key stays available in view-only
          mode (connecting is not a project mutation). -->
-    <!-- AI-WINDOW-POLISH: the verbose label + long security paragraph are
-         gone , the status chip already says Disconnected/Connected, the key
-         input carries the session-only promise in its title, and the footnote
-         is one line. Same ids/classes, so the QA wiring (ai-byo-status,
-         ai-byo-provider, ai-byo-connect, ai-byo-clear, .ai-byo-sec) is intact. -->
-    <!-- UI-DECLUTTER: the strip keeps ONE smart status dot (ai-byo-status) + the
-         provider dropdown; the raw key input + Connect & Test + the security
-         footnote live in a popover behind the settings gear (ai-byo-gear /
-         ai-byo-pop), so the window header no longer carries a large key box.
-         Same ids/classes for the QA wiring (ai-byo-status, ai-byo-provider,
-         ai-byo-connect, ai-byo-clear, .ai-byo-sec) , all still in the DOM. -->
+    <!-- UI-WAVE 2026-11-20 C: the tiny "Disconnected" status box is gone.
+         Connection state is now conveyed by this banner's visibility (shown
+         on the cloud tier until a key verifies) plus the cloud Send gate;
+         the header engine pill still announces the canonical state to screen
+         readers. The provider dropdown stays here; the raw key input +
+         Connect & Test + security footnote live in the popover behind the
+         settings gear (ai-byo-gear / ai-byo-pop). QA wiring ids
+         (ai-byo-provider, ai-byo-connect, ai-byo-clear, .ai-byo-sec) are
+         unchanged. -->
     <!-- D-1 step 3: the connection row is a BANNER that only exists when it is
          needed, which is Cloud chosen and no verified key yet. Visibility is
          driven by syncSettingsUI/syncByoStatus through is-hide, the existing
@@ -1796,7 +1795,6 @@
          changes again. -->
     <div class="ai-conn-row ai-conn-banner" id="ai-cfg-cloud">
       <span class="ai-conn-msg">Connect your API key to use Cloud</span>
-      <span class="ai-byo-status" id="ai-byo-status" data-state="off"><span class="ai-byo-dot"></span><span class="ai-byo-status-txt">Disconnected</span></span>
       <button class="ai-byo-gear" id="ai-byo-gear" type="button" aria-expanded="false" aria-label="API key settings" title="API key settings , paste your key and Connect &amp; Test"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg></button>
       <button class="ai-conn-dismiss" id="ai-cfg-dismiss" type="button" aria-label="Dismiss this notice" title="Dismiss"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>
       <div class="ai-byo-pop is-hide" id="ai-byo-pop" role="group" aria-label="API key setup">

@@ -2746,9 +2746,6 @@ body.dark-mode .ai-head-tier {
   background-color: var(--lit-black-25);
   border-color: var(--lit-white-14);
 }
-body.dark-mode .ai-byo-status {
-  background: var(--lit-white-05);
-}
 body.dark-mode .ai-byo-key {
   background: var(--lit-black-25);
 }

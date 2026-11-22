@@ -3072,6 +3072,13 @@ body.dark-mode .wbs-alert-item {
   max-width: 90vw;
   box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
   font-size: 0.78rem;
+  /* UI-WAVE 2026-11-20 B: this is a passive hover explainer. It must not
+     swallow clicks meant for the methodology tabs it floats over. */
+  pointer-events: none;
+}
+/* Keep the close control usable even though the card body is click-through. */
+.mlc-card .dc {
+  pointer-events: auto;
 }
 .mlc-body {
   color: var(--text);

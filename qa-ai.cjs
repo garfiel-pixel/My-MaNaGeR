@@ -885,18 +885,26 @@ async function ev(expr) {
       var conn = document.getElementById('ai-byo-connect');
       if (conn) conn.click();
       await new Promise(function(r){ setTimeout(r, 300); });
-      var st = document.getElementById('ai-byo-status');
+      // UI-WAVE 2026-11-20 C: the tiny status chip is gone. The connect
+      // banner hiding + Send gate are now the visible connected contract.
+      var banner = document.getElementById('ai-cfg-cloud');
       var send = document.querySelector('.ai-send');
       return { connected: MMGR.AiKey.isConnected(),
         status: MMGR.AiWin.getConnectionState(),
-        chip: !!(st && st.getAttribute('data-state') === 'on' && st.textContent.indexOf('Connected') === 0 && st.textContent.indexOf('Google Gemini') > -1),
+        provider: MMGR.AiKey.getProvider ? MMGR.AiKey.getProvider() : null,
+        bannerHidden: !!(banner && banner.classList.contains('is-hide')),
         inputCleared: !!k && k.value === '',
         sendEnabled: !!(send && !send.disabled) };
     } finally { window.fetch = orig; }
   })()`);
   check(
-    'B05 ui: Connect & Test -> verified "Connected · Google Gemini" chip, raw key cleared, cloud Send enabled',
-    u1b.connected && u1b.status === 'connected' && u1b.chip && u1b.inputCleared && u1b.sendEnabled,
+    'B05 ui: Connect & Test -> verified connected state, banner retires, raw key cleared, cloud Send enabled',
+    u1b.connected &&
+      u1b.status === 'connected' &&
+      u1b.provider === 'google-gemini' &&
+      u1b.bannerHidden &&
+      u1b.inputCleared &&
+      u1b.sendEnabled,
     u1b
   );
 
@@ -904,12 +912,12 @@ async function ev(expr) {
     var clr = document.getElementById('ai-byo-clear');
     if (clr) clr.click();
     await new Promise(function(r){ setTimeout(r, 120); });
-    var st = document.getElementById('ai-byo-status');
+    var banner = document.getElementById('ai-cfg-cloud');
     var send = document.querySelector('.ai-send');
     var wrap = document.getElementById('ai-send-wrap');
     return { off: MMGR.AiKey.isConnected() === false,
       status: MMGR.AiWin.getConnectionState(),
-      chip: !!(st && st.getAttribute('data-state') === 'off' && st.textContent.indexOf('Disconnected') === 0),
+      bannerShown: !!(banner && !banner.classList.contains('is-hide')),
       sendBlocked: !!(send && send.disabled),
       // UI-DECLUTTER: the red inline hint is gone; the disabled Send button
       // explains itself through the WRAPPER's native tooltip (Chrome
@@ -918,10 +926,10 @@ async function ev(expr) {
       tipSet: !!(wrap && wrap.getAttribute('title') && wrap.getAttribute('title').indexOf('Connect your AI key to send') > -1) };
   })()`);
   check(
-    'B06 ui: Clear -> Disconnected chip, session key gone, cloud Send disabled + native tooltip (no red hint)',
+    'B06 ui: Clear -> not_connected, connect banner returns, session key gone, cloud Send disabled + native tooltip (no red hint)',
     u1c.off &&
       u1c.status === 'not_connected' &&
-      u1c.chip &&
+      u1c.bannerShown &&
       u1c.sendBlocked &&
       u1c.hintGone &&
       u1c.tipSet,
@@ -929,8 +937,8 @@ async function ev(expr) {
   );
 
   // ---- DIR-1 canonical three states: saved-but-unverified vs rejected ----
-  // B07a: provider unreachable -> key KEPT, status 'saved_untested', chip
-  // "Key saved — not tested", Send stays blocked (no fabricated connected).
+  // B07a: provider unreachable -> key KEPT, status 'saved_untested', connect
+  // banner stays up, Send stays blocked (no fabricated connected).
   const u1d = await ev(`(async function(){
     var orig = window.fetch;
     window.fetch = function(){ return Promise.reject(new Error('network down')); };
@@ -940,12 +948,12 @@ async function ev(expr) {
       var k = document.getElementById('ai-byo-key');
       if (k) k.value = 'sk-offline-1';
       var res = await MMGR.AiWin.connectByo('openai', 'sk-offline-1');
-      var st = document.getElementById('ai-byo-status');
+      var banner = document.getElementById('ai-cfg-cloud');
       var send = document.querySelector('.ai-send');
       var wrap = document.getElementById('ai-send-wrap');
       return { ok: res.ok, status: MMGR.AiWin.getConnectionState(),
         keyKept: MMGR.AiKey.isConnected() === true,
-        chip: !!(st && st.getAttribute('data-state') === 'untested' && st.textContent.indexOf('not tested') > -1),
+        bannerShown: !!(banner && !banner.classList.contains('is-hide')),
         sendBlocked: !!(send && send.disabled),
         // textContent-equivalent on the wrapper tooltip: the saved_untested
         // message must render a plain '&' (the HTML entity would literally
@@ -954,11 +962,11 @@ async function ev(expr) {
     } finally { window.fetch = orig; }
   })()`);
   check(
-    'B07a ui: unreachable provider -> key KEPT, "Key saved — not tested", Send stays blocked',
+    'B07a ui: unreachable provider -> key KEPT, saved_untested, banner stays, Send stays blocked',
     u1d.ok === false &&
       u1d.status === 'saved_untested' &&
       u1d.keyKept &&
-      u1d.chip &&
+      u1d.bannerShown &&
       u1d.sendBlocked,
     u1d
   );
@@ -969,7 +977,8 @@ async function ev(expr) {
   );
 
   // B07b: provider rejects the key (401) -> key CLEARED, back to
-  // 'not_connected', chip Disconnected (auth failure clears, not fabricates).
+  // 'not_connected', connect banner returns (auth failure clears,
+  // never fabricates a connected state).
   const u1e = await ev(`(async function(){
     var orig = window.fetch;
     window.fetch = function(){ return Promise.resolve(new Response('{}', { status: 401 })); };
@@ -979,15 +988,15 @@ async function ev(expr) {
       var k = document.getElementById('ai-byo-key');
       if (k) k.value = 'sk-rejected-1';
       var res = await MMGR.AiWin.connectByo('openai', 'sk-rejected-1');
-      var st = document.getElementById('ai-byo-status');
+      var banner = document.getElementById('ai-cfg-cloud');
       return { ok: res.ok, status: MMGR.AiWin.getConnectionState(),
         keyCleared: MMGR.AiKey.isConnected() === false,
-        chip: !!(st && st.getAttribute('data-state') === 'off' && st.textContent.indexOf('Disconnected') === 0) };
+        bannerShown: !!(banner && !banner.classList.contains('is-hide')) };
     } finally { window.fetch = orig; }
   })()`);
   check(
-    'B07b ui: 401 from provider -> key CLEARED, Disconnected, status not_connected',
-    u1e.ok === false && u1e.status === 'not_connected' && u1e.keyCleared && u1e.chip,
+    'B07b ui: 401 from provider -> key CLEARED, banner returns, status not_connected',
+    u1e.ok === false && u1e.status === 'not_connected' && u1e.keyCleared && u1e.bannerShown,
     u1e
   );
 
@@ -1028,14 +1037,14 @@ async function ev(expr) {
     if (prov) prov.value = 'openai'; // reset — earlier B-tests left it on gemini
     return { shown: cloud && !cloud.classList.contains('is-hide'),
       prov: prov ? prov.value : null,
-      status: !!document.getElementById('ai-byo-status'),
+      gear: !!document.getElementById('ai-byo-gear'),
       connect: !!document.getElementById('ai-byo-connect'),
       clear: !!document.getElementById('ai-byo-clear'),
       secCopy: !!(document.querySelector('.ai-byo-sec') && document.querySelector('.ai-byo-sec').textContent.indexOf('session only') > -1) };
   })()`);
   check(
-    'A12 ui: cloud tier reveals BYO connect flow (provider select, status chip, Connect/Clear, security copy)',
-    u2.shown && u2.prov === 'openai' && u2.status && u2.connect && u2.clear && u2.secCopy,
+    'A12 ui: cloud tier reveals BYO connect flow (provider select, settings gear, Connect/Clear, security copy; no status chip)',
+    u2.shown && u2.prov === 'openai' && u2.gear && u2.connect && u2.clear && u2.secCopy,
     u2
   );
   await ev('MMGR.AiWin.setAiCfg({ tier: "local" }); MMGR.AiWin.syncSettingsUI();');

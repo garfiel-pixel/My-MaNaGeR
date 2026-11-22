@@ -303,6 +303,176 @@ function check(name, val, detail) {
     afterReload
   });
 
+  // ---- MP4/MP5/MP6 (item P, 2026-11-21): loading, failed, failed clients ---
+  // The owner reported a panel that announced a verdict before it had one.
+  // These three gates are the contract: a real loading state, a failure that
+  // names itself and points at Refresh, and a client fetch failure that never
+  // reads as an empty account.
+  await ev(`(function(){
+    window.__stub = window.fetch;
+    window.fetch = function (url, init) {
+      window.__calls.push({
+        url: String(url),
+        method: (init && init.method) || 'GET',
+        body: init && init.body
+      });
+      return new Promise(function () {});
+    };
+    MMGR.McpAdmin.load();
+  })()`);
+  await delay(150);
+  const mP4 = await ev(`(function(){
+    const load = document.getElementById('mcp-admin-loading');
+    const chip = document.getElementById('mcp-admin-chip');
+    const st = document.getElementById('mcp-admin-status');
+    return {
+      loadingShown: !!load && load.hidden === false,
+      rows: document.querySelectorAll('#mcp-admin-loading .mcp-admin-skel-row').length,
+      bodyHidden: document.getElementById('mcp-admin-body').hidden,
+      chip: (chip.textContent || '').trim(),
+      chipKind: chip.getAttribute('data-kind'),
+      status: st ? (st.textContent || '').trim() : ''
+    };
+  })()`);
+  check(
+    'MP1 in flight: two skeleton rows, body hidden, chip Loading..., no verdict yet',
+    mP4.loadingShown === true &&
+      mP4.rows === 2 &&
+      mP4.bodyHidden === true &&
+      mP4.chip === 'Loading...' &&
+      mP4.chipKind === 'busy' &&
+      /Loading MCP settings/i.test(mP4.status),
+    mP4
+  );
+
+  await ev(`(function(){
+    window.fetch = function () {
+      return Promise.resolve({
+        ok: false,
+        status: 503,
+        text: function () {
+          return Promise.resolve(JSON.stringify({ ok: false, error: 'MCP settings are not available right now.' }));
+        }
+      });
+    };
+    MMGR.McpAdmin.load();
+  })()`);
+  await delay(400);
+  const mP5 = await ev(`(function(){
+    const chip = document.getElementById('mcp-admin-chip');
+    const st = document.getElementById('mcp-admin-status');
+    return {
+      chip: (chip.textContent || '').trim(),
+      chipKind: chip.getAttribute('data-kind'),
+      status: st ? (st.textContent || '').trim() : '',
+      bodyHidden: document.getElementById('mcp-admin-body').hidden,
+      loadingShown: document.getElementById('mcp-admin-loading').hidden === false
+    };
+  })()`);
+  check(
+    'MP2 failed load: chip says Could not load, status names the reason and Refresh, never Unavailable',
+    mP5.chip === 'Could not load' &&
+      mP5.chipKind === 'err' &&
+      !/unavailable/i.test(mP5.chip + ' ' + mP5.status) &&
+      /Press Refresh/i.test(mP5.status) &&
+      mP5.bodyHidden === true &&
+      mP5.loadingShown === false,
+    mP5
+  );
+
+  await ev(`(function(){
+    window.fetch = function (url) {
+      if (String(url).indexOf('/api/mcp/clients') > -1) {
+        return Promise.resolve({ ok: false, status: 502, text: function () { return Promise.resolve('{}'); } });
+      }
+      const body = {
+        ok: true,
+        config: { enabled: 1, policy: 'allow_all', toolSubset: null },
+        tools: [],
+        projects: []
+      };
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: function () { return Promise.resolve(JSON.stringify(body)); }
+      });
+    };
+    MMGR.McpAdmin.load();
+  })()`);
+  await delay(500);
+  const mP6 = await ev(`(function(){
+    const host = document.getElementById('mcp-clients');
+    const count = document.getElementById('mcp-client-count');
+    const chip = document.getElementById('mcp-admin-chip');
+    return {
+      text: (host.textContent || '').trim(),
+      countHidden: count.hidden,
+      chip: (chip.textContent || '').trim()
+    };
+  })()`);
+  check(
+    'MP3 failed client fetch says so, hides the count and never claims zero clients',
+    /Could not load connected clients/i.test(mP6.text) &&
+      !/No client has connected/i.test(mP6.text) &&
+      mP6.countHidden === true &&
+      mP6.chip === 'On',
+    mP6
+  );
+
+  // Back to the stubbed Worker shapes for the write-action gates below.
+  await ev(`(function(){ window.fetch = window.__stub; MMGR.McpAdmin.load(); })()`);
+  await delay(800);
+
+  // ---- MP4 (item P): the chrome-free controls still behave like controls ----
+  const mP7 = await ev(`(function(){
+    const copy = document.querySelector('[data-mcp-act="copy-url"]');
+    const retry = document.querySelector('[data-mcp-act="reload"]');
+    const nw = document.querySelector('[data-action="openProjectModal"]');
+    const imp = document.querySelector('[data-action="importProject"]');
+    function flat(el){
+      if (!el) return null;
+      const s = getComputedStyle(el);
+      return {
+        bg: s.backgroundColor,
+        border: s.borderTopWidth,
+        cursor: s.cursor
+      };
+    }
+    // Read the APPLIED rules out of the live stylesheet, not the source files:
+    // proof that the flat look still carries a hover tint and a focus ring.
+    let hoverBg = null, hoverDark = null, focusOutline = null;
+    for (let i = 0; i < document.styleSheets.length; i++) {
+      let rules;
+      try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
+      for (let j = 0; j < rules.length; j++) {
+        const r = rules[j];
+        if (!r.style || !r.selectorText) continue;
+        const sel = r.selectorText;
+        // Longhands read back empty when a declaration carries var(), so judge
+        // the shorthand text the browser actually holds.
+        const css = r.style.cssText || '';
+        if (sel === ".btn.btn-ghost:hover" && /background/.test(css)) hoverBg = css;
+        if (/dark-mode.*.btn-ghost:hover/.test(sel) && /background/.test(css)) hoverDark = css;
+        if (sel === ".btn:focus-visible" && /outline/.test(css)) focusOutline = css;
+      }
+    }
+    return {
+      copy: flat(copy), retry: flat(retry), nw: flat(nw), imp: flat(imp),
+      hoverBg: hoverBg, hoverDark: hoverDark, focusOutline: focusOutline
+    };
+  })()`);
+  const flatControls = [mP7.copy, mP7.retry, mP7.nw, mP7.imp];
+  check(
+    'MP4 the five flat controls have no fill or outline at rest, keep the pointer, and keep hover + focus',
+    flatControls.every(function(c){
+      return c && (c.bg === 'rgba(0, 0, 0, 0)' || c.bg === 'transparent') && c.border === '0px' && c.cursor === 'pointer';
+    }) &&
+      !!mP7.hoverBg && !/transparent/.test(mP7.hoverBg) &&
+      !!mP7.hoverDark &&
+      /solid/.test(mP7.focusOutline || ''),
+    mP7
+  );
+
   // ---- M3: the tool picker follows the policy ------------------------------
   const m3 = await ev(`(function(){
     const sel = document.getElementById('mcp-policy');

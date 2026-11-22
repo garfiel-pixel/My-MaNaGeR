@@ -234,6 +234,26 @@
   min-width: 0;
   flex: 1 1 auto;
 }
+/* OWNER 2026-11-21 (item P): the panel used to jump from "Checking..." to a
+   verdict, leaving the card blank while the request was in flight. Loading is
+   now a state of its own - two dim rows hold the space, so the card never
+   flashes empty and never announces an answer it does not have yet. No
+   animation: performance mode and reduced motion both get a still block. */
+.mcp-admin-loading {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 6px;
+}
+.mcp-admin-loading[hidden] {
+  display: none;
+}
+.mcp-admin-skel-row {
+  display: block;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--slate) 12%, transparent);
+}
 .mcp-admin-panel[hidden] {
   display: none !important;
 }

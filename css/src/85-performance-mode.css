@@ -48,6 +48,13 @@
 [data-perf='on'] .bcp-top {
   background: var(--card) !important;
 }
+/* UI-WAVE 2026-11-20 M: the launcher rail (.db-side) leans on blur for its
+   dark fill. Performance Mode removes all blur globally, so in dark mode it
+   fell back to the translucent --glass-fill-dark and went see-through. Give
+   it the same opaque fallback the prefers-reduced-transparency path uses. */
+[data-perf='on'] body.dark-mode.db-page .db-side {
+  background: var(--db-surface-raised) !important;
+}
 [data-perf='on'] canvas.bg-stars,
 [data-perf='on'] #marketing-globe canvas,
 [data-perf='on'] #stars,

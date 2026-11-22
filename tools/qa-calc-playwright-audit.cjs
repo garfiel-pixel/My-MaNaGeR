@@ -650,7 +650,9 @@ async function walkFocus(page, openDrawers) {
             localStorage.removeItem('mmgr_calc_tour_done');
           } catch (e) {}
           window.__calcTour.start();
-          for (let i = 0; i < 12; i++) {
+          // OWNER 2026-11-21 (E): the walk gained a centred intro card, so it
+          // is 14 steps - 13 Next clicks from step 1 reach the final card.
+          for (let i = 0; i < 13; i++) {
             document.querySelector('[data-action="calcTourNext"]').click();
             await new Promise(r => setTimeout(r, 60));
           }

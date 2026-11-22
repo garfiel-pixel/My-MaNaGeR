@@ -1178,54 +1178,10 @@ body.dark-mode .ai-conn-row {
 body.dark-mode .ai-byo-pop {
   background: var(--lit-black-18);
 }
-/* BYO-AI-KEY-SESSION-ONLY-v1 - Connect flow (STEP-2): status chip,
-   session-only key input, security copy, and the send gate. */
-.ai-byo-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.66rem;
-  font-weight: 700;
-  border-radius: var(--radius-control);
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  background: var(--tile-bg);
-  color: var(--slate);
-  white-space: nowrap;
-  transition:
-    color var(--tr),
-    border-color var(--tr),
-    background var(--tr);
-}
-.ai-byo-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--slate);
-  transition:
-    background var(--tr),
-    box-shadow var(--tr);
-}
-.ai-byo-status[data-state='on'] {
-  color: var(--green);
-  border-color: var(--green);
-}
-.ai-byo-status[data-state='on'] .ai-byo-dot {
-  background: var(--green);
-  box-shadow: 0 0 6px var(--green);
-}
-/* AI-CLOUD-CONNECT-UI (DIR-1): */
-.ai-byo-status[data-state='untested'] {
-  color: var(--gold-text);
-  border-color: var(--gold);
-}
-.ai-byo-status[data-state='untested'] .ai-byo-dot {
-  background: var(--gold);
-  box-shadow: 0 0 6px var(--gold);
-}
-body.dark-mode .ai-byo-status[data-state='untested'] {
-  background: rgba(var(--gold-rgb, 212, 175, 55), 0.08);
-}
+/* BYO-AI-KEY-SESSION-ONLY-v1 - Connect flow (STEP-2): session-only key input,
+   security copy, and the send gate.
+   UI-WAVE 2026-11-20 C: the status chip (.ai-byo-status / .ai-byo-dot) was
+   removed; the connect banner's visibility and the Send gate carry the state. */
 .ai-byo-key {
   width: 190px;
 }

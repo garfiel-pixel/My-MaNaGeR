@@ -85,7 +85,7 @@
     }
     var ico = $(BADGE_ICO);
     if (ico) {
-      ico.setAttribute('href', 'css/mmgr-icons.svg#' + (active ? 'i-check' : 'i-sparkle'));
+      ico.setAttribute('href', 'css/mmgr-icons.svg#' + (active ? 'i-check' : 'i-mpw'));
     }
     var txt = $(BADGE_TEXT);
     if (txt) {
@@ -117,7 +117,7 @@
     wrap.id = 'plan-wrap';
     wrap.innerHTML =
       '<button type="button" class="plan-badge" id="plan-badge" aria-expanded="false" aria-controls="plan-pop">' +
-      '<svg class="ico" aria-hidden="true"><use id="plan-badge-ico" href="css/mmgr-icons.svg#i-sparkle"></use></svg>' +
+      '<svg class="ico" aria-hidden="true"><use id="plan-badge-ico" href="css/mmgr-icons.svg#i-mpw"></use></svg>' +
       '<span id="plan-badge-text">Upgrade to Premium</span>' +
       '</button>' +
       '<div class="plan-pop" id="plan-pop" role="group" aria-label="Your plan" hidden>' +

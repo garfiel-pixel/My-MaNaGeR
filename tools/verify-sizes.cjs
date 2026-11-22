@@ -104,7 +104,15 @@ const EXACT = {
   // parity across all eight 86-theme-*.css skins (651304 measured). The prior
   // cap left only 1.8 KB of headroom; this is a real additive feature wave, so
   // the raise tracks the file and leaves ~2.7 KB for the next wave.
-  'css/mmgr.css': 654000,
+  // 2026-11-22 (UI-WAVE I, RACI matrix): raised 654000 -> 668000
+  // (663764 measured). The matrix gained a bounded scroll frame with both axes
+  // sticky, zebra rows, a name/role header that only shows its edit border on
+  // hover or focus, a column popover menu, a dashed unassigned cell and the
+  // amber zero-Accountable mark (~11 KB). Note for the next wave: splitting a
+  // css/src layer CANNOT reduce this cap - build.js concatenates every layer
+  // into css/mmgr.css, so the cap is a total CSS budget. Trim or raise, and
+  // say which in the commit body.
+  'css/mmgr.css': 668000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring
@@ -125,7 +133,15 @@ const EXACT = {
   // uploaded-book picker group, the upload/remove actions and the workspace
   // section. The next calculator feature should split a render family rather
   // than raise this again.
-  'js/calculator-page.js': 610000,
+  // 2026-11-22 (UI-WAVE E, first-run tour): raised 610000 -> 614000
+  // (611782 measured). The walkthrough gained a centred intro card, a
+  // reduced-motion-gated smooth scroll with a re-place after it settles, a
+  // cut-out that rings the whole .bcp-field instead of the bare input, and a
+  // dim fallback for a viewport-sized target. The tour block is ~330 lines
+  // and shares this file's IIFE helpers ($, clampX, the gap constants), so it
+  // could not be lifted out inside the wave; the next calculator feature
+  // should move the tour engine to js/calc-tour.js rather than raise this.
+  'js/calculator-page.js': 614000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.
   // 2026-11-08 (C3 Phase 1): raised 215000 -> 220000 for the Documents view
@@ -197,7 +213,12 @@ const DIRS = {
   // action and its export (312344 measured). Navigation is app-level wiring,
   // so it belongs here; the 3 KB headroom is deliberate - the next growth
   // should be the split, not another raise.
-  js: 315000,
+  // 2026-11-22 (UI-WAVE L, on-hold gate): 315000 -> 317000. guardReadonly
+  // gained the on-hold branch and the safe list gained onholdFinalize
+  // (315313 measured). The gate belongs in the dispatcher, so it lands here;
+  // the remaining headroom is ~2 KB and the split is still the right next
+  // move for this file.
+  js: 317000,
   css: 160000,
   src: 300000
 };

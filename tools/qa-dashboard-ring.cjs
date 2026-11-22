@@ -9,12 +9,23 @@
      R1 with groups: one arc per group, the original #rf hidden.
      R2 the arcs' points sum to the centre percentage within 0.1.
      R3 every arc paints the --major-N token its data-color names.
-     R4 no groups: exactly today's single stroke, no slot layer.
+     R4 one phase (no groups): exactly today's single stroke, no slot layer.
      R5 Performance Mode: the entry sweep does not run.
      R6 the SVG is role="img" and its label names the percentage and
         the top contributors (colour is never the only carrier).
      R7 hovering an arc marks it hot, and hovering a row lights its arc.
      R8 the ring survives a dark theme with the same tokens.
+
+   UI-WAVE 2026-11-20 D gates (the flat / older-project path):
+     D1 no phase rows and no labels: one slot per top-level main task.
+     D2 every main task gets an equal arc width.
+     D3 an arc fills by its own subtask completion.
+     D4 the centre is the mean main-task fraction (the sum of the arcs).
+     D5 the original #rf stroke stays hidden while the slots draw.
+     D6 a completed main task with ten subtasks cannot dominate an open one:
+        equal arcs, points 50/0, centre 50% - not the 90.9% work-item rate.
+     D7 a single main task draws one full-width segment that fills by its
+        subtasks, not by counting the container row.
 
    B4 gates (the list under the ring):
      L1 five rows while collapsed, one per major, the rest behind a toggle.
@@ -110,6 +121,39 @@ const PHASED = `[
 const PLAIN = `[
   { id: 'a', name: 'One', status: 'completed', startDate: '2026-01-05', endDate: '2026-01-10' },
   { id: 'b', name: 'Two', status: 'todo', startDate: '2026-01-12', endDate: '2026-01-20' }
+]`;
+
+// One main task is one segment - not a ring of one. grouped stays false, so
+// this is the "keep today's stroke" fixture.
+const SINGLE = `[
+  { id: 'm1', name: 'Only main task' },
+  { id: 's1', name: 'Sub one', parentName: 'Only main task', status: 'completed' },
+  { id: 's2', name: 'Sub two', parentName: 'Only main task', status: 'todo' }
+]`;
+
+// One phase is one group, so the phase branch keeps today's single stroke.
+const SINGLE_PHASE = `[
+  { id: 'p1', name: 'Only phase', isPhase: true, status: 'todo' },
+  { id: 't1', name: 'Work', parentId: 'p1', status: 'completed' }
+]`;
+
+// UI-WAVE D: the owner's dominance case. One completed main task with ten
+// subtasks and one open main task with one subtask. Equal weighting must keep
+// the ring at 50%, not the 10/11 = 90.9% work-item rate.
+const DOMINANCE = `[
+  { id: 'm1', name: 'Big done', level: 0 },
+  { id: 'b1', name: 'b1', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b2', name: 'b2', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b3', name: 'b3', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b4', name: 'b4', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b5', name: 'b5', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b6', name: 'b6', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b7', name: 'b7', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b8', name: 'b8', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b9', name: 'b9', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'b10', name: 'b10', parentName: 'Big done', level: 1, status: 'completed' },
+  { id: 'm2', name: 'Small open', level: 0 },
+  { id: 's1', name: 's1', parentName: 'Small open', level: 1, status: 'todo' }
 ]`;
 
 // Seven majors with distinct contributions, so the list has a real order:
@@ -256,6 +300,7 @@ const NOTHING_DONE = `[
         const svg = pring ? pring.querySelector('svg') : null;
         const fill = svg ? svg.querySelector('#rf') : null;
         const slots = svg ? Array.from(svg.querySelectorAll('.ring-slot')) : [];
+        const tracks = svg ? Array.from(svg.querySelectorAll('.ring-slot-track')) : [];
         const tokens = {};
         slots.forEach(function (el) {
           const n = el.getAttribute('data-color');
@@ -279,6 +324,9 @@ const NOTHING_DONE = `[
               stroke: getComputedStyle(el).stroke,
               token: tokens[el.getAttribute('data-color')]
             };
+          }),
+          tracks: tracks.map(function (el) {
+            return el.getAttribute('stroke-dasharray');
           }),
           centre: (document.getElementById('rt') || {}).textContent || '',
           dc: (document.getElementById('dc') || {}).textContent || '',
@@ -350,16 +398,112 @@ const NOTHING_DONE = `[
       await ctx.close();
     }
 
-    // ---- R4: no groups keeps today's ring ---------------------------
+    // ---- R4: one phase keeps today's ring ---------------------------
     {
       const { ctx, page } = await openProject();
+      await seed(page, SINGLE_PHASE);
+      await page.evaluate(FLUSH_RAF);
+      await delay(250);
+      const st = await ringState(page);
+      check('R4 a project with one phase draws no slots', st.slots.length === 0, st.slots.length);
+      check('R4 the single stroke is back', st.fillShown, st.fillShown);
+      check('R4 the centre reads the all-task percentage', st.centre === '50%', st.centre);
+      await ctx.close();
+    }
+
+    // ---- D1-D5: the flat / older-project path ----------------------
+    {
+      const { ctx, page, errors } = await openProject();
       await seed(page, PLAIN);
       await page.evaluate(FLUSH_RAF);
       await delay(250);
       const st = await ringState(page);
-      check('R4 a project with no groups draws no slots', st.slots.length === 0, st.slots.length);
-      check('R4 the single stroke is back', st.fillShown, st.fillShown);
-      check('R4 the centre still reads the all-task percentage', st.centre === '50%', st.centre);
+      const dashFirst = s => parseFloat(String(s || '').split(' ')[0]) || 0;
+      const byPts = st.slots.slice().sort((a, b) => b.points - a.points);
+
+      check(
+        'D1 a flat project draws one slot per main task',
+        st.slots.length === 2,
+        st.slots.length
+      );
+      check(
+        'D2 every main task gets an equal arc width',
+        st.tracks.length === 2 && st.tracks[0] === st.tracks[1],
+        st.tracks
+      );
+      check(
+        'D3 the completed main task fills its arc, the open one does not',
+        byPts.length === 2 &&
+          byPts[0].points === 50 &&
+          byPts[1].points === 0 &&
+          dashFirst(byPts[0].dash) > 100 &&
+          dashFirst(byPts[1].dash) === 0,
+        byPts.map(s => ({ points: s.points, dash: s.dash }))
+      );
+      check('D4 the centre is the mean main-task fraction', st.centre === '50%', {
+        centre: st.centre,
+        dc: st.dc,
+        tc: st.tc
+      });
+      check('D5 the original #rf stroke stays hidden', st.fillHidden, st.fillShown);
+      check('D5 no page error while drawing the flat ring', errors.length === 0, errors);
+      await ctx.close();
+    }
+
+    // ---- D6: equal weighting beats the work-item rate --------------
+    {
+      const { ctx, page } = await openProject();
+      await seed(page, DOMINANCE);
+      await page.evaluate(FLUSH_RAF);
+      await delay(250);
+      const st = await ringState(page);
+      const byPts = st.slots.slice().sort((a, b) => b.points - a.points);
+      check(
+        'D6 a completed task with ten subtasks cannot dominate an open one',
+        st.slots.length === 2 &&
+          st.tracks[0] === st.tracks[1] &&
+          byPts[0].points === 50 &&
+          byPts[1].points === 0 &&
+          st.centre === '50%',
+        {
+          slots: st.slots.length,
+          tracks: st.tracks,
+          points: byPts.map(s => s.points),
+          centre: st.centre
+        }
+      );
+      check(
+        'D6 the stat still counts the work items behind the ring',
+        st.dc === '10' && st.tc === '11',
+        { dc: st.dc, tc: st.tc }
+      );
+      await ctx.close();
+    }
+
+    // ---- D7: one main task draws one full-width segment -------------
+    {
+      const { ctx, page } = await openProject();
+      await seed(page, SINGLE);
+      await page.evaluate(FLUSH_RAF);
+      await delay(250);
+      const st = await ringState(page);
+      const list = await listState(page);
+      check(
+        'D7 a single main task draws one full-width slot',
+        st.slots.length === 1 && st.tracks.length === 1,
+        { slots: st.slots.length, tracks: st.tracks }
+      );
+      check(
+        'D7 the slot fills by its subtasks, not the container row',
+        st.centre === '50%' && st.slots[0].points === 50,
+        { centre: st.centre, points: st.slots[0] && st.slots[0].points, dc: st.dc, tc: st.tc }
+      );
+      check('D7 the single stroke is hidden', st.fillHidden, st.fillShown);
+      check(
+        'D7 the one-row list stays hidden',
+        !list.exists || list.hidden || list.rows.length === 0,
+        list
+      );
       await ctx.close();
     }
 
@@ -597,15 +741,15 @@ const NOTHING_DONE = `[
       await ctx.close();
     }
 
-    // ---- L9: no groups hides the list ------------------------------
+    // ---- L9: one main task hides the list --------------------------
     {
       const { ctx, page } = await openProject();
-      await seed(page, PLAIN);
+      await seed(page, SINGLE);
       await page.evaluate(FLUSH_RAF);
       await delay(250);
       const st = await listState(page);
       check(
-        'L9 a project with no groups hides the list',
+        'L9 a project with one main task hides the list',
         !st.exists || st.hidden || st.rows.length === 0,
         st
       );
@@ -676,10 +820,10 @@ const NOTHING_DONE = `[
       await ctx.close();
     }
 
-    // ---- B6: no groups, no stripe ----------------------------------
+    // ---- B6: no majors, no stripe ----------------------------------
     {
       const { ctx, page } = await openProject();
-      await seed(page, PLAIN);
+      await seed(page, SINGLE_PHASE);
       await page.evaluate(FLUSH_RAF);
       await delay(250);
       const st = await page.evaluate(() => {

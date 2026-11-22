@@ -26,7 +26,19 @@
         descendants (by parentId or parentName, any depth) beneath;
      2. otherwise each task's `phase` label, in order of first
         appearance, capitalised;
-     3. otherwise no groups - the dashboard keeps today's ring.
+     3. otherwise each top-level main task: every work item is
+        grouped under its highest ancestor, and a parentless item
+        is its own main task. This is the flat/older-project path
+        (UI-WAVE 2026-11-20 D).
+
+   Weighting differs on purpose. Branches 1-2 weight a group by its
+   share of the work items, so the centre percentage is the
+   work-item completion rate. Branch 3 gives every main task an
+   EQUAL arc (share = 1/N) and fills that arc by the main task's
+   own subtask completion, so a completed task with many subtasks
+   cannot dominate the ring or top the "what is driving
+   completion" list. The centre percentage is then the mean of the
+   main-task fractions, which is exactly the sum of the arc points.
 
    Pure: takes the state it should read, returns a plain object.
    Loaded in Node by test/major-groups.test.mjs through a vm
@@ -104,20 +116,46 @@ var MMGR = window.MMGR || {};
     return null;
   }
 
+  // Walk up parentId / parentName to the highest ancestor. That row is the
+  // main task a flat (no phase row, no phase label) project is grouped by.
+  // A parentless task is its own main task.
+  function rootAncestor(task, idx) {
+    let cur = task;
+    let last = task;
+    for (let guard = 0; cur && guard < 32; guard++) {
+      const pid = cur.parentId;
+      const pname = cur.parentName;
+      const parent =
+        (pid != null && pid !== '' && idx.byId[String(pid)]) ||
+        (pname && idx.byName[String(pname)]) ||
+        null;
+      if (!parent) {
+        return last;
+      }
+      last = parent;
+      cur = parent;
+    }
+    return last;
+  }
+
   function blank(name, id) {
     return { id: id, name: name, total: 0, completed: 0, members: [] };
   }
 
-  function finish(group, totalWork) {
+  function finish(group, totalWork, equalShare) {
     const fraction = group.total ? group.completed / group.total : 0;
+    const share = equalShare != null ? equalShare : totalWork ? group.total / totalWork : 0;
     return {
       id: group.id,
       name: group.name,
       total: group.total,
       completed: group.completed,
       fraction: fraction,
-      share: totalWork ? group.total / totalWork : 0,
-      points: pct(group.completed, totalWork),
+      share: share,
+      // Branches 1-2: the group's slice of the work-item completion rate.
+      // Branch 3: its equal arc's contribution, so the points sum to the
+      // centre percentage while no main task outranks another by size.
+      points: equalShare != null ? share * fraction * 100 : pct(group.completed, totalWork),
       // UX-2026-11-19 B6: the work items behind the group, so the Gantt bar,
       // the WBS marker and the Kanban stripe can paint the same colour as the
       // ring slot without a second membership rule.
@@ -155,6 +193,13 @@ var MMGR = window.MMGR || {};
       return byKey[key];
     }
 
+    // Branch 3 is the flat/older-project path: no phase rows AND no phase
+    // labels anywhere. Every work item lands under its highest ancestor.
+    const hasLabels = items.some(function (item) {
+      return !!capitalise(item.phase);
+    });
+    const byMainTask = !phaseRows.length && !hasLabels;
+
     if (phaseRows.length) {
       // 1. Phase rows are the majors, in plan order.
       phaseRows.forEach(function (ph, i) {
@@ -180,7 +225,7 @@ var MMGR = window.MMGR || {};
           g.completed++;
         }
       });
-    } else {
+    } else if (!byMainTask) {
       // 2. No phase rows: group by the task's `phase` label, in order of
       // first appearance among the work items being counted.
       items.forEach(function (item) {
@@ -197,6 +242,27 @@ var MMGR = window.MMGR || {};
           g.completed++;
         }
       });
+    } else {
+      // 3. No phase rows and no labels: the top-level main task is the major.
+      // Group each work item under its highest ancestor; a parentless item is
+      // its own main task. A main task is complete when all of its subtasks
+      // are, because its fraction is completed / total.
+      items.forEach(function (item) {
+        const root = rootAncestor(item, idx) || item;
+        const rid = root.id != null && root.id !== '' ? 'i:' + String(root.id) : '';
+        const rname = root.name ? String(root.name) : '';
+        const key = rid || (rname ? 'n:' + rname : '');
+        const name = rname || capitalise(item.name) || UNASSIGNED_NAME;
+        const gid = key ? 'group:main:' + key : UNASSIGNED_ID;
+        const g = key ? add(gid, name, gid) : add(UNASSIGNED_ID, UNASSIGNED_NAME, UNASSIGNED_ID);
+        g.total++;
+        if (item.id != null && item.id !== '') {
+          g.members.push(String(item.id));
+        }
+        if ((item.status || '') === 'completed') {
+          g.completed++;
+        }
+      });
     }
 
     // A major with no work items beneath it is omitted: a 0/0 row is not a
@@ -205,14 +271,29 @@ var MMGR = window.MMGR || {};
       return g.total > 0;
     });
 
+    // Branch 3 weights every main task equally. overall is the mean of their
+    // fractions, which is exactly the sum of the arc points.
+    const equalShare = byMainTask && kept.length ? 1 / kept.length : null;
+    const overallOut =
+      equalShare != null
+        ? (100 *
+            kept.reduce(function (acc, g) {
+              return acc + (g.total ? g.completed / g.total : 0);
+            }, 0)) /
+          kept.length
+        : overall;
+
     return {
       groups: kept.map(function (g) {
-        return finish(g, totalWork);
+        return finish(g, totalWork, equalShare);
       }),
       total: totalWork,
       completed: overallCompleted,
-      overall: overall,
-      grouped: kept.length > 1
+      overall: overallOut,
+      // Branches 1-2 keep today's "more than one major" rule. The flat branch
+      // applies its main-task model even for a single main task, so the ring
+      // fills by that task's subtasks instead of counting the container row.
+      grouped: byMainTask ? kept.length > 0 : kept.length > 1
     };
   }
 

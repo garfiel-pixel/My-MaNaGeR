@@ -999,12 +999,15 @@ body.db-page[data-skin] #app-header {
    the greeting, outline only (no pill, no fill), opening a native popover.
    The value lives in state.status and is mirrored into the launcher registry
    and the cloud row so every card names the same state. */
+/* UI-WAVE 2026-11-20 K: owner asked to drop the resting outline around the
+   status selector while keeping the dropdown arrow. Transparent border keeps
+   the hit area and focus-ring geometry identical; only the visible line is gone. */
 .status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 9px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
@@ -1012,12 +1015,9 @@ body.db-page[data-skin] #app-header {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition:
-    border-color var(--tr),
-    color var(--tr);
+  transition: color var(--tr);
 }
 .status-chip:hover {
-  border-color: var(--gold);
   color: var(--text);
 }
 .status-chip:focus-visible {

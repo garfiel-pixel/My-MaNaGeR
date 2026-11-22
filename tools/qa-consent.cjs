@@ -527,6 +527,43 @@ async function phaseBrowser() {
         JSON.stringify(['Accept all', 'Necessary only', 'Choose']),
     structure
   );
+
+  // UI-WAVE 2026-11-20 N: marketing.css has a GLOBAL gold :focus-visible ring,
+  // so the consent buttons must carry a neutral override. Guard the CSSOM
+  // rule the browser will actually apply - a stale/removed override silently
+  // brings the gold ring back.
+  const consentChrome = await page.evaluate(() => {
+    const rules = Array.prototype.slice.call(document.styleSheets).reduce((a, sh) => {
+      try {
+        return a.concat(Array.prototype.slice.call(sh.cssRules));
+      } catch (e) {
+        return a;
+      }
+    }, []);
+    const find = sel =>
+      rules
+        .filter(r => r.selectorText && r.selectorText.split(',').some(s => s.trim() === sel))
+        .pop();
+    const focus = find('.consent-btn:focus-visible');
+    const hover = find('.consent-btn:hover');
+    const darkHover = find('body.dark-mode .consent-btn:hover');
+    const goldish = v => /gold|212,\s*175,\s*55/i.test(String(v || ''));
+    return {
+      focusOutline: focus ? focus.style.outline : null,
+      hoverCss: hover ? hover.style.cssText : null,
+      darkHoverCss: darkHover ? darkHover.style.cssText : null,
+      clean:
+        !!focus &&
+        !goldish(focus.style.outline) &&
+        !goldish(hover && hover.style.cssText) &&
+        !goldish(darkHover && darkHover.style.cssText)
+    };
+  });
+  check(
+    'B1b consent buttons carry no gold focus ring or gold hover fill',
+    consentChrome.clean,
+    consentChrome
+  );
   const b2 = {
     attempts: beaconAttempts.length,
     responses: beaconResponses.length,

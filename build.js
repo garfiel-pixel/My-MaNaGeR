@@ -55,6 +55,9 @@ const APP_MODULES = [
   // Core (loaded first - defines MMGR namespace + utilities)
   'js/mmgr-state.js',
   'js/mmgr-utils.js',
+  // UI-WAVE 2026-11-20 L: the on-hold notice. Loads before the app module so
+  // the delegated guard can ask it whether the project is locked.
+  'js/mmgr-onhold.js',
   // Idea intake model (Leantime-inspired). Pure model: must load before the
   // renderers and the domain modules, because both read MMGR.Ideas at call
   // time.

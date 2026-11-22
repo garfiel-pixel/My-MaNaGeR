@@ -12256,6 +12256,11 @@
   // removes it, so a wiped device sees the tour again (owner-specified).
   const TOUR_STEPS = [
     {
+      // E (owner 2026-11-21): the walk opens on a centred card, not a control.
+      sel: null,
+      text: 'A short walk through the calculator - one control per card, then out. Close it any time.'
+    },
+    {
       sel: '#calc-work',
       text: 'This is the work item - what you are pricing. Pick one and the form follows.'
     },
@@ -12300,6 +12305,9 @@
     { sel: null, text: "That's it - you're ready to use the calculator." }
   ];
   let tourIdx = -1;
+  // Which step has already been scrolled to by the no-room fallback. Keyed by
+  // index so the re-place after a smooth scroll cannot scroll again.
+  let tourScrolledFor = -1;
   function tourDone() {
     try {
       return localStorage.getItem('mmgr_calc_tour_done') === '1';
@@ -12311,6 +12319,28 @@
     try {
       localStorage.setItem('mmgr_calc_tour_done', '1');
     } catch (e) {}
+  }
+  // E: motion is a nicety, content is not - reduced motion drops the glide.
+  function tourReduced() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+      return false;
+    }
+  }
+  // Re-place from the LIVE box; a stale step is ignored, so a fast Next cannot
+  // be re-placed by the step before it.
+  function tourPlaceStep(st) {
+    if (!st || !st.sel || tourIdx < 0 || TOUR_STEPS[tourIdx] !== st) {
+      return;
+    }
+    const el = document.querySelector(st.sel);
+    if (!el) {
+      return;
+    }
+    const box = tourVisibleBox(el);
+    positionTourPop(box);
+    positionTourSpot(box);
   }
   // Spotlight blur (owner 2026-09-30: highlight the field, blur the rest).
   // Marks the siblings of the target's ancestor path with .bcp-tour-blur;
@@ -12350,10 +12380,12 @@
   }
   function tourEnd() {
     tourIdx = -1;
+    tourScrolledFor = -1;
     tourFlag();
     const o = $('calc-tour-overlay');
     if (o) {
       o.hidden = true;
+      o.classList.remove('is-huge');
     }
     const spot = $('calc-tour-spot');
     if (spot) {
@@ -12379,6 +12411,7 @@
       tourEnd();
       return;
     }
+    tourScrolledFor = -1;
     o.hidden = false;
     const c = $('calc-tour-count'),
       t = $('calc-tour-text'),
@@ -12410,7 +12443,10 @@
     } catch (e) {}
     if (tEl) {
       try {
-        tourVisibleBox(tEl).scrollIntoView({ block: 'center' });
+        tourVisibleBox(tEl).scrollIntoView({
+          block: 'center',
+          behavior: tourReduced() ? 'auto' : 'smooth'
+        });
       } catch (e) {}
       pop.setAttribute('data-anchor', st.sel);
       // Position AFTER the scroll settles: scrollIntoView is async-ish in
@@ -12419,14 +12455,16 @@
       // Double rAF = the repo's standard flush (AGENTS.md lesson 3).
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
-          if (tourIdx < 0 || TOUR_STEPS[tourIdx] !== st) {
-            return;
-          }
-          const box = tourVisibleBox(tEl);
-          positionTourPop(box);
-          positionTourSpot(box);
+          tourPlaceStep(st);
         });
       });
+      // E: a smooth scroll is still moving when those frames land, so place
+      // once more after it has settled (the project tour does the same).
+      if (!tourReduced()) {
+        setTimeout(function () {
+          tourPlaceStep(st);
+        }, 420);
+      }
     } else {
       // Final card: no field to highlight - the centered card itself becomes
       // the spotlight target (gold ring + dim around it, page unblurred).
@@ -12448,10 +12486,19 @@
     if (!spot) {
       return;
     }
+    const o = $('calc-tour-overlay');
     const r = target.getBoundingClientRect();
     if (tourHuge(r)) {
+      // No cutout is possible, so the overlay itself carries the dim. Without
+      // this the step had no dim at all and the card floated on a bright page.
+      if (o) {
+        o.classList.add('is-huge');
+      }
       spot.hidden = true;
       return;
+    }
+    if (o) {
+      o.classList.remove('is-huge');
     }
     spot.hidden = false;
     spot.style.left = r.left - 6 + 'px';
@@ -12468,9 +12515,17 @@
   const TOUR_GAP = 10; // card edge to spotlight edge (spotlight already +6)
   const TOUR_PAD = 8; // the directive's required clearance around the spot
   function tourVisibleBox(el) {
-    // #calc-work is a hidden native select behind the custom picker: its own
-    // rect is 0x0 at the origin, so the cutout highlighted nothing. Walk up to
-    // the first ancestor with a real box - the .bcp-field wrapper.
+    // E: the BLUR already treats the whole .bcp-field as the unit, so the
+    // cut-out does too - a labelled row rings the row, not its 30px input.
+    // #calc-work is a hidden select (0x0), so the field is also what makes
+    // that step point at anything.
+    const field = el.closest ? el.closest('.bcp-field') : null;
+    if (field) {
+      const fr = field.getBoundingClientRect();
+      if (fr.width >= 8 && fr.height >= 8) {
+        return field;
+      }
+    }
     let n = el;
     while (n && n !== document.body) {
       const r = n.getBoundingClientRect();
@@ -12481,11 +12536,11 @@
     }
     return el;
   }
-  // A target that fills the viewport (a whole card at 740x360) cannot be
-  // cleared by any placement. Rather than break the clearance rule, drop the
-  // cutout for that step and dock the card as a side panel.
+  // A target that fills the viewport cannot be cleared by any placement.
+  // E: at 0.85 a whole card on a phone counted as huge and the cut-out was
+  // dropped - and with it the only dim layer. Only a true full viewport now.
   function tourHuge(r) {
-    return r.width >= window.innerWidth * 0.85 && r.height >= window.innerHeight * 0.85;
+    return r.width >= window.innerWidth * 0.98 && r.height >= window.innerHeight * 0.98;
   }
   function positionTourPop(target) {
     const pop = $('calc-tour-pop');
@@ -12555,11 +12610,22 @@
           : Math.max(12, rect.top - 6 - TOUR_GAP - space)) + 'px';
     };
     if (!side) {
-      // Only scroll when even a capped card cannot clear the target.
-      if (Math.max(room.below, room.above) < 96) {
+      // Only scroll when even a capped card cannot clear the target, and only
+      // once per step - the re-place after a smooth scroll would otherwise
+      // scroll again and never settle.
+      if (Math.max(room.below, room.above) < 96 && tourScrolledFor !== tourIdx) {
+        tourScrolledFor = tourIdx;
         try {
-          target.scrollIntoView({ block: 'start' });
+          target.scrollIntoView({
+            block: 'start',
+            behavior: tourReduced() ? 'auto' : 'smooth'
+          });
         } catch (e) {}
+        if (!tourReduced()) {
+          setTimeout(function () {
+            tourPlaceStep(TOUR_STEPS[tourIdx]);
+          }, 420);
+        }
       }
       capAt(target.getBoundingClientRect());
       return;

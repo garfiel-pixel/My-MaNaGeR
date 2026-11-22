@@ -311,11 +311,19 @@ var MMGR = window.MMGR || {};
       // and every other value here is escaped or numeric
       const token = g.color ? 'var(--major-' + Number(g.color) + ')' : 'var(--major-other)';
       const width = Math.max(0, Math.min(100, Math.round((g.fraction || 0) * 100)));
+      // UI-WAVE 2026-11-20 D: a flat/older project groups by main task, so the
+      // group id is a dashboard key (group:main:i:T4), not a WBS row id. navFocus
+      // can only flash a real row; point it at the main task instead of a
+      // target that does not exist. Other group kinds keep their own id.
+      const flashId =
+        g.id && g.id.indexOf('group:main:') === 0
+          ? (g.members && g.members[0]) || g.id.replace(/^group:main:i:/, '')
+          : g.id;
       html +=
         '<a class="major-row" href="#wbs" data-major-id="' +
         U.escapeHtml(g.id) +
         '" data-nav="major" data-nav-id="' +
-        U.escapeHtml(g.id) +
+        U.escapeHtml(flashId) +
         '">' +
         '<span class="major-dot" style="background:' +
         token +

@@ -2894,7 +2894,7 @@ var MMGR = window.MMGR || {};
     card.appendChild(body);
   }
   function botAvatar() {
-    return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>';
+    return '<div class="ai-bot-avatar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg></div>';
   }
   // AI-FALLBACK-BADGE: ONE shared chip builder , renderThread and
   // seedThreadFromState both call it, so the two render paths can never

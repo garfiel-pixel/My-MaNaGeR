@@ -903,7 +903,7 @@
       label: 'My MaNaGeR AI, Not a Middleman',
       group: 'Platform',
       desc: 'Ask your project questions',
-      icon: 'i-sparkle',
+      icon: 'i-mpw',
       panel: true,
       detail: true,
       cardId: 'f-ai'
@@ -1070,7 +1070,7 @@
       label: 'Liquid Glass Interface',
       group: 'Platform',
       desc: 'A calm, glassy surface that reads in any light',
-      icon: 'i-sparkle',
+      icon: 'i-mpw',
       panel: false,
       detail: true,
       cardId: null

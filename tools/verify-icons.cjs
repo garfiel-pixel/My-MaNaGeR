@@ -604,5 +604,22 @@ const ternaryRe = /^(.+?)\s*\?\s*['"]([^'"]*)['"]\s*:\s*['"]([^'"]*)['"]$/;
   if (ok) pass('renderGroup() in ' + rel + ': ' + calls.length + ' call sites, all icons exist');
 }
 
+// ---- ARM 3: first-party brand mark, not the generic sparkle ----------------
+// UI-WAVE 2026-11-20 A (owner): the sparkle is a generic web cliche, not the
+// My Manager mark. Every served app/AI icon must use the i-mpw symbol. The
+// word boundary keeps the third-party "ti-sparkles" in the design mockup out
+// of scope, and keeps i-star (genuine ratings) untouched.
+console.log('--- brand mark (no generic sparkle) ---');
+const badSparkle = [];
+for (const rel of files) {
+  const text = fs.readFileSync(rel, 'utf8');
+  const m = text.match(/\bi-sparkle\b/g);
+  if (m) badSparkle.push(rel + ' (' + m.length + ')');
+}
+for (const b of badSparkle) fail('generic sparkle still referenced: ' + b);
+if (!badSparkle.length) {
+  pass('no generic i-sparkle across ' + files.length + ' served files; app/AI marks use i-mpw');
+}
+
 console.log(failed ? 'T-1 ICON SPRITE FAIL (' + failed + ')' : 'T-1 ICON SPRITE PASS');
 process.exit(failed ? 1 : 0);

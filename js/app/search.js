@@ -86,7 +86,7 @@
       label: 'Features',
       hint: 'What the app does',
       href: 'features.html',
-      icon: 'i-sparkle'
+      icon: 'i-mpw'
     },
     { id: 'about', label: 'About', hint: 'Who makes it', href: 'about.html', icon: 'i-users' },
     { id: 'contact', label: 'Contact', hint: 'Get in touch', href: 'contact.html', icon: 'i-mail' },
@@ -1177,7 +1177,7 @@
         label: txt(btn),
         hint: 'Prompt',
         group: 'Prompts',
-        icon: iconFrom(btn, 'i-sparkle'),
+        icon: iconFrom(btn, 'i-mpw'),
         weight: 35,
         run: function () {
           openDrawerTab('prompt');
@@ -1300,7 +1300,7 @@
         label: 'Connect an AI',
         hint: 'Connect an outside AI to this project',
         group: 'Connect & Sync',
-        icon: 'i-sparkle',
+        icon: 'i-mpw',
         weight: 95,
         aliases: ['mcp', 'model context protocol', 'claude', 'cursor', 'api'],
         run: function () {

@@ -71,7 +71,7 @@ var MMGR = window.MMGR || {};
     const known = s && PROJ_STATUS_LABELS[s.status] ? s.status : 'active';
     const label = name ? U.escapeHtml(name) : PROJ_STATUS_LABELS[known];
     g.innerHTML =
-      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">' +
+      '<svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> <span id="greeting-text">' +
       label +
       '</span>';
   }

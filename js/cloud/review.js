@@ -221,7 +221,7 @@ var MMGR = window.MMGR || {};
     // without the sparkle badge. Match the proposal type the server writes.
     const isMCP = p.proposalType === 'mcp' || p.sourceType === 'mcp';
     const src = isMCP
-      ? '<span class="badge-ai"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> MCP AI</span> ' +
+      ? '<span class="badge-ai"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> MCP AI</span> ' +
         esc(p.sourceLabel || 'AI edit')
       : '<strong>' + esc(p.sourceLabel || 'Editor') + '</strong> (editor)';
     const when = String(p.proposedAt || '')

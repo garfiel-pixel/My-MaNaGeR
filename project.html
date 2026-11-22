@@ -173,7 +173,7 @@
   <div class="hdr-left">
     <a class="hdr-back" href="app.html" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
-    <div class="greeting" id="greeting"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> <span id="greeting-text">Welcome</span></div>
+    <div class="greeting" id="greeting"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> <span id="greeting-text">Welcome</span></div>
     <!-- Wave 2 (owner 2026-11-10): the project's lifecycle status. One value,
          written to state.status, mirrored into the launcher registry and the
          cloud row so every card names the same state. -->
@@ -351,7 +351,7 @@
          AI assistant with the question pre-filled and runs it (mmgr-ai.js). -->
     <div class="card ai-cmd-card" id="ai-command-card">
       <div class="ai-cmd-row">
-        <svg class="ico ai-cmd-icon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+        <svg class="ico ai-cmd-icon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
         <input type="text" id="ai-command-input" placeholder="Ask your project anything..." aria-label="Ask your project a question" title="Type a question, then press Enter">
         <button type="button" class="btn btn-g btn-s" id="ai-command-btn" data-action="openAiWin" aria-label="Ask your project">Ask</button>
       </div>
@@ -1219,7 +1219,7 @@
       <div class="card-title" data-def="Risk">Risk & Issue Matrix
         <div class="g6">
           <button class="btn btn-g btn-s" data-action="addRisk">+ Add Risk</button>
-          <button class="btn btn-n btn-s" data-action="askAboutRisk" title="Open the assistant on your highest-exposure risk and discuss how to mitigate it. It discusses and suggests - it never changes the project."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Discuss with AI</button>
+          <button class="btn btn-n btn-s" data-action="askAboutRisk" title="Open the assistant on your highest-exposure risk and discuss how to mitigate it. It discusses and suggests - it never changes the project."><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> Discuss with AI</button>
           <button class="btn btn-n btn-s" data-action="cpAllPage" data-section="risk"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy All</button>
           <button class="btn btn-d btn-s" data-action="startHold" data-section="risk"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Clear All</button>
         </div>
@@ -1686,7 +1686,7 @@
      Preset prompts, free-form question, automatic project-context dump.
      Copy-to-clipboard first; a generative API-key path can be dropped in
      later without redesign (see js/mmgr-ai.js). -->
-<button id="ai-fab" class="ai-fab" data-action="openAiWin" aria-label="Open AI Assistant" title="AI Assistant , preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></button>
+<button id="ai-fab" class="ai-fab" data-action="openAiWin" aria-label="Open AI Assistant" title="AI Assistant , preset prompts, free-form question, project context"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg></button>
 <!-- Task 6 (owner 2026-09-19): background assistant mailbox. Notices are
      deterministic findings from local watchers, kept in s.aiInbox on this
      machine until the user dismisses them. -->
@@ -1734,7 +1734,7 @@
          menu. Every id and data-action above is unchanged, so the existing
          getElementById wiring and the action map still resolve them. -->
     <div class="mh ai-head">
-      <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span>
+      <span class="mt"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> AI Assistant</span>
       <!-- INTEGRATED-STRUCTURE-API-WINDOW plan §1/§3: backend health dot,
            pings the same-origin Worker relay health route (GET /api/health)
            when the window opens and reports checking / online / error /
@@ -1816,7 +1816,7 @@
     <div class="ai-conn-row" id="ai-cfg-mcp">
       <label class="ai-mcp-toggle" for="ai-mcp-toggle">
         <input type="checkbox" id="ai-mcp-toggle" data-action="aiToggleMcp">
-        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg>
+        <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
         <span>MCP Tools</span>
       </label>
       <span class="ai-byo-sec mcp-sub">AI reads your live project data</span>
@@ -1830,7 +1830,7 @@
            modal). Both panes stay in the DOM; switching is a pure class
            toggle wired in js/mmgr-ai.js. -->
       <div class="ai-seg" role="tablist" aria-label="AI assistant views">
-        <button class="ai-seg-btn is-on" id="ai-seg-chat" data-tab="chat" role="tab" aria-selected="true" aria-controls="ai-pane-chat"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> Chat</button>
+        <button class="ai-seg-btn is-on" id="ai-seg-chat" data-tab="chat" role="tab" aria-selected="true" aria-controls="ai-pane-chat"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> Chat</button>
         <button class="ai-seg-btn" id="ai-seg-presets" data-tab="presets" role="tab" aria-selected="false" aria-controls="ai-pane-presets"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Presets</button>
       </div>
       <!-- Chat pane: conversation thread (rendered as chat bubbles by js/mmgr-ai.js) -->
@@ -1842,7 +1842,7 @@
              the two lists can never drift apart. -->
         <div class="ai-bubble ai-bot ai-welcome" id="ai-welcome">
           <div class="ai-welcome-inner">
-            <div class="ai-welcome-mark"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg></div>
+            <div class="ai-welcome-mark"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg></div>
             <p class="ai-welcome-title">What are we working on?</p>
             <div class="ai-welcome-rows" id="ai-welcome-rows"></div>
           </div>
@@ -1947,7 +1947,7 @@
   <div class="db is-hide" id="db-qa">
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Do I need an account or an internet connection?</div><div class="fd">No. Everything saves to your browser (LocalStorage) and works fully offline. You only need a connection for optional extras: the Cloud AI tier with your own key, live weather forecasts, voice caption downloads, and Google sign-in sync.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Is my project data sent anywhere?</div><div class="fd">No. The Local AI tier runs entirely in your browser, and nothing uploads unless you opt in. The Cloud AI tier sends only the compiled project-context prompt to the provider you choose, using your own key , the key and the data are never stored on our servers and never included in project exports or backups.</div></div>
-    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> How does the built-in AI work , and do I need my own key?</div><div class="fd">Two tiers. Local runs zero-key, offline, and every line it writes traces to a real field in your project. Cloud takes your own key for OpenAI, Google Gemini, or Anthropic Claude , pick the provider, paste the key, and Connect &amp; Test verifies it live before Send unlocks. The AI window keeps a Chat / Presets tab bar at the top: the conversation lives under Chat, and the one-click prompt chips live under Presets , always one click away, no matter how long the conversation gets.</div></div>
+    <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> How does the built-in AI work , and do I need my own key?</div><div class="fd">Two tiers. Local runs zero-key, offline, and every line it writes traces to a real field in your project. Cloud takes your own key for OpenAI, Google Gemini, or Anthropic Claude , pick the provider, paste the key, and Connect &amp; Test verifies it live before Send unlocks. The AI window keeps a Chat / Presets tab bar at the top: the conversation lives under Chat, and the one-click prompt chips live under Presets , always one click away, no matter how long the conversation gets.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> What happens if my AI provider rate-limits me?</div><div class="fd">The Cloud tier automatically retries on the next smaller model from the same provider , for example Gemini 2.0 Flash → Flash Lite → Flash Latest , and shows an amber "Fell back to …" badge in the chat naming the model that actually answered. Only capacity rejections (HTTP 429/503) trigger the fallback; a rejected key (401/403) is cleared immediately rather than quietly retried on smaller models.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> Where does my AI key live?</div><div class="fd">In this browser tab only (sessionStorage), for this session. It is cleared when you close the tab or press Clear, and it never appears in project state, exports, backups, or the error log.</div></div>
     <div class="fi"><div class="fn"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-save"></use></svg> How do I back up or move my project?</div><div class="fd">Use Generate Output to export a timestamped .json file and re-import it on any device. Optional Google Drive backup/restore and sign-in sync are available too , but the export file is the guaranteed path on every device, signed in or not.</div></div>
@@ -2107,7 +2107,7 @@
            control , it reads/writes state.config.ai.tier (OFF -> 'off', ON ->
            restore last non-off tier, default 'local'). flags.aiWindow is gone. -->
       <div class="sr-hint">Feature flags , switch a module off to hide it from the workspace. All default on.</div>
-      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-sparkle"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" id="ai-tgl" aria-label="AI Assistant" data-action="tglAiTier" checked><span class="tsl"></span></label></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> AI Assistant</span><label class="tgl"><input type="checkbox" id="ai-tgl" aria-label="AI Assistant" data-action="tglAiTier" checked><span class="tsl"></span></label></div>
       <div class="sr-hint">AI Assistant is on by default (local engine, no key). Turn it off here if you don't want it.</div>
       <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-activity"></use></svg> Monte Carlo Simulation</span><label class="tgl"><input type="checkbox" id="fl-monte-carlo" aria-label="Monte Carlo Simulation" data-action="tglFlag" data-flag="monteCarlo"><span class="tsl"></span></label></div>
       <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-printer"></use></svg> Gantt PNG Export</span><label class="tgl"><input type="checkbox" id="fl-gantt-export" aria-label="Gantt PNG Export" data-action="tglFlag" data-flag="ganttExport"><span class="tsl"></span></label></div>

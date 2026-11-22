@@ -978,6 +978,13 @@ jobs:
         id: qa-signin-mmwrp
         run: node tools/qa-signin-mmwrp.cjs
 
+      # Microsoft sign-in door (owner 2026-11-22): the link on /signin really
+      # points at the Worker start route, refuses hostile ?next=, and shows a
+      # plain refusal message. Runs in browser-calc against its serve.cjs.
+      - name: "T4: Microsoft sign-in door (qa-microsoft-signin)"
+        id: qa-microsoft-signin
+        run: node tools/qa-microsoft-signin.cjs
+
       # I-9 (Wave I, 2026-11): T-RAIL gate for the dot rail, stats and AI label.
       - name: "T4: Dot rail, stats and AI tour label (qa-stat-tour)"
         id: qa-stat-tour

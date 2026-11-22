@@ -97,7 +97,17 @@
     // page can still sign in without a nonce, but any request that DOES
     // carry a nonce must pass every check (single-use row + payload match +
     // email_verified). Rollback for a broken sign-in: set it back to false.
-    "GOOGLE_NONCE_REQUIRED": false
+    "GOOGLE_NONCE_REQUIRED": false,
+    // MICROSOFT SIGN-IN (owner 2026-11-22): public application (client) ID
+    // from the Azure app registration. Not a secret - it is sent in the
+    // authorize URL and is visible in the browser, exactly like the Google
+    // client ID above. The client SECRET stays in Wrangler secrets
+    // (OUTLOOK_LOGINVALUE today; MICROSOFT_CLIENT_SECRET also accepted).
+    "MICROSOFT_CLIENT_ID": "d1bd5df2-946d-469e-a2d8-6656d2a63dae",
+    // "common" = work/school tenants AND personal outlook.com/hotmail/live
+    // accounts, which is the audience the owner picked. A single-tenant app
+    // puts its directory GUID here instead.
+    "MICROSOFT_TENANT": "common"
   },
   // Service binding: the Presence DO calls back to the Worker for code-based
   // auth validation (codes must not appear in the WebSocket URL query string).

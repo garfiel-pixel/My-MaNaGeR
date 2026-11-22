@@ -25,7 +25,7 @@ Source plans:
 - [x] **F. Theme available without sign-in** — `:64` — `0fcb4d8` (`npm run verify` green; signed-out Customize probe PASS, modal opens with no redirect; CSP hashes regenerated)
 - [x] **G. Gantt chart** — today legend, sticky header, drag-to-pan, auto-cascade — `:69` — `67f60ae` (`qa-gantt-cascade` 9/9 new; `qa-full` 196/196; `verify-gantt-view` 125/125; `qa-date-wiring` 13/13; `npm run verify` green; registry + `ci.yml` T4 wired, `verify-ci-coverage` 12/12)
 - [x] **H. Sidebar active-section highlight** — `:79` — `2660d78` (`qa-full` 196/196; check 39f: `#app-sidebar .sec-btn.active` after `showSec('chg')`)
-- [ ] **I. RACI matrix UI pass** — `:83`
+- [x] **I. RACI matrix UI pass** — `:83` — `c217e53` (`qa-raci-matrix` 11/11 new; `qa-full` 196/196; `npm run verify` green; registry + `ci.yml` T4 wired)
 - [ ] **J. Photo description + undersized inputs** — `:93`
 - [x] **K. Status-chip outline** — remove border, keep arrow — `:101` — `0fcb4d8` (`npm run verify` green; CSS source + dist rebuilt)
 - [ ] **L. Project on-hold notice** — in-app banner + finalize gate — `:106`

@@ -435,6 +435,189 @@ var MMGR = window.MMGR || {};
     return n != null ? sym + Number(n).toLocaleString() : sym + '0';
   }
 
+  // ---- Auto-growing text boxes (item J) ----
+  // One helper for every box that has to fit what is in it: the photo
+  // description, a risk description, an incident write-up. It measures the
+  // content, grows to fit up to a cap so a long note never swallows the page,
+  // then lets the box scroll with a visible cue (the .at-cap class).
+  const AUTOGROW_CAP = 160;
+  // The fitted height for a box whose content needs `want` pixels. A cap that
+  // lands mid-line cuts the last line through the glyphs, which reads as broken
+  // text rather than as a box that scrolls, so the limit rounds DOWN to whole
+  // lines and a capped box always ends between two lines.
+  function growHeight(el, want) {
+    const cap = Number(el.getAttribute('data-grow-cap')) || AUTOGROW_CAP;
+    let limit = cap;
+    if (want > cap) {
+      const cs = getComputedStyle(el);
+      const lh = parseFloat(cs.lineHeight) || 0;
+      const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+      if (lh > 1) {
+        limit = pad + Math.max(1, Math.floor((cap - pad) / lh)) * lh;
+      }
+    }
+    return Math.min(want, limit);
+  }
+
+  function autoGrow(el) {
+    if (!el || el.tagName !== 'TEXTAREA') {
+      return;
+    }
+    el.style.height = 'auto';
+    const want = el.scrollHeight;
+    const fitted = growHeight(el, want);
+    el.style.height = fitted + 'px';
+    el.classList.toggle('at-cap', want > fitted + 2);
+  }
+
+  // The wiring lives beside the helper, not in mmgr-app.js: that file is the
+  // repo's named split candidate and sits right at its size cap, so a shared
+  // behaviour belongs with the shared function it calls.
+  function isGrowBox(node) {
+    return !!(
+      node &&
+      node.tagName === 'TEXTAREA' &&
+      node.hasAttribute &&
+      node.hasAttribute('data-autogrow')
+    );
+  }
+  function growTarget(evt) {
+    if (isGrowBox(evt.target)) {
+      autoGrow(evt.target);
+    }
+  }
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    // Grow while typing, and re-fit on focus so a restored value is never
+    // clipped by the height the box had when it was empty.
+    document.addEventListener('input', growTarget);
+    document.addEventListener('focusin', growTarget);
+    // A one-line table cell shows a clipped stub of a long note. On focus,
+    // give the field a title carrying its full value, so the whole note is
+    // readable without widening the row. Set at focus time, so it always
+    // matches what is in the field.
+    document.addEventListener('focusin', function (evt) {
+      const t = evt.target;
+      if (!t || !t.matches || !t.matches('.dt td input[type="text"]')) {
+        return;
+      }
+      if (t.value && t.scrollWidth > t.clientWidth) {
+        t.setAttribute('title', t.value);
+      } else {
+        t.removeAttribute('title');
+      }
+    });
+  }
+
+  // Render-time fit (item J). Fitting only when someone types leaves restored
+  // text clipped until they happen to click it, so the module also fits boxes
+  // as they appear and when their panel becomes visible. One observer does
+  // both: childList for a freshly rendered table, class changes for the panel
+  // switch (a box rendered while its panel was hidden has no height to
+  // measure, so it must be fitted again once it is on screen).
+  function autoGrowAll(root) {
+    if (!root || !root.querySelectorAll) {
+      return;
+    }
+    const boxes = root.querySelectorAll('textarea[data-autogrow]');
+    if (!boxes.length) {
+      return;
+    }
+    // Three passes, so the browser lays the page out once instead of once per
+    // box: every height to auto first, every measurement second, the fitted
+    // heights last. The measurement pass caches the geometry, because a style
+    // or layout read after the first height write puts the thrash straight back
+    // (that version measured 260ms for the 240 boxes of a 120-risk table).
+    const n = boxes.length;
+    for (let i = 0; i < n; i++) {
+      boxes[i].style.height = 'auto';
+    }
+    const wants = new Array(n);
+    const caps = new Array(n);
+    const lines = new Array(n);
+    const pads = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const el = boxes[i];
+      wants[i] = el.scrollHeight;
+      caps[i] = Number(el.getAttribute('data-grow-cap')) || AUTOGROW_CAP;
+      const cs = getComputedStyle(el);
+      lines[i] = parseFloat(cs.lineHeight) || 0;
+      pads[i] = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    }
+    for (let i = 0; i < n; i++) {
+      const want = wants[i];
+      const cap = caps[i];
+      let limit = cap;
+      if (want > cap && lines[i] > 1) {
+        limit = pads[i] + Math.max(1, Math.floor((cap - pads[i]) / lines[i])) * lines[i];
+      }
+      const fitted = Math.min(want, limit);
+      boxes[i].style.height = fitted + 'px';
+      boxes[i].classList.toggle('at-cap', want > fitted + 2);
+    }
+  }
+
+  function fitOnScreen(root) {
+    // A hidden element has no layout to measure: its scrollHeight is 0, and
+    // writing a height from it would collapse the box. Leave it for the pass
+    // that runs when its panel is shown.
+    if (!root || root === document || !root.offsetParent) {
+      return;
+    }
+    if (isGrowBox(root)) {
+      autoGrow(root);
+    }
+    autoGrowAll(root);
+  }
+
+  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+    try {
+      const observer = new MutationObserver(function (records) {
+        for (let i = 0; i < records.length; i++) {
+          const rec = records[i];
+          if (rec.type === 'attributes') {
+            const panel = rec.target;
+            if (panel.classList && panel.classList.contains('active')) {
+              fitOnScreen(panel);
+            }
+            continue;
+          }
+          for (let j = 0; j < rec.addedNodes.length; j++) {
+            const node = rec.addedNodes[j];
+            if (node.nodeType === 1) {
+              fitOnScreen(node);
+            }
+          }
+        }
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class']
+      });
+    } catch (e) {
+      /* no observer: typing still fits the box */
+    }
+  }
+
+  // A width change rewraps every box, so the height fitted at the old width is
+  // wrong by a line or more. Refit once the browser has settled the new layout.
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    let pending = 0;
+    window.addEventListener('resize', function () {
+      if (pending) {
+        return;
+      }
+      const run = function () {
+        pending = 0;
+        autoGrowAll(document);
+      };
+      pending = window.requestAnimationFrame
+        ? window.requestAnimationFrame(run)
+        : setTimeout(run, 16);
+    });
+  }
+
   // ---- API ----
   ns.Utils = {
     parseDL: parseDL,
@@ -460,6 +643,8 @@ var MMGR = window.MMGR || {};
     debounce: debounce,
     throttle: throttle,
     rerenderPreservingFocus: rerenderPreservingFocus,
+    autoGrow: autoGrow,
+    autoGrowAll: autoGrowAll,
     sanitize: sanitize,
     copyToClipboard: copyToClipboard,
 

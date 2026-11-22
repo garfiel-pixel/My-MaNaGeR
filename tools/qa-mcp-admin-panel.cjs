@@ -464,10 +464,16 @@ function check(name, val, detail) {
   const flatControls = [mP7.copy, mP7.retry, mP7.nw, mP7.imp];
   check(
     'MP4 the five flat controls have no fill or outline at rest, keep the pointer, and keep hover + focus',
-    flatControls.every(function(c){
-      return c && (c.bg === 'rgba(0, 0, 0, 0)' || c.bg === 'transparent') && c.border === '0px' && c.cursor === 'pointer';
+    flatControls.every(function (c) {
+      return (
+        c &&
+        (c.bg === 'rgba(0, 0, 0, 0)' || c.bg === 'transparent') &&
+        c.border === '0px' &&
+        c.cursor === 'pointer'
+      );
     }) &&
-      !!mP7.hoverBg && !/transparent/.test(mP7.hoverBg) &&
+      !!mP7.hoverBg &&
+      !/transparent/.test(mP7.hoverBg) &&
       !!mP7.hoverDark &&
       /solid/.test(mP7.focusOutline || ''),
     mP7

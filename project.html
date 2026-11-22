@@ -61,7 +61,7 @@
       clicks "Connect Google" in Settings > Controls. It is a device label,
       never a gate , offline/CSP-blocked loads degrade to a toast.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-Q/nDW21rfkVgwvwjhKwtQQBoHYc4MyDlFfgSLvJxTk8=' 'sha256-qU+2JTlP6XaxKBAqDGdMDCwM3FCzD76rzbOvY38lpdY=' 'sha256-1lQZ8ZnhADNPMPnTqfYPbBDeCin0qp40ehxDc065Fmc=' 'sha256-vby4vU8oNmo4MQP8BTS1QaAYSrFF4xGuGJNIh+1yCi8='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com 'sha256-xxa9/PuVrm+Taxz+xZPm96NYiSKIHPHZLX8VCKQnrXk=' 'sha256-reza4vd5o52LWNUf9lzK6WjApdstd5sm4xVx+lcnK2M=' 'sha256-EAnKrjKieXKbvzGLmLcrkzgAQsa2Ti/boGEEGW6MqfM=' 'sha256-qU+2JTlP6XaxKBAqDGdMDCwM3FCzD76rzbOvY38lpdY='; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://github.com https://release-assets.githubusercontent.com https://accounts.google.com https://huggingface.co https://*.cdn.hf.co; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self';">
 <script>
 /* Device-level theme (shared across launcher, admin, and app): applied before
    first paint from the same localStorage slot every theme toggle writes, so a
@@ -156,6 +156,10 @@
        applyClientScope - all only flip .is-hide, position-independent. -->
   <div id="safety-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="safety-banner-text"></span></div>
   <div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View Only</div>
+  <!-- UI-WAVE 2026-11-20 L: an on-hold project says so to everyone who opens
+       it, and asks for a deliberate acknowledgement before it can be changed.
+       The button is the only way out; the gate is client-side. -->
+  <div id="onhold-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pause"></use></svg><span>This project was put on hold. Finalize before making changes.</span><button type="button" class="btn btn-n btn-s" data-action="onholdFinalize">Finalize and continue</button></div>
   <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code , some panels are locked for this code (enforced by the server).</div>
   <div id="client-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Viewing as a client , read-only. Only the sections the admin granted you are shown.</div>
   <!-- RBAC sprint 2: a named team member (no code) gets its own row. The copy
@@ -2670,7 +2674,7 @@ document.addEventListener('error', function (e) {
 document.addEventListener('DOMContentLoaded', function() {
   if (!window.__mmgrBundleMissing) return;
   var MMGR = window.MMGR || {};
-  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-ideas.js','js/mmgr-agenda.js','js/mmgr-pages.js','js/mmgr-cycles.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
+  ['js/mmgr-state.js','js/mmgr-utils.js','js/mmgr-onhold.js','js/mmgr-ideas.js','js/mmgr-agenda.js','js/mmgr-pages.js','js/mmgr-cycles.js','js/mmgr-custom-fields.js','js/mmgr-relations.js','js/mmgr-kanban.js','js/mmgr-net.js','js/consent.js',
    'js/render/financials.js','js/render/people.js','js/render/closure.js',
    'js/render/documents.js','js/render/weather.js','js/render/kanban.js',
    'js/render/ideas.js',

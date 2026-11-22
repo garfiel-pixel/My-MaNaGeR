@@ -1381,6 +1381,12 @@ jobs:
         id: qa-raci-matrix
         run: node tools/qa-raci-matrix.cjs
 
+      # UI-WAVE 2026-11-20 L: the on-hold banner, the finalize gate and the
+      # per-project acknowledgement.
+      - name: "T4: On-hold banner and finalize gate (qa-onhold-gate)"
+        id: qa-onhold-gate
+        run: node tools/qa-onhold-gate.cjs
+
       # UX-2026-11-19 A1-A5: short screens, landscape phones, the tour card,
       # touch targets and the sign-out confirmation. Registered as CI since
       # the A wave but never actually wired - D1 closed that gap.

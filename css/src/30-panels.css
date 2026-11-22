@@ -4110,6 +4110,27 @@ button.rel-badge {
 #readonly-banner.is-hide {
   display: none;
 }
+/* UI-WAVE 2026-11-20 L: the on-hold notice. Row placement comes from the
+   [id$='-banner'] rule below; this block owns the tone and the button. */
+#onhold-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  color: var(--text);
+  background: color-mix(in srgb, var(--amber) 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+}
+#onhold-banner.is-hide {
+  display: none;
+}
+#onhold-banner .btn {
+  padding: 3px 10px;
+  font-size: 0.7rem;
+}
 /* Banner stack (2026-09-16): all chrome banners render as full-width rows
    INSIDE the sticky #app-header (flex-wrap). Position static + 100% basis so
    they stack above the greeting row and --hdr-h (measured from the header)

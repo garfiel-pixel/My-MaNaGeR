@@ -2067,6 +2067,12 @@ var MMGR = window.MMGR || {};
       });
     }
     mirrorStatusToRegistry(known);
+    // UI-WAVE 2026-11-20 L: the on-hold banner follows the same status value,
+    // so it is painted wherever the chip is - boot, a status change, and the
+    // acknowledgement itself.
+    if (ns.OnHold && ns.OnHold.render) {
+      ns.OnHold.render();
+    }
   }
 
   function renderDirtyIndicator() {

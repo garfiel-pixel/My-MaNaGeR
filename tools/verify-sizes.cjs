@@ -213,7 +213,12 @@ const DIRS = {
   // action and its export (312344 measured). Navigation is app-level wiring,
   // so it belongs here; the 3 KB headroom is deliberate - the next growth
   // should be the split, not another raise.
-  js: 315000,
+  // 2026-11-22 (UI-WAVE L, on-hold gate): 315000 -> 317000. guardReadonly
+  // gained the on-hold branch and the safe list gained onholdFinalize
+  // (315313 measured). The gate belongs in the dispatcher, so it lands here;
+  // the remaining headroom is ~2 KB and the split is still the right next
+  // move for this file.
+  js: 317000,
   css: 160000,
   src: 300000
 };

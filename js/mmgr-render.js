@@ -3171,6 +3171,9 @@ var MMGR = window.MMGR || {};
     if (!gc) {
       return;
     }
+    // UI-WAVE G: the chart scrolls internally (bounded height), so the sticky
+    // date header stays put and the label column follows the rows.
+    wireGanttScrollSync();
     // B6: one lookup for the whole chart - the bar's 4px accent.
     const majorOf =
       ns.MajorTasks && ns.MajorTasks.assignments ? ns.MajorTasks.assignments(s) : null;
@@ -3573,6 +3576,32 @@ var MMGR = window.MMGR || {};
     // Draw dependency arrows (SVG overlay) from the VIEW's link list, so the
     // arrows on screen are the same edges the export draws.
     drawDependencyArrows(view);
+  }
+
+  // UI-WAVE 2026-11-20 G: one delegated listener on the stable #gantt-chart
+  // element. The chart is its own vertical scroll area (see .gc max-height),
+  // so the date header can stick; the label column has no header, so it is
+  // scrolled by the chart's offset minus that header's height.
+  let _ganttScrollWired = false;
+  function wireGanttScrollSync() {
+    if (_ganttScrollWired) {
+      return;
+    }
+    const gc = $('gantt-chart');
+    const gl = $('gantt-labels');
+    if (!gc || !gl) {
+      return;
+    }
+    _ganttScrollWired = true;
+    gc.addEventListener(
+      'scroll',
+      function () {
+        const gh = gc.querySelector('.gh');
+        const off = gh ? gh.offsetHeight : 0;
+        gl.scrollTop = Math.max(0, gc.scrollTop - off);
+      },
+      { passive: true }
+    );
   }
 
   // ---- Dependency Arrows (SVG overlay) ----
@@ -4400,6 +4429,7 @@ var MMGR = window.MMGR || {};
   // dependency arrows, hover tooltip with float / weather padding.
   // ==================================================================
   let _ganttDrag = null; // { taskId, startX, origStartDate, origEndDate, minAllowed, moved }
+  let _ganttPan = null; // { gc, startX, startLeft, moved } - drag-to-pan the chart
 
   function ganttBarById(id) {
     const gc = $('gantt-chart');
@@ -4573,11 +4603,37 @@ var MMGR = window.MMGR || {};
     if (ns.Schedule && ns.Schedule.annotateSchedule) {
       ns.Schedule.annotateSchedule();
     }
+    // UI-WAVE 2026-11-20 G: the moved task's successors follow it. The
+    // schedule engine holds completed / in-progress actuals anchored and asks
+    // before a shift larger than five tasks. skipUndo reuses the drag's own
+    // snapshot; render:false lets this handler paint once.
+    const successors = (s.tasks || []).filter(function (t) {
+      return (t.predecessors || []).some(function (p) {
+        return String(p) === String(d.taskId);
+      });
+    });
+    if (successors.length && ns.Schedule && ns.Schedule.cascade) {
+      ns.Schedule.cascade(undefined, {
+        threshold: 5,
+        skipUndo: true,
+        quiet: true,
+        render: false
+      });
+    }
     ns.Render.renderGantt();
     ns.Render.renderWbs();
     ns.Render.renderDash();
+    // UI-WAVE G: the board carries the dates too; a drag that skipped it left
+    // Kanban stale until the next unrelated render.
+    ns.Render.renderKanban();
     if (ns.App && ns.App.showToast) {
-      ns.App.showToast('Task moved to start ' + newStart + '.', 'ok');
+      ns.App.showToast(
+        'Task moved to start ' +
+          newStart +
+          '.' +
+          (successors.length ? ' Successors rescheduled.' : ''),
+        'ok'
+      );
     }
   }
 
@@ -4635,21 +4691,57 @@ var MMGR = window.MMGR || {};
     tip.style.top = y + 'px';
   }
 
-  // Drag via pointer events (delegated, no inline handlers)
+  // Drag via pointer events (delegated, no inline handlers).
+  // A pointerdown on a bar reschedules that task; a pointerdown on the empty
+  // chart background pans the chart. Milestones and dependency links keep
+  // their own click handlers. Touch keeps native scrolling.
   document.addEventListener('pointerdown', function (e) {
     const gc = $('gantt-chart');
-    if (gc && e.target.closest && e.target.closest('.gb') && gc.contains(e.target)) {
-      ganttDragStart(e);
+    if (!gc || !gc.contains(e.target)) {
+      return;
     }
+    const bar = e.target.closest && e.target.closest('.gb');
+    if (bar) {
+      ganttDragStart(e);
+      return;
+    }
+    if (e.target.closest && e.target.closest('.gb-milestone, .gan-link')) {
+      return;
+    }
+    if (e.pointerType === 'touch') {
+      return;
+    }
+    e.preventDefault();
+    _ganttPan = {
+      gc: gc,
+      startX: e.clientX,
+      startLeft: gc.scrollLeft,
+      moved: false
+    };
+    document.body.classList.add('gantt-panning');
   });
   document.addEventListener('pointermove', function (e) {
     if (_ganttDrag) {
       ganttDragMove(e);
+      return;
     }
+    if (!_ganttPan) {
+      return;
+    }
+    const dx = e.clientX - _ganttPan.startX;
+    if (Math.abs(dx) > 3) {
+      _ganttPan.moved = true;
+    }
+    _ganttPan.gc.scrollLeft = _ganttPan.startLeft - dx;
   });
   document.addEventListener('pointerup', function (e) {
     if (_ganttDrag) {
       ganttDragEnd(e);
+      return;
+    }
+    if (_ganttPan) {
+      _ganttPan = null;
+      document.body.classList.remove('gantt-panning');
     }
   });
   document.addEventListener('pointercancel', function () {
@@ -4661,6 +4753,10 @@ var MMGR = window.MMGR || {};
         tip.classList.remove('vis');
       }
       ns.Render.renderGantt();
+    }
+    if (_ganttPan) {
+      _ganttPan = null;
+      document.body.classList.remove('gantt-panning');
     }
   });
 

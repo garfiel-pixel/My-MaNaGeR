@@ -3935,12 +3935,27 @@ body.dark-mode .rm-active {
 }
 .gl {
   border-right: 2px solid var(--border);
+  /* UI-WAVE 2026-11-20 G: the chart is its own vertical scroll area so the
+     date header can stick. The label column clips and is scrolled in sync by
+     renderGantt's listener (offset by the sticky header height). */
+  overflow: hidden;
+  max-height: min(72vh, 760px);
 }
 .gc {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: min(72vh, 760px);
   position: relative;
+  cursor: grab;
+}
+body.gantt-panning,
+body.gantt-panning .gc {
+  cursor: grabbing;
+  user-select: none;
 }
 .gh {
+  position: sticky;
+  top: 0;
+  z-index: 6;
   display: flex;
   background: var(--lit-fog);
   border-bottom: 1px solid var(--border);
@@ -5699,6 +5714,22 @@ body.dark-mode .dmaic-chip {
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   border-top: 6px solid var(--danger, #dc2626);
+}
+/* UI-WAVE 2026-11-20 G: the red line is Today - name it in the toolbar so it
+   is never a mystery stripe. */
+.gv-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--slate);
+  white-space: nowrap;
+}
+.gv-key-line {
+  width: 2px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--danger, #dc2626);
 }
 .gd-wknd {
   background: rgba(148, 163, 184, 0.06);

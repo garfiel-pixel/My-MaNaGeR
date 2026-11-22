@@ -156,10 +156,6 @@
        applyClientScope - all only flip .is-hide, position-independent. -->
   <div id="safety-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg><span id="safety-banner-text"></span></div>
   <div id="readonly-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg> View Only</div>
-  <!-- UI-WAVE 2026-11-20 L: an on-hold project says so to everyone who opens
-       it, and asks for a deliberate acknowledgement before it can be changed.
-       The button is the only way out; the gate is client-side. -->
-  <div id="onhold-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pause"></use></svg><span>This project was put on hold. Finalize before making changes.</span><button type="button" class="btn btn-n btn-s" data-action="onholdFinalize">Finalize and continue</button></div>
   <div id="editor-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Editing as a scoped editor code , some panels are locked for this code (enforced by the server).</div>
   <div id="client-scope-banner" class="is-hide"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg> Viewing as a client , read-only. Only the sections the admin granted you are shown.</div>
   <!-- RBAC sprint 2: a named team member (no code) gets its own row. The copy
@@ -257,6 +253,14 @@
     <button class="settings-btn" id="search-btn" data-app-search-open aria-label="Search every feature and setting" title="Search (Ctrl+K)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg></button>
     <button class="settings-btn" data-action="openDrw" aria-label="Open settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-settings"></use></svg> </button>
   </div>
+  <!-- UI-WAVE 2026-11-20 L: an on-hold project says so to everyone who opens
+       it, and asks for a deliberate acknowledgement before it can be changed.
+       The button is the only way out; the gate is client-side. Last child on
+       purpose: qa-chrome C8 requires the back control to be the FIRST control
+       in the header, so a banner that owns a button must not lead the stack.
+       It still gets its own full-width row from
+       `#app-header > [id$='-banner'] { flex: 0 0 100% }`. -->
+  <div id="onhold-banner" class="is-hide" role="status" aria-live="polite"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-pause"></use></svg><span>This project was put on hold. Finalize before making changes.</span><button type="button" class="btn btn-n btn-s" data-action="onholdFinalize">Finalize and continue</button></div>
 </header>
 
 <!-- MAIN -->

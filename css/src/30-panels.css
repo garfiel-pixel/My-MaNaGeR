@@ -1027,7 +1027,8 @@
 }
 .raci-task-wbs {
   flex-shrink: 0;
-  color: var(--gold);
+  /* gold as WORDS, so it takes the text token, not the fill token */
+  color: var(--gold-text);
   font-size: 0.65rem;
 }
 .raci-cell-td,

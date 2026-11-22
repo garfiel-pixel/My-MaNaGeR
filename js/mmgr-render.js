@@ -275,7 +275,9 @@ var MMGR = window.MMGR || {};
 
   function majorRows(state) {
     const out = ringData(state);
-    if (!out || !out.grouped || !out.groups.length) {
+    // A one-row "what is driving completion" list is noise; the ring already
+    // shows the single segment. Hide it until there are two majors to compare.
+    if (!out || !out.grouped || out.groups.length < 2) {
       return null;
     }
     const groups = out.groups.slice();
@@ -456,8 +458,11 @@ var MMGR = window.MMGR || {};
     // stroke, owner 2026-11-20).
     // UX-2026-11-19 B3: when the project has major groups the ring and its
     // stat speak in WORK ITEMS (phase rows are containers, not tasks), so the
-    // centre percentage is exactly the sum of the group points. Without
-    // groups nothing changes: today's all-tasks number.
+    // centre percentage is exactly the sum of the group points. The flat /
+    // older-project path (UI-WAVE 2026-11-20 D) weights each main task
+    // equally instead: the centre is then the mean main-task fraction (the
+    // sum of the arcs), while the stat still counts the work items behind
+    // them. Without groups nothing changes: today's all-tasks number.
     const ringOut = ringData(s);
     const useGroups = !!(ringOut && ringOut.grouped && ringOut.groups.length);
     const baseTotal = useGroups ? ringOut.total : total;

@@ -26,12 +26,12 @@ Source plans:
 - [x] **G. Gantt chart** — today legend, sticky header, drag-to-pan, auto-cascade — `:69` — `67f60ae` (`qa-gantt-cascade` 9/9 new; `qa-full` 196/196; `verify-gantt-view` 125/125; `qa-date-wiring` 13/13; `npm run verify` green; registry + `ci.yml` T4 wired, `verify-ci-coverage` 12/12)
 - [x] **H. Sidebar active-section highlight** — `:79` — `2660d78` (`qa-full` 196/196; check 39f: `#app-sidebar .sec-btn.active` after `showSec('chg')`)
 - [x] **I. RACI matrix UI pass** — `:83` — `c217e53` (`qa-raci-matrix` 11/11 new; `qa-full` 196/196; `npm run verify` green; registry + `ci.yml` T4 wired)
-- [x] **J. Photo description + undersized inputs** — `:93` — `77004bd` on `feat/photo-caption` (final tip after the amend; `qa-project-photos` 23/23 incl. new G2d — run here at `867a98c` and re-run by the branch owner at `77004bd`, whose delta is a 61-line `MutationObserver` that fits restored text; `qa-full` 196/196 reported; `Utils.autoGrow` + delegated `[data-autogrow]`)
+- [x] **J. Photo description + undersized inputs** — `:93` — `5f7d411` on `feat/photo-caption-integration`, merged via PR #31 (original work `6f50665`, `e54d52f`, `3e59169` on `feat/photo-caption`). Gates re-run on the merged tip here: `qa-project-photos` 23/23 incl. G2d, `qa-dashboard-links` 9/9, `qa-full` 196/196, `npm run verify` exit 0. Whole-line cap, batched layout pass and 390/768/320px passes included.
 - [x] **K. Status-chip outline** — remove border, keep arrow — `:101` — `0fcb4d8` (`npm run verify` green; CSS source + dist rebuilt)
 - [x] **L. Project on-hold notice** — in-app banner + finalize gate — `:106` — `7a6f293` (`qa-onhold-gate` 8/8 new; `qa-full` 196/196; `npm run verify` green; `qa-consent` 38/38 after registering `mmgr_onhold_ack_<id>` in `docs/STORAGE-INVENTORY.md` — S1 caught the missing entry; registry + `ci.yml` T4 wired; acknowledgement is per-project localStorage, front-end only)
 - [x] **M. Perf-mode + dark sidebar transparency** — `:114` — `0fcb4d8` (`npm run verify` green; opaque fallback on `.db-side`)
 - [x] **N. Cookie-consent polish** — remove gold outline — `:119` — `0fcb4d8` (`npm run verify` green; neutral hover/currentColor focus, marketing.css kept under its byte cap)
-- [x] **P. Admin MCP panel + chrome-free controls** — `:129` — `ad12703` on `feat/admin-mcp-panel` (`qa-mcp-admin-panel` 30/30 re-run here; loading/ready/failed states, failed-clients message, ghost Copy/Refresh/New/Import, gold pill gone, popover spacing, ChatGPT + Gemini copy)
+- [x] **P. Admin MCP panel + chrome-free controls** — `:129` — `5e6d758` on `feat/admin-mcp-panel-integration`, merged via PR #32 (original work `7fffefe` on `feat/admin-mcp-panel`). Gates re-run on the merged tip here: `qa-mcp-admin-panel` 30/30, `qa-billing-orphan` 21/21, `qa-dashboard-links` 9/9, `qa-full` 196/196, `npm run verify` exit 0.
 - [x] **Q. Pricing copy: 33% off code + trials on all plans** — owner addition 2026-11-22 — `6f810c2` (`npm run verify` green; promo code `KRAFO0TJEO`, 33% until June 2027, free trial on every paid plan; text only, no billing logic)
 
 ## 2. UX refinement directive (Parts A-D) — SHIPPED
@@ -68,8 +68,7 @@ All steps PASS in `docs/UX-DIRECTIVE-LOG.md`; merged to `main` in `a97838a`
 
 ## Verification gates (this wave)
 
-- [x] `node build.js` → `npm run verify` (CSP + SW + registry + size gates) — green on : CSP 25 hashes 1:1 with the live header, SW , registry 245 harnesses, sizes within their measured caps
-- [x] `node build.js` → `npm run verify` (CSP + SW + registry + size gates) — green on `579e34e`: CSP 25 hashes 1:1 with the live header, SW `mmgr-shell-v693`, registry 245 harnesses, sizes within their measured caps
-- [x] Targeted harnesses (all green on `579e34e` unless a branch is named): `qa-full` 196/196, tour harnesses 61/61 + 13/13, `verify-gantt-view` 125/125, `qa-date-wiring` 13/13, `qa-project-photos` 23/23 on `feat/photo-caption`, `qa-consent` 38/38, `verify-perf-boot` PASS, `qa-glass` PASS, `qa-mcp-admin-panel` 30/30 on `feat/admin-mcp-panel`, `qa-billing-orphan` 21/21, major-groups unit test 15/15, sidebar (qa-full check 39f) + RACI (`qa-raci-matrix` 11/11) checks
-- [ ] Manual browser pass (owner decisions already recorded in the plan file)
-- [ ] Conventional commits (no AI credit), push branch, PR → CI GREEN → merge to `main` (AGENTS #10)
+- [x] `node build.js` → `npm run verify` (CSP + SW + registry + size gates) — green on every merged tip through `b6a2f22`: CSP 25 hashes 1:1 with the live header, SW `mmgr-shell-v698`, registry 245 harnesses, sizes within their measured caps
+- [x] Targeted harnesses (green on the merged tips of PRs #28, #31 and #32): `qa-full` 196/196 on all three, tour harnesses 61/61 + 13/13, `verify-gantt-view` 125/125, `qa-date-wiring` 13/13, `qa-project-photos` 23/23, `qa-dashboard-links` 9/9, `qa-consent` 38/38, `verify-perf-boot` PASS, `qa-glass` PASS, `verify-gold` all checks, `qa-chrome` 122/122, `qa-mcp-admin-panel` 30/30, `qa-billing-orphan` 21/21, major-groups unit test 15/15, sidebar (qa-full check 39f) + RACI (`qa-raci-matrix` 11/11) checks
+- [x] Browser pass: real-Chrome harnesses plus the delegated agent's light/dark screenshots at 390, 768 and 320px on every J surface; every owner decision in the plan was applied before the code was written
+- [x] Conventional commits (no AI credit); PR #28 (`29cbc7e`), #31 (`5f7d411`) and #32 (`5e6d758`) all GREEN and merged to `main` (`3145b72`, `bf9b3ed`, `b6a2f22`) — AGENTS #10 held throughout; deploy only after merge

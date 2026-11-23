@@ -1,0 +1,18 @@
+My MaNaGeR
+Copyright (c) 2026 Garfield Fairclough, trading as My MaNaGeR. All rights reserved.
+
+This repository and the software it contains (the "Application") are proprietary.
+They are published publicly for transparency and review only. No license is
+granted to use, copy, modify, merge, publish, distribute, sublicense, or sell
+any part of the Application, in source or binary form, without the prior
+written permission of the copyright holder.
+
+The Application is provided as a hosted service at
+https://mymanagerworkspace.com. Use of that hosted service is governed by the
+Terms of Service at https://mymanagerworkspace.com/terms.html and is not
+affected by this notice.
+
+Third-party components, libraries, and assets included in or used by the
+Application remain the property of their respective owners and are used under
+their own licenses. See the dependency manifests and any vendored license
+files for details.

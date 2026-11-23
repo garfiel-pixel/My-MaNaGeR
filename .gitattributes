@@ -30,3 +30,6 @@
 .nvmrc text eol=lf
 .assetsignore text eol=lf
 *.sh    text eol=lf
+*.webmanifest  text eol=lf
+LICENSE text eol=lf
+.gitattributes text eol=lf

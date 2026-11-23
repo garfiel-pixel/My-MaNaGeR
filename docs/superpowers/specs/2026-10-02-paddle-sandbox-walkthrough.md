@@ -22,5 +22,5 @@ routes, dormant until configured) is already built and verified at 83/83 gates.
 - Status: framework complete; awaiting the owner's dashboard items + secrets.
 
 ## Not started unless owner says
-- JMD rate book keying from the owner's IMAJ/JIC extract (schema ready, extract not yet in the repo).
+- JMD rate book keying from the owner's IMAJ/book extract (schema ready, extract not yet in the repo).
 - Turning on the Upgrade flow in production.

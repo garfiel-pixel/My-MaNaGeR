@@ -312,7 +312,7 @@ assert(bqT.perLine && bqT.perLine.length === 2 && bqT.sub > 0, 'BQ1 boqTotals ro
   `rollup({works,prelims,designC,constrC,escPct,months})`,
   `cashCurve(total,months,mode,steep)`, `formworkM2(key,d1,d2,d3)` used
   consistently across gates and hook exports.
-- Reference coverage: tru-estimator pattern (instance rows + identical-count
+- Reference coverage: estimator reference pattern (instance rows + identical-count
   multiplier + total-override) lands in Task 2; its phase-2 ideas are parked
   in the spec, not silently dropped.
 - Wave numbering: W1..W9 map to Tasks 1..9; ship loop is Task 10. (The

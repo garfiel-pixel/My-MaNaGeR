@@ -24,7 +24,7 @@ in `EXECUTION-PLAN.md` (wave 5, starting with 5.2).
 | "Emergency Override: skip the blocking requirement" | Directly contradicts the hard gates in `AGENTS.md`. No sprint below permits it. |
 
 The one correction to my own earlier report: `calculator.html` **does** carry
-owner-facing "JIC" (`:265` label "JIC rate", `:531` "Checked against JIC on"),
+owner-facing "book" (`:265` label "book rate", `:531` "Checked against book on"),
 not just `js/calculator-page.js`.
 
 ## The sprints
@@ -118,28 +118,28 @@ against the surface is >= 3:1. Run at 390 and 1280, light and dark.
 
 ### S2 - The rate book's real name  (finding 9)
 **Why:** the owner has asked for this twice, and **the gate that exists to
-enforce it passes while "JIC" is still rendered to users**. That is the real
+enforce it passes while "book" is still rendered to users**. That is the real
 defect: not the six strings, but a gate with a hole.
 **The hole.** `tools/verify-ratebook-wording.cjs` (CI, 12/12) fails served
-pages on `JIC rate book|Jamaica rate book|JIC rates` (`:115-117`) but scans
+pages on `book rate book|Jamaica rate book|book rates` (`:115-117`) but scans
 **`js/` strings not at all** beyond the name/notice/source arms. So it misses:
-- `js/calculator-page.js:9816` - `' (JIC rate book)'` rendered on the estimate;
-- `:10671` - `' - JIC rate book'` in the CSV export;
-- `:15387` - hint "...in the JIC rate book picker.";
-- `calculator.html:265` - label "JIC rate" (singular, outside the regex);
-- `:531` - "Checked against JIC on" (outside the regex).
+- `js/calculator-page.js:9816` - `' (book rate book)'` rendered on the estimate;
+- `:10671` - `' - book rate book'` in the CSV export;
+- `:15387` - hint "...in the book rate book picker.";
+- `calculator.html:265` - label "book rate" (singular, outside the regex);
+- `:531` - "Checked against book on" (outside the regex).
 **Scope**
 1. Gate first: add an arm that extracts rendered string literals from
    `js/calculator-page.js` (strip comments and template noise) and fails on
-   `JIC|GIC` followed by `rate`/`rates`/`book`; widen the HTML arm to the same
+   `book|GIC` followed by `rate`/`rates`/`book`; widen the HTML arm to the same
    rule. Keep two explicit exemptions: the provenance line
-   (`RATEBOOK_SOURCE = 'JIC Rate Book 2025-2027'`, which arm 85 requires while
-   provenance is unresolved) and row references of the form `JIC #<n>`.
+   (`RATEBOOK_SOURCE = 'book Rate Book 2025-2027'`, which arm 85 requires while
+   provenance is unresolved) and row references of the form `book #<n>`.
    Prove the arm has teeth by running it against the current tree - it must
    fail on the five strings above before any fix.
-2. Then rename: "JIC rate" -> "My MaNaGeR rate", "Checked against JIC on" ->
-   "Checked against the book on", ` (JIC rate book)` -> ` (book rate)`,
-   ` - JIC rate book` -> ` - book rate`, and the picker hint.
+2. Then rename: "book rate" -> "My MaNaGeR rate", "Checked against book on" ->
+   "Checked against the book on", ` (book rate book)` -> ` (book rate)`,
+   ` - book rate book` -> ` - book rate`, and the picker hint.
 3. Add the owner's disclaimer to the **existing** `#calc-rate-notice`
    (`calculator.html:703`): "Baseline planning rates, subject to change - not
    final pricing." Do not create a second notice element.

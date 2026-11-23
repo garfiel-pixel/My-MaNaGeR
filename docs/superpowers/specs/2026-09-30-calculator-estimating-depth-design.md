@@ -92,11 +92,11 @@ user-editable.
   (US$65-121/ft2 standard-spec; J$6,500-7,000/ft2 budgetary contractor figure;
   US$90-130/ft2 older survey) - so NO single baked-in JM benchmark; the
   whole-house sanity check becomes an editable location-pack value.
-- **tru-estimator.vercel.app (owner's reference, crawled 2026-09-30 with
+- **estimator reference (owner's reference, crawled 2026-09-30 with
   Playwright: homepage, directory, auth wall, route map from JS bundles, and
   8 guest calculators - foundation-lineout, excavation, concrete-slab, roof,
   tile, paint, labour, markup)**: a Jamaican estimator (GCT 15% toggle,
-  JIC 2025-2027 wage-scale rate book, hurricane-strap line items) whose
+  book 2025-2027 wage-scale rate book, hurricane-strap line items) whose
   measurement UX is INSTANCE-BASED: every dimension-driven calculator takes
   repeated named element rows - "+ Add section" with Length x Width and a
   "Number of identical sections" multiplier (digital timesing), "+ Add slab",
@@ -126,14 +126,14 @@ user-editable.
   piece..., rates}` - each line priced by the EXISTING `computeFor()`; add
   current form state as a line; per-line + totals table; recall re-fills the
   form (exact recall extended). New localStorage key `mmgr_calc_boq`.
-- **W2 Element instances (add-a-wall, tru-estimator pattern)**: for
+- **W2 Element instances (add-a-wall, estimator reference pattern)**: for
   dimension-driven trades the line can be measured by repeated named element
   rows instead of one generic L x W - walls (blockwall, brickwall, framing,
   render, paint, drywall), pours (slab, footings, concrete-drive), runs
   (fencing, skirt, pipe, conduit), rooms/areas (tile). Each row: label
   ("Wall 1"), its own dims, and a count multiplier for identical repeats;
   "+ Add wall / + Add pour / + Add run / + Add area" buttons; a "type the
-  total instead" override (tru-estimator's direct-perimeter field). Rows sum
+  total instead" override (estimator reference's direct-perimeter field). Rows sum
   to a measured quantity x unit that feeds the EXISTING engine as
   `st.measuredQty` + `st.measuredUnit` - `computeFor()` skips dim validation
   and q() when measuredQty is present; waste, quality, piece pricing and
@@ -169,7 +169,7 @@ user-editable.
   benchmark}` where index multiplies material rates (global or per group) and
   benchmark is the whole-house sanity note. JSON export/import like rate
   sheets. Shipped defaults: US (1.00), JM, GB - figures sourced in comments.
-  (tru-estimator's JIC wage-scale rate book is the same idea server-side;
+  (estimator reference's book wage-scale rate book is the same idea server-side;
   ours stays on-device.)
 - **W9 Integration pass**: estimate summary restructure (lines -> prelims ->
 
@@ -181,7 +181,7 @@ user-editable.
   manhours-per-unit field per trade, not a crew library).
 - Gantt scheduling, critical path, retention/progress billing.
 - Multi-currency line mixing (one currency per bill, set by location pack).
-- tru-estimator ideas noted for phase 2, not this wave: per-plane roof pitch
+- estimator reference ideas noted for phase 2, not this wave: per-plane roof pitch
   factors with an in-UI pitch reference table, derived consumables lines
   (thinset/grout bags, hurricane straps), ft+in fractional row entry (ours
   converts whole ft/in per row the same way the unit toggle already does).

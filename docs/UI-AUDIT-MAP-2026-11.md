@@ -257,3 +257,54 @@ rows and the four chips", implying the chips were visible - now reads "four
 pill prompt rows, with the same four held in the hidden chip strip", and the
 check also asserts `stripHidden` so the label and the assertion say the same
 thing.
+
+## H. Accessibility sweep (owner 2026-11-23, "same for acessability")
+
+The axe gate was already green on serious/critical violations. The debt it
+printed (74 `region` nodes, 4 `landmark-one-main`, 4 `aria-allowed-role`, 2
+`empty-table-header`, 25 `heading-order`) was structural rather than urgent,
+so this wave closed the structural half and recorded the rest.
+
+### Fixed
+
+1. **`app.html` had no main landmark.** The dashboard body was a plain
+   `<div class="wrap">`; it is now `<main class="wrap">`, so the hero, sections
+   and project cards sit inside a main landmark. `.wrap` is still the class, so
+   every `body.db-page .wrap` rule applies unchanged.
+2. **`admin.html` gate screens had no main landmark.** One `<main
+   id="admin-main">` now wraps the three gate screens (setup, login,
+   recovery), the show-once recovery-code modal and the unlocked admin app;
+   the inner `<main class="view-deck">` became `<div class="view-deck">` so the
+   document has exactly one main in every state. No script, selector or class
+   changed.
+3. **The project drawer sat outside `<main>`.** `#drw` is now a named region
+   (`role="region" aria-label="Settings and guide"`) while docked. This needed a
+   JS fix as well: `syncFloatState('drw')` used to strip `role`/`aria-label`
+   from the docked drawer (an earlier fix for `aria-modal` on a roleless div),
+   which would have erased the static attribute. Docked now sets the region,
+   floated still sets the dialog.
+4. **`index.html` solution cards.** Removed `role="list"` from the container
+   and `role="listitem"` from the `<article>` cards - `listitem` is not an
+   allowed role on `article` (axe `aria-allowed-role`). The heading above the
+   group already says "4 solution areas", so no list semantics are lost.
+5. **Lead-time table empty header.** The Rolling 3-Month review table's action
+   column now reads `<th>Review</th>` instead of `<th></th>` (axe
+   `empty-table-header`), matching the Review button in each row.
+
+### Gate
+
+`tools/qa-a11y-axe.cjs` keeps its serious/critical gate and now also fails if
+`aria-allowed-role`, `empty-table-header`, `landmark-one-main` or `region`
+returns on any page. Before the wave: 74 + 4 + 4 + 2 nodes. After: all four
+rules at zero across 18 pages (dark measured only where it engages).
+
+### Remaining debt (scoped, deliberate)
+
+`heading-order` - 25 nodes, all on `mymanager-field-guide.html`. Sections use
+`h2` for the sheet header and `h4` for card titles, with some `h3.h-sub`
+subheads in between; axe flags the h4s that follow an h2 with no h3. The
+visually-correct fix is to demote those card h4s to h3, but the page's inline
+CSS styles `h4` by element (`.card h4`, `.flow-body h4`, `h4.h-mini`), so the
+change needs matching h3 rules across a designed long-form page. It is
+moderate, not serious, and does not affect the workspace, so it stays recorded
+here rather than being rushed in this wave.

@@ -3618,9 +3618,13 @@ var MMGR = window.MMGR || {};
       el.setAttribute('aria-modal', 'true');
       el.setAttribute('aria-label', 'Settings');
     } else {
+      /* Docked = ordinary page content, but it still needs a landmark: the
+         Settings / Guide / Q&A drawer sits outside <main>, so without one its
+         content reads as bare page content (axe region, 14 nodes). A named
+         region is the docked counterpart of the floated dialog above. */
       el.removeAttribute('aria-modal');
-      el.removeAttribute('aria-label');
-      el.removeAttribute('role');
+      el.setAttribute('role', 'region');
+      el.setAttribute('aria-label', 'Settings and guide');
     }
     if (on) {
       wireDimClick();

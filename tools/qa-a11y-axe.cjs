@@ -26,6 +26,13 @@
            exactly one h1 in the accessibility tree, never two at once).
      H1-2  at least one visible h1 on the public pages.
 
+   STRUCTURAL LANDMARKS ARE ALSO GATED (accessibility sweep 2026-11-23).
+   The serious/critical gate above would let moderate structural debt regress
+   silently, because none of it is serious: a page with no main landmark, an
+   invalid role on a list item, an empty table header, or content sitting
+   outside every landmark still passes that gate. All four were driven to zero
+   across the served pages, so a separate check now fails if any comes back.
+
    Usage:  node tools/qa-a11y-axe.cjs        (starts serve.cjs if needed)
            BASE=https://... node tools/qa-a11y-axe.cjs  (live smoke)
    Registry: CI-TEST-COVERAGE.md -> CI row (serve.cjs battery).
@@ -341,6 +348,27 @@ function axeSource() {
     'zero serious or critical axe violations (18 pages; dark measured only where it engages)',
     blocking.length === 0,
     blocking.slice(0, 12)
+  );
+  // STRUCTURAL LANDMARK GATE (accessibility sweep 2026-11-23). These four
+  // rules are moderate/minor, so the serious/critical check above cannot see
+  // them. They were cleared to zero on every page in this wave; this check
+  // keeps them there instead of letting them drift back as printed debt.
+  const structuralRules = [
+    'aria-allowed-role',
+    'empty-table-header',
+    'landmark-one-main',
+    'region'
+  ];
+  const structuralSeen = structuralRules.map(id => ({
+    id,
+    nodes: Object.keys(byRule)
+      .filter(k => k.endsWith('  ' + id))
+      .reduce((n, k) => n + byRule[k], 0)
+  }));
+  check(
+    'structural landmark/role rules stay at zero (' + structuralRules.join(', ') + ')',
+    structuralSeen.every(s => s.nodes === 0),
+    structuralSeen
   );
   // A-6, measured the way a screen reader experiences it.
   for (const f of HEADING_PAGES) {

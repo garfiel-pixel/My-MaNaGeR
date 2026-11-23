@@ -235,3 +235,18 @@ Gates: `qa-ai-window-layout` (83/83, with the pill exception and the strip
 handover re-baselined), `qa-ai` (all), `qa-ai-dictation` (17/17),
 `qa-ai-float` (12/12), `qa-calc-assistant` (170/170),
 `qa-calc-playwright-audit` (61/61).
+
+### Gate exceptions (deliberate, both recorded in the harness)
+
+Two `qa-ai-window-layout` contracts changed with this pass. Neither is a
+relaxed gate: each is a named, narrow exception with the owner's reason.
+
+1. **Pill radius on the empty-state chips.** Check 4 bans any radius of 99px or
+   more inside the window (avatars and status dots excepted). The owner asked
+   for "pill-shaped suggested prompt chips", so `.ai-welcome-row` is exempted
+   by name in the exemption regex and the check label now reads "no pill radius
+   outside the empty-state prompt chips". Every other element still fails.
+2. **Chip strip appears instead of retiring.** Check 8 used to require the
+   composer chip strip to disappear with the welcome. It now requires the
+   opposite - the strip takes over once the welcome retires - so the same four
+   prompts stay one click away without being rendered twice on the empty state.

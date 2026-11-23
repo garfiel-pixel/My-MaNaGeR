@@ -1880,7 +1880,9 @@
     <div class="mf ai-inputbar">
       <!-- AI-1: presets as chips directly above the composer (the full list
            keeps its own Presets tab; this strip is the four most-used, so a
-           one-click prompt is always in reach without leaving the thread). -->
+           one-click prompt is always in reach without leaving the thread).
+           REFACTOR 2026-11-23: starts hidden; hideWelcome() shows it once a
+           conversation exists (the empty state carries the same four prompts). -->
       <div class="ai-quick-presets is-hide" id="ai-quick-presets" aria-label="Quick presets"></div>
       <!-- D-1 step 4: ONE composer card. The message box owns the full width
            on top, the tools (tier, mic, Send) sit on a row underneath. Same

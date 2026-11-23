@@ -1,0 +1,116 @@
+name: Bug report
+description: Something in My MaNaGeR is broken or behaves unexpectedly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please do not paste passwords, AI keys, sharing
+        codes or other people's data into a public issue. For security problems,
+        follow [SECURITY.md](https://github.com/garfiel-pixel/My-MaNaGeR/blob/main/SECURITY.md) instead.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and did not find this reported already
+          required: true
+        - label: I have removed credentials, keys and personal data from everything I paste below
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Project workspace (WBS, Kanban, Gantt, dashboard)
+        - Calculator and rate book
+        - AI assistant (chat or calculator)
+        - Cloud sync, account or sign-in
+        - Marketing site
+        - PWA, install or offline use
+        - Something else
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe what you saw. A screenshot helps, but remove private data first.
+      placeholder: The Gantt swimlanes split one person into two rows when I type the name in lower case.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, starting from a fresh load of the page.
+      placeholder: |
+        1. Open a project with a task assigned to "Alex"
+        2. Add a second task assigned to "alex"
+        3. Open Gantt and group by assignee
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome or Edge
+        - Firefox
+        - Safari
+        - Other
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: offline
+    attributes:
+      label: Were you online or offline?
+      description: The app is offline-first, so this changes where the bug lives.
+      options:
+        - Online
+        - Offline
+        - I am not sure
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: signed-in
+    attributes:
+      label: Account state
+      options:
+        - Signed out (local data only)
+        - Signed in, free plan
+        - Signed in, paid plan
+        - I am not sure
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: sign-in-method
+    attributes:
+      label: Sign-in method
+      description: Only relevant if the bug involves signing in or your account.
+      options:
+        - Not applicable
+        - Google
+        - Microsoft
+        - Email and password
+        - I am not sure
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Console errors, if any
+      description: Optional. Open developer tools and paste any red error text.
+      render: shell

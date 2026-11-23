@@ -1,0 +1,36 @@
+name: Question
+description: Ask how something in My MaNaGeR works
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For account, subscription or refund questions, use the
+        [site policies](https://mymanagerworkspace.com/terms.html) instead.
+        Do not post credentials or sharing codes in a public issue.
+  - type: textarea
+    id: question
+    attributes:
+      label: What would you like to know?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Project workspace
+        - Calculator and rate book
+        - AI assistant
+        - Cloud sync, account or sign-in
+        - Offline use or installation
+        - Something else
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you already tried?
+      description: Optional. Helps avoid suggesting something you have already done.

@@ -1,0 +1,69 @@
+name: Feature request
+description: Suggest a change or a new capability for My MaNaGeR
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        My MaNaGeR is maintained by one person. A clear description of the
+        problem you are trying to solve makes a request much easier to act on.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and did not find this request already
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Project workspace (WBS, Kanban, Gantt, dashboard)
+        - Calculator and rate book
+        - AI assistant (chat or calculator)
+        - Cloud sync, account or sign-in
+        - Marketing site
+        - PWA, install or offline use
+        - Something else
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the task you are stuck on, not the feature you have in mind.
+      placeholder: I cannot see at a glance which tasks in a phase are overdue.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would you like to see?
+      description: The simplest change that would solve the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried instead?
+      description: Optional. Workarounds, other tools, or other approaches you considered.
+  - type: dropdown
+    id: offline-impact
+    attributes:
+      label: Would this need a network connection?
+      description: The app must keep working offline; sync stays opt-in per project.
+      options:
+        - No, it must work fully offline
+        - It may use the network when I am already signed in
+        - I am not sure
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: Optional. Examples, links or screenshots. Remove private data first.

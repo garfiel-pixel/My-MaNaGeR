@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/garfiel-pixel/My-MaNaGeR/blob/main/SECURITY.md
+    about: Report vulnerabilities privately by email. Never open a public issue for a security problem.
+  - name: Account, subscription and refunds
+    url: https://mymanagerworkspace.com/terms.html
+    about: Questions about the hosted service, billing or refunds are handled under the site policies.
+  - name: Privacy and data
+    url: https://mymanagerworkspace.com/privacy.html
+    about: What the app stores on your device and what cloud sync sends, when you turn it on.

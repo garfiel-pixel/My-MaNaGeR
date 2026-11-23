@@ -13,9 +13,10 @@ assistant. Nothing stored on your device depends on either of those.
 ## Stack
 
 - Static front end (HTML/CSS/JS) served from Cloudflare Workers static assets.
-- `worker.js` - security headers (CSP with per-script SHA-256 hashes), Google
-  sign-in session (HttpOnly HMAC cookie), BYO-AI-key relay (`/api/ai/chat`),
-  and the D1 + R2 cloud sync API (`/api/cloud/*`).
+- `worker.js` - security headers (CSP with per-script SHA-256 hashes),
+  sign-in sessions via Google, Microsoft or email and password (HttpOnly HMAC
+  cookie), BYO-AI-key relay (`/api/ai/chat`), and the D1 + R2 cloud sync API
+  (`/api/cloud/*`).
 - D1 database (`DB` binding) and R2 bucket (`R2` binding).
 - PWA: `sw.js` service worker + `manifest.webmanifest`, offline-first.
 
@@ -52,6 +53,17 @@ tar --exclude='.git' --exclude='.wrangler' --exclude='node_modules' \
   --exclude='.agents' --exclude='_archive' --exclude='tmp' -cf - . | tar -xf - -C "$STAGE"
 cd "$STAGE" && npx wrangler deploy
 ```
+
+## Community
+
+- **Contributing:** `CONTRIBUTING.md` (read `AGENTS.md` first)
+- **Code of Conduct:** `CODE_OF_CONDUCT.md`
+- **Security policy:** `SECURITY.md` (report vulnerabilities privately)
+- **Bug reports, feature requests and questions:** use the issue templates in
+  `.github/ISSUE_TEMPLATE/`
+
+The source is published for transparency and review. It is not licensed for
+reuse, and the project is maintained by its owner.
 
 ## License
 

@@ -2740,11 +2740,13 @@ var MMGR = window.MMGR || {};
     if (w) {
       w.classList.add('is-hide');
     }
-    // D-1 step 5: the first message retires the chip strip too. The Presets tab
-    // stays, so a one-click prompt is still one tab away.
+    // REFACTOR 2026-11-23: the chip strip is the in-conversation shortcut, so
+    // it appears once the empty state retires (the welcome pills carry the
+    // same four prompts, and showing both was the duplication). The Presets
+    // tab stays reachable either way.
     const qp = U.$('ai-quick-presets');
     if (qp) {
-      qp.classList.add('is-hide');
+      qp.classList.remove('is-hide');
     }
   }
   function hideTyping() {
@@ -2773,7 +2775,7 @@ var MMGR = window.MMGR || {};
     }
     const qp = U.$('ai-quick-presets');
     if (qp) {
-      qp.classList.remove('is-hide');
+      qp.classList.add('is-hide');
     }
   }
   function showTyping() {
@@ -2930,7 +2932,12 @@ var MMGR = window.MMGR || {};
     );
   }
 
-  function botBubbleHtml(textHtml, metaHtml, badgeHtml, traceHtml) {
+  // REFACTOR 2026-11-23: an assistant answer is bare text on the thread
+  // canvas. The engine name and the trace list are metadata, so they live in
+  // a hover-only row: a small info glyph whose tooltip carries the exact
+  // detail, plus a bare Copy glyph. The .ai-trace-inline element still exists
+  // (hidden with the row) because the visual harness reads it.
+  function botBubbleHtml(textHtml, metaHtml, badgeHtml) {
     return (
       botAvatar() +
       '<div class="ai-bot-body"><div class="ai-text">' +
@@ -2938,15 +2945,26 @@ var MMGR = window.MMGR || {};
       '</div>' +
       (metaHtml || '') +
       (badgeHtml || '') +
-      (traceHtml || '') +
       '</div>'
     );
   }
-  function botMeta(engine, copyHtml) {
+  function botMeta(engine, copyHtml, traceText) {
+    const detail =
+      escHtml(engine || '') + (traceText ? ' · Traceable to: ' + escHtml(traceText) : '');
     return (
-      '<div class="ai-meta"><span><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> ' +
-      escHtml(engine) +
+      '<div class="ai-meta">' +
+      '<span class="ai-meta-detail"><span class="ai-engine-tag"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> ' +
+      escHtml(engine || '') +
       '</span>' +
+      (traceText
+        ? '<span class="ai-trace-inline">Traceable to: ' + escHtml(traceText) + '</span>'
+        : '') +
+      '</span>' +
+      '<span class="ai-meta-i" role="img" title="' +
+      detail +
+      '" aria-label="' +
+      detail +
+      '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-info"></use></svg></span>' +
       (copyHtml || '') +
       '</div>'
     );
@@ -2957,7 +2975,7 @@ var MMGR = window.MMGR || {};
   // while the rendered bubble stays fully escaped. Delegated click handling
   // below; no per-bubble listeners.
   function copyBtnHtml() {
-    return '<button type="button" class="ai-copy-btn" title="Copy this answer" aria-label="Copy this answer"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg> Copy</button>';
+    return '<button type="button" class="ai-copy-btn" title="Copy this answer" aria-label="Copy this answer"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-clipboard"></use></svg></button>';
   }
   // Render one exchange: prompt = user bubble, res = submit() result shape.
   function renderThread(prompt, res) {
@@ -2980,17 +2998,13 @@ var MMGR = window.MMGR || {};
       // ladder to a smaller model, render a visible chip so users see the
       // fallback fired WITHOUT having to read the trace line.
       const fallback = fallbackBadgeHtml(res.tier, res.model, res.fellBackFrom);
-      const trace =
-        res.trace && res.trace.length
-          ? '<div class="ai-trace-inline">Traceable to: ' + escHtml(res.trace.join(', ')) + '</div>'
-          : '';
+      const traceText = res.trace && res.trace.length ? res.trace.join(', ') : '';
       addBubble(
         'bot',
         botBubbleHtml(
           escHtml(res.text).replace(/\n/g, '<br>'),
-          botMeta(engine, copyBtnHtml()),
-          fallback,
-          trace
+          botMeta(engine, copyBtnHtml(), traceText),
+          fallback
         ),
         res.text
       );
@@ -4189,17 +4203,13 @@ var MMGR = window.MMGR || {};
         : m.tier === 'cloud'
           ? 'Cloud' + (m.model ? ' \u00b7 ' + m.model : '')
           : m.tier || 'Answer';
-    const trace =
-      m.trace && m.trace.length
-        ? '<div class="ai-trace-inline">Traceable to: ' + escHtml(m.trace.join(', ')) + '</div>'
-        : '';
+    const traceText = m.trace && m.trace.length ? m.trace.join(', ') : '';
     addBubble(
       'bot',
       botBubbleHtml(
         escHtml(m.text).replace(/\n/g, '<br>'),
-        botMeta(engine, copyBtnHtml()),
-        fallbackBadgeHtml(m.tier, m.model, m.fellBackFrom),
-        trace
+        botMeta(engine, copyBtnHtml(), traceText),
+        fallbackBadgeHtml(m.tier, m.model, m.fellBackFrom)
       ),
       m.text
     );
@@ -4541,6 +4551,15 @@ var MMGR = window.MMGR || {};
   function renderQuickPresets() {
     const box = U.$('ai-quick-presets');
     const rows = U.$('ai-welcome-rows');
+    // REFACTOR 2026-11-23: the empty state greets by project name when the
+    // project has one, and stays neutral otherwise. Text only, no markup.
+    const title = U.$('ai-welcome-title');
+    if (title && !title.dataset.filled) {
+      const s = ns.State && ns.State.getState ? ns.State.getState() : {};
+      const pn = String((s && s.charter && s.charter.name) || (s && s.projectName) || '').trim();
+      title.textContent = pn ? 'How can I help with ' + pn + '?' : 'How can I help?';
+      title.dataset.filled = '1';
+    }
     if ((!box || box.dataset.filled) && (!rows || rows.dataset.filled)) {
       return;
     }

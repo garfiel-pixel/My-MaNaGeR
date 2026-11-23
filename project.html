@@ -1856,7 +1856,7 @@
         <div class="ai-bubble ai-bot ai-welcome" id="ai-welcome">
           <div class="ai-welcome-inner">
             <div class="ai-welcome-mark"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg></div>
-            <p class="ai-welcome-title">What are we working on?</p>
+            <p class="ai-welcome-title" id="ai-welcome-title">What are we working on?</p>
             <div class="ai-welcome-rows" id="ai-welcome-rows"></div>
           </div>
         </div>
@@ -1881,7 +1881,7 @@
       <!-- AI-1: presets as chips directly above the composer (the full list
            keeps its own Presets tab; this strip is the four most-used, so a
            one-click prompt is always in reach without leaving the thread). -->
-      <div class="ai-quick-presets" id="ai-quick-presets" aria-label="Quick presets"></div>
+      <div class="ai-quick-presets is-hide" id="ai-quick-presets" aria-label="Quick presets"></div>
       <!-- D-1 step 4: ONE composer card. The message box owns the full width
            on top, the tools (tier, mic, Send) sit on a row underneath. Same
            ids and actions, so every existing binding still resolves. -->

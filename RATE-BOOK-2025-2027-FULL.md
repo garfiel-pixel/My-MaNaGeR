@@ -1,6 +1,6 @@
-# JIC Rate Book 2025–2027 — Full Schedule and Gap Check
+# Rate Book 2025–2027 — Full Schedule and Gap Check
 
-**Source:** TRU Construction Estimator rate-book pages as pasted by the owner (imperial). **Currency:** JMD. **Compared against:** `JIC_Rate_Book_2025-2027.md` and `JIC_RATES` in `js/calculator-page.js` from `mymanager-fixed`.
+**Source:** rate-book pages as pasted by the owner (imperial). **Currency:** JMD. **Compared against:** the shipped rate book and the rate table in `js/calculator-page.js`.
 
 ## 1. Headline
 
@@ -28,7 +28,7 @@
 
 ## 3. What the app is missing (by priority)
 
-These are the gaps that matter most for a typical building estimate. Reference numbers are the JIC numbers in section 7.
+These are the gaps that matter most for a typical building estimate. Reference numbers are the numbers in section 7.
 
 | Priority | Gap | Refs | Why it matters |
 |---|---|---|---|
@@ -52,12 +52,12 @@ These are the gaps that matter most for a typical building estimate. Reference n
 
 Decisions recorded by the owner 2026-10-12 (findings 1, 2, 3, 5 acted on; 4 and 6 are information for the full-book wave).
 
-1. **Steelwork #6 Fabric: the shipped metric rate looks wrong.** It is stored as JMD 276.00 per m². The imperial rate is JMD 125.00 per yd². Converting properly gives about JMD 150 per m². Every other per-yd² row in the shipped book converts at the normal factor. 276 is 125 multiplied by the pounds-to-kilograms factor, so it looks like a unit mix-up on the source page that was copied across. The calculator uses this figure for mesh, so metric mesh pricing is probably about 85% too high. **Check against JIC's printed metric rate before changing it.**
+1. **Steelwork #6 Fabric: the shipped metric rate looks wrong.** It is stored as JMD 276.00 per m². The imperial rate is JMD 125.00 per yd². Converting properly gives about JMD 150 per m². Every other per-yd² row in the shipped book converts at the normal factor. 276 is 125 multiplied by the pounds-to-kilograms factor, so it looks like a unit mix-up on the source page that was copied across. The calculator uses this figure for mesh, so metric mesh pricing is probably about 85% too high. **Check against the printed metric rate before changing it.**
    **DECIDED (owner 2026-10-12: "Fix the wrong Fabric metric rate") - FIXED.** The row and the shipped book now carry **149.00** (125 ÷ 0.83612736). A permanent gate now checks every row against the section 6 conversion rules at a 6% band, and names this row explicitly, so it cannot drift back: measured across all 100 shipped rows the worst divergence is now 4.99% (Painting #5/#6, a rate under JMD 20 where the source's own dollar rounding is worth several percent), while the broken 276 sat at 84.6%.
 2. **The shipped Welding rows are mislabelled.** Welding #1–#9 are shown as "1/8" thick metal, using torch" and so on. The source description is "Handle Mark Cut & Sand Smooth … Thick Metal Using Torch". The shipped rows price cutting and smoothing, not welding. The real weld rates (fillet and butt, #63–#67) and drilling rates are not shipped. Restore the full descriptions.
    **DECIDED (owner: "Restore full Welding descriptions") - FIXED.** The rate table, the work-item picker labels and the shipped book all now read "Handle Mark Cut & Sand Smooth: 1/8 in thick metal using torch" and so on. Note the honest consequence: these nine rows price CUTTING AND SMOOTHING, not welding. The name "Welding" overstates them; the real weld rates arrive with the full book (section 3, priority 3).
 3. **Trade labels understate scope.** The app calls them "Carpentry (Formwork)", "Joinery (Skirtings)" and "Electrical (Conduit)". In the source book these trades also cover roofing and framing, doors and cupboards, and wiring and fittings. Rename them once the missing rows are added.
-   **DECIDED (owner: "Rename the understated trade labels") - DEFERRED to the full-book wave, deliberately.** `JIC_BOOK_MAP` keys on the literal trade label text, so renaming first would break the book payload silently. The rename runs AFTER stable trade keys are in place.
+   **DECIDED (owner: "Rename the understated trade labels") - DEFERRED to the full-book wave, deliberately.** the book map keys on the literal trade label text, so renaming first would break the book payload silently. The rename runs AFTER stable trade keys are in place.
 4. **Six trades end at exactly #100.** Excavation, Masonry, Carpentry, Joinery, Plumbing and Welding all stop at #100. That looks like a display limit on the source page. If the source has more rows, they are not in this file. Painting (74), Electrical (85), Steelwork (21), Tiling (34) and Scaffolding (16) end below 100 and look complete.
 5. **The shipped file footer is wrong.** It says "90 line items" but the table has 100 rows.
    **DECIDED (owner: "Fix the shipped file footer") - FIXED.** The footer now says 100, and the gate counts the rows out of the file rather than trusting the printed number, so a mismatch fails the build.
@@ -131,7 +131,7 @@ Calculated rates are rounded to whole dollars, or to cents where the imperial ra
 
 ## 7. Full rate tables
 
-**Columns:** *App* = ✔ if the row is already in the app. *Basis* = **S** (metric is the source's own shipped figure) or **C** (calculated). Reference numbers are the JIC numbers as shown on the source page. Rows removed as exact duplicates are listed in 5a and omitted here.
+**Columns:** *App* = ✔ if the row is already in the app. *Basis* = **S** (metric is the source's own shipped figure) or **C** (calculated). Reference numbers as shown on the source page. Rows removed as exact duplicates are listed in 5a and omitted here.
 
 ### Excavation
 

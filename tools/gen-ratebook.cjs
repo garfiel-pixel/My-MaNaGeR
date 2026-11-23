@@ -61,7 +61,7 @@ const OUT = path.join(ROOT, 'src', 'data', 'ratebook.js');
 const CHECK = process.argv.indexOf('--check') > -1;
 
 // Display label -> stable id. These ids are the SAME ones js/calculator-page.js
-// puts on its JIC_RATES rows, so the card, the shipped rows and the book
+// puts on its rate-book rows, so the card, the shipped rows and the book
 // payload all speak one language. The label is what the user reads; the id is
 // what the code keys on, so a rename is a one-line change here.
 const TRADES = [

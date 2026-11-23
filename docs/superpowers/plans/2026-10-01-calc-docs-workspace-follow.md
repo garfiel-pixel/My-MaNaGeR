@@ -405,7 +405,7 @@ never read off the engine; >1 currency unit drift rejects the build (E5 rule).
   piece material money excluded, CSV says so.
 - E5 golden harness extended: variant, labour, rateFactor + zero-slip-flag rule.
 
-Licensing note (plan section 4): shipped the safe fallback - JIC STRUCTURE with
+Licensing note (plan section 4): shipped the safe fallback - book STRUCTURE with
 no built-in rates; each user imports the book they bought. Schema identical
 either way; the owner's IMAJ extract can key a JMD book later without changes.
 
@@ -456,7 +456,7 @@ book schema stays ready for the extract.
   bulking, 8in block, labour-only pour, two more formwork variants.
 - qa-calculator-page: FM5 re-baselined to 38 trades + hiddenDerived
   (cart-away/lining-out/debrush/post-holes stay out of the picker), NV1
-  variant counts + JIC unit labels, NV2 stirrups/mesh math, NV3 formwork
+  variant counts + book unit labels, NV2 stirrups/mesh math, NV3 formwork
   variants + contact-area label, NV4 labour-only pour, LX1 rule matrix,
   LX2 end-to-end linter fix; EV1 re-baselined to 10 soil variants.
 

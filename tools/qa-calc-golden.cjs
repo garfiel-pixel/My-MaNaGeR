@@ -313,7 +313,7 @@ function absolutizeChrome(p) {
 
   // ---- The shipped book payload (P2a, stable trade ids) ----------------
   // bookPayload() maps BOOK_RATES into the importable book by matching each
-  // row against JIC_BOOK_MAP. That match USED to be on the trade's DISPLAY
+  // row against the book trade map. That match USED to be on the trade's DISPLAY
   // LABEL, so renaming a trade - which the owner asked for - would have made
   // every row in that trade silently stop producing a rate: no error, no
   // thrown exception, just a book with fewer entries and lower prices. The map

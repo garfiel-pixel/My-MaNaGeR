@@ -1264,7 +1264,7 @@ var MMGR = window.MMGR || {};
             String(ctx).split(key).join('[key removed]')
           : '');
       const messages = [
-        { role: 'system', content: CLOUD_SYSTEM_PROMPT },
+        { role: 'system', content: assistantSystemPrompt() },
         { role: 'user', content: userContent }
       ];
       try {
@@ -1897,6 +1897,22 @@ var MMGR = window.MMGR || {};
   const CLOUD_SYSTEM_PROMPT =
     'You are an assistant grounded ONLY in the project data below. Use ONLY that data , never invent dates, amounts, names, or facts. If a requested detail is not present in the data, say "not in data" explicitly. Keep every claim traceable to a line of the provided context.';
 
+  // OWNER 2026-11-22: the free tier keeps the strict prompt above (limited
+  // AI); every paid tier gets the warm, directive persona from AiPersona.
+  // Read the tier AT SEND TIME, not at load: the billing status fetch can
+  // land after this file is parsed. Falls back to the strict prompt if the
+  // persona module is absent (offline copy, stale bundle).
+  function assistantSystemPrompt() {
+    try {
+      const P = ns.AiPersona;
+      const E = ns.Entitlements;
+      const tier = E && typeof E.tier === 'function' ? E.tier() : 'free';
+      return P && typeof P.systemPrompt === 'function' ? P.systemPrompt(tier) : CLOUD_SYSTEM_PROMPT;
+    } catch (e) {
+      return CLOUD_SYSTEM_PROMPT;
+    }
+  }
+
   // Convert OpenAI-style [{role,content}] into the Gemini generateContent
   // payload shape (systemInstruction + contents with role 'user'/'model').
   function geminiPayload(messages) {
@@ -2293,7 +2309,7 @@ var MMGR = window.MMGR || {};
           String(ctx).split(key).join('[key removed]')
         : '');
     const messages = [
-      { role: 'system', content: CLOUD_SYSTEM_PROMPT },
+      { role: 'system', content: assistantSystemPrompt() },
       { role: 'user', content: userContent }
     ];
     let text;
@@ -2481,7 +2497,7 @@ var MMGR = window.MMGR || {};
         String(promptStr || '') +
         (scrubbed ? '\n\n==== PROJECT CONTEXT (grounding only) ====\n' + scrubbed : '');
       const messages = [
-        { role: 'system', content: CLOUD_SYSTEM_PROMPT },
+        { role: 'system', content: assistantSystemPrompt() },
         { role: 'user', content: userContent }
       ];
       const r = await callProviderWithFallback(provider, key, messages, ctxStr || '');

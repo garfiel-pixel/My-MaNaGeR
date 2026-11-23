@@ -69,6 +69,27 @@ const AI_TIMEOUT_MS = 30000; // hard upstream timeout
    lite model, so stepping up would burn the pool faster for no benefit. */
 const FREE_POOL_SLOTS = 4;
 const FREE_POOL_MODEL = 'gemini-flash-lite-latest';
+// OWNER 2026-11-22: "the higher paid tier actually has a proper AI and the
+// AI actually runs through an AI". The managed pool used to hand EVERY
+// account, paying or not, the weakest lite model. Paying accounts now step up
+// on this same no-key rung (the one most people use), while the free tier
+// stays on lite. Kept in step with TIER_STEP_UP below: estimator/contractor
+// go one rung up, company/enterprise two.
+const PAID_POOL_MODEL = {
+  estimator: 'gemini-flash-latest',
+  contractor: 'gemini-flash-latest',
+  company: 'gemini-pro-latest',
+  enterprise: 'gemini-pro-latest'
+};
+function paidPoolModel(sub) {
+  if (!sub || !subscriptionActive(sub)) {
+    return FREE_POOL_MODEL;
+  }
+  const tier = String(sub.tier || '')
+    .trim()
+    .toLowerCase();
+  return PAID_POOL_MODEL[tier] || FREE_POOL_MODEL;
+}
 // Owner 2026-10-09: five, down from ten - and the number is deliberately
 // never advertised. The client shows only the reached-limit line.
 const FREE_DAILY_MESSAGE_CAP = 5;
@@ -90,25 +111,6 @@ function freePoolKeys(env) {
     }
   }
   return keys;
-}
-
-// Is this account paying? D1 unreadable -> treated as free, because the cap's
-// whole job is to protect a finite pool of free keys: the safe failure is
-// "capped", never "uncapped".
-async function poolIsPaid(env, sub) {
-  if (!env || !env.DB || !sub) {
-    return false;
-  }
-  try {
-    const row = await env.DB.prepare(
-      'SELECT status, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
-    )
-      .bind(sub)
-      .first();
-    return subscriptionActive(row);
-  } catch (e) {
-    return false;
-  }
 }
 
 // KV is best-effort the other way: a cache fault must never take the free AI
@@ -141,14 +143,15 @@ async function freeQuotaBump(env, sub, used) {
 // One attempt per key, in slot order. A key that is rate-limited, out of
 // quota, revoked or simply wrong costs ONE attempt, so a dead key can never
 // take the whole rung down with it.
-async function poolAttempt(keys, messages) {
+async function poolAttempt(keys, messages, model) {
+  const useModel = model || FREE_POOL_MODEL;
   for (let i = 0; i < keys.length; i++) {
     const ctrl = new AbortController();
     const timer = setTimeout(function () {
       ctrl.abort();
     }, AI_TIMEOUT_MS);
     try {
-      const res = await fetch(geminiUrl(FREE_POOL_MODEL), {
+      const res = await fetch(geminiUrl(useModel), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': keys[i] },
         body: JSON.stringify(aiGeminiPayload(messages)),
@@ -506,7 +509,24 @@ export async function handleAiChat(request, env) {
         );
       }
     }
-    const paid = await poolIsPaid(env, session.sub);
+    // One subscription read feeds both answers: is this account paying (no
+    // daily cap) and which model may its tier use on this pool rung. A D1
+    // fault fails closed: treated as free, so a broken read cannot upgrade
+    // anyone or drain the pool.
+    let subRow = null;
+    try {
+      if (env && env.DB) {
+        subRow = await env.DB.prepare(
+          'SELECT status, tier, current_period_end, cancel_at FROM cloud_subscriptions WHERE owner_sub = ?'
+        )
+          .bind(session.sub)
+          .first();
+      }
+    } catch (e) {
+      subRow = null;
+    }
+    const paid = subscriptionActive(subRow);
+    const poolModel = paidPoolModel(subRow);
     // SEC-03 (audit 2026-11-01): a per-ACCOUNT burst limit on the free pool.
     // The route-level `ai` bucket counts the network identity, so an account
     // can dodge it by rotating egress, and several accounts on one office NAT
@@ -541,7 +561,7 @@ export async function handleAiChat(request, env) {
     }
     const pool = freePoolKeys(env);
     if (pool.length) {
-      const poolOut = await poolAttempt(pool, body.messages);
+      const poolOut = await poolAttempt(pool, body.messages, poolModel);
       if (poolOut) {
         if (!paid) {
           await freeQuotaBump(env, session.sub, used);
@@ -549,7 +569,7 @@ export async function handleAiChat(request, env) {
         return json({
           ok: true,
           text: poolOut.text,
-          model: FREE_POOL_MODEL,
+          model: poolModel,
           source: 'free-pool',
           remaining: paid ? null : Math.max(0, FREE_DAILY_MESSAGE_CAP - used - 1)
         });

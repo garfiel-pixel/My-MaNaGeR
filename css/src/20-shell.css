@@ -74,6 +74,16 @@ body.dark-mode {
   --major-6: #c9c9cf;
   --major-7: #50e8f4;
   --major-8: #aeb8ad;
+  /* OWNER 2026-11-22: bright steps for slots 9-16, echoing the light hues.
+     Every value already ships elsewhere; verify-major-colors proves 3:1. */
+  --major-9: #fca5a5;
+  --major-10: #38bdf8;
+  --major-11: #fbbf24;
+  --major-12: #22c55e;
+  --major-13: #d0b7ac;
+  --major-14: #b9bdc2;
+  --major-15: #fde68a;
+  --major-16: #c4b9a2;
   --major-other: #8f8f97;
   --purple: #c9c9cf;
   --purple-rgb: 201, 201, 207;

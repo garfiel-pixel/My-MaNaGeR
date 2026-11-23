@@ -192,6 +192,17 @@ svg.ico use {
   --major-6: #8b5cf6; /* purple - --purple */
   --major-7: #00838f; /* teal - the cyan accent's text step */
   --major-8: #5f6860; /* sage - the pegboard/guild neutral */
+  /* OWNER 2026-11-22: slots 9-16 so a long WBS does not run out of colours.
+     Every value already ships in the palette (status steps, ink and skins);
+     tools/verify-major-colors.cjs proves 3:1 on all light/parchment cards. */
+  --major-9: #ad1457; /* magenta - --pink ink step */
+  --major-10: #1d3557; /* navy - the dark-header deep blue */
+  --major-11: #7c2d12; /* sienna - the burnt-orange ink step */
+  --major-12: #03644f; /* jade - the deep green step */
+  --major-13: #642231; /* burgundy - the wine step */
+  --major-14: #334155; /* slate - the cool gray-blue step */
+  --major-15: #4a3406; /* olive - the deep gold-ink step */
+  --major-16: #6b4a12; /* ochre - the bronze ink step */
   --major-other: #666666; /* --text-muted: the merged "Other" slot */
   /* -- Legacy aliases (kept for backward compat, migrate to semantic) -- */
   --green: #2e7d32;
@@ -378,6 +389,16 @@ body.dark-mode {
   --major-6: #c9c9cf;
   --major-7: #50e8f4;
   --major-8: #aeb8ad;
+  /* OWNER 2026-11-22: bright steps for slots 9-16, echoing the light hues.
+     Every value already ships elsewhere; verify-major-colors proves 3:1. */
+  --major-9: #fca5a5;
+  --major-10: #38bdf8;
+  --major-11: #fbbf24;
+  --major-12: #22c55e;
+  --major-13: #d0b7ac;
+  --major-14: #b9bdc2;
+  --major-15: #fde68a;
+  --major-16: #c4b9a2;
   --major-other: #8f8f97;
   --purple: #c9c9cf;
   --purple-rgb: 201, 201, 207;
@@ -3790,6 +3811,30 @@ body.sidebar-open .sb-close .ico {
 }
 .dt td:has(> textarea) {
   vertical-align: top;
+}
+/* WBS assignee is a real, sizing-to-content box with resource suggestions,
+   unlike the transparent inline-edit cells around it. Free text stays valid. */
+.dt td input.wbs-assignee {
+  field-sizing: content;
+  width: auto;
+  min-width: 6ch;
+  max-width: 100%;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--squircle-sm);
+  background: var(--card);
+  color: var(--text);
+  transition:
+    border-color var(--tr),
+    box-shadow var(--tr);
+}
+.dt td input.wbs-assignee:hover {
+  border-color: var(--gold);
+}
+.dt td input.wbs-assignee:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+  outline: none;
 }
 .dt tbody tr {
   transition: background var(--tr);
@@ -8350,7 +8395,7 @@ body.dark-mode .team-link-danger {
    4px marker on its WBS row, so the same task reads the same everywhere it
    appears. Nothing else is restyled; with no groups neither attribute is
    emitted, so nothing changes. */
-/* The slot number maps to its token in CSS, not in an inline style: eight
+/* The slot number maps to its token in CSS, not in an inline style: sixteen
    fixed rules keep the DOM census clean and let every theme re-tint the
    accent with no JavaScript involved. */
 [data-major='1'] {
@@ -8376,6 +8421,30 @@ body.dark-mode .team-link-danger {
 }
 [data-major='8'] {
   --major-row: var(--major-8);
+}
+[data-major='9'] {
+  --major-row: var(--major-9);
+}
+[data-major='10'] {
+  --major-row: var(--major-10);
+}
+[data-major='11'] {
+  --major-row: var(--major-11);
+}
+[data-major='12'] {
+  --major-row: var(--major-12);
+}
+[data-major='13'] {
+  --major-row: var(--major-13);
+}
+[data-major='14'] {
+  --major-row: var(--major-14);
+}
+[data-major='15'] {
+  --major-row: var(--major-15);
+}
+[data-major='16'] {
+  --major-row: var(--major-16);
 }
 .gb[data-major]::before {
   content: '';
@@ -15062,6 +15131,8 @@ body.dark-mode .ai-byo-pop {
 .ai-send:disabled:hover {
   transform: none;
   box-shadow: none;
+  color: var(--slate);
+  background: transparent;
 }
 .ai-note {
   font-size: 0.64rem;
@@ -17447,13 +17518,16 @@ html.mmgr-tour-active .bcp-tour-nudge {
   align-items: flex-end;
   background: var(--card);
 }
+/* OWNER 2026-11-22: the mic is a bare affordance INSIDE the one composer
+   box, not a control with its own box. No border, no fill, no circle. It
+   reveals a soft highlight on hover/focus so it still reads as clickable. */
 .ai-voice-btn {
   flex-shrink: 0;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--tile-bg);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
   color: var(--slate);
   cursor: pointer;
   display: inline-flex;
@@ -17462,9 +17536,12 @@ html.mmgr-tour-active .bcp-tour-nudge {
   transition: var(--tr-ui);
 }
 .ai-voice-btn:hover {
-  border-color: var(--gold);
   color: var(--gold-text);
-  background: color-mix(in oklch, var(--gold) 8%, transparent);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
+}
+.ai-voice-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .ai-voice-btn.recording {
   border-color: #ef4444;
@@ -17514,32 +17591,41 @@ html.mmgr-tour-active .bcp-tour-nudge {
   color: var(--slate);
   opacity: 0.75;
 }
+/* OWNER 2026-11-22: no golden button wrapper. A plain send arrow that lives
+   inside the composer box and lights up on hover/focus, like the mic. The
+   arrow is an SVG sprite symbol, never an emoji or a text glyph. */
 .ai-send {
   flex-shrink: 0;
-  border: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
   border-radius: var(--radius-control);
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: var(--lit-coal);
-  font-size: 0.82rem;
-  font-weight: 800;
+  background: transparent;
+  color: var(--slate);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+  justify-content: center;
   transition:
-    transform var(--tr),
-    box-shadow var(--tr),
-    filter var(--tr);
+    color var(--tr),
+    background-color var(--tr),
+    transform var(--tr);
+}
+.ai-send .ico {
+  width: 18px;
+  height: 18px;
 }
 .ai-send:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
 }
 .ai-send:active {
-  filter: brightness(1.12);
-  transform: scale(0.97);
+  transform: scale(0.94);
+}
+.ai-send:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 /* DIR-2 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG): when the input is capped at
    120px and internally scrollable, show a top-edge fade so continued typing
@@ -17886,37 +17972,41 @@ body.dark-mode .ai-hist-when {
 .ai-composer-tools .ai-send-wrap {
   margin-left: auto;
 }
-/* The tools row is one height: tier badge, mic and Send all 32px. */
+/* The tools row is one height: tier badge, mic and Send all 32px. The mic
+   and Send are bare glyph buttons with no box of their own (owner 2026-11-22). */
 .ai-composer-tools .ai-send {
+  width: 32px;
   height: 32px;
-  padding: 0 14px;
-  border-radius: var(--radius-control);
+  padding: 0;
 }
 .ai-composer-tools .ai-voice-btn {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-control);
 }
 .ai-composer-tools .ai-voice-btn .ico {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
 }
+/* OWNER 2026-11-22: "On this device" is plain text inside the composer,
+   not a bordered box. It reveals a soft highlight on hover/focus so it still
+   reads as clickable, matching the mic and send arrows. */
 .ai-tier-badge {
   flex-shrink: 0;
   height: 32px;
   max-width: 128px;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-control);
-  background: var(--tile-bg);
+  background: transparent;
   color: var(--slate);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
   padding: 0 8px;
   cursor: pointer;
+  transition: var(--tr-ui);
 }
 .ai-tier-badge:hover {
-  border-color: var(--gold);
   color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
 }
 .ai-tier-badge:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -22783,6 +22873,14 @@ body.db-page[data-skin='departure'],
   --major-6: #c9c9cf;
   --major-7: #50e8f4;
   --major-8: #aeb8ad;
+  --major-9: #fca5a5;
+  --major-10: #38bdf8;
+  --major-11: #fbbf24;
+  --major-12: #22c55e;
+  --major-13: #d0b7ac;
+  --major-14: #b9bdc2;
+  --major-15: #fde68a;
+  --major-16: #c4b9a2;
   --major-other: #8f8f97;
   --card: #181b1e;
   --surface-raised: #1d2124;
@@ -23439,6 +23537,14 @@ body.db-page[data-skin='obsidian'],
   --major-6: #c9c9cf;
   --major-7: #50e8f4;
   --major-8: #aeb8ad;
+  --major-9: #fca5a5;
+  --major-10: #38bdf8;
+  --major-11: #fbbf24;
+  --major-12: #22c55e;
+  --major-13: #d0b7ac;
+  --major-14: #b9bdc2;
+  --major-15: #fde68a;
+  --major-16: #c4b9a2;
   --major-other: #8f8f97;
   /* UI/spatial parity spec §3.2 Step C: content cards must be opaque, or the
      canvas bleeds through dense tables in BOTH perf modes (perf-on already
@@ -25471,22 +25577,39 @@ body.rr-open {
 .bcp-ai-signin {
   flex-shrink: 0;
 }
+/* OWNER 2026-11-22: polish the transcript to read like the app assistant -
+   a soft, recessed conversation card holding properly rounded message bubbles
+   with one asymmetric "tail" corner each (the app's chat language). Theme
+   tokens only, so both palettes hold; SVG sprite icons, never emoji. */
 .bcp-ai-log {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   max-height: 340px;
   overflow-y: auto;
-  padding: 12px;
+  padding: 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg, 16px);
+  border-radius: var(--squircle-md, 20px);
   background: var(--tile-bg);
+  box-shadow: inset 0 1px 3px var(--lit-navy-05);
+  scroll-behavior: smooth;
 }
 .bcp-ai-msg {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  max-width: 92%;
+  gap: 4px;
+  max-width: min(86%, 640px);
+  animation: bcp-ai-msg-in 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+@keyframes bcp-ai-msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .bcp-ai-msg.user {
   align-self: flex-end;
@@ -25496,23 +25619,32 @@ body.rr-open {
 .bcp-ai-who {
   font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-secondary, var(--text));
 }
 .bcp-ai-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  padding: 8px 11px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
+  word-break: break-word;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  padding: 11px 15px;
+  border-radius: 16px;
+  border-bottom-left-radius: 5px;
+  border: 1px solid transparent;
   background: var(--card);
+  box-shadow: 0 1px 3px var(--lit-navy-05);
+  text-align: left;
 }
 .bcp-ai-msg.user .bcp-ai-text {
-  border-color: var(--gold);
-  background: rgba(var(--gold-rgb), 0.12);
+  border-radius: 16px;
+  border-bottom-right-radius: 5px;
+  border: 0;
+  background: linear-gradient(135deg, var(--gold), var(--gold-ink, var(--gold)));
+  color: var(--on-gold, var(--lit-coal));
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(var(--gold-rgb), 0.25);
 }
 .bcp-ai-note {
   display: flex;
@@ -25582,6 +25714,12 @@ body.rr-open {
     animation: none;
     opacity: 0.7;
   }
+  .bcp-ai-msg {
+    animation: none;
+  }
+  .bcp-ai-log {
+    scroll-behavior: auto;
+  }
 }
 /* One download chip: the file the assistant built, with its real size and row
    count, and the link that actually fetches it (T2). */
@@ -25635,42 +25773,109 @@ body.rr-open {
   width: 15px;
   height: 15px;
 }
+/* OWNER 2026-11-22: ONE composer card, mirroring the app assistant. The
+   textarea sits on top with no box of its own; a tools row underneath holds a
+   bare attach glyph and a bare send arrow (SVG only) that light up on hover.
+   No golden button, no nested boxes. data-cai hooks are unchanged. */
 .bcp-ai-form {
+  margin-top: 12px;
+}
+.bcp-ai-composer {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  margin-top: 10px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--squircle-sm, 14px);
+  background: var(--card);
+  transition:
+    border-color var(--tr),
+    box-shadow var(--tr);
+}
+.bcp-ai-composer:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.14);
 }
 .bcp-ai-input {
   flex: 1 1 auto;
+  display: block;
+  width: 100%;
   min-width: 0;
   resize: vertical;
+  min-height: 44px;
+  max-height: 160px;
   font: inherit;
   font-size: 0.88rem;
-  line-height: 1.45;
-  padding: 9px 11px;
+  line-height: 1.5;
+  padding: 2px 2px 0;
   color: var(--text);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
 }
-.bcp-ai-input:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+.bcp-ai-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.bcp-ai-input::placeholder {
+  color: var(--slate);
+  opacity: 0.75;
 }
 .bcp-ai-input:disabled {
   opacity: 0.7;
 }
+.bcp-ai-composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+/* Bare glyph buttons, no box of their own - a soft highlight on hover/focus
+   is the only affordance, exactly like the app's mic and send. */
+.bcp-ai-attach,
 .bcp-ai-send {
   flex-shrink: 0;
-  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--slate);
+  cursor: pointer;
+  transition:
+    color var(--tr),
+    background-color var(--tr),
+    transform var(--tr);
 }
+.bcp-ai-send {
+  margin-left: auto;
+}
+.bcp-ai-attach:hover,
+.bcp-ai-send:hover {
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
+}
+.bcp-ai-attach:focus-visible,
+.bcp-ai-send:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.bcp-ai-send:active {
+  transform: scale(0.94);
+}
+.bcp-ai-attach .ico,
 .bcp-ai-send .ico {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
 }
 .bcp-ai-send:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 @media (max-width: 560px) {
@@ -25854,15 +26059,8 @@ body.rr-open {
   border-radius: 6px;
   border: 1px solid currentColor;
 }
-.bcp-ai-attach {
-  flex-shrink: 0;
-  min-height: 40px;
-  padding: 8px 10px;
-}
-.bcp-ai-attach .ico {
-  width: 16px;
-  height: 16px;
-}
+/* The attach glyph is styled with the send glyph in the unified composer
+   block above (OWNER 2026-11-22) - no boxy 40px button. */
 .bcp-ai-fileinfo {
   display: flex;
   align-items: center;

@@ -657,6 +657,10 @@
           <th class="w120">End</th><th class="w120">Status</th><th class="w96">Actions</th>
         </tr></thead><tbody id="wbs-body"></tbody></table>
       </div>
+      <!-- Assignee suggestions come from this project's Resources. The WBS
+           field stays free text so a custom name still works; renderWbs()
+           fills the options and each assignee input points at this list. -->
+      <datalist id="wbs-assignee-options"></datalist>
       <div id="task-comments" hidden></div>
     </div>
   </div>
@@ -1892,7 +1896,7 @@
             <option value="cloud">Your key</option>
           </select>
           <button type="button" class="ai-voice-btn" id="ai-voice-btn" data-action="aiVoiceToggle" title="Voice input (browser speech recognition)" aria-label="Toggle voice input"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mic"></use></svg></button>
-          <span class="ai-send-wrap" id="ai-send-wrap" title="Send"><button class="ai-send" id="ai-send" data-action="aiRun" title="Send"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-zap"></use></svg> Send</button></span>
+          <span class="ai-send-wrap" id="ai-send-wrap" title="Send"><button class="ai-send" id="ai-send" data-action="aiRun" title="Send" aria-label="Send message"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-send"></use></svg></button></span>
         </div>
       </div>
       <!-- D-1 step 6: the context disclosure is ONE collapsed line under

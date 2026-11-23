@@ -19,6 +19,14 @@ body.db-page[data-skin='obsidian'],
   --major-6: #c9c9cf;
   --major-7: #50e8f4;
   --major-8: #aeb8ad;
+  --major-9: #fca5a5;
+  --major-10: #38bdf8;
+  --major-11: #fbbf24;
+  --major-12: #22c55e;
+  --major-13: #d0b7ac;
+  --major-14: #b9bdc2;
+  --major-15: #fde68a;
+  --major-16: #c4b9a2;
   --major-other: #8f8f97;
   /* UI/spatial parity spec §3.2 Step C: content cards must be opaque, or the
      canvas bleeds through dense tables in BOTH perf modes (perf-on already

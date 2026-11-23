@@ -167,6 +167,9 @@ const APP_MODULES = [
   // Entitlements seam (owner 2026-09-19): the one future door for gating AI
   // features on sign-in; premium rules land inside later, callers never change.
   'js/app/entitlements.js',
+  // OWNER 2026-11-22: tier-aware assistant persona. Loads after entitlements
+  // so mmgr-ai.js can ask for the right prompt at send time; pure module.
+  'js/mmgr-ai-persona.js',
   // Background assistant (Task 6, owner 2026-09-19): deterministic watchers
   // + header mailbox. Needs State/Utils at call time only.
   'js/mmgr-watch.js',

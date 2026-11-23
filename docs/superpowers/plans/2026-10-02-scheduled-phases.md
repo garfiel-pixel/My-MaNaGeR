@@ -22,7 +22,7 @@ next session, the phase's plan scope, and what's blocking it.
 
 ### Phase 3 — Access and metal (SCHEDULED)
 - G2 scaffolding: 8 height-band variants ("to 10 ft unbraced; 10-20, 20-30, 30-40, 40-50,
-  50-60, 60-70, 70-80 ft tied to building"), unit ft2 (JIC ft2-denominated), runit 'ft2'.
+  50-60, 60-70, 70-80 ft tied to building"), unit ft2 (book ft2-denominated), runit 'ft2'.
 - G3 welding and metal cutting: 9 variants by method+thickness
   ("torch 1/8, 1/4, 3/8, 1/2, 5/8, 3/4, 1 in; CPSAW 1/16 and 1/8 in"), per-cut quantity,
   runit null (count each); cost scales by thickness.
@@ -60,7 +60,7 @@ next session, the phase's plan scope, and what's blocking it.
   → signature → entitlement) before retiring LemonSqueezy.
 
 ### JMD rate book keying (SCHEDULED — BLOCKED)
-- Owner: drop the JIC extract in the repo (expected PDF/xlsx/csv at the repo root or in
+- Owner: drop the book extract in the repo (expected PDF/xlsx/csv at the repo root or in
   Downloads). Status: not in the repo yet (git clean except the owner's scheduled-phases file).
 - Schema is ready: `importBooks` validates `{books:[{name, currency:'JMD', effective_from/to,
   rates:{workKey:{variantIdOr'*':{mat,lab,unit}}}}]}` with a djb2 checksum; unknown keys,

@@ -250,3 +250,10 @@ relaxed gate: each is a named, narrow exception with the owner's reason.
    composer chip strip to disappear with the welcome. It now requires the
    opposite - the strip takes over once the welcome retires - so the same four
    prompts stay one click away without being rendered twice on the empty state.
+
+A follow-up label audit confirmed the remaining check strings match the current
+contract. The one stale string - the empty-state check read "four pill prompt
+rows and the four chips", implying the chips were visible - now reads "four
+pill prompt rows, with the same four held in the hidden chip strip", and the
+check also asserts `stripHidden` so the label and the assertion say the same
+thing.

@@ -468,6 +468,7 @@ async function sheetAt(page, width, height) {
             bubbles: document.querySelectorAll('#ai-thread .ai-bubble').length,
             rows: document.querySelectorAll('#ai-welcome-rows .ai-welcome-row').length,
             chips: document.querySelectorAll('#ai-quick-presets .ai-chip').length,
+            stripHidden: document.getElementById('ai-quick-presets').classList.contains('is-hide'),
             chain: chain,
             win: (function () {
               const el = document.getElementById('ai-win');
@@ -486,8 +487,8 @@ async function sheetAt(page, width, height) {
           };
         });
         check(
-          'empty state: four pill prompt rows and the four chips',
-          welcome.visible && welcome.rows === 4 && welcome.chips === 4,
+          'empty state: four pill prompt rows, with the same four held in the hidden chip strip',
+          welcome.visible && welcome.rows === 4 && welcome.chips === 4 && welcome.stripHidden,
           welcome
         );
 

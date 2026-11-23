@@ -131,6 +131,21 @@ test('laneGroups puts Unassigned last and keeps every card once', () => {
   );
 });
 
+test('laneGroups merges case variants of one assignee under the first spelling', () => {
+  const tasks = [
+    task('a', 'todo', 0, { assignee: 'Sam' }),
+    task('b', 'todo', 1, { assignee: 'sam' }),
+    task('c', 'todo', 2, { assignee: 'SAM' }),
+    task('d', 'todo', 3, { assignee: 'Alex' })
+  ];
+  const lanes = K.laneGroups(tasks, 'assignee');
+  assert.deepEqual(plain(lanes.map(l => l.key)), ['Alex', 'Sam']);
+  assert.equal(
+    lanes.reduce((n, l) => n + l.tasks.length, 0),
+    4
+  );
+});
+
 test('flow averages only cards with both dates', () => {
   const s = state([
     task('a', 'completed', 0, {

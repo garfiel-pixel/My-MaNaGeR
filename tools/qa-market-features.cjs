@@ -374,6 +374,16 @@ async function check(name, expr, hint) {
     'C3 punch rendered with columns + summary',
     `(function(){var b=document.getElementById('punch-body');var s=document.getElementById('punch-sum');return {val: !!b && b.querySelector('[data-field=location]')!==null && b.querySelector('[data-field=assignee]')!==null && s && s.textContent.indexOf('open')>-1};})()`
   );
+  await check(
+    'C3 punch assignee is a boxed datalist fed by resources',
+    `(function(){
+      var inp = document.querySelector('#punch-body input[data-field=assignee]');
+      var list = document.getElementById('wbs-assignee-options');
+      var res = (MMGR.State.getState().resources || []).filter(function(r){ return r && r.name; });
+      var optCount = list ? list.options.length : -1;
+      return { val: !!inp && inp.getAttribute('list')==='wbs-assignee-options' && inp.classList.contains('wbs-assignee') && !!list && (res.length===0 || optCount>0), optCount: optCount, res: res.length };
+    })()`
+  );
 
   // ---- C7: Lookahead (pure fn + dashboard render) ----
   await check(

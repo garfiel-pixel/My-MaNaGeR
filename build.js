@@ -48,6 +48,41 @@ function writeManifest(manifest) {
   console.log('  manifest:  dist/manifest.json');
 }
 
+/**
+ * P1 (2026-11-23): keep only the current content-hashed artifact for each
+ * build base. Every build writes a fresh `base.<hash>.ext` copy and never
+ * removes the previous one, so dist/ (and the deploy upload) grew by one
+ * file per historical build. A hashed file is stale when its hash no longer
+ * matches the current hash of the unhashed sibling it was copied from.
+ * Partial builds are safe: an untouched base still matches and is kept.
+ */
+function pruneStaleHashed() {
+  const HASHED =
+    /^(bundle|app-bundle|admin-bundle|marketing-bundle|marketing-ai|marketing-roles|marketing-globe|mmgr\.min|marketing\.min)\.([a-f0-9]{8})\.(js|css)$/;
+  let removed = 0;
+  fs.readdirSync(DIST).forEach(function (name) {
+    const m = HASHED.exec(name);
+    if (!m) {
+      return;
+    }
+    const basePath = path.join(DIST, m[1] + '.' + m[3]);
+    if (!fs.existsSync(basePath)) {
+      return; // no unhashed sibling to compare - leave it alone
+    }
+    if (m[2] !== contentHash(basePath)) {
+      try {
+        fs.unlinkSync(path.join(DIST, name));
+        removed += 1;
+      } catch (e) {
+        /* a locked file is harmless - the next build retries */
+      }
+    }
+  });
+  if (removed) {
+    console.log('  pruned:    ' + removed + ' stale hashed asset(s)');
+  }
+}
+
 // ---- Project.html bundle (56 modules) ----
 // Order must match the <script> tags in project.html - each module
 // extends the global MMGR namespace created by mmgr-state.js.
@@ -567,6 +602,7 @@ if (buildCss) {
     'marketing.min.' + contentHash(path.join(DIST, 'marketing.min.css')) + '.css';
 }
 writeManifest(manifest);
+pruneStaleHashed();
 
 // Touch sw.js so its mtime is always newer than dist/ files.
 // This keeps verify:sw happy - the SW cache version must be the

@@ -299,7 +299,7 @@ var MMGR = window.MMGR || {};
       const peer = peers[0];
       // Shared-resource read: if both name the same assignee, say so -
       // starting both needs a crew decision, which is the actionable point.
-      const sameCrew = a.assignee && peer.assignee && a.assignee === peer.assignee;
+      const sameCrew = U.sameAssignee(a.assignee, peer.assignee);
       const need = sameCrew
         ? 'Both name ' +
           peer.assignee +
@@ -568,7 +568,7 @@ var MMGR = window.MMGR || {};
           text: t.name + ' is weather-sensitive on the critical path (' + dur + ' days)'
         });
       }
-      const res = (s.resources || []).find(r => r.name && r.name === t.assignee);
+      const res = (s.resources || []).find(r => U.sameAssignee(r.name, t.assignee));
       if (res && (+res.allocation || 0) > 100) {
         causes.push({
           days: Math.max(1, Math.round(dur * 0.25)),
@@ -648,7 +648,7 @@ var MMGR = window.MMGR || {};
         continue;
       }
       const floatDays = parseInt(t.totalFloat !== undefined ? t.totalFloat : t.float, 10);
-      const shares = crit.some(c => c.assignee && c.assignee === t.assignee);
+      const shares = crit.some(c => U.sameAssignee(c.assignee, t.assignee));
       if (shares && !isNaN(floatDays) && floatDays >= over) {
         sugg.push({
           save: Math.min(over, floatDays),
@@ -657,7 +657,7 @@ var MMGR = window.MMGR || {};
             ' has ' +
             floatDays +
             ' days of float: move it after ' +
-            crit.find(c => c.assignee === t.assignee).name +
+            crit.find(c => U.sameAssignee(c.assignee, t.assignee)).name +
             ' to free the crew.'
         });
       }

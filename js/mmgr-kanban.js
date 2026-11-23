@@ -418,26 +418,42 @@ var MMGR = window.MMGR || {};
     if (!mode || mode === 'none') {
       return [{ key: 'all', label: '', tasks: (tasks || []).slice() }];
     }
-    const map = {};
-    const order = [];
+    const map = {}; // bucket key -> tasks
+    const order = []; // bucket keys in first-seen order
+    const labels = {}; // bucket key -> display label
     (tasks || []).forEach(function (t) {
-      const key = mode === 'assignee' ? t.assignee || 'Unassigned' : t.parentName || 'No phase';
-      if (!map[key]) {
-        map[key] = [];
-        order.push(key);
+      let bucket;
+      let label;
+      if (mode === 'assignee') {
+        // Case-insensitive: "alice" and "Alice" share one crew lane; the
+        // first spelling seen is what the lane displays.
+        const raw = String(t.assignee || '').trim();
+        bucket = raw ? raw.toLowerCase() : 'unassigned';
+        label = raw || 'Unassigned';
+      } else {
+        bucket = label = t.parentName || 'No phase';
       }
-      map[key].push(t);
+      if (!map[bucket]) {
+        map[bucket] = [];
+        order.push(bucket);
+      }
+      if (!labels[bucket]) {
+        labels[bucket] = label;
+      }
+      map[bucket].push(t);
     });
     order.sort(function (a, b) {
-      const aLast = a === 'Unassigned' || a === 'No phase';
-      const bLast = b === 'Unassigned' || b === 'No phase';
+      const aLabel = labels[a];
+      const bLabel = labels[b];
+      const aLast = aLabel === 'Unassigned' || aLabel === 'No phase';
+      const bLast = bLabel === 'Unassigned' || bLabel === 'No phase';
       if (aLast !== bLast) {
         return aLast ? 1 : -1;
       }
-      return a.localeCompare(b);
+      return aLabel.localeCompare(bLabel);
     });
-    return order.map(function (key) {
-      return { key: key, label: key, tasks: map[key] };
+    return order.map(function (bucket) {
+      return { key: labels[bucket], label: labels[bucket], tasks: map[bucket] };
     });
   }
 

@@ -1167,6 +1167,13 @@
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
   outline: none;
 }
+/* field-sizing is Chromium-only; elsewhere the box would keep the default
+   input width, so let it fill the cell instead of looking half-sized. */
+@supports not (field-sizing: content) {
+  .dt td input.wbs-assignee {
+    width: 100%;
+  }
+}
 .dt tbody tr {
   transition: background var(--tr);
 }

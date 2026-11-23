@@ -179,11 +179,19 @@ check(
 );
 
 console.log('--- 3. Icon refs in dashboard markup exist in sprite ---');
-// grab the dashboard-specific block: everything between the DASHBOARD comment and <div class="wrap">
-const dashBlock = appHtml.slice(
-  appHtml.indexOf('DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail'),
-  appHtml.indexOf('<div class="wrap">')
+// Grab the dashboard-specific block: everything between the DASHBOARD comment
+// and the page wrapper. The wrapper is <main class="wrap"> since the
+// 2026-11-23 accessibility sweep (it was <div class="wrap">); match either tag
+// so a future tag change cannot silently slice to -1 and scan the whole file
+// (which reads icon ids out of inline-script strings and fails as garbage).
+const dashStart = appHtml.indexOf('DASHBOARD-UI-REFRESH-SPEC: dark-dashboard nav rail');
+const dashEnd = appHtml.search(/<(?:div|main) class="wrap">/);
+check(
+  'dashboard block anchored (spec comment + .wrap container found)',
+  dashStart !== -1 && dashEnd !== -1 && dashEnd > dashStart,
+  { dashStart, dashEnd }
 );
+const dashBlock = dashStart !== -1 && dashEnd > dashStart ? appHtml.slice(dashStart, dashEnd) : '';
 const iconRefs = [...dashBlock.matchAll(/use href="css\/mmgr-icons\.svg#([^"]+)"/g)].map(m => m[1]);
 for (const id of iconRefs) {
   check('icon #' + id, new RegExp('id="' + id + '"').test(sprite), id);

@@ -792,7 +792,12 @@
 // mobile .sec-nav stack and flat status dots; js/mmgr-skin.js + mmgr-theme.js
 // + mmgr-app.js carry the polarity lock. All ride in the project bundle and
 // css/mmgr.css, so returning clients must refetch.
-const CACHE = 'mmgr-shell-v706';
+// v707 - accessibility sweep 2026-11-23: app.html and admin.html gain a real
+// <main> landmark, the project drawer becomes a named region when docked,
+// index.html drops invalid list roles, and the weather lead-time table gains a
+// Review column header. The served HTML and the project bundle both change, so
+// returning clients must refetch.
+const CACHE = 'mmgr-shell-v707';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

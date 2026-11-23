@@ -113,7 +113,7 @@ var MMGR = window.MMGR || {};
         .join('') +
       '</tbody></table></div>' +
       // Rolling 3-Month review section
-      '<div class="lt-section"><div class="lt-section-h">Rolling 3-Month</div><div class="ox"><table class="dt"><thead><tr><th>Task</th><th>Last Reviewed</th><th>Status</th><th></th></tr></thead><tbody>' +
+      '<div class="lt-section"><div class="lt-section-h">Rolling 3-Month</div><div class="ox"><table class="dt"><thead><tr><th>Task</th><th>Last Reviewed</th><th>Status</th><th>Review</th></tr></thead><tbody>' +
       lt
         .map(t => {
           const lastReview = t.leadtimeUpdatedAt ? U.parseDL(t.leadtimeUpdatedAt) : null;

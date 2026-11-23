@@ -270,6 +270,11 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 <script src="js/mmgr-skin.js" data-sync="1"></script>
 <script src="js/mmgr-perf-boot.js" data-sync="1"></script>
 
+<!-- One <main> wraps every screen this page can show: the three gate screens
+     (setup, login, recovery), the show-once recovery-code modal, and the
+     unlocked admin app. Exactly one main landmark is visible in any state, so
+     the gate screens are no longer content outside a landmark. -->
+<main id="admin-main">
 <!-- ═══ GATE: first-run password setup ═══ -->
 <div class="gatewrap" id="setup-screen">
   <form class="gbox" id="setup-form" novalidate>
@@ -482,7 +487,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     </div>
   </header>
 
-  <main class="view-deck">
+  <div class="view-deck">
     <!-- APP-3 (REFINEMENT-DIRECTIVE 2026-10-24, section 7): after "Restore
          access" on a new device the owner sees at once what the code brought
          back - BOTH groups side by side, plus the honest limit on what a code
@@ -674,7 +679,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     </section>
 
     <div id="project-list"></div>
-  </main>
+  </div>
 
   <!-- MMGR-NEW-UI-CREATION-BRIEF I1: shared shell , left rail (reuses the
        shared #app-sidebar overlay/drawer chrome from css/mmgr.css; the
@@ -743,6 +748,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
   </aside>
   <div class="db-scrim" id="nav-scrim" data-action="tglNav" role="presentation" aria-hidden="true"></div>
 </div>
+</main>
 
 <!-- ═══ Add / Edit project modal ═══ -->
 <!-- Sign-in modal (owner 2026-09-06): mirrors app.html's #siom sheet. The

@@ -36,7 +36,8 @@ Include, where you can:
 In scope:
 
 - the Worker and its API routes (`worker.js`, `src/`),
-- authentication, session, and account-recovery flows,
+- authentication, session, and account-recovery flows across all three
+  sign-in methods (Google, Microsoft, and email plus password),
 - the cloud project sync API and sharing codes,
 - the billing and webhook integration,
 - the served pages and their Content-Security-Policy.

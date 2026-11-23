@@ -280,7 +280,7 @@ async function sheetAt(page, width, height) {
           { qRatio: +m.qRatio.toFixed(3), sendGap: m.sendGap }
         );
         check(
-          label + ': no pill radius anywhere in the window',
+          label + ': no pill radius outside the empty-state prompt chips',
           m.roundRadii.length === 0,
           m.roundRadii
         );
@@ -315,7 +315,7 @@ async function sheetAt(page, width, height) {
           { qRatio: +m.qRatio.toFixed(3), sendGap: m.sendGap }
         );
         check(
-          label + ': no pill radius anywhere in the window',
+          label + ': no pill radius outside the empty-state prompt chips',
           m.roundRadii.length === 0,
           m.roundRadii
         );
@@ -491,7 +491,8 @@ async function sheetAt(page, width, height) {
           welcome
         );
 
-        // One real message retires the empty state and the chip strip.
+        // One real message retires the empty state and hands the same four
+        // prompts to the composer chip strip.
         await page.evaluate(() => {
           MMGR.AiWin.setAiCfg({ tier: 'local' });
           MMGR.AiWin.syncSettingsUI();

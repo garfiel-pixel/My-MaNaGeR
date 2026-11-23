@@ -2773,6 +2773,8 @@ var MMGR = window.MMGR || {};
     if (w) {
       w.classList.remove('is-hide');
     }
+    // REFACTOR 2026-11-23: back to the empty state, so the welcome pills
+    // replace the strip again (hideWelcome() does the reverse).
     const qp = U.$('ai-quick-presets');
     if (qp) {
       qp.classList.add('is-hide');

@@ -22,14 +22,17 @@
      3. the message box is at least 80 percent of the composer card and Send
         sits at least 8px inside the window's right edge
      4. no element inside the window uses a pill radius (99px or more);
-        avatars and status dots are the only circles allowed
+        avatars and status dots are the only circles allowed, plus the
+        empty-state prompt chips (.ai-welcome-row), which the owner asked
+        to be pills on 2026-11-23
      5. hist-inline only from 720px up (Q2 default)
    Checks once, on the docked default
      6. every header button has an accessible name, and the header comes
         before the thread and the composer in DOM order
      7. the More menu opens, is absolute (never fixed), Esc closes it and
         hands focus back to its button, and it never leaves the window
-     8. the empty state shows four preset rows and retires after one message
+     8. the empty state shows four pill prompt rows; the first message
+        retires them and the chip strip takes over
      9. the Cloud key popover is absolute and stays inside the window
 
    Usage:  node tools/qa-ai-window-layout.cjs
@@ -100,7 +103,10 @@ function measure() {
   const roundRadii = [];
   Array.prototype.forEach.call(win.querySelectorAll('*'), function (el) {
     const cls = (el.getAttribute('class') || '') + ' ' + (el.id || '');
-    if (/ai-bot-avatar|ai-pill-dot|ai-api-dot/.test(cls)) {
+    // Avatars and status dots are circles. Owner 2026-11-23: the empty-state
+    // prompt chips are pills on purpose ("pill-shaped suggested prompt
+    // chips"), so they are the one named exception to the squircle rule.
+    if (/ai-bot-avatar|ai-pill-dot|ai-api-dot|ai-welcome-row/.test(cls)) {
       return;
     }
     const r = getComputedStyle(el).borderTopLeftRadius;
@@ -480,7 +486,7 @@ async function sheetAt(page, width, height) {
           };
         });
         check(
-          'empty state: four full-width preset rows and the four chips',
+          'empty state: four pill prompt rows and the four chips',
           welcome.visible && welcome.rows === 4 && welcome.chips === 4,
           welcome
         );
@@ -504,8 +510,8 @@ async function sheetAt(page, width, height) {
           presetTab: !!document.querySelector('#ai-seg-presets')
         }));
         check(
-          'empty state: the first message retires the welcome block and the chip strip, and the Presets tab stays',
-          !after.welcome && !after.strip && after.presetTab,
+          'empty state: the first message retires the welcome block, the chip strip takes over, and the Presets tab stays',
+          !after.welcome && after.strip && after.presetTab,
           after
         );
         // Back to an empty thread for the screenshots.

@@ -285,7 +285,9 @@ body.drw-float-open::after {
   flex-wrap: nowrap;
   flex-shrink: 0;
 }
-/* Every header control is the same 32x32 square, radius-control. */
+/* Every header control is the same 32x32 square, but it carries no frame of
+   its own (owner 2026-11-23): the glyph is the affordance, and a soft tint
+   appears only on hover or focus. */
 .ai-icon-btn {
   flex: 0 0 auto;
   width: 32px;
@@ -294,9 +296,9 @@ body.drw-float-open::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-control);
-  background: var(--card);
+  background: transparent;
   color: var(--slate);
   cursor: pointer;
   transition: var(--tr-ui);
@@ -307,7 +309,7 @@ body.drw-float-open::after {
 }
 .ai-icon-btn:hover {
   color: var(--gold-text);
-  border-color: var(--gold);
+  background: color-mix(in oklch, var(--gold) 12%, transparent);
 }
 .ai-icon-btn:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -534,51 +536,58 @@ body.dark-mode .ai-api-pill[data-state='error'] {
   color: var(--danger);
   border-color: var(--danger);
 }
-/* DIR-1 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG): */
+/* DIR-1 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG):
+   REFACTOR 2026-11-23: a minimal underline tab bar instead of a filled
+   segmented pill. No tile fill, no rounded track - one hairline baseline and
+   a 2px gold rule under the active tab. */
 .ai-seg {
   display: flex;
-  gap: 4px;
-  padding: 8px 14px;
+  gap: 22px;
+  padding: 10px 20px 0;
   border-bottom: 1px solid var(--border);
-  background: var(--tile-bg);
+  background: transparent;
   flex-shrink: 0;
 }
 .ai-seg-btn {
-  flex: 1;
-  min-width: 0;
-  padding: 9px 14px;
+  position: relative;
+  flex: 0 0 auto;
+  padding: 6px 0 10px;
   border: none;
-  border-radius: var(--radius-control);
+  border-radius: 0;
   background: none;
   color: var(--slate);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  border-radius: var(--radius-control);
-  transition:
-    color var(--tr),
-    background var(--tr),
-    box-shadow var(--tr);
+  transition: color var(--tr);
+}
+.ai-seg-btn::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity var(--tr);
 }
 .ai-seg-btn .ico {
   font-size: 0.8rem;
 }
 .ai-seg-btn:hover {
   color: var(--gold-text);
-  background: rgba(var(--gold-rgb, 212, 175, 55), 0.08);
 }
 .ai-seg-btn.is-on {
   color: var(--gold-text);
-  background: var(--card);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.14);
 }
-body.dark-mode .ai-seg-btn.is-on {
-  background: var(--lit-white-08);
+.ai-seg-btn.is-on::after {
+  opacity: 1;
 }
 
 /* conversation thread + bubbles */
@@ -721,14 +730,15 @@ body.dark-mode .ai-seg-btn.is-on {
   width: 18px;
   height: 18px;
 }
+/* REFACTOR 2026-11-23: an answer is plain text on the thread canvas. No card
+   fill, no border, no shadow - the avatar and the text column carry it. */
 .ai-bot-body {
-  background: var(--card);
-  border: 1px solid transparent;
+  background: transparent;
+  border: 0;
   border-radius: 14px;
-  border-bottom-left-radius: 5px;
-  padding: 11px 14px;
+  padding: 1px 2px 0 0;
   min-width: 0;
-  box-shadow: 0 1px 2px var(--lit-navy-05);
+  box-shadow: none;
 }
 .ai-text {
   white-space: pre-wrap;
@@ -740,8 +750,9 @@ body.dark-mode .ai-seg-btn.is-on {
   margin-top: 8px;
   line-height: 1.6;
 }
-/* D-1 step 5: the empty state. Centred mark, one question, four full-width
-   preset rows generated from the same list as the chip strip. */
+/* D-1 step 5 + REFACTOR 2026-11-23: the empty state. A centred greeting that
+   names the project, then the same four presets as the chip strip as soft
+   pill-shaped prompt chips stacked vertically. */
 .ai-welcome {
   align-self: stretch;
   display: block;
@@ -753,73 +764,74 @@ body.dark-mode .ai-seg-btn.is-on {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   text-align: center;
 }
 .ai-welcome-mark {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--squircle-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in oklch, var(--gold) 14%, transparent);
+  background: color-mix(in oklch, var(--gold) 12%, transparent);
   color: var(--gold-text);
 }
 .ai-welcome-mark .ico {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 .ai-welcome-title {
   margin: 0;
-  font-size: 1rem;
+  max-width: 30ch;
+  font-size: 1.08rem;
+  line-height: 1.35;
   font-weight: 800;
   color: var(--text);
+  text-wrap: balance;
 }
 .ai-welcome-rows {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
   margin-top: 2px;
 }
 .ai-welcome-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 9px 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   background: var(--card);
   color: var(--text);
   font-family: inherit;
   font-size: 0.82rem;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   transition: var(--tr-ui);
 }
 .ai-welcome-row span {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The pill carries the prompt text alone; the decorative icons would double
+   the noise on a centred chip. */
 .ai-welcome-row .ico {
-  flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
-  color: var(--gold-text);
-}
-.ai-welcome-row .ai-welcome-chev {
-  color: var(--slate);
+  display: none;
 }
 .ai-welcome-row:hover {
   border-color: var(--gold);
   color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 8%, var(--card));
 }
 .ai-welcome-row:focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -829,57 +841,115 @@ body.dark-mode .ai-seg-btn.is-on {
   color: var(--danger);
   font-weight: 500;
 }
+/* REFACTOR 2026-11-23: engine + traceability are metadata, so the row is
+   hover-only: a small info glyph (its tooltip carries the full detail) and a
+   bare Copy glyph. It appears when the answer is hovered or focused, and it
+   stays visible while a touch user taps the row open via :focus-within. */
 .ai-meta {
   font-size: 0.6rem;
   color: var(--slate);
-  margin-top: 9px;
-  padding-top: 7px;
-  border-top: 1px dashed var(--border);
+  margin-top: 6px;
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
-} /* AI-WINDOW-POLISH: per-answer Copy button - ghost chip, right-aligned in
-   the meta row; flips to a green Copied state on success. */
-.ai-copy-btn {
-  margin-left: auto;
+  opacity: 0;
+  transition: opacity var(--tr);
+}
+.ai-bot:hover .ai-meta,
+.ai-bot:focus-within .ai-meta,
+.ai-meta:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .ai-meta {
+    opacity: 1;
+  }
+}
+/* The visible row is two glyphs. The engine name and the trace string stay in
+   the DOM (assistive tech and the visual harness read them) but are visually
+   hidden - the info glyph's tooltip is the human-readable copy. */
+.ai-meta-detail {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.ai-engine-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid transparent;
+}
+.ai-engine-tag .ico {
+  width: 10px;
+  height: 10px;
+}
+.ai-meta-i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--slate);
+  cursor: help;
+}
+.ai-meta-i .ico {
+  width: 12px;
+  height: 12px;
+}
+.ai-meta-i:hover,
+.ai-meta-i:focus-visible {
+  color: var(--gold-text);
+} /* AI-WINDOW-POLISH: per-answer Copy button - bare glyph, right-aligned in
+   the meta row; flips to a green Copied state on success. */
+.ai-copy-btn {
+  margin-left: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
   background: none;
   color: var(--slate);
-  font-size: 0.6rem;
-  font-weight: 600;
-  font-family: inherit;
-  padding: 2px 8px;
+  padding: 0;
   border-radius: var(--radius-control);
   cursor: pointer;
   transition:
     color var(--tr),
-    border-color var(--tr),
     background var(--tr);
 }
 .ai-copy-btn .ico {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
 }
 .ai-copy-btn:hover {
   color: var(--gold-text);
-  border-color: var(--border);
-  background: var(--tile-bg);
+  background: color-mix(in oklch, var(--gold) 12%, transparent);
 }
 .ai-copy-btn.is-copied {
   color: var(--green);
-  border-color: var(--green);
-  background: rgba(16, 185, 129, 0.1);
 }
-.ai-trace-inline {
-  font-size: 0.6rem;
-  color: var(--slate);
-  margin-top: 5px;
-  word-break: break-word;
-  line-height: 1.45;
+/* REFACTOR 2026-11-23: the raw trace string is developer metadata. It stays
+   in the DOM (the visual harness and screen readers still read it) but the
+   visible affordance is the info glyph's tooltip, which repeats it. */
+.ai-meta-detail .ai-trace-inline {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 .ai-fallback {
   font-size: 0.65rem;

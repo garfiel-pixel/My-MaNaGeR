@@ -200,3 +200,38 @@ Section C items, re-checked:
 This wave also ships the assignee consistency work (punch-list datalist,
 case-insensitive matching, `field-sizing` fallback) and the `dist/`
 hashed-artifact prune.
+
+## G. AI Assistant drawer - declutter pass (owner 2026-11-23)
+
+The drawer had accumulated nested boxes and developer metadata. This pass is
+layout and CSS only: every id, `data-action`, state binding and engine route is
+unchanged.
+
+- **Header.** The five header controls lost their `1px` frame and card fill; the
+  glyph is the affordance and a soft gold tint appears on hover/focus only.
+- **Tabs.** The filled Chat/Presets segment became a minimal underline bar - no
+  tile fill, one hairline baseline, a 2px gold rule under the active tab.
+- **Answers.** `.ai-bot-body` lost its card fill, border and shadow, so an answer
+  is plain text on the thread canvas. The engine name and the raw
+  `Traceable to: ...` schema line are no longer printed: both live in a
+  visually-hidden detail span (screen readers and `qa-ai-visual` still read
+  them) and the visible affordance is a hover-only row with a small info glyph
+  (its tooltip carries the full detail) and a bare Copy glyph.
+- **Empty state.** The greeting now names the project ("How can I help with
+  <project>?"), and the four prompts are centred pill chips. The composer chip
+  strip no longer duplicates them: it is hidden while the welcome is up and
+  takes over after the first message (`hideWelcome` / `resetThread`).
+- **Composer.** Already one card from the 2026-11-22 wave; this pass softens the
+  radius, adds a gentle lift and a hover border so the textarea, the mode pill,
+  the mic and Send read as one surface. "What the assistant can see" stays a
+  single collapsed line underneath.
+- **Calculator assistant.** Same treatment in `css/src/90-calc-owner-wave.css`:
+  the transcript lost its bordered/tinted frame and inset shadow, assistant text
+  is bare on the canvas (the user turn keeps its gold bubble), the in-flight
+  bubble is a soft tinted pill, History / New chat are quiet text actions, and
+  the composer gained the same radius, lift and focus ring.
+
+Gates: `qa-ai-window-layout` (83/83, with the pill exception and the strip
+handover re-baselined), `qa-ai` (all), `qa-ai-dictation` (17/17),
+`qa-ai-float` (12/12), `qa-calc-assistant` (170/170),
+`qa-calc-playwright-audit` (61/61).

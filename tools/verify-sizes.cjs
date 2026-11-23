@@ -112,7 +112,14 @@ const EXACT = {
   // css/src layer CANNOT reduce this cap - build.js concatenates every layer
   // into css/mmgr.css, so the cap is a total CSS budget. Trim or raise, and
   // say which in the commit body.
-  'css/mmgr.css': 668000,
+  // 2026-11-23 (AI drawer refactor): raised 668000 -> 672000 (669594
+  // measured). The drawer lost its nested boxes (bot card fill/border/shadow,
+  // segmented pill, dashed meta divider, boxed header icons) and gained the
+  // hover-only metadata row, the underline tab bar and the pill empty state;
+  // the calculator assistant lost its transcript frame for the same reason.
+  // A net +2.6 KB because the replacements are more explicit than the rules
+  // they remove; the next AI wave should trim, not raise.
+  'css/mmgr.css': 672000,
   // 2026-11-10 (Wave 6): raised 160000 -> 163000 for the sign-in two-column
   // layout, the per-letter MMGRWP hover and the mobile stack.
   // 2026-11-10 (Wave L closeout): raised 163000 -> 166000 for the audience ring

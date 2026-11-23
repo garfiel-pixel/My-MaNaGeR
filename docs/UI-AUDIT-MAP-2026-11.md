@@ -165,3 +165,38 @@ rendered control at 390/768/1280/1920 (in viewport, inside the footer, above the
 row, uncovered, text unclipped), proves one click opens pricing.html, proves a signed-out
 visitor gets no badge, and pins both reproducing states (expired cookie, stale page).
 It failed P4b on its first run — that is how the ordering bug was found.
+
+---
+
+## F. Status update — 2026-11-23 (wave `feat/assignee-and-hygiene`)
+
+Re-checked against the live tree. Several items marked deferred / "NOT built" above
+have since shipped, so they are no longer open work:
+
+- **I-11 (tour highlighting) — shipped.** `js/mmgr-tour.js` resolves each step's
+  target, draws the dim through the ring's outer shadow, rejects off-canvas targets,
+  and centres target-less steps. Replay lives in Settings > Features.
+- **I-12 (photo bundles) — shipped.** `js/cloud/photos-ui.js` has `multiple` upload,
+  a bundle dialog with one description, and bundle open/edit/delete.
+- **I-14 (sidebar hover-peek) — shipped.** `js/app/sidebar.js` opens on `pointerenter`
+  over the rail/peek zone and closes on `pointerleave`, respecting the pin state.
+- **Section C item 1 (hero stat strip) — shipped.** `index.html` reads
+  `<b data-count="panels">15</b>`, so the count comes from the canonical constant.
+
+Section C items, re-checked:
+
+- **Item 2 (offline micro-copy) — shipped.** `index.html` carries
+  `.hero-offline-note` under the hero stats: data stays in the browser and cloud
+  sync is opt-in.
+- **Item 3 (gold scroll hairline) — shipped.** `.site-header::after` draws a
+  2px gold progress line driven by `--scroll-progress` from the existing passive
+  scroll listener in `js/marketing.js`.
+- **Item 4 (photos side-fade) — not applicable.** The photos tab is a vertical
+  card list (`.photo-item`), not a horizontal strip, so there is no side-fade to
+  reconcile.
+- **Item 5 ("40+" panel claim) — not present.** No "40+" claim exists in the
+  marketing pages; the hero strip is data-driven (`data-count="panels"` -> 15).
+
+This wave also ships the assignee consistency work (punch-list datalist,
+case-insensitive matching, `field-sizing` fallback) and the `dist/`
+hashed-artifact prune.

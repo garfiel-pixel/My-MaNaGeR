@@ -832,6 +832,26 @@ body.dark-mode .brand .brand-mark + b + small {
   );
   pointer-events: none;
 }
+/* Section C item 3 (2026-11-23): a thin gold reading-progress hairline on the
+   bottom edge of the top bar. Width comes from --scroll-progress (0..100%),
+   set by the passive scroll listener in js/marketing.js. It reserves no space
+   and stops transitioning under reduced motion. */
+.site-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--scroll-progress, 0%);
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-text));
+  pointer-events: none;
+  transition: width 0.12s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header::after {
+    transition: none;
+  }
+}
 .header-inner {
   height: 100%;
   display: flex;
@@ -2280,6 +2300,15 @@ body.dark-mode .nav-dd-col.is-platform {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(248, 250, 252, 0.6);
+}
+/* Section C item 2 (2026-11-23): plain-language note that makes the 100%-data
+   claim concrete - the data lives in the browser and sync is opt-in. */
+.hero-offline-note {
+  margin: 14px 0 0;
+  max-width: 48ch;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(248, 250, 252, 0.66);
 }
 
 /* I-4e (2026-11): decorative typed-text. The full text stays in the DOM for

@@ -2140,6 +2140,11 @@
       } else if (lastY - y > DELTA) {
         hdr.setAttribute('data-hidden', 'false');
       }
+      // Section C item 3 (2026-11-23): the gold hairline tracks read progress.
+      // Clamp to 0..100%; a page with no scrollable range stays at 0.
+      var range = document.documentElement.scrollHeight - window.innerHeight;
+      var pct = range > 0 ? Math.min(100, Math.max(0, (y / range) * 100)) : 0;
+      hdr.style.setProperty('--scroll-progress', pct.toFixed(2) + '%');
       lastY = y;
     }
     window.addEventListener(

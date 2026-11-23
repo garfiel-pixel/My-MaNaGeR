@@ -2773,22 +2773,9 @@ var MMGR = window.MMGR || {};
     const tasks = s.tasks || [];
     const defExpanded = s.defExpanded || {};
     // Assignee box suggests this project's Resource names but stays free text:
-    // custom names must still save, and watch/schedule/overlap logic matches
-    // the exact string, so a datalist (not a select) is the right control.
-    const assigneeList = $('wbs-assignee-options');
-    if (assigneeList) {
-      const names = [];
-      (s.resources || []).forEach(function (r) {
-        if (r && r.name && names.indexOf(String(r.name)) === -1) {
-          names.push(String(r.name));
-        }
-      });
-      assigneeList.innerHTML = names
-        .map(function (n) {
-          return '<option value="' + U.escapeHtml(n) + '"></option>';
-        })
-        .join('');
-    }
+    // custom names must still save, so a datalist (not a select) is the
+    // control. The punch list shares the same list (see render/closure.js).
+    U.populateAssigneeOptions(s);
     if (tasks.length === 0) {
       renderWbsViewBar(0);
       const cfCols = ns.CustomFields ? ns.CustomFields.visible(s, 'wbs').length : 0;

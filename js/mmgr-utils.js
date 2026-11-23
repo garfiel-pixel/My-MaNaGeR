@@ -618,8 +618,53 @@ var MMGR = window.MMGR || {};
     });
   }
 
+  // ---- Assignee helpers (wave 2026-11-23) ----
+  // One suggestion list feeds every assignee field (WBS + punch list). Free
+  // text still saves; this only fills a datalist so Resource names are one
+  // click away. Deduped and trimmed; a missing element is a no-op.
+  function populateAssigneeOptions(state) {
+    const list = document.getElementById('wbs-assignee-options');
+    if (!list) {
+      return;
+    }
+    const names = [];
+    const res = (state && state.resources) || [];
+    for (let i = 0; i < res.length; i++) {
+      const r = res[i];
+      if (!r || !r.name) {
+        continue;
+      }
+      const n = String(r.name).trim();
+      if (n && names.indexOf(n) === -1) {
+        names.push(n);
+      }
+    }
+    list.innerHTML = names
+      .map(function (n) {
+        return '<option value="' + escapeHtml(n) + '"></option>';
+      })
+      .join('');
+  }
+
+  // Assignee matching is trimmed and case-insensitive so "alice" and "Alice"
+  // are one crew for over-allocation, overlap and swimlane logic. The stored
+  // string is never rewritten, so the display keeps the user's capitalisation.
+  function assigneeKey(v) {
+    return String(v == null ? '' : v)
+      .trim()
+      .toLowerCase();
+  }
+
+  function sameAssignee(a, b) {
+    const x = assigneeKey(a);
+    return x !== '' && x === assigneeKey(b);
+  }
+
   // ---- API ----
   ns.Utils = {
+    populateAssigneeOptions: populateAssigneeOptions,
+    assigneeKey: assigneeKey,
+    sameAssignee: sameAssignee,
     parseDL: parseDL,
     fmtDate: fmtDate,
     fmtDateShort: fmtDateShort,

@@ -130,7 +130,10 @@ const EXACT = {
   // a second provider link (same stack shape as the Google pill) and one
   // shared refusal-status line; the two plain CSS blocks are ~1.3 KB
   // (177315 measured). No runtime behaviour beyond the new link.
-  'css/marketing.css': 178000,
+  // 2026-11-23 (section C polish): 178000 -> 180000. The hero gained a
+  // plain offline-save note and the site header gained a 2px gold
+  // scroll-progress hairline driven by one custom property (178251 measured).
+  'css/marketing.css': 180000,
   // 2026-11-17 (rate book, user's own book): raised 600000 -> 610000. The
   // file readers were SPLIT OUT into js/book-import.js first (288 lines), so
   // this raise covers only what stayed: the per-line rate identity, the

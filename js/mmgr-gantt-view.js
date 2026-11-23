@@ -274,30 +274,40 @@ var MMGR = window.MMGR || {};
   }
 
   function orderGroupRows(tasks, groupBy, wbs) {
-    var buckets = {};
-    var order = [];
+    var buckets = {}; // bucket key -> tasks
+    var order = []; // bucket keys in first-seen order
+    var labels = {}; // bucket key -> display label
     tasks.forEach(function (t) {
       if (t.isPhase) {
         return;
       }
-      var k = groupKeyOf(t, groupBy);
+      var raw = groupKeyOf(t, groupBy);
+      // Case-insensitive assignee bands: "alice" and "Alice" share one band;
+      // the first spelling seen is what the band header shows.
+      var k = groupBy === 'assignee' ? raw.toLowerCase() : raw;
       if (!buckets[k]) {
         buckets[k] = [];
         order.push(k);
       }
+      if (!labels[k]) {
+        labels[k] = raw;
+      }
       buckets[k].push(t);
     });
     order.sort(function (a, b) {
-      return a < b ? -1 : a > b ? 1 : 0;
+      var la = labels[a];
+      var lb = labels[b];
+      return la < lb ? -1 : la > lb ? 1 : 0;
     });
     var rows = [];
     order.forEach(function (k) {
+      var label = labels[k];
       rows.push({
         row: {
-          id: '__group__' + k,
-          name: k,
+          id: '__group__' + label,
+          name: label,
           isGroupHeader: true,
-          groupKey: k
+          groupKey: label
         },
         kind: 'group',
         depth: 0

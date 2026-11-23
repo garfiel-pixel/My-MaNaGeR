@@ -40,6 +40,8 @@ var MMGR = window.MMGR || {};
     if (!body) {
       return;
     }
+    // Same Resource suggestions as the WBS assignee box.
+    U.populateAssigneeOptions(s);
     const items = s.punchList || [];
     const open = items.filter(i => i.status !== 'done').length;
     const done = items.length - open;
@@ -63,7 +65,7 @@ var MMGR = window.MMGR || {};
       <td>${U.escapeHtml(it.id || 'P' + (i + 1))}</td>
       <td><input type="text" value="${U.escapeHtml(it.item)}" data-action="updField" data-module="PunchList" data-field="item" data-idx="${i}" style="min-width:160px"></td>
       <td><input type="text" value="${U.escapeHtml(it.location || '')}" data-action="updField" data-module="PunchList" data-field="location" data-idx="${i}" placeholder="e.g. Level 2, Room 204"></td>
-      <td><input type="text" value="${U.escapeHtml(it.assignee || '')}" data-action="updField" data-module="PunchList" data-field="assignee" data-idx="${i}"></td>
+      <td><input type="text" class="wbs-assignee" list="wbs-assignee-options" autocomplete="off" value="${U.escapeHtml(it.assignee || '')}" data-action="updField" data-module="PunchList" data-field="assignee" data-idx="${i}" placeholder="Assign..." title="Pick a resource or type a name"></td>
       <td><select data-action="updField" data-module="PunchList" data-field="category" data-idx="${i}">${['Defect', 'Snag', 'Touch-up', 'Safety', 'Other'].map(v => `<option ${it.category === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="PunchList" data-field="priority" data-idx="${i}" style="color:${p(it.priority)}">${['Low', 'Medium', 'High'].map(v => `<option ${it.priority === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
       <td><select data-action="updField" data-module="PunchList" data-field="status" data-idx="${i}">${['open', 'inprogress', 'done'].map(v => `<option ${it.status === v ? 'selected' : ''}>${v}</option>`).join('')}</select></td>

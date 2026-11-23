@@ -2153,13 +2153,16 @@ html.mmgr-tour-active .bcp-tour-nudge {
   align-items: flex-end;
   background: var(--card);
 }
+/* OWNER 2026-11-22: the mic is a bare affordance INSIDE the one composer
+   box, not a control with its own box. No border, no fill, no circle. It
+   reveals a soft highlight on hover/focus so it still reads as clickable. */
 .ai-voice-btn {
   flex-shrink: 0;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--tile-bg);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
   color: var(--slate);
   cursor: pointer;
   display: inline-flex;
@@ -2168,9 +2171,12 @@ html.mmgr-tour-active .bcp-tour-nudge {
   transition: var(--tr-ui);
 }
 .ai-voice-btn:hover {
-  border-color: var(--gold);
   color: var(--gold-text);
-  background: color-mix(in oklch, var(--gold) 8%, transparent);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
+}
+.ai-voice-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .ai-voice-btn.recording {
   border-color: #ef4444;
@@ -2220,32 +2226,41 @@ html.mmgr-tour-active .bcp-tour-nudge {
   color: var(--slate);
   opacity: 0.75;
 }
+/* OWNER 2026-11-22: no golden button wrapper. A plain send arrow that lives
+   inside the composer box and lights up on hover/focus, like the mic. The
+   arrow is an SVG sprite symbol, never an emoji or a text glyph. */
 .ai-send {
   flex-shrink: 0;
-  border: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
   border-radius: var(--radius-control);
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: var(--lit-coal);
-  font-size: 0.82rem;
-  font-weight: 800;
+  background: transparent;
+  color: var(--slate);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+  justify-content: center;
   transition:
-    transform var(--tr),
-    box-shadow var(--tr),
-    filter var(--tr);
+    color var(--tr),
+    background-color var(--tr),
+    transform var(--tr);
+}
+.ai-send .ico {
+  width: 18px;
+  height: 18px;
 }
 .ai-send:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+  color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
 }
 .ai-send:active {
-  filter: brightness(1.12);
-  transform: scale(0.97);
+  transform: scale(0.94);
+}
+.ai-send:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 /* DIR-2 (AI-WINDOW-LAYOUT-SCROLL-AND-INPUT-BUG): when the input is capped at
    120px and internally scrollable, show a top-edge fade so continued typing
@@ -2592,37 +2607,41 @@ body.dark-mode .ai-hist-when {
 .ai-composer-tools .ai-send-wrap {
   margin-left: auto;
 }
-/* The tools row is one height: tier badge, mic and Send all 32px. */
+/* The tools row is one height: tier badge, mic and Send all 32px. The mic
+   and Send are bare glyph buttons with no box of their own (owner 2026-11-22). */
 .ai-composer-tools .ai-send {
+  width: 32px;
   height: 32px;
-  padding: 0 14px;
-  border-radius: var(--radius-control);
+  padding: 0;
 }
 .ai-composer-tools .ai-voice-btn {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-control);
 }
 .ai-composer-tools .ai-voice-btn .ico {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
 }
+/* OWNER 2026-11-22: "On this device" is plain text inside the composer,
+   not a bordered box. It reveals a soft highlight on hover/focus so it still
+   reads as clickable, matching the mic and send arrows. */
 .ai-tier-badge {
   flex-shrink: 0;
   height: 32px;
   max-width: 128px;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-control);
-  background: var(--tile-bg);
+  background: transparent;
   color: var(--slate);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
   padding: 0 8px;
   cursor: pointer;
+  transition: var(--tr-ui);
 }
 .ai-tier-badge:hover {
-  border-color: var(--gold);
   color: var(--gold-text);
+  background: color-mix(in oklch, var(--gold) 14%, transparent);
 }
 .ai-tier-badge:focus-visible {
   outline: 2px solid var(--focus-ring);

@@ -197,6 +197,46 @@ async function ev(expr) {
     adjRes
   );
 
+  // ---- D2-D4: assignee is a boxed datalist of Resources, free text still wins
+  const asgRes = await ev(`(async function(){
+    var row = document.querySelector('#wbs-body tr.wbs-row[data-id="t2"]');
+    var inp = row.querySelector('input[data-field="assignee"]');
+    var list = document.getElementById('wbs-assignee-options');
+    var opts = list ? Array.from(list.options).map(function(o){ return o.value; }) : null;
+    var linked = !!inp && inp.getAttribute('list') === 'wbs-assignee-options';
+    var boxed = !!inp && inp.classList.contains('wbs-assignee');
+    var custom = 'Night Shift Lead';
+    var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(inp, custom);
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(function(r){ setTimeout(r, 240); });
+    var s = MMGR.State.getState();
+    var t = s.tasks.find(function(x){ return x.id === 't2'; });
+    var inp2 = document.querySelector('#wbs-body tr.wbs-row[data-id="t2"] input[data-field="assignee"]');
+    return {
+      linked: linked,
+      boxed: boxed,
+      options: opts,
+      customCommitted: !!t && t.assignee === custom,
+      valueRepainted: !!inp2 && inp2.value === custom
+    };
+  })()`);
+  check(
+    'D2 assignee input is a boxed datalist linked to resources',
+    asgRes.boxed && asgRes.linked,
+    asgRes
+  );
+  check(
+    'D3 resource names populate the assignee suggestions',
+    JSON.stringify(asgRes.options) === JSON.stringify(['Alice', 'Bob', 'Carol', 'Dave']),
+    asgRes.options
+  );
+  check(
+    'D4 a custom assignee name still commits and repaints',
+    asgRes.customCommitted && asgRes.valueRepainted,
+    asgRes
+  );
+
   // ---- E: non-date change while a date input has focus skips renderWbs ----
   const pickerGuard = await ev(`(async function(){
     var row = document.querySelector('#wbs-body tr.wbs-row[data-id="t2"]');

@@ -1229,6 +1229,8 @@ body.dark-mode .ai-byo-pop {
 .ai-send:disabled:hover {
   transform: none;
   box-shadow: none;
+  color: var(--slate);
+  background: transparent;
 }
 .ai-note {
   font-size: 0.64rem;

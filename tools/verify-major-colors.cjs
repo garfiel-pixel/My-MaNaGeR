@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 /* ============================================================
-   tools/verify-major-colors.cjs - the eight chart slots hold up
+   tools/verify-major-colors.cjs - the sixteen chart slots hold up
    ------------------------------------------------------------
-   UX-2026-11-19 B2. The dashboard ring and the "What is driving
-   completion" list paint each major group with one of eight
-   tokens, --major-1 .. --major-8, plus a neutral --major-other.
+   UX-2026-11-19 B2, expanded OWNER 2026-11-22. The dashboard ring and the
+   "What is driving completion" list paint each major group with one of
+   sixteen tokens, --major-1 .. --major-16, plus a neutral --major-other.
 
    These are NON-TEXT graphics on a CARD, so the floor is 3:1
    against that card - not 4.5:1. The card changes with the theme
-   (white, parchment, near-black), so the same eight names are
+   (white, parchment, near-black), so the same names are
    re-pointed in dark mode and in the three skins whose card is not
    the light default.
 
    ARMS
-     1. the eight names + Other exist in the light set and in the
+     1. the sixteen names + Other exist in the light set and in the
         dark set;
      2. every value used is a colour the app already ships somewhere
         else (no new hue) - the check strips the token declarations
         themselves before searching;
-     3. for EVERY theme (light, dark, and each skin) all nine values
+     3. for EVERY theme (light, dark, and each skin) all seventeen values
         clear 3:1 against that theme's own --card;
      4. the three non-default skins really do override the set, so
         arm 3 is not passing by inheriting a value that cannot work
@@ -42,6 +42,14 @@ const NAMES = [
   '--major-6',
   '--major-7',
   '--major-8',
+  '--major-9',
+  '--major-10',
+  '--major-11',
+  '--major-12',
+  '--major-13',
+  '--major-14',
+  '--major-15',
+  '--major-16',
   '--major-other'
 ];
 
@@ -183,11 +191,15 @@ SKINS.forEach(function (slug) {
 
 console.log('MAJOR CHART COLOURS\n');
 
-/* ---- arm 1: both sets declare all nine ---- */
+/* ---- arm 1: both sets declare all sixteen slots plus Other ---- */
 const missingLight = NAMES.filter(n => !parseColor(light[n]));
 const missingDark = NAMES.filter(n => !parseColor(dark[n]));
-check('the light set declares all eight slots and Other', missingLight.length === 0, missingLight);
-check('the dark set declares all eight slots and Other', missingDark.length === 0, missingDark);
+check(
+  'the light set declares all sixteen slots and Other',
+  missingLight.length === 0,
+  missingLight
+);
+check('the dark set declares all sixteen slots and Other', missingDark.length === 0, missingDark);
 
 /* ---- arm 2: no new hue ---- */
 const tokenLines = new Set();
@@ -268,7 +280,11 @@ THEMES.forEach(function (theme) {
       bad.push({ token: n, value: theme.set[n], ratio: Math.round(r * 100) / 100 });
     }
   });
-  check('theme ' + theme.name + ': all nine slots clear 3:1 on its card', bad.length === 0, bad);
+  check(
+    'theme ' + theme.name + ': all seventeen slots clear 3:1 on its card',
+    bad.length === 0,
+    bad
+  );
 });
 
 /* ---- arm 4: the three non-default skins override the set ---- */

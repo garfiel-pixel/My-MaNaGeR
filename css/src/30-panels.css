@@ -1143,6 +1143,30 @@
 .dt td:has(> textarea) {
   vertical-align: top;
 }
+/* WBS assignee is a real, sizing-to-content box with resource suggestions,
+   unlike the transparent inline-edit cells around it. Free text stays valid. */
+.dt td input.wbs-assignee {
+  field-sizing: content;
+  width: auto;
+  min-width: 6ch;
+  max-width: 100%;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--squircle-sm);
+  background: var(--card);
+  color: var(--text);
+  transition:
+    border-color var(--tr),
+    box-shadow var(--tr);
+}
+.dt td input.wbs-assignee:hover {
+  border-color: var(--gold);
+}
+.dt td input.wbs-assignee:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
+  outline: none;
+}
 .dt tbody tr {
   transition: background var(--tr);
 }
@@ -5702,7 +5726,7 @@ body.dark-mode .team-link-danger {
    4px marker on its WBS row, so the same task reads the same everywhere it
    appears. Nothing else is restyled; with no groups neither attribute is
    emitted, so nothing changes. */
-/* The slot number maps to its token in CSS, not in an inline style: eight
+/* The slot number maps to its token in CSS, not in an inline style: sixteen
    fixed rules keep the DOM census clean and let every theme re-tint the
    accent with no JavaScript involved. */
 [data-major='1'] {
@@ -5728,6 +5752,30 @@ body.dark-mode .team-link-danger {
 }
 [data-major='8'] {
   --major-row: var(--major-8);
+}
+[data-major='9'] {
+  --major-row: var(--major-9);
+}
+[data-major='10'] {
+  --major-row: var(--major-10);
+}
+[data-major='11'] {
+  --major-row: var(--major-11);
+}
+[data-major='12'] {
+  --major-row: var(--major-12);
+}
+[data-major='13'] {
+  --major-row: var(--major-13);
+}
+[data-major='14'] {
+  --major-row: var(--major-14);
+}
+[data-major='15'] {
+  --major-row: var(--major-15);
+}
+[data-major='16'] {
+  --major-row: var(--major-16);
 }
 .gb[data-major]::before {
   content: '';

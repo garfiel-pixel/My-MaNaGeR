@@ -311,17 +311,25 @@
     '<p class="bcp-ai-pathq" data-cai="askq"></p>' +
     '<div class="bcp-ai-pathrow" data-cai="askrow"></div>' +
     '</div>' +
+    // OWNER 2026-11-22: ONE composer card, mirroring the app assistant - the
+    // textarea on top, and a tools row underneath with a bare attach glyph on
+    // the left and a bare send arrow on the right. No nested boxes, no golden
+    // button. data-cai hooks are unchanged so every harness still finds them.
     '<form class="bcp-ai-form" data-cai="form" autocomplete="off">' +
-    '<button type="button" class="btn btn-n bcp-ai-attach" data-cai="attach" aria-label="Attach a rate sheet or a document" title="Attach a rate sheet or a document">' +
-    ico('file-text') +
-    '</button>' +
     '<input type="file" id="calc-ai-file" data-cai="file" accept=".pdf,.csv,.txt,.md,application/pdf,text/csv,text/plain,text/markdown" hidden>' +
+    '<div class="bcp-ai-composer">' +
     '<label class="sr-only" for="calc-ai-input">Ask about this estimate</label>' +
     '<textarea id="calc-ai-input" class="bcp-ai-input" rows="3" data-cai="input" ' +
     'placeholder="Ask about this estimate..." aria-describedby="calc-ai-status"></textarea>' +
-    '<button type="submit" class="btn btn-g bcp-ai-send" data-cai="send" aria-label="Send question">' +
-    ico('arrow-right') +
+    '<div class="bcp-ai-composer-tools">' +
+    '<button type="button" class="bcp-ai-attach" data-cai="attach" aria-label="Attach a rate sheet or a document" title="Attach a rate sheet or a document">' +
+    ico('file-text') +
     '</button>' +
+    '<button type="submit" class="bcp-ai-send" data-cai="send" aria-label="Send question" title="Send">' +
+    ico('send') +
+    '</button>' +
+    '</div>' +
+    '</div>' +
     '</form>' +
     '<p class="bcp-ai-fileinfo" data-cai="fileinfo" hidden></p>' +
     '<div class="bcp-ai-me" data-cai="me"></div>';

@@ -123,6 +123,17 @@ const PLAIN = `[
   { id: 'b', name: 'Two', status: 'todo', startDate: '2026-01-12', endDate: '2026-01-20' }
 ]`;
 
+// OWNER 2026-11-22: the WBS hybrid add-flow stores hierarchy in level/indent
+// (no parentId). Two level-0 mains, each with a level-1 subtask, all dated so
+// every surface renders a row/bar/card. Only the mains may wear a colour.
+const FLAT_COLOUR = `[
+  { id: 'm1', name: 'Site works', level: 0, status: 'completed', startDate: '2026-01-05', endDate: '2026-01-20' },
+  { id: 's1', name: 'Grading', level: 1, status: 'completed', startDate: '2026-01-05', endDate: '2026-01-10' },
+  { id: 's2', name: 'Fence', level: 1, status: 'todo', startDate: '2026-01-12', endDate: '2026-01-20' },
+  { id: 'm2', name: 'Handover', level: 0, status: 'todo', startDate: '2026-02-02', endDate: '2026-02-14' },
+  { id: 's3', name: 'Snag list', level: 1, status: 'todo', startDate: '2026-02-02', endDate: '2026-02-14' }
+]`;
+
 // One main task is one segment - not a ring of one. grouped stays false, so
 // this is the "keep today's stroke" fixture.
 const SINGLE = `[
@@ -756,45 +767,61 @@ const NOTHING_DONE = `[
       await ctx.close();
     }
 
-    // ---- B6: the same colour on every surface ----------------------
+    // ---- B6: the same colour on every surface, MAIN ONLY -----------
+    // OWNER 2026-11-22: the main task wears the group colour; its subtasks
+    // stay strictly white. A flat level/indent project is the owner's add-
+    // flow case, where both mains AND their work items render on all three
+    // surfaces, so the same slot can be proven on each.
     {
       const { ctx, page } = await openProject();
-      await seed(page, PHASED);
+      await seed(page, FLAT_COLOUR);
       await page.evaluate(FLUSH_RAF);
       await delay(250);
       const ring = await ringState(page);
-      const slot = ring.slots.filter(s => s.id === 'group:p:p1')[0];
+      const slot = ring.slots.filter(s => s.id === 'group:main:i:m1')[0];
       check(
         'B6 the fixture has the ring slot to match',
         !!slot,
         ring.slots.map(s => s.id)
       );
 
-      // t1 belongs to phase p1; its row, bar and card must paint p1's colour.
-      const wbsShadow = await page.evaluate(() => {
+      // Probe the MAIN (m1) and its subtask (s1) on every surface. The main
+      // must carry data-major and paint p1's slot; the subtask must carry no
+      // data-major at all, whatever default border the surface has.
+      const surface = await page.evaluate(() => {
+        const out = {};
+        function probe(panel, sel, prop, pseudo) {
+          MMGR.Nav.go({ panel: panel });
+          const mainEl = document.querySelector(sel.replace('@ID', 'm1'));
+          const subEl = document.querySelector(sel.replace('@ID', 's1'));
+          function read(el) {
+            return {
+              has: !!el && el.hasAttribute('data-major'),
+              paint: el
+                ? pseudo
+                  ? getComputedStyle(el, pseudo)[prop]
+                  : getComputedStyle(el)[prop]
+                : ''
+            };
+          }
+          return { main: read(mainEl), sub: read(subEl) };
+        }
+        out.wbs = probe('wbs', '#wbs-body tr[data-id="@ID"]', 'boxShadow');
+        // The WBS shadow is on the first <td>, not the <tr>; the row still
+        // carries the attribute, so probe the paint off the cell directly.
         MMGR.Nav.go({ panel: 'wbs' });
-        const row = document.querySelector('#wbs-body tr[data-id="t1"]');
-        const td = row ? row.querySelector('td') : null;
-        return {
-          has: !!row && row.hasAttribute('data-major'),
-          paint: td ? getComputedStyle(td).boxShadow : ''
-        };
-      });
-      const ganttPaint = await page.evaluate(() => {
-        MMGR.Nav.go({ panel: 'gantt' });
-        const bar = document.querySelector('#panel-gantt .gb[data-id="t1"]');
-        return {
-          has: !!bar && bar.hasAttribute('data-major'),
-          paint: bar ? getComputedStyle(bar, '::before').backgroundColor : ''
-        };
-      });
-      const kanPaint = await page.evaluate(() => {
-        MMGR.Nav.go({ panel: 'kan' });
-        const card = document.querySelector('#panel-kan .kc[data-id="t1"]');
-        return {
-          has: !!card && card.hasAttribute('data-major'),
-          paint: card ? getComputedStyle(card).borderTopColor : ''
-        };
+        const mTd = document.querySelector('#wbs-body tr[data-id="m1"] td');
+        const sTd = document.querySelector('#wbs-body tr[data-id="s1"] td');
+        out.wbs.main.paint = mTd ? getComputedStyle(mTd).boxShadow : '';
+        out.wbs.sub.paint = sTd ? getComputedStyle(sTd).boxShadow : '';
+        out.gantt = probe(
+          'gantt',
+          '#panel-gantt .gb[data-id="@ID"]',
+          'backgroundColor',
+          '::before'
+        );
+        out.kan = probe('kan', '#panel-kan .kc[data-id="@ID"]', 'borderTopColor');
+        return out;
       });
 
       const rgb = s => {
@@ -803,19 +830,31 @@ const NOTHING_DONE = `[
       };
       const want = rgb(slot && slot.stroke);
       check(
-        'B6 the WBS row marker paints the ring slot colour',
-        wbsShadow.has && rgb(wbsShadow.paint) === want,
-        { want: want, got: rgb(wbsShadow.paint), raw: wbsShadow.paint }
+        'B6 the MAIN WBS row marker paints the ring slot colour',
+        surface.wbs.main.has && rgb(surface.wbs.main.paint) === want,
+        { want: want, got: rgb(surface.wbs.main.paint), raw: surface.wbs.main.paint }
       );
       check(
-        'B6 the Gantt bar accent paints the ring slot colour',
-        ganttPaint.has && rgb(ganttPaint.paint) === want,
-        { want: want, got: rgb(ganttPaint.paint) }
+        'B6 the MAIN Gantt bar accent paints the ring slot colour',
+        surface.gantt.main.has && rgb(surface.gantt.main.paint) === want,
+        { want: want, got: rgb(surface.gantt.main.paint) }
       );
       check(
-        'B6 the Kanban card stripe paints the ring slot colour',
-        kanPaint.has && rgb(kanPaint.paint) === want,
-        { want: want, got: rgb(kanPaint.paint) }
+        'B6 the MAIN Kanban card stripe paints the ring slot colour',
+        surface.kan.main.has && rgb(surface.kan.main.paint) === want,
+        { want: want, got: rgb(surface.kan.main.paint) }
+      );
+      // The owner's hard rule: subtasks are strictly white on every surface.
+      check('B6 a SUBTASK WBS row carries no data-major', !surface.wbs.sub.has, surface.wbs.sub);
+      check(
+        'B6 a SUBTASK Gantt bar carries no data-major',
+        !surface.gantt.sub.has,
+        surface.gantt.sub
+      );
+      check(
+        'B6 a SUBTASK Kanban card carries no data-major',
+        !surface.kan.sub.has,
+        surface.kan.sub
       );
       await ctx.close();
     }

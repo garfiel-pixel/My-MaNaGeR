@@ -307,7 +307,7 @@ var MMGR = window.MMGR || {};
     const shown = majorShowAll ? data.groups : data.groups.slice(0, 5);
     let html = '';
     shown.forEach(function (g) {
-      // ok: the token is built from the fixed 1..8 slot that withColors set,
+      // ok: the token is built from the fixed 1..16 slot that withColors set,
       // and every other value here is escaped or numeric
       const token = g.color ? 'var(--major-' + Number(g.color) + ')' : 'var(--major-other)';
       const width = Math.max(0, Math.min(100, Math.round((g.fraction || 0) * 100)));
@@ -2772,6 +2772,23 @@ var MMGR = window.MMGR || {};
     renderWbsAlerts();
     const tasks = s.tasks || [];
     const defExpanded = s.defExpanded || {};
+    // Assignee box suggests this project's Resource names but stays free text:
+    // custom names must still save, and watch/schedule/overlap logic matches
+    // the exact string, so a datalist (not a select) is the right control.
+    const assigneeList = $('wbs-assignee-options');
+    if (assigneeList) {
+      const names = [];
+      (s.resources || []).forEach(function (r) {
+        if (r && r.name && names.indexOf(String(r.name)) === -1) {
+          names.push(String(r.name));
+        }
+      });
+      assigneeList.innerHTML = names
+        .map(function (n) {
+          return '<option value="' + U.escapeHtml(n) + '"></option>';
+        })
+        .join('');
+    }
     if (tasks.length === 0) {
       renderWbsViewBar(0);
       const cfCols = ns.CustomFields ? ns.CustomFields.visible(s, 'wbs').length : 0;
@@ -2839,7 +2856,7 @@ var MMGR = window.MMGR || {};
         const isPhase = t.isPhase || level === 0;
         const indent = t.indent !== undefined ? t.indent : level;
         const cls = 'wl' + Math.min(indent, 3);
-        // ok: slot is a 1..8 number assigned by MajorTasks.withColors, never text
+        // ok: slot is a 1..16 number assigned by MajorTasks.withColors, never text
         const slot = majorOf ? majorOf[String(t.id)] : 0;
         // The <tr> carries no other style, so one attribute is enough here.
         const majorAttr = slot ? ' data-major="' + slot + '"' : '';
@@ -2891,7 +2908,7 @@ var MMGR = window.MMGR || {};
           ${t.comments && t.comments.length ? '<span class="badge" style="font-size:.6rem;padding:1px 5px;margin-left:4px;background:var(--gold);color:#fff;cursor:pointer" title="' + t.comments.length + ' comment(s)" data-action="toggleTaskComments" data-id="' + U.escapeHtml(t.id) + '">' + t.comments.length + ' cmnts</span>' : ''}
           ${t.followUp ? '<span class="badge ' + (t.followUp.status === 'completed' ? 'bg' : 'bo') + '" style="font-size:.6rem;padding:1px 5px;margin-left:4px" title="Follow-up: ' + U.escapeHtml(t.followUp.assignee) + ' by ' + U.escapeHtml(t.followUp.dueDate || 'no date') + '"><svg class="ico" aria-hidden="true" style="font-size:.55rem"><use href="css/mmgr-icons.svg#i-flag"></use></svg> ' + U.escapeHtml(t.followUp.assignee) + '</span>' : ''}
         </td>
-        <td><input type="text" value="${U.escapeHtml(t.assignee || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="assignee" placeholder="--"></td>
+        <td><input type="text" class="wbs-assignee" list="wbs-assignee-options" autocomplete="off" value="${U.escapeHtml(t.assignee || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="assignee" placeholder="Assign..." title="Pick a resource or type a name"></td>
         ${
           t.leadTime
             ? `<td><label class="wbs-lt-lbl">Submitted</label><input type="date" value="${U.escapeHtml(t.submittedDate || '')}" data-action="updTaskField" data-id="${U.escapeHtml(t.id)}" data-field="submittedDate" data-smart-date></td>

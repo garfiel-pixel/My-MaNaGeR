@@ -79,10 +79,12 @@ var MMGR = window.MMGR || {};
   function indexTasks(tasks) {
     const byId = Object.create(null);
     const byName = Object.create(null);
+    const order = [];
     (tasks || []).forEach(function (t) {
       if (!t) {
         return;
       }
+      order.push(t);
       if (t.id != null && t.id !== '') {
         byId[String(t.id)] = t;
       }
@@ -90,7 +92,38 @@ var MMGR = window.MMGR || {};
         byName[String(t.name)] = t;
       }
     });
-    return { byId: byId, byName: byName };
+    return { byId: byId, byName: byName, order: order };
+  }
+
+  // OWNER 2026-11-22: the WBS hybrid add-flow (mmgr-tasks.js createTask/addTask/
+  // addSubtask) stores its hierarchy in `level` + flat depth-first order, NOT
+  // in parentId/parentName. When the explicit parent chain is missing, the
+  // only honest ancestor is the nearest preceding top-level row. `wantPhase`
+  // asks for the nearest preceding isPhase row instead (the phase branch).
+  function levelAncestor(task, idx, wantPhase) {
+    // A top-level row (phase or main) is its own root - never roll it under
+    // the previous main just because that one appears earlier in the list.
+    if (!wantPhase && (task.isPhase || (task.level || 0) === 0)) {
+      return task;
+    }
+    const pos = idx.order.indexOf(task);
+    if (pos < 0) {
+      return wantPhase ? null : task;
+    }
+    for (let j = pos - 1; j >= 0; j--) {
+      const prev = idx.order[j];
+      if (!prev) {
+        continue;
+      }
+      if (wantPhase) {
+        if (prev.isPhase) {
+          return prev;
+        }
+      } else if (prev.isPhase || (prev.level || 0) === 0) {
+        return prev;
+      }
+    }
+    return wantPhase ? null : task;
   }
 
   // Walk up parentId / parentName (the same match rollupPhases uses) until a
@@ -106,14 +139,16 @@ var MMGR = window.MMGR || {};
         (pname && idx.byName[String(pname)]) ||
         null;
       if (!parent) {
-        return null;
+        break;
       }
       if (parent.isPhase) {
         return parent;
       }
       cur = parent;
     }
-    return null;
+    // No explicit parent chain: the WBS hybrid rows are indented, so the
+    // phase is the nearest preceding isPhase row in plan order.
+    return levelAncestor(task, idx, true);
   }
 
   // Walk up parentId / parentName to the highest ancestor. That row is the
@@ -130,16 +165,29 @@ var MMGR = window.MMGR || {};
         (pname && idx.byName[String(pname)]) ||
         null;
       if (!parent) {
-        return last;
+        break;
       }
       last = parent;
       cur = parent;
     }
-    return last;
+    // No explicit parent chain found: fall back to the level/order main so a
+    // WBS-indented subtask rolls under the same top-level row as its siblings.
+    return last === task ? levelAncestor(task, idx, false) : last;
   }
 
-  function blank(name, id) {
-    return { id: id, name: name, total: 0, completed: 0, members: [] };
+  // OWNER 2026-11-22: `anchor` is the task id of the row that MAY wear the
+  // group colour (the phase row or the top-level main). Subtasks are members
+  // for the ring math but never anchors, so they stay strictly white on the
+  // WBS / Gantt / Kanban surfaces.
+  function blank(name, id, anchor) {
+    return {
+      id: id,
+      name: name,
+      anchor: anchor || '',
+      total: 0,
+      completed: 0,
+      members: []
+    };
   }
 
   function finish(group, totalWork, equalShare) {
@@ -148,6 +196,7 @@ var MMGR = window.MMGR || {};
     return {
       id: group.id,
       name: group.name,
+      anchor: group.anchor || '',
       total: group.total,
       completed: group.completed,
       fraction: fraction,
@@ -184,9 +233,9 @@ var MMGR = window.MMGR || {};
     const groups = [];
     const byKey = Object.create(null);
 
-    function add(key, name, id) {
+    function add(key, name, id, anchor) {
       if (!byKey[key]) {
-        const g = blank(name, id);
+        const g = blank(name, id, anchor);
         byKey[key] = g;
         groups.push(g);
       }
@@ -204,15 +253,17 @@ var MMGR = window.MMGR || {};
       // 1. Phase rows are the majors, in plan order.
       phaseRows.forEach(function (ph, i) {
         const key = 'p:' + String(ph.id != null && ph.id !== '' ? ph.id : ph.name || i);
-        add(key, ph.name || 'Phase ' + (i + 1), 'group:' + key);
+        const anchor = ph.id != null && ph.id !== '' ? String(ph.id) : '';
+        add(key, ph.name || 'Phase ' + (i + 1), 'group:' + key, anchor);
       });
       items.forEach(function (item) {
         const ph = phaseAncestor(item, idx);
         const key = ph
           ? 'p:' + String(ph.id != null && ph.id !== '' ? ph.id : ph.name)
           : UNASSIGNED_ID;
+        const phAnchor = ph && ph.id != null && ph.id !== '' ? String(ph.id) : '';
         const g = ph
-          ? byKey[key] || add(key, ph.name || 'Phase', 'group:' + key)
+          ? byKey[key] || add(key, ph.name || 'Phase', 'group:' + key, phAnchor)
           : add(UNASSIGNED_ID, UNASSIGNED_NAME, UNASSIGNED_ID);
         if (!g) {
           return;
@@ -254,7 +305,10 @@ var MMGR = window.MMGR || {};
         const key = rid || (rname ? 'n:' + rname : '');
         const name = rname || capitalise(item.name) || UNASSIGNED_NAME;
         const gid = key ? 'group:main:' + key : UNASSIGNED_ID;
-        const g = key ? add(gid, name, gid) : add(UNASSIGNED_ID, UNASSIGNED_NAME, UNASSIGNED_ID);
+        const rootAnchor = root.id != null && root.id !== '' ? String(root.id) : '';
+        const g = key
+          ? add(gid, name, gid, rootAnchor)
+          : add(UNASSIGNED_ID, UNASSIGNED_NAME, UNASSIGNED_ID);
         g.total++;
         if (item.id != null && item.id !== '') {
           g.members.push(String(item.id));
@@ -298,11 +352,12 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- B2: stable chart slots -------------------------------------------
-  // Eight slots, one per --major-N token. A group's slot comes from a hash of
-  // its id, so it does not move when tasks are reordered or renumbered; a
-  // collision takes the next free slot (first-fit), so two groups never share
-  // a colour while slots remain.
-  const SLOTS = 8;
+  // OWNER 2026-11-22: sixteen slots, one per --major-N token. Expanded from
+  // eight after the owner ran out of colours building a long WBS. A group's
+  // slot comes from a hash of its id, so it does not move when tasks are
+  // reordered or renumbered; a collision takes the next free slot (first-fit),
+  // so two groups never share a colour while slots remain.
+  const SLOTS = 16;
   const OTHER_ID = 'group:other';
 
   function hashId(id) {
@@ -315,7 +370,7 @@ var MMGR = window.MMGR || {};
     return h >>> 0;
   }
 
-  // More than eight majors: the seven largest keep a colour and everything
+  // More than sixteen majors: the fifteen largest keep a colour and everything
   // else merges into one neutral "Other" slot. Merging preserves the totals,
   // so the points still sum to the centre percentage.
   function mergeOther(groups) {
@@ -377,10 +432,13 @@ var MMGR = window.MMGR || {};
   }
 
   // ---- B6: the same colour everywhere -----------------------------------
-  // A task id maps to the slot its major was given, so the ring arc, the
-  // Gantt bar, the WBS marker and the Kanban stripe cannot disagree. Returns
-  // null when the project has no groups - the callers then draw exactly what
-  // they drew before.
+  // OWNER 2026-11-22: a top-level row maps to the slot its major was given,
+  // so the ring arc, the Gantt bar, the WBS marker and the Kanban stripe
+  // cannot disagree. SUBTASKS ARE NEVER ASSIGNED A SLOT - they are members
+  // for the ring math but stay strictly white on every surface. Each group's
+  // `anchor` is the phase row (branch 1) or the top-level main (branch 3);
+  // branch 2 (flat phase-label projects, no hierarchy) has no anchor, so no
+  // row is coloured there. Returns null when the project has no groups.
   function assignments(state) {
     const out = getMajorGroups(state);
     if (!out || !out.grouped || !out.groups.length) {
@@ -389,9 +447,12 @@ var MMGR = window.MMGR || {};
     const colored = withColors(out.groups);
     const map = Object.create(null);
     colored.forEach(function (g) {
-      (g.members || []).forEach(function (id) {
-        map[String(id)] = g.color;
-      });
+      // The neutral "Other" slot (color 0) and any group without a real
+      // top-level row leave their rows white - no invented colour.
+      if (!g.color || !g.anchor) {
+        return;
+      }
+      map[String(g.anchor)] = g.color;
     });
     return map;
   }

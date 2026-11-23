@@ -190,6 +190,17 @@ svg.ico use {
   --major-6: #8b5cf6; /* purple - --purple */
   --major-7: #00838f; /* teal - the cyan accent's text step */
   --major-8: #5f6860; /* sage - the pegboard/guild neutral */
+  /* OWNER 2026-11-22: slots 9-16 so a long WBS does not run out of colours.
+     Every value already ships in the palette (status steps, ink and skins);
+     tools/verify-major-colors.cjs proves 3:1 on all light/parchment cards. */
+  --major-9: #ad1457; /* magenta - --pink ink step */
+  --major-10: #1d3557; /* navy - the dark-header deep blue */
+  --major-11: #7c2d12; /* sienna - the burnt-orange ink step */
+  --major-12: #03644f; /* jade - the deep green step */
+  --major-13: #642231; /* burgundy - the wine step */
+  --major-14: #334155; /* slate - the cool gray-blue step */
+  --major-15: #4a3406; /* olive - the deep gold-ink step */
+  --major-16: #6b4a12; /* ochre - the bronze ink step */
   --major-other: #666666; /* --text-muted: the merged "Other" slot */
   /* -- Legacy aliases (kept for backward compat, migrate to semantic) -- */
   --green: #2e7d32;

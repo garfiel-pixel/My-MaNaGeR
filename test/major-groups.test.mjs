@@ -292,51 +292,138 @@ test('a group keeps its colour when the tasks are reordered', () => {
 
   assert.deepEqual(plain(map2), plain(map1));
   assert.ok(
-    first.every(g => g.color >= 1 && g.color <= 8),
-    'every slot is inside 1..8'
+    first.every(g => g.color >= 1 && g.color <= M.SLOTS),
+    'every slot is inside 1..' + M.SLOTS
   );
 });
 
-test('eight or fewer groups never share a colour', () => {
+test('sixteen or fewer groups never share a colour', () => {
   const groups = [];
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < M.SLOTS; i++) {
     groups.push({
       id: 'g' + i,
       name: 'G' + i,
       total: 1,
       completed: 1,
       fraction: 1,
-      share: 1 / 8,
-      points: 12.5
+      share: 1 / M.SLOTS,
+      points: 100 / M.SLOTS
     });
   }
   const colored = M.withColors(groups);
   const slots = colored.map(g => g.color);
-  assert.equal(new Set(slots).size, 8);
+  assert.equal(new Set(slots).size, M.SLOTS);
 });
 
-test('more than eight majors keep the seven largest and merge the rest into Other', () => {
+test('more than sixteen majors keep the fifteen largest and merge the rest into Other', () => {
   const groups = [];
-  for (let i = 0; i < 10; i++) {
+  const extra = 3;
+  for (let i = 0; i < M.SLOTS + extra; i++) {
     groups.push({
       id: 'g' + i,
       name: 'G' + i,
       total: 2,
       completed: i === 0 ? 2 : 0,
       fraction: i === 0 ? 1 : 0,
-      share: 0.1,
+      share: 1 / (M.SLOTS + extra),
       points: i === 0 ? 20 : 0
     });
   }
   const colored = M.withColors(groups);
-  assert.equal(colored.length, 8, 'seven majors plus Other');
+  assert.equal(colored.length, M.SLOTS, 'fifteen majors plus Other');
   const other = colored[colored.length - 1];
   assert.equal(other.name, 'Other');
   assert.equal(other.color, 0, 'Other is the neutral slot');
-  assert.equal(other.total, 6, 'three merged groups of two');
+  assert.equal(other.total, (extra + 1) * 2, 'the merged groups of two');
   assert.equal(round(colored.reduce((n, g) => n + g.points, 0)), 20);
   assert.ok(
-    colored.slice(0, 7).some(g => g.id === 'g0'),
+    colored.slice(0, M.SLOTS - 1).some(g => g.id === 'g0'),
     'the largest group keeps its own slot'
+  );
+});
+
+// ---- OWNER 2026-11-22: WBS subtasks roll under their main by LEVEL ------
+// The WBS hybrid add-flow stores hierarchy in level/indent, NOT in
+// parentId/parentName. A plain "Add task" makes level-0 mains and level-1+
+// subtasks with no parent link. They must group under the nearest preceding
+// main, not each become its own colour-hungry group.
+test('WBS level-indented subtasks roll under their top-level main (no parentId)', () => {
+  const state = stateOf([
+    { id: 'm1', name: 'Site works', level: 0, status: 'completed' },
+    { id: 's1', name: 'Grading', level: 1, status: 'completed' },
+    { id: 's2', name: 'Fence', level: 1, status: 'todo' },
+    { id: 's3', name: 'Fence posts', level: 2, status: 'todo' },
+    { id: 'm2', name: 'Handover', level: 0, status: 'todo' },
+    { id: 's4', name: 'Snag list', level: 1, status: 'todo' }
+  ]);
+  const out = M.getMajorGroups(state);
+  assert.deepEqual(plain(out.groups.map(g => g.name)), ['Site works', 'Handover']);
+  // Every row (including the two mains) is a work item because rollups is
+  // empty; all four Site-works rows land in one group, both Handover rows in
+  // the other. No separate group per subtask.
+  assert.deepEqual(plain(out.groups.map(g => g.total)), [4, 2]);
+  assert.deepEqual(plain(out.groups.map(g => g.completed)), [2, 0]);
+});
+
+test('a top-level main is its own root, never rolled under the previous main', () => {
+  const state = stateOf([
+    { id: 'a', name: 'First', level: 0, status: 'todo' },
+    { id: 'b', name: 'Second', level: 0, status: 'completed' }
+  ]);
+  const out = M.getMajorGroups(state);
+  assert.deepEqual(plain(out.groups.map(g => g.name)), ['First', 'Second']);
+  assert.deepEqual(plain(out.groups.map(g => g.total)), [1, 1]);
+});
+
+// ---- OWNER 2026-11-22: only the MAIN row wears the colour ---------------
+test('assignments colour only top-level anchors; subtasks stay white', () => {
+  const state = stateOf([
+    { id: 'm1', name: 'Site works', level: 0, status: 'completed' },
+    { id: 's1', name: 'Grading', level: 1, status: 'completed' },
+    { id: 's2', name: 'Fence', level: 1, status: 'todo' },
+    { id: 'm2', name: 'Handover', level: 0, status: 'todo' },
+    { id: 's3', name: 'Snag list', level: 1, status: 'todo' }
+  ]);
+  const map = M.assignments(state);
+  assert.ok(map, 'project is grouped');
+  assert.ok(map['m1'] >= 1, 'the main row gets a colour');
+  assert.ok(map['m2'] >= 1, 'the second main gets a colour');
+  assert.notEqual(map['m1'], map['m2'], 'two mains never share a colour');
+  assert.equal(map['s1'], undefined, 'a level-1 subtask is never coloured');
+  assert.equal(map['s2'], undefined, 'a level-1 subtask is never coloured');
+  assert.equal(map['s3'], undefined, 'a level-1 subtask is never coloured');
+});
+
+test('phase projects colour only the phase row, not its work items', () => {
+  const state = stateOf([
+    { id: 'p1', name: 'Prep', isPhase: true, status: 'todo' },
+    { id: 't1', name: 'Grading', parentId: 'p1', status: 'completed' },
+    { id: 't2', name: 'Fence', parentId: 'p1', status: 'todo' },
+    { id: 'p2', name: 'Closeout', isPhase: true, status: 'todo' },
+    { id: 't3', name: 'Punch list', parentId: 'p2', status: 'todo' }
+  ]);
+  const map = M.assignments(state);
+  assert.ok(map['p1'] >= 1, 'the phase row gets a colour');
+  assert.ok(map['p2'] >= 1, 'the second phase row gets a colour');
+  assert.equal(map['t1'], undefined, 'phase work items stay white');
+  assert.equal(map['t2'], undefined, 'phase work items stay white');
+  assert.equal(map['t3'], undefined, 'phase work items stay white');
+});
+
+test('a long WBS of many mains never runs out of distinct colours', () => {
+  const tasks = [];
+  for (let i = 0; i < M.SLOTS; i++) {
+    tasks.push({ id: 'm' + i, name: 'Main ' + i, level: 0, status: 'todo' });
+    tasks.push({ id: 's' + i, name: 'Sub ' + i, level: 1, status: 'todo' });
+  }
+  const map = M.assignments(stateOf(tasks));
+  const mainColors = Object.keys(map)
+    .filter(id => id.charAt(0) === 'm')
+    .map(id => map[id]);
+  assert.equal(mainColors.length, M.SLOTS, 'one colour per main');
+  assert.equal(new Set(mainColors).size, M.SLOTS, 'all sixteen mains are distinct');
+  assert.ok(
+    Object.keys(map).every(id => id.charAt(0) === 'm'),
+    'no subtask id appears in the assignment map'
   );
 });

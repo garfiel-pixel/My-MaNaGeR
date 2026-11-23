@@ -89,8 +89,12 @@ test('data older than 14 days reports unavailable', () => {
   assert.equal(fxAvailable({ rate: 158, asOf: '2026-10-01' }, now), false);
 });
 
-test('fxRead falls back to the seed and stays available today', async () => {
-  const fx = await fxRead({});
+test('fxRead falls back to the seed and stays available while the seed is fresh', async () => {
+  // The seed has a fixed as-of date, so "today" must be pinned too: a
+  // wall-clock read rots 14 days after SEED_AS_OF and then fails forever
+  // (it went red on 2026-11-23). Pin the clock just after the seed instead.
+  const seedTime = Date.parse(SEED_AS_OF + 'T12:00:00Z');
+  const fx = await fxRead({}, seedTime + 60 * 1000);
   assert.equal(fx.jmdPerUsd, JMD_PER_USD_SEED);
   assert.equal(fx.asOf, SEED_AS_OF);
   assert.equal(fx.available, true);

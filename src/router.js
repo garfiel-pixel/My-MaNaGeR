@@ -187,7 +187,11 @@ import {
   handleAuthLogoutAll,
   mintSession
 } from './auth/google.js';
-import { handleMicrosoftStart, handleMicrosoftCallback } from './auth/microsoft.js';
+import {
+  handleMicrosoftStart,
+  handleMicrosoftCallback,
+  handleMicrosoftAssociation
+} from './auth/microsoft.js';
 import {
   handleAdminRecoveryStatus,
   handleAdminRecoverySend,
@@ -374,6 +378,15 @@ export async function routeApi(request, env, url) {
     // public same-origin page that checks the session itself.
     if (path.indexOf('/.well-known/oauth') === 0) {
       return handleOauthMetadata(request, env, url);
+    }
+    // Entra publisher-domain verification. Public, no Origin header from the
+    // verification server, so it must sit before the same-origin gate. Entra
+    // probes both the .json URL and the extensionless form - answer both.
+    if (
+      path === '/.well-known/microsoft-identity-association.json' ||
+      path === '/.well-known/microsoft-identity-association'
+    ) {
+      return handleMicrosoftAssociation(request, env, url);
     }
     if (path === '/api/oauth/authorize') {
       return handleOauthAuthorize(request, env, url);

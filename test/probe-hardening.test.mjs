@@ -93,3 +93,22 @@ test('/.well-known stays public', async () => {
   const r = await get('/.well-known/security.txt');
   assert.equal(r.status, 200, 'the one public dotfile tree must pass the guard');
 });
+
+// Entra publisher-domain verification (owner 2026-11-22). Microsoft fetches
+// this with no Origin header and compares the client id to the app
+// registration. Both the .json URL (portal instructions) and the extensionless
+// form (what the failed probe used) must answer the same public JSON.
+const ASSOCIATION_ID = 'd1bd5df2-946d-469e-a2d8-6656d2a63dae';
+for (const p of [
+  '/.well-known/microsoft-identity-association.json',
+  '/.well-known/microsoft-identity-association'
+]) {
+  test(p + ' serves the publisher-domain association JSON', async () => {
+    const r = await get(p);
+    assert.equal(r.status, 200, p + ' -> ' + r.status);
+    assert.match(r.type, /application\/json/, p + ' is not JSON');
+    assert.equal(r.body.indexOf('<html'), -1, p + ' returned the app shell');
+    const doc = JSON.parse(r.body);
+    assert.deepEqual(doc.associatedApplications, [{ applicationId: ASSOCIATION_ID }]);
+  });
+}

@@ -32,8 +32,21 @@
    - Nothing here trusts a query parameter to decide where to land: the
      return path is re-validated with the same rules as js/signin.js.
    ============================================================ */
-import { codesEqual, sessionSetCookie } from '../lib/http.js';
+import { codesEqual, sessionSetCookie, json } from '../lib/http.js';
 import { mintSession } from './google.js';
+
+// PUBLISHER DOMAIN VERIFICATION (owner 2026-11-22). Entra checks that this
+// domain belongs to the app registration behind Microsoft sign-in by fetching
+// /.well-known/microsoft-identity-association.json and comparing the client id
+// in the body with the one on the registration. It is a tiny public JSON
+// document, served by the Worker like the OAuth discovery docs: physical
+// *.json files are excluded from both .assetsignore and the deploy stage, so a
+// file on disk would 404. The client id is read from the same config the sign-in
+// flow uses, so the document can never drift from the credential it describes.
+export function handleMicrosoftAssociation(request, env, url) {
+  const cfg = microsoftConfig(env, request);
+  return json({ associatedApplications: [{ applicationId: cfg.clientId }] }, 200);
+}
 
 // Public application (client) ID from the Azure app registration. Not a
 // secret — it travels in the authorize URL and is visible in the browser.

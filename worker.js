@@ -663,7 +663,12 @@ export default {
       // documents (RFC 8414 / RFC 9728) live under /.well-known/oauth* and are
       // routed through the API handler too, so they are served by the same
       // code that answers the OAuth + app-wide MCP endpoints.
-      if (normalized.indexOf('/api/') === 0 || normalized.indexOf('/.well-known/oauth') === 0) {
+      if (
+        normalized.indexOf('/api/') === 0 ||
+        normalized.indexOf('/.well-known/oauth') === 0 ||
+        normalized === '/.well-known/microsoft-identity-association.json' ||
+        normalized === '/.well-known/microsoft-identity-association'
+      ) {
         return routeApi(request, env, url);
       }
 

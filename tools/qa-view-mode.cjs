@@ -123,23 +123,26 @@ function contrast(a, b) {
     await delay(3000);
     const v1 = await ev(`(function(){
       const dt = document.documentElement.getAttribute('data-theme');
+      // 2026-11-23: there is no ".dock" container any more - theme mode and
+      // Performance Mode live in the Customize modal (#customize-modal.cm).
+      // Assert the real controls instead of a retired wrapper class, which
+      // made this check permanently red while the UI had already moved.
+      const cm = document.getElementById('customize-modal');
       return { dataTheme: dt,
-        // 2026-09-09: the dock's theme control is the drawer-select contract
-        // (<select id="theme-select">, commit 9e60a05), not .pal-btn buttons.
-        dockHasTheme: !!document.querySelector('.dock #theme-select') || !!document.querySelector('.dock [data-pal="light"]'),
-        dockHasPerf: !!document.querySelector('.dock #perf-tgl'),
-        dockHasPalette: !!document.querySelector('.dock [data-palette]'),
-        dockHasView: !!document.querySelector('.dock [data-view]'),
+        cmHasTheme: !!(cm && cm.querySelector('#theme-select')),
+        cmHasPerf: !!(cm && cm.querySelector('#perf-tgl')),
+        retiredPalette: !!document.querySelector('[data-palette]'),
+        retiredView: !!document.querySelector('[data-view]'),
         view3d: document.body.classList.contains('view-3d'),
         deckExists: !!document.querySelector('.view-deck') };
     })()`);
     check(
-      'V1 default: gold palette, flat, no data-theme, dock has Theme+Perf only (palette/view UI retired)',
+      'V1 default: gold palette, flat, no data-theme, Customize modal has Theme+Perf only (palette/view UI retired)',
       v1.dataTheme === null &&
-        v1.dockHasTheme === true &&
-        v1.dockHasPerf === true &&
-        v1.dockHasPalette === false &&
-        v1.dockHasView === false &&
+        v1.cmHasTheme === true &&
+        v1.cmHasPerf === true &&
+        v1.retiredPalette === false &&
+        v1.retiredView === false &&
         !v1.view3d &&
         v1.deckExists,
       v1
@@ -336,11 +339,23 @@ function contrast(a, b) {
     );
     await send('Page.navigate', { url: BASE + '/admin.html' });
     await delay(3000);
+    // The 2026-11-23 accessibility sweep moved the admin deck from
+    // <main class="view-deck"> to <div class="view-deck"> so one <main> could
+    // wrap every screen (gates + app). Assert the deck still exists and now
+    // sits inside the single main landmark, not that it is itself a main.
     const v9a = await ev(`(function(){
-      const mains = Array.from(document.querySelectorAll('main'));
-      return { deck: mains.some(function(m){ return m.classList.contains('view-deck'); }) };
+      const deck = document.querySelector('.view-deck');
+      return {
+        deck: !!deck,
+        mainCount: document.querySelectorAll('main').length,
+        deckInMain: !!(deck && deck.closest('main'))
+      };
     })()`);
-    check('V9 admin.html deck: main.view-deck present', v9a.deck === true, v9a);
+    check(
+      'V9 admin.html deck: .view-deck present inside the one main landmark',
+      v9a.deck === true && v9a.mainCount === 1 && v9a.deckInMain === true,
+      v9a
+    );
 
     const failed = results.filter(r => !r.val).length;
     console.log(failed === 0 ? '\nALL VIEW-MODE GATES PASSED' : '\n' + failed + ' CHECK(S) FAILED');

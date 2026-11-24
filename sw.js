@@ -797,7 +797,7 @@
 // index.html drops invalid list roles, and the weather lead-time table gains a
 // Review column header. The served HTML and the project bundle both change, so
 // returning clients must refetch.
-const CACHE = 'mmgr-shell-v709';
+const CACHE = 'mmgr-shell-v710';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

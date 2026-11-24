@@ -66,7 +66,7 @@
   var ENDPOINT = '/api/ai/chat';
   var PROVIDER = 'google-gemini';
   var CAP = 5;
-  var SIGNIN_URL = 'signin.html';
+  var SIGNIN_URL = '/signin';
   var STORE_KEY = 'mmgr_calc_ai_chats';
   var MAX_CHATS = 20;
   var MAX_HISTORY_MSGS = 12;

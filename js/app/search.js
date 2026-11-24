@@ -43,66 +43,66 @@
       id: 'app',
       label: 'Projects dashboard',
       hint: 'All your projects in one place',
-      href: 'app.html',
+      href: '/app',
       icon: 'i-home'
     },
     {
       id: 'admin',
       label: 'Admin',
       hint: 'Project list and operator tools',
-      href: 'admin.html',
+      href: '/admin',
       icon: 'i-tool'
     },
     {
       id: 'calculator',
       label: 'Calculator',
       hint: 'Trades and build-cost calculator',
-      href: 'calculator.html',
+      href: '/calculator',
       icon: 'i-calculator'
     },
     {
       id: 'field-guide',
       label: 'Field guide',
       hint: 'Every panel explained, sheet by sheet',
-      href: 'mymanager-field-guide.html',
+      href: '/mymanager-field-guide',
       icon: 'i-book'
     },
     {
       id: 'dashboard',
       label: 'Market dashboard',
       hint: 'Feature and market view',
-      href: 'dashboard.html',
+      href: '/dashboard',
       icon: 'i-bar-chart'
     },
     {
       id: 'pricing',
       label: 'Pricing',
       hint: 'Plans and upgrade',
-      href: 'pricing.html',
+      href: '/pricing',
       icon: 'i-dollar'
     },
     {
       id: 'features',
       label: 'Features',
       hint: 'What the app does',
-      href: 'features.html',
+      href: '/features',
       icon: 'i-mpw'
     },
-    { id: 'about', label: 'About', hint: 'Who makes it', href: 'about.html', icon: 'i-users' },
-    { id: 'contact', label: 'Contact', hint: 'Get in touch', href: 'contact.html', icon: 'i-mail' },
+    { id: 'about', label: 'About', hint: 'Who makes it', href: '/about', icon: 'i-users' },
+    { id: 'contact', label: 'Contact', hint: 'Get in touch', href: '/contact', icon: 'i-mail' },
     {
       id: 'privacy',
       label: 'Privacy',
       hint: 'What we store',
-      href: 'privacy.html',
+      href: '/privacy',
       icon: 'i-lock'
     },
-    { id: 'terms', label: 'Terms', hint: 'Terms of use', href: 'terms.html', icon: 'i-file-text' },
+    { id: 'terms', label: 'Terms', hint: 'Terms of use', href: '/terms', icon: 'i-file-text' },
     {
       id: 'refund',
       label: 'Refund policy',
       hint: 'Refunds',
-      href: 'refund.html',
+      href: '/refund',
       icon: 'i-refresh'
     }
   ];
@@ -744,7 +744,7 @@
         weight: 130,
         aliases: [compact(title)],
         run: function () {
-          location.href = 'project.html?id=' + encodeURIComponent(p.id || '');
+          location.href = '/project?id=' + encodeURIComponent(p.id || '');
         }
       });
     });
@@ -1272,7 +1272,7 @@
         weight: 15,
         destination: true,
         run: function () {
-          location.href = 'mymanager-field-guide.html#' + s.id;
+          location.href = '/mymanager-field-guide#' + s.id;
         }
       });
     });

@@ -3386,7 +3386,7 @@ async function withChrome(fn) {
       if (!c) return { shown: false };
       var signin = c.querySelector('.rr-signin');
       var book = c.querySelector('#rr-q, .rr-table');
-      var cta = signin ? signin.querySelector('a[href*="app.html"]') : null;
+      var cta = signin ? signin.querySelector('a[href*="/app"]') : null;
       var h3 = signin && signin.querySelector('h3');
       var r = c.getBoundingClientRect();
       var cs = getComputedStyle(c);
@@ -4267,7 +4267,7 @@ async function withChrome(fn) {
       var signin = c ? c.querySelector('.rr-signin') : null;
       var wrap = document.getElementById('calc-book-wrap');
       var out = { work: w.value, signin: !!signin,
-        cta: !!(signin && signin.querySelector('a[href*="app.html"]')),
+        cta: !!(signin && signin.querySelector('a[href*="/app"]')),
         wrapShown: wrap ? !wrap.hidden : false };
       if (c) { c.remove(); document.body.classList.remove('rr-open'); }
       return out;

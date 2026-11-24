@@ -90,7 +90,7 @@ var MMGR = window.MMGR || {};
         esc(mcpServerUrl()) +
         '</code> and give it this key as the access token. (2) In your own scripts, send it as the header <code style="font-family:ui-monospace,monospace">X-API-Key: ' +
         esc(pendingCode.code) +
-        '</code>. The AI can only read and propose changes to the sections you ticked - every change waits in Review until you accept it. Revoke it any time from the API Keys list. <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">Full walkthrough in the field guide</a>.</div>'
+        '</code>. The AI can only read and propose changes to the sections you ticked - every change waits in Review until you accept it. Revoke it any time from the API Keys list. <a href="/mymanager-field-guide#connect-ai" target="_blank" rel="noopener">Full walkthrough in the field guide</a>.</div>'
       : '';
     return (
       '<div class="sr cloud-new-code" style="border:1px solid var(--gold);background:rgba(var(--gold-rgb),.1);border-radius:var(--radius);padding:8px 10px;margin:10px 0 4px" role="status">' +
@@ -321,7 +321,7 @@ var MMGR = window.MMGR || {};
       '<div class="sr-hint" style="margin:0 0 6px">Give an external AI assistant its own key for THIS project. It can only touch the sections you tick, it stops on the date you pick, and every change it makes waits for your approval in the review queue.</div>' +
       '<div class="sr-hint" style="margin:4px 0 6px">Fine print, in plain words: the AI connects to <code style="font-family:ui-monospace,monospace">' +
       esc(mcpServerUrl()) +
-      '</code> with the key pasted as its access token (MCP connectors), or calls the cloud API with <code style="font-family:ui-monospace,monospace">X-API-Key</code>. Leave the connector\u2019s sign-in setting on <b>No sign-in</b> - the server only checks the key when a tool actually asks for data. It reads only what you tick, and nothing it proposes changes the project until you accept it in Review. Treat a key like a key to the site office - anyone holding it can do what you ticked. <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">Step-by-step in the field guide</a>.</div>' +
+      '</code> with the key pasted as its access token (MCP connectors), or calls the cloud API with <code style="font-family:ui-monospace,monospace">X-API-Key</code>. Leave the connector\u2019s sign-in setting on <b>No sign-in</b> - the server only checks the key when a tool actually asks for data. It reads only what you tick, and nothing it proposes changes the project until you accept it in Review. Treat a key like a key to the site office - anyone holding it can do what you ticked. <a href="/mymanager-field-guide#connect-ai" target="_blank" rel="noopener">Step-by-step in the field guide</a>.</div>' +
       '<div class="exp-row" style="flex-wrap:wrap">' +
       '<input type="text" id="cloud-apikey-label-in" class="ctl-in" placeholder="Label, e.g. Site assistant" style="min-width:180px" autocomplete="off">' +
       '<select id="cloud-apikey-expiry" class="ctl-in" style="width:auto" aria-label="Key expiry">' +

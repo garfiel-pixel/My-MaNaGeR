@@ -3217,7 +3217,7 @@ var MMGR = window.MMGR || {};
       _mcpSignInHint() +
       '</p>' +
       '<p><strong>Use a project API key as YOUR-KEY, not your owner code.</strong> Owner codes stop working as an MCP credential on 5 December 2026. A project API key is scoped to the sections you choose, can expire, and can be revoked at any time.</p>' +
-      '<p>The claude.ai web panel (Add custom connector) has no place to paste a key today - use Claude Code or an editor client. Full walkthrough: <a href="mymanager-field-guide.html#connect-ai" target="_blank" rel="noopener">field guide, Connect an Outside AI</a>.</p>' +
+      '<p>The claude.ai web panel (Add custom connector) has no place to paste a key today - use Claude Code or an editor client. Full walkthrough: <a href="/mymanager-field-guide#connect-ai" target="_blank" rel="noopener">field guide, Connect an Outside AI</a>.</p>' +
       '</div></details>'
     );
   }
@@ -3614,7 +3614,7 @@ var MMGR = window.MMGR || {};
         App.showToast('Project deleted. Every shared copy now shows as discontinued.', 'ok');
       }
       setTimeout(function () {
-        window.location.href = 'app.html';
+        window.location.href = '/app';
       }, 900);
     } catch (e) {
       reset();

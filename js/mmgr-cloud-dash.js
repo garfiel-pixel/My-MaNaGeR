@@ -269,7 +269,7 @@
         return;
       }
       codeStatus('Opening ' + pid + '\u2026', false);
-      window.location.href = 'project.html?id=' + encodeURIComponent(pid);
+      window.location.href = '/project?id=' + encodeURIComponent(pid);
     } catch (e) {
       codeStatus('Could not reach the cloud service , check your connection and try again.', true);
     } finally {
@@ -745,7 +745,7 @@
         }
         // Opens the project viewer with the same ?id= entry the editor-code
         // unlock uses.
-        window.location.href = 'project.html?id=' + encodeURIComponent(projectId);
+        window.location.href = '/project?id=' + encodeURIComponent(projectId);
         return;
       }
       // PART F T9: no snapshot yet , the OLD copy told the user to open it

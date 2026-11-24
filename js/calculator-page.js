@@ -7789,7 +7789,7 @@
       RATEBOOK_NAME +
       ' is free on every plan, Free included. Sign in so your rate views can follow you between devices. Your projects stay on this device either way.</p>' +
       '<div class="rr-signin-cta">' +
-      '<a class="btn btn-g" href="app.html?next=calculator.html">Sign in</a>' +
+      '<a class="btn btn-g" href="/app?next=/calculator">Sign in</a>' +
       '<button type="button" class="btn btn-ghost" data-action="rrClose">Not now</button>' +
       '</div>' +
       '</div>' +
@@ -13017,7 +13017,7 @@
       if (sameOrigin && window.history.length > 1 && !ref.startsWith(location.href.split('#')[0])) {
         window.history.back();
       } else {
-        window.location.href = 'app.html';
+        window.location.href = '/app';
       }
     },
     // F4-1: metric / imperial toggle. Inputs convert on entry; labels and the
@@ -13294,7 +13294,7 @@
       if (open) {
         // Wave 4a: the link carries &boq=1 so the project opens the bill the
         // person just sent instead of leaving them to find Budget ▸ From BOQ.
-        open.href = 'project.html?id=' + encodeURIComponent(projectId) + '&boq=1';
+        open.href = '/project?id=' + encodeURIComponent(projectId) + '&boq=1';
         open.classList.remove('is-hide');
       }
     },

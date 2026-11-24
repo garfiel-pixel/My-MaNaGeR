@@ -24,7 +24,7 @@
   var GA = window.MMGR && window.MMGR.GoogleAuth ? window.MMGR.GoogleAuth : null;
 
   /* Where to send people when they have nothing to return to. */
-  var DEFAULT_NEXT = 'app.html';
+  var DEFAULT_NEXT = '/app';
 
   /* ---------------------------------------------------------------------
      Safe return target.

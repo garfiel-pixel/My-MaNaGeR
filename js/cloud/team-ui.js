@@ -1663,7 +1663,7 @@ var MMGR = window.MMGR || {};
       setStatus('Storage is blocked, so the project cannot be opened here.', true);
       return;
     }
-    window.location.href = 'project.html?id=' + encodeURIComponent(pid);
+    window.location.href = '/project?id=' + encodeURIComponent(pid);
   }
 
   // ---- data load ----------------------------------------------------------

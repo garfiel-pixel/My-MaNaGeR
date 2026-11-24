@@ -23,7 +23,7 @@
   var BADGE_TEXT = 'plan-badge-text';
   var BADGE_ICO = 'plan-badge-ico';
   var POP = 'plan-pop';
-  var PRICING_PAGE = 'pricing.html';
+  var PRICING_PAGE = '/pricing';
   /* OWNER 2026-11-17: "Premium status must be server-checked and persist
      across refresh". The badge is painted from the last CONFIRMED billing
      answer the moment the rail already shows a signed-in person, so a paid

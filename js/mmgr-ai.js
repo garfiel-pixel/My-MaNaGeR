@@ -266,7 +266,7 @@ var MMGR = window.MMGR || {};
     }
     note.innerHTML =
       '<p class="ai-viewonly-msg"></p>' +
-      '<a class="btn btn-g ai-viewonly-cta" href="admin.html?new=1">Create a project</a>';
+      '<a class="btn btn-g ai-viewonly-cta" href="/admin?new=1">Create a project</a>';
     note.querySelector('.ai-viewonly-msg').textContent = info.message;
     // Presets stay visible so the user can see what is unavailable; they are
     // rendered once and then disabled with the composer.

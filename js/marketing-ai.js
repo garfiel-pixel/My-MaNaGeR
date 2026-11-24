@@ -252,11 +252,11 @@
     els.chips.textContent = '';
     els.chips.hidden = false;
     var open = el('a', 'lai-chip lai-chip-go');
-    open.href = 'app.html';
+    open.href = '/app';
     open.textContent = 'Open the app';
     els.chips.appendChild(open);
     var guide = el('a', 'lai-chip');
-    guide.href = 'mymanager-field-guide.html';
+    guide.href = '/mymanager-field-guide';
     guide.textContent = 'See the field guide';
     els.chips.appendChild(guide);
   }

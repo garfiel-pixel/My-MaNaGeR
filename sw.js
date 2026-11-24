@@ -802,7 +802,11 @@
 // redirect" bucket), so all precached pages change. Microsoft Clarity joins the
 // optional consent category: js/mmgr-clarity.js is a new shell asset and the
 // inventory version rises to 4, so a returning visitor is asked once more.
-const CACHE = 'mmgr-shell-v712';
+// v713 - extensionless nav lookups 2026-11-24: the bundled js/ modules (search
+// index, sign-in default, billing, team accept, launcher, cloud dash) now point
+// at /app, /project, /pricing and friends instead of the .html URLs, so the
+// precached bundles must be replaced.
+const CACHE = 'mmgr-shell-v713';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

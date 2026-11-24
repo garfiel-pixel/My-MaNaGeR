@@ -79,6 +79,8 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
       toggleY: rect('#signin-email-toggle') ? Math.round(rect('#signin-email-toggle').top) : null,
       cardW: rect('.signin-card') ? Math.round(rect('.signin-card').width) : null,
       cardLeft: rect('.signin-card') ? Math.round(rect('.signin-card').left) : null,
+      footLeft: rect('.signin-foot') ? Math.round(rect('.signin-foot').left) : null,
+      bodyW: document.body.clientWidth,
       sky: !!q('.signin-sky'),
       ariaExpanded: q('#signin-email-toggle')
         ? q('#signin-email-toggle').getAttribute('aria-expanded')
@@ -110,10 +112,15 @@ const VALID = ['/app.html', '/project.html?id=demo', '/index.html#faq', '/dashbo
     s.legalY !== null && s.googleY !== null && s.legalY > s.toggleY,
     'legal@' + s.legalY
   );
+  // Owner 2026-11-10: the card and the links beneath it share ONE left
+  // column aligned to each other - they are not centred on the page.
   ok(
-    'the card is centred',
-    s.cardLeft > 380 && s.cardLeft < 520,
-    'left=' + s.cardLeft + ' w=' + s.cardW
+    'the card shares the left column with its links',
+    s.cardLeft !== null &&
+      s.footLeft !== null &&
+      Math.abs(s.cardLeft - s.footLeft) <= 2 &&
+      s.cardLeft < s.bodyW * 0.4,
+    'left=' + s.cardLeft + ' links=' + s.footLeft + ' w=' + s.cardW
   );
 
   console.log('\n=== ARM 3: OPEN REDIRECT DEFENCE ===\n');

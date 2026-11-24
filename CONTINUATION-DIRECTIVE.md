@@ -101,7 +101,7 @@
 12. Paddle keys and secrets are assumed set; never touch secrets.
 13. Deploy only from a clean staging copy under `$HOME/mmgr-deploy` (never `/tmp`, never the repo root). Live probes use `https://mymanagerworkspace.com` only.
 14. The owner removed pinned Calculate / Add to bill buttons (2026-10-13). Never re-pin them.
-15. Part H decisions stand: Procurement ships behind `data-pack="procurement"`; `proc` is a grantable editor scope; namespace `ns.Proc`; state key `supplierBook`; supplier prices are hand-entered from each supplier's own rates, never from the JIC book.
+15. Part H decisions stand: Procurement ships behind `data-pack="procurement"`; `proc` is a grantable editor scope; namespace `ns.Proc`; state key `supplierBook`; supplier prices are hand-entered from each supplier's own rates, never from the book book.
 16. OST offline-first is sacred: the app works with no network; cloud sync stays opt-in per project.
 17. `npm run verify` (CSP + SW + all sub-checks) before every deploy; `node build.js` after any `js/` edit (stale `dist/bundle.js` is the #1 silent killer); bump the `sw.js` shell version when served files change and restart `serve.cjs` after inline-script edits.
 18. `skills-lock.json` is the source of truth for skills; never hand-edit hashes.

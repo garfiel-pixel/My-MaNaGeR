@@ -46,7 +46,7 @@ check('T-BENTO sr-only full panel list has 16 entries', srList.length === 16, sr
 
 check(
   'T-BENTO "See all features" link present',
-  /class="[^"]*bento-seeall[^"]*"[^>]*href="mymanager-field-guide\.html"/.test(indexHtml),
+  /class="[^"]*bento-seeall[^"]*"[^>]*href="\/mymanager-field-guide"/.test(indexHtml),
   null
 );
 

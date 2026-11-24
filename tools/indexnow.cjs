@@ -50,7 +50,10 @@ async function assertKeyIsLive() {
   const res = await fetch(KEY_LOCATION, { headers: { 'user-agent': 'mmgr-indexnow/1.0' } });
   if (!res.ok) {
     throw new Error(
-      'key file is not live: ' + KEY_LOCATION + ' answered HTTP ' + res.status +
+      'key file is not live: ' +
+        KEY_LOCATION +
+        ' answered HTTP ' +
+        res.status +
         '. Deploy first - .assetsignore, worker.js SEO_FILES and tools/deploy.cjs' +
         ' COPY_BACK must all list the key file.'
     );
@@ -58,8 +61,11 @@ async function assertKeyIsLive() {
   const body = (await res.text()).trim();
   if (body !== KEY) {
     throw new Error(
-      'key file content does not match the key. Expected "' + KEY + '", got "' +
-        body.slice(0, 64) + '".'
+      'key file content does not match the key. Expected "' +
+        KEY +
+        '", got "' +
+        body.slice(0, 64) +
+        '".'
     );
   }
 }
@@ -97,9 +103,7 @@ async function main() {
     const detail = await res.text().catch(() => '');
     throw new Error('IndexNow rejected the submission: HTTP ' + res.status + ' ' + detail);
   }
-  console.log(
-    'IndexNow accepted ' + urlList.length + ' URL(s) - HTTP ' + res.status + '.'
-  );
+  console.log('IndexNow accepted ' + urlList.length + ' URL(s) - HTTP ' + res.status + '.');
   urlList.forEach(u => console.log('  ' + u));
 }
 

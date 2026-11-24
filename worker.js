@@ -38,7 +38,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-hkXebphLbybaZt8yNpjkxPc3WjJNQDh0zB2AxsplVEg='",
-  "'sha256-Aq+8yLJoJxV9idFD/gxx4YiAcB2XRjD1tbkzQmeOnJo='",
+  "'sha256-+8IFmjtr+CwiDGM/eNnG9uHG1HAHzLuqiZgpqtgzmqc='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
   "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
@@ -77,7 +77,11 @@ const CONSENT_ANALYTICS_HOST = ' https://static.cloudflareinsights.com';
 // MUST match INVENTORY_VERSION in js/consent.js and
 // CONSENT_INVENTORY_VERSION in serve.cjs - tools/qa-consent.cjs phase S
 // fails the build if the three drift.
-const CONSENT_INVENTORY_VERSION = 3;
+//
+// v4 (2026-11-24): Microsoft Clarity joins the optional "Usage statistics"
+// category, so every existing choice is re-asked once. Adding a processor
+// without re-asking would apply an old yes to a new vendor.
+const CONSENT_INVENTORY_VERSION = 4;
 // A choice is re-asked every 12 months (js/consent.js MAX_AGE_MS).
 const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 // Tolerate a device clock a little ahead of this server's.
@@ -253,10 +257,10 @@ export function cspPoliciesForTooling(request, env) {
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com https://www.clarity.ms https://scripts.clarity.ms " +
     INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://c.clarity.ms",
   "media-src 'self' data: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
@@ -350,10 +354,10 @@ const WHISPER_CSP = [
 // together with its script-src entry - never one without the other.
 const PADDLE_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com https://www.clarity.ms https://scripts.clarity.ms " +
     INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdn.paddle.com",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://c.clarity.ms",
   "media-src 'self' data: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",

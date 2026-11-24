@@ -450,6 +450,25 @@ async function phaseBrowser() {
       if (t === 'csp') beaconBlockedByCsp.push(r.url());
     }
   });
+  // Microsoft Clarity is the second optional processor, and it is loaded by
+  // js/mmgr-clarity.js instead of an inline snippet. Same contract as the
+  // beacon: nothing on the wire before the visitor chooses, everything after.
+  // Measured 2026-11-24: the loader used to inject the tag without creating
+  // window.clarity first, so the tag threw on its own first line
+  // ("reading 'v'") and recorded nothing while still appearing in the
+  // network tab. B7c pins the stub that makes it actually run.
+  const clarityRequests = [];
+  const clarityResponses = [];
+  page.on('request', r => {
+    if (r.url().indexOf('clarity.ms') > -1) {
+      clarityRequests.push(r.url());
+    }
+  });
+  page.on('response', r => {
+    if (r.url().indexOf('clarity.ms') > -1) {
+      clarityResponses.push(r.url());
+    }
+  });
   // The beacon's own global is the ground truth for "it ran".
   const beaconRan = () => page.evaluate(() => typeof window.__cfBeacon !== 'undefined');
   const beaconTagPresent = () =>
@@ -568,7 +587,8 @@ async function phaseBrowser() {
     attempts: beaconAttempts.length,
     responses: beaconResponses.length,
     blockedByCsp: beaconBlockedByCsp.length,
-    executed: await beaconRan()
+    executed: await beaconRan(),
+    clarityRequests: clarityRequests.length
   };
   check(
     'B2 no analytics fetched and none executed before a choice',
@@ -577,7 +597,9 @@ async function phaseBrowser() {
       // ... the beacon never ran ...
       b2.executed === false &&
       // ... and every attempt was refused by CSP (not by a lucky network error)
-      b2.attempts === b2.blockedByCsp,
+      b2.attempts === b2.blockedByCsp &&
+      // ... and the Clarity loader withheld its tag entirely
+      b2.clarityRequests === 0,
     b2
   );
 
@@ -664,6 +686,32 @@ async function phaseBrowser() {
     'B7b after accept the beacon is fetched and runs (or no beacon is injected)',
     b7b.tagPresent ? b7b.responses > 0 && b7b.executed === true : true,
     b7b
+  );
+
+  // ---- B7c: CLARITY ACTUALLY RUNS, NOT JUST LOADS ----
+  // js/mmgr-clarity.js injects the vendor tag itself, so it must also define
+  // the window.clarity queue function the tag's first line dereferences
+  // (a[c].v). Without it the tag throws, clarity.js is never fetched and
+  // nothing is recorded - while the network tab shows the tag file, which is
+  // why this failed silently from the day it shipped (measured 2026-11-24).
+  // The tag is asserted separately from the queue so a blocked network in CI
+  // still proves our half of the contract: the stub exists and the tag was
+  // requested only after the choice.
+  const b7c = await page.evaluate(() => {
+    var s = document.querySelector('script[data-mmgr-clarity]');
+    return {
+      stub: typeof window.clarity === 'function',
+      tag: !!s,
+      src: s ? s.getAttribute('src') : null
+    };
+  });
+  check(
+    'B7c after accept, Clarity has its queue stub and its tag was requested',
+    b7c.stub === true &&
+      b7c.tag === true &&
+      /clarity\.ms\/tag\//.test(b7c.src || '') &&
+      clarityRequests.some(u => u.indexOf('/tag/') > -1),
+    Object.assign({ requested: clarityRequests.length, answered: clarityResponses.length }, b7c)
   );
 
   // ---- B8a: THE POSITIVE CONTROL ----

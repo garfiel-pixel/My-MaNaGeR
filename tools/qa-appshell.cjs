@@ -541,7 +541,7 @@ function overlaps(a, b) {
       const GROUP_STATE = () => {
         const b = document.querySelector('[data-rail-toggle="rail-grp-tools"]');
         const p = document.getElementById('rail-grp-tools');
-        const link = document.querySelector('.db-link[href="calculator.html"]');
+        const link = document.querySelector('.db-link[href="/calculator"]');
         let saved = null;
         try {
           saved = (JSON.parse(localStorage.getItem('mmgr_rail_groups') || '{}') || {}).anon;
@@ -616,7 +616,7 @@ function overlaps(a, b) {
         g3
       );
 
-      await page.click('.db-link[href="calculator.html"]');
+      await page.click('.db-link[href="/calculator"]');
       await page.waitForFunction(() => /calculator(\.html)?$/.test(location.pathname), null, {
         timeout: 30000
       });
@@ -642,7 +642,7 @@ function overlaps(a, b) {
                 a => (a.getAttribute('href') || '') + ' | ' + (a.getAttribute('data-newtab') || '')
               );
             const dash = Array.prototype.slice
-              .call(doc.querySelectorAll('a[href="app.html"]'))
+              .call(doc.querySelectorAll('a[href="/app"]'))
               .map(a => a.getAttribute('target') || 'same-tab');
             out[id] = { blank, dash };
           }

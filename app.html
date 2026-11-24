@@ -407,20 +407,20 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
          admin and calculator entries inside Projects. -->
     <button type="button" class="db-g open" data-rail-toggle="rail-grp-admin" aria-expanded="true" aria-controls="rail-grp-admin">Administrate <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-g-body" id="rail-grp-admin">
-    <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
+    <a class="db-link" href="/admin"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin panel</a>
     <!-- CREATE-YOUR-OWN (owner directive 2026-08-15): the launcher's second
          door into admin , an open-lock entry beside the Admin panel link that
          sends visitors to the admin interface so they can create their own
          project (their own admin point). Same db-link language as Admin panel
          (replicated UI), i-unlock glyph, plain link close-on-nav behaviour. -->
-    <a class="db-link" href="admin.html"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Create your own</a>
+    <a class="db-link" href="/admin"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-unlock"></use></svg> Create your own</a>
     </div>
     <button type="button" class="db-g open" data-rail-toggle="rail-grp-tools" aria-expanded="true" aria-controls="rail-grp-tools">Tools <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-g-body" id="rail-grp-tools">
     <!-- Build Cost Calculator (owner 2026-09-28): client-facing estimator,
          standalone page like admin.html. RAIL entry = icon + text, same
          db-link language as every other rail row. -->
-    <a class="db-link" href="calculator.html" title="Build Cost Calculator - estimate quantities, labor and tax before the project starts"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Build Cost Calculator</a>
+    <a class="db-link" href="/calculator" title="Build Cost Calculator - estimate quantities, labor and tax before the project starts"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-calculator"></use></svg> Build Cost Calculator</a>
     </div>
     <button type="button" class="db-g open" data-rail-toggle="rail-grp-customize" aria-expanded="true" aria-controls="rail-grp-customize">Customize <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
     <div class="db-g-body" id="rail-grp-customize">
@@ -528,7 +528,7 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
     <!-- BIG NEW-PROJECT DOOR (owner 2026-09-05): the New Project action moves
          into the hero beside the title, large and visible (was a small pill
          link in the section header row). admin.html remains the create flow. -->
-    <a href="admin.html?new=1" class="db-new-project" title="Create a new project"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
+    <a href="/admin?new=1" class="db-new-project" title="Create a new project"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</a>
     </div>
   </div>
 

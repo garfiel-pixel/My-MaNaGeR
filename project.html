@@ -171,7 +171,7 @@
        .hdr-right keeps STRICTLY utility toggles. Pure markup regroup - no id
        moved, no JS touched, so renderers and the harness contracts hold. -->
   <div class="hdr-left">
-    <a class="hdr-back" href="app.html" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
+    <a class="hdr-back" href="/app" title="Back to projects list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-left"></use></svg> Projects</a>
     <button class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sec-nav"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     <div class="greeting" id="greeting"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> <span id="greeting-text">Welcome</span></div>
     <!-- Wave 2 (owner 2026-11-10): the project's lifecycle status. One value,
@@ -232,7 +232,7 @@
       <!-- OWNER 2026-09-09: sign-in affordance in the backup popover (not
            backed up = the moment to offer the cloud). Sign-in itself lives
            only on the app page; this row navigates there. -->
-      <a class="bk-opt bk-signin" id="bk-signin" href="app.html" hidden title="Signing in unlocks cloud backup for your projects.">
+      <a class="bk-opt bk-signin" id="bk-signin" href="/app" hidden title="Signing in unlocks cloud backup for your projects.">
         <span class="bk-opt-ico"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-user"></use></svg></span>
         <span class="bk-opt-txt"><b>Sign in to back up to the cloud</b><small>Sign in once, then your projects save to the cloud automatically.</small></span>
         <svg class="ico bk-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
@@ -2171,7 +2171,7 @@
     <div class="ctl-panel" data-ctl-panel="privacy">
       <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-bar-chart"></use></svg> Usage statistics</span><label class="tgl"><input type="checkbox" id="consent-stat-tgl" aria-label="Usage statistics: count visits to the public pages" data-action="tglConsentStat"><span class="tsl"></span></label></div>
       <div class="sr-hint">Counts visits to the public pages so we can see which parts get used. Never used for advertising. Your project data stays on this device.</div>
-      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="privacy.html">Open</a></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-file-text"></use></svg> What we store</span><a class="btn btn-n btn-s" href="/privacy">Open</a></div>
     </div>
     <div class="ctl-panel is-hide" data-ctl-panel="export">
       <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Download all my data</span><button class="btn btn-n btn-s" data-action="exportMyData">Download</button></div>
@@ -2230,7 +2230,7 @@
     <div class="ctl-panel is-hide" data-ctl-panel="allow">
       <div class="sr"><span class="sl"><svg class="ico mcp-brand-ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-mpw"></use></svg> This project's MCP access</span><button class="btn btn-n btn-s" data-action="ctlFocus" data-ctl-group="connect" data-ctl-tab="ai">Open settings</button></div>
       <div class="sr-hint">The per-project allow switch and the connection URL live under Connect &amp; Sync ▸ Connect an AI. Account-wide clients and policies live in the Admin panel.</div>
-      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Account-wide MCP</span><a class="btn btn-n btn-s" href="admin.html">Open Admin panel</a></div>
+      <div class="sr"><span class="sl"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Account-wide MCP</span><a class="btn btn-n btn-s" href="/admin">Open Admin panel</a></div>
       <div class="sr-hint">Only a connected client can propose changes; a rejected proposal sends the reason back to the client.</div>
     </div>
 

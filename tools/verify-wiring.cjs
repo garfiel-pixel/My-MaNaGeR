@@ -14,7 +14,11 @@
      3. the delegated families named in the plan (data-cd-*, data-team-*,
         data-bmg, data-rail-toggle, data-consent-*) must each have a handler
         in JS;
-     4. every local href="*.html" in a served page must resolve to a file.
+     4. every local page link in a served page resolves to a page file: the
+     extensionless shape (/about) resolves to about.html, and any remaining
+     *.html link resolves to itself. Internal links were switched to the
+     extensionless shape on 2026-11-24 because the edge 307s every .html URL,
+     which was filling Search Console's "Page with redirect" bucket.
 
    The allowlist is deliberately TIGHT and starts with today's genuine
    dynamic-only actions. Shrink it as each wave lands.
@@ -230,20 +234,45 @@ if (famFails === 0) {
 }
 
 // ---- 4. local links -----------------------------------------------------
+// 2026-11-24: internal links are extensionless (/about, not about.html)
+// because the edge answers every .html URL with a 307 to the extensionless
+// one. That fixed the "Page with redirect" bucket, and it moved the failure
+// mode: a typo now 404s instead of pointing at a missing file. So this gate
+// resolves BOTH shapes against the page files on disk - /about must find
+// about.html, and any surviving .html link must find itself.
 console.log('\n=== 4. local page links resolve ===\n');
 let linkFails = 0;
 let linkCount = 0;
 for (const f of htmlFiles) {
   const src = read(f);
-  const re = /href\s*=\s*"([^"#?]+\.html)(?:[?#][^"]*)?"/g;
+  const re = /href\s*=\s*"([^"#?]+)(?:[?#][^"]*)?"/g;
   let m;
   while ((m = re.exec(src))) {
     const target = m[1];
-    if (/^https?:|^\/\//.test(target)) {
+    if (/^(https?:|\/\/|mailto:|tel:|javascript:)/i.test(target)) {
       continue;
     }
+    // Templated hrefs captured out of inline <script> strings (e.g.
+    // href="${escapeAttr(openHref)}", "${DASHBOARD_URL}") resolve at runtime,
+    // not to a static page file. Worker API routes (/api/auth/...) are served
+    // by the edge, also not static pages. Neither is a broken page link.
+    if (target.indexOf('${') !== -1 || /^\/api(?:\/|$)/.test(target)) {
+      continue;
+    }
+    let rel;
+    if (/\.html$/i.test(target)) {
+      rel = target.replace(/^\//, '');
+    } else if (target === '/') {
+      rel = 'index.html';
+    } else if (/\/$/.test(target)) {
+      rel = target.replace(/^\//, '') + 'index.html';
+    } else if (/\.[a-z0-9]+$/i.test(target)) {
+      // a real asset (css, svg, png, xml, webmanifest) - not a page route
+      continue;
+    } else {
+      rel = target.replace(/^\//, '') + '.html';
+    }
     linkCount++;
-    const rel = target.replace(/^\//, '');
     if (!fs.existsSync(path.join(ROOT, rel))) {
       fail(f + ' links to a missing page: ' + target);
       linkFails++;

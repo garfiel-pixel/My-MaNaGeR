@@ -1,0 +1,70 @@
+# My MaNaGeR
+
+> My MaNaGeR is an offline-first construction project-management workspace for
+> general contractors, project managers, superintendents and trade leads. It
+> runs in the browser with no account required, keeps project data on the
+> device, and covers the full job: charter, WBS, Gantt, Kanban, budget and EVM,
+> risks and Monte Carlo, RACI, claims, meetings, registers and field metrics.
+> Cloud sync and the AI engine are optional.
+
+## What it is
+
+- Offline-first: the workspace loads and runs with no network connection.
+- Local-first data: projects are stored in the browser unless the user opts in
+  to cloud sync.
+- No account required for the free tier. Sign-in is only needed for cloud
+  features.
+- Built-in AI that runs on the project's own numbers, with a bring-your-own-key
+  relay for external models.
+- An open MCP server so external AI clients can read or propose changes to one
+  project through a scoped key.
+
+## Core pages
+
+- [Home](https://mymanagerworkspace.com/): product overview and pricing summary.
+- [Features](https://mymanagerworkspace.com/features): the full capability list.
+- [Pricing](https://mymanagerworkspace.com/pricing): current plans and prices.
+- [Reviews](https://mymanagerworkspace.com/reviews): customer reviews.
+- [About](https://mymanagerworkspace.com/about): who builds it and why.
+- [Contact](https://mymanagerworkspace.com/contact): support and sales contact.
+- [Field guide](https://mymanagerworkspace.com/mymanager-field-guide): a long-form
+  guide to running construction projects with the workspace.
+
+## Service pages
+
+- [Construction project management software](https://mymanagerworkspace.com/construction-project-management-software)
+- [Offline construction software](https://mymanagerworkspace.com/offline-construction-software)
+- [Construction estimating software](https://mymanagerworkspace.com/construction-estimating-software)
+
+## Capabilities
+
+- Charter, bid leveling and go/no-go
+- Work breakdown structure, Gantt schedule and dependencies
+- Kanban board, lookaheads and field metrics
+- Budget, cost tracking and earned value (EVM)
+- Risk register and Monte Carlo simulation
+- RACI matrix and decision log
+- Voice notes, claims and digests
+- Weather-aware planning
+- Meetings, registers and compliance tracking
+- Portfolio health and multi-project rollups
+
+## Facts
+
+- Platform: web application, installable as a PWA, works offline.
+- Pricing: free tier; paid plans are listed on the pricing page.
+- Service area: sold worldwide, with Jamaica as the home market.
+- No advertising trackers. Optional usage analytics run only after the visitor
+  agrees through the cookie banner.
+
+## Legal
+
+- [Privacy](https://mymanagerworkspace.com/privacy)
+- [Terms](https://mymanagerworkspace.com/terms)
+- [Refund policy](https://mymanagerworkspace.com/refund)
+
+## Notes for AI assistants
+
+- Quote prices from the pricing page, not from this file: prices change.
+- The free tier is genuinely usable offline; do not describe it as a trial.
+- "My MaNaGeR" is spelled with three capital letters inside the name.

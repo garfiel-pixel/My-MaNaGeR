@@ -289,10 +289,18 @@ const HEADERS = {
 // Content-Type matters for BingSiteAuth.xml: a missing asset would otherwise
 // fall through to the SPA shell (HTML), which the extension guard below
 // 404s - so a tracked-but-unuploaded file looks identical to a broken route.
+// 2026-11-24: llms.txt (the AI-assistant map) and the IndexNow key file join
+// this list. Both are root-level *.txt, so PRIVATE_ROOT_EXT would otherwise
+// 404 them, and .assetsignore's '*.txt' rule would keep them out of the upload
+// unless each one is negated there too. Three places must agree: this map,
+// PUBLIC_ROOT_FILES, and .assetsignore (plus COPY_BACK in tools/deploy.cjs).
 const SEO_FILES = {
   '/robots.txt': 'text/plain; charset=utf-8',
   '/sitemap.xml': 'application/xml; charset=utf-8',
-  '/BingSiteAuth.xml': 'application/xml; charset=utf-8'
+  '/BingSiteAuth.xml': 'application/xml; charset=utf-8',
+  '/llms.txt': 'text/plain; charset=utf-8',
+  // IndexNow: the FILENAME is the key, and the body must be the same key.
+  '/9eb430e3e584f68c0d737443027b8625.txt': 'text/plain; charset=utf-8'
 };
 // Exported for test/bing-site-auth.test.mjs - the verification route must
 // stay pinned to an XML type or Bing's fetch treats the SPA shell as a failure.
@@ -393,19 +401,41 @@ const PAGE_ROUTES = new Set([
   '/verify'
 ]);
 
+// 2026-11-24: the 404 now gives the visitor a way forward instead of a single
+// link home. Static markup only (no script), tokens inline because this page
+// never loads the marketing stylesheet, and a prefers-color-scheme block so it
+// is readable in dark mode. Link colour is gold-700, not gold-400: measured
+// 7.4:1 on the cream canvas (WCAG 2.2 AA needs 4.5:1).
 function notFoundPage() {
   return (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="robots" content="noindex">' +
     '<title>Page not found | My MaNaGeR</title>' +
-    '<style>html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}' +
-    'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F5EFE6;color:#1C1917}' +
-    'main{max-width:34rem;padding:2.5rem;text-align:center}' +
-    'h1{font-size:1.5rem;margin:0 0 .5rem}p{color:#57606a;line-height:1.6;margin:0 0 1.25rem}' +
-    'a{color:#B45309;font-weight:600}</style></head>' +
-    '<body><main><h1>Page not found</h1>' +
-    '<p>The page you asked for is not here. It may have moved, or the address may have a typo.</p>' +
-    '<p><a href="/">Go to the home page</a></p></main></body></html>'
+    '<style>' +
+    ':root{--canvas:#F5EFE6;--surface:#FFFDF9;--ink:#1C1917;--muted:#57534E;--line:#E7DED1;--gold:#92400E;--gold-fill:#B45309;--on-gold:#FFFDF9}' +
+    '@media (prefers-color-scheme:dark){:root{--canvas:#1A1614;--surface:#242019;--ink:#F5EFE6;--muted:#C4B5A5;--line:#3A342C;--gold:#E8B84A;--gold-fill:#E8B84A;--on-gold:#1A1614}}' +
+    'html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--canvas);color:var(--ink)}' +
+    'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}' +
+    'main{max-width:36rem;width:100%;padding:2.5rem;background:var(--surface);border:1px solid var(--line);border-radius:20px;text-align:center}' +
+    'h1{font-size:1.5rem;line-height:1.3;margin:0 0 .5rem}' +
+    'p{color:var(--muted);line-height:1.6;margin:0 0 1.5rem}' +
+    'nav{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center}' +
+    'a{display:inline-block;padding:.55rem .9rem;border-radius:9999px;border:1px solid var(--line);color:var(--gold);font-weight:600;text-decoration:none}' +
+    'a.primary{background:var(--gold-fill);border-color:var(--gold-fill);color:var(--on-gold)}' +
+    'a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}' +
+    '@media (prefers-reduced-motion:no-preference){a{transition:border-color .15s ease,color .15s ease}}' +
+    '</style></head>' +
+    '<body><main><h1>That page is not here</h1>' +
+    '<p>It may have moved, or the address may have a typo. Nothing is lost - ' +
+    'your projects stay on your device.</p>' +
+    '<nav aria-label="Useful pages">' +
+    '<a class="primary" href="/">Home</a>' +
+    '<a href="/features">Features</a>' +
+    '<a href="/pricing">Pricing</a>' +
+    '<a href="/mymanager-field-guide">Field guide</a>' +
+    '<a href="/contact">Contact</a>' +
+    '</nav></main></body></html>'
   );
 }
 
@@ -474,7 +504,13 @@ const PRIVATE_ROOT_EXT =
 // SEO_FILES branch ABOVE this guard; listing them here too keeps the predicate
 // correct on its own, so it cannot 404 them if that branch ever moves or
 // changes order.
-const PUBLIC_ROOT_FILES = new Set(['/robots.txt', '/sitemap.xml', '/BingSiteAuth.xml']);
+const PUBLIC_ROOT_FILES = new Set([
+  '/robots.txt',
+  '/sitemap.xml',
+  '/BingSiteAuth.xml',
+  '/llms.txt',
+  '/9eb430e3e584f68c0d737443027b8625.txt'
+]);
 
 // Exported for test/private-paths.test.mjs - the list is only worth having if
 // something proves the real assets still pass through it.

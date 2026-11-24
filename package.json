@@ -80,6 +80,7 @@
     "import:mcp": "node tools/import-mcp-changelog.cjs",
     "predeploy": "npm run verify",
     "deploy": "node tools/deploy.cjs",
+    "indexnow": "node tools/indexnow.cjs",
     "deploy:stage": "node tools/deploy.cjs --stage-only",
     "verify:sweep13": "node tools/verify-sweep13.cjs",
     "verify:sw10": "node tools/verify-sw10.cjs",

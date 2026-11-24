@@ -144,7 +144,15 @@ const SKIP_FILE_RE = [
 // worker.js and follows its imports into src/, so those files must stay in the
 // stage for the build to resolve. What keeps them off the public internet is
 // .assetsignore (the upload filter), not this staging list.
-const COPY_BACK = ['package.json', 'wrangler.jsonc', 'robots.txt'];
+const COPY_BACK = [
+  'package.json',
+  'wrangler.jsonc',
+  'robots.txt',
+  // 2026-11-24: same reason as robots.txt - the Worker serves these through
+  // SEO_FILES, and the '*.txt' skip rule above would otherwise stage neither.
+  'llms.txt',
+  '9eb430e3e584f68c0d737443027b8625.txt'
+];
 // Files whose staged bytes must match the working tree before shipping.
 const MUST_MATCH = [
   'index.html',

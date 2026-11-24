@@ -1,44 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- OWNER 2026-11-24: <lastmod> added. Google uses it to decide what to
+       re-crawl; without it every URL competes for crawl budget on equal terms.
+       Keep it honest: change it only when the page's content actually changes,
+       not on every deploy. -->
   <url>
     <loc>https://mymanagerworkspace.com/</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/features</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/about</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/reviews</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/contact</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/mymanager-field-guide</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/privacy</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/terms</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <!-- OWNER 2026-10-09: pricing and refund are public, indexable pages and
        robots.txt already allows them, but they were missing from this sitemap. -->
   <url>
     <loc>https://mymanagerworkspace.com/pricing</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/refund</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/construction-project-management-software</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/offline-construction-software</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://mymanagerworkspace.com/construction-estimating-software</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
 </urlset>

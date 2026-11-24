@@ -284,11 +284,19 @@ const HEADERS = {
   'Cross-Origin-Resource-Policy': 'same-origin'
 };
 
-// SEO-FILES: robots.txt and sitemap.xml live as real files at the repo root.
+// SEO-FILES: robots.txt, sitemap.xml and the Bing Webmaster Tools
+// verification file live as real files at the repo root. The pinned
+// Content-Type matters for BingSiteAuth.xml: a missing asset would otherwise
+// fall through to the SPA shell (HTML), which the extension guard below
+// 404s - so a tracked-but-unuploaded file looks identical to a broken route.
 const SEO_FILES = {
   '/robots.txt': 'text/plain; charset=utf-8',
-  '/sitemap.xml': 'application/xml; charset=utf-8'
+  '/sitemap.xml': 'application/xml; charset=utf-8',
+  '/BingSiteAuth.xml': 'application/xml; charset=utf-8'
 };
+// Exported for test/bing-site-auth.test.mjs - the verification route must
+// stay pinned to an XML type or Bing's fetch treats the SPA shell as a failure.
+export { SEO_FILES };
 
 // WHISPER-CSP: only the vendored whisper runtime gets the relaxed policy.
 const WHISPER_CSP = [
@@ -459,11 +467,11 @@ const PRIVATE_FILES = new Set([
 // pre-asset guard answers them without a request to the asset layer.
 const PRIVATE_ROOT_EXT =
   /\.(md|txt|json|jsonc|ya?ml|lock|cjs|mjs|ts|pdf|sql|env|bak|pem|key|pfx|zip|tar|log)$/i;
-// The two root text files that ARE meant to be public. They are already served
-// by the SEO_FILES branch ABOVE this guard; listing them here too keeps the
-// predicate correct on its own, so it cannot 404 them if that branch ever
-// moves or changes order.
-const PUBLIC_ROOT_FILES = new Set(['/robots.txt', '/sitemap.xml']);
+// The root files that ARE meant to be public. They are already served by the
+// SEO_FILES branch ABOVE this guard; listing them here too keeps the predicate
+// correct on its own, so it cannot 404 them if that branch ever moves or
+// changes order.
+const PUBLIC_ROOT_FILES = new Set(['/robots.txt', '/sitemap.xml', '/BingSiteAuth.xml']);
 
 // Exported for test/private-paths.test.mjs - the list is only worth having if
 // something proves the real assets still pass through it.

@@ -40,7 +40,11 @@ const HTML_FILES = [
   'contact.html',
   'reviews.html',
   'privacy.html',
-  'terms.html'
+  'terms.html',
+  // 2026-11-24: SEO service landing pages carry JSON-LD data blocks.
+  'construction-project-management-software.html',
+  'offline-construction-software.html',
+  'construction-estimating-software.html'
 ];
 
 // The two files that hardcode the hash list (must stay in sync with each

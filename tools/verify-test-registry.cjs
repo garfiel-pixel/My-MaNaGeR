@@ -3,7 +3,7 @@
    ------------------------------------------------------------
    Every QA / verification harness in this repo must be registered in
    docs/CI-TEST-COVERAGE.md, which records WHERE it runs (CI, EXTENDED,
-   TRIAGE, MANUAL) and what it covers.
+   POST-DEPLOY, TRIAGE, MANUAL) and what it covers.
 
    Why this gate exists: qa-full, qa-ai, qa-v11 and qa-p1 sat stale for
    weeks while the CI battery stayed green — they were never wired into
@@ -18,7 +18,10 @@ const fs = require('fs');
 const path = require('path');
 
 const DOC = 'docs/CI-TEST-COVERAGE.md';
-const TOKENS = ['CI', 'EXTENDED', 'TRIAGE', 'MANUAL'];
+// POST-DEPLOY (2026-11-24): a harness that can only run against the live
+// origin AFTER a merge - it needs the deploy, so it never gates a PR. Before
+// this token existed such a harness had to mis-file itself as CI or MANUAL.
+const TOKENS = ['CI', 'EXTENDED', 'POST-DEPLOY', 'TRIAGE', 'MANUAL'];
 
 let failed = 0;
 const fail = m => {

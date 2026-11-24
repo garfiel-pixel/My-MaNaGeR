@@ -158,7 +158,11 @@ const MUST_MATCH = [
   'dist/mmgr.min.css',
   'dist/bundle.js',
   'dist/app-bundle.js',
-  'worker.js'
+  'worker.js',
+  // Bing Webmaster Tools fetches this at the domain root. It was present in
+  // the working tree but never uploaded, so live /BingSiteAuth.xml 404ed -
+  // stage-byte parity makes that class of miss fail the deploy itself.
+  'BingSiteAuth.xml'
 ];
 
 // Two call shapes: run(bin, [args]) spawns directly; run('full command line')

@@ -21,7 +21,13 @@
    Checks
      1. every SEO_FILES route: HTTP 200, the pinned Content-Type, and a body
         identical to the local file (an HTML SPA shell is a failure, not a
-        200 - that is what an un-uploaded file used to look like);
+        200 - that is what an un-uploaded file used to look like). Line
+        endings are normalised to LF first: sitemap.xml and BingSiteAuth.xml
+        are not pinned `eol=lf` in .gitattributes, so a Windows worktree
+        checkouts them CRLF (2046/88 bytes) while the Linux CI checkout sees
+        LF (1985/85). Comparing raw bytes made this gate pass locally and fail
+        in CI on the same commit (2026-11-24). Nothing else is normalised -
+        a content edit, a missing file and a stale deploy still fail;
      2. every SEO_FILES entry has a real file in the checkout, so a route
         added to worker.js without its asset is caught before the deploy;
      3. route hygiene: /manifest.webmanifest 200, /app.html 307 -> /app, and
@@ -52,6 +58,9 @@ const INTERVAL_MS = Number(process.env.MMGR_SEO_INTERVAL_MS) || 15000;
 const UNKNOWN_PATH = '/mmgr-seo-smoke-not-a-route';
 
 const results = [];
+// Byte-for-byte, except CRLF vs LF. utf8 round-trip is lossy for arbitrary
+// bytes, so decode/encode through latin1, which maps 1:1 onto bytes.
+const normalizeEol = buf => Buffer.from(buf.toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
 const check = (name, ok, detail) => results.push({ name, ok: !!ok, detail: detail || '' });
 
 /* ---- expected routes, read from the Worker itself ---------------------
@@ -123,7 +132,7 @@ async function collect() {
     const type = (res.headers.get('content-type') || '').toLowerCase().trim();
     const body = Buffer.from(await res.arrayBuffer());
     const local = fs.readFileSync(localPath);
-    const same = res.status === 200 && body.equals(local);
+    const same = res.status === 200 && normalizeEol(body).equals(normalizeEol(local));
     check(
       route + ' is served',
       same,
@@ -138,7 +147,9 @@ async function collect() {
             '), type "' +
             type +
             '" - ' +
-            hintFor(res.status)
+            (res.status === 200
+              ? 'content differs from the checkout after LF normalisation'
+              : hintFor(res.status))
     );
     if (res.status === 200) {
       check(

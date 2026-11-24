@@ -1,0 +1,38 @@
+name: Post-deploy SEO smoke
+
+# The deploy of `main` is a Cloudflare Workers Build triggered by the same
+# push, so it runs AFTER this workflow starts and can take minutes to land.
+# tools/verify-live-seo.cjs therefore polls the live origin until the SEO
+# files serve bytes identical to this checkout (20 min budget), and only then
+# decides. A red run here means the live origin never matched the merge.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# SEC-01: least-privilege token for the whole workflow.
+permissions:
+  contents: read
+
+# One smoke per commit; a later push supersedes an unfinished wait.
+concurrency:
+  group: post-deploy-seo-smoke
+  cancel-in-progress: true
+
+jobs:
+  live-seo:
+    name: live SEO surfaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No npm install: the harness only uses node builtins + global fetch.
+      - name: "Post-deploy: live SEO files match this commit"
+        run: node tools/verify-live-seo.cjs
+        env:
+          MMGR_SEO_TIMEOUT_MS: "1200000"

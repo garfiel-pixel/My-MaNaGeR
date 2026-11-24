@@ -10,8 +10,11 @@ gate stayed green — they were never wired into CI at all).
 
 Status tokens used below: **CI** (runs on every push), **EXTENDED** (runs in
 `.github/workflows/extended-qa.yml` on a schedule / on demand — green but too slow
-or too niche for the deploy gate), **TRIAGE** (known-drifting, findings listed),
-**MANUAL** (needs live credentials or a human, never automated).
+or too niche for the deploy gate), **POST-DEPLOY** (runs in
+`.github/workflows/post-deploy-smoke.yml` after a push to `main`, against the live
+origin — it needs the deploy itself, so it can never gate a PR), **TRIAGE**
+(known-drifting, findings listed), **MANUAL** (needs live credentials or a human,
+never automated).
 
 ## Jobs inside ci.yml (D-4, five parallel jobs)
 
@@ -312,6 +315,12 @@ headless Chrome against `serve.cjs` on :8765.
 | `qa-glass-visual.cjs` | TRIAGE | depends on the premium canvas existing (4 checks) — the qa-glass host-page fix (app.html instead of seed-test.html) likely unblocks it too; needs its own re-baseline before it can leave TRIAGE. |
 | `qa-oauth.cjs` | TRIAGE | 3 checks assume the old unlock flow; local-first means a locally-owned project unlocks with no modal (`qa-full` 70h/70i define the current contract), and the header sign-in bar moved. |
 | `tools/qa-ai-polish.cjs` | TRIAGE | 2 checks read the clipboard back, which headless Chrome refuses (its own env probe fails first); the app's copy path is sound (`storedMatches`/`capturedExact` true). Make the clipboard arm a SKIP when the env probe fails. |
+
+## POST-DEPLOY — live origin, after a push to `main`
+
+| Harness | Status | Covers |
+|---|---|---|
+| `tools/verify-live-seo.cjs` | POST-DEPLOY | the deployed origin serves this checkout's SEO files (2026-11-24 wave, after `/llms.txt` and the IndexNow key 404ed on a live probe minutes after the merge while the repo was correct — the Workers Build had not landed yet). Polls `https://mymanagerworkspace.com` (arg / `MMGR_LIVE_ORIGIN` overrides, `MMGR_SEO_TIMEOUT_MS` sets the budget: 90s local, 20 min in CI) until every route in `worker.js`'s `SEO_FILES` map answers 200 with its pinned `Content-Type` AND a body byte-identical to the file in the checkout — so a stale deploy, a missing upload and an SPA shell all fail, where a bare 200 would pass. Also fails on an `SEO_FILES` route with no file in the checkout (a guaranteed 404 shipped by code alone), and pins the route hygiene around them: `/manifest.webmanifest` 200 JSON, `/app.html` 307 to `/app`, an unknown path 404. 24 checks. Deriving the route list from `worker.js` means a new SEO file joins the gate automatically; `.assetsignore` and `COPY_BACK` in `tools/deploy.cjs` are the two copies that must agree. Teeth proven 2026-11-24: a one-line edit to `llms.txt` after the deploy turned it red (live 3067 bytes vs checkout 3073, exit 1); reverting it passed 24/24. |
 
 ## MANUAL — never automated
 

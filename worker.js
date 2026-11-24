@@ -657,6 +657,12 @@ export default {
       // did; only the write-back became fire-and-forget.
       bindRequestContext(request, ctx);
       const url = new URL(request.url);
+      // SEO: permanently redirect http to https for the production host so
+      // search engines and browsers converge on the canonical https URL.
+      if (url.protocol === 'http:' && url.hostname === 'mymanagerworkspace.com') {
+        url.protocol = 'https:';
+        return Response.redirect(url.toString(), 301);
+      }
       let normalized = normalizePathname(url.pathname);
 
       // API routes run BEFORE the ASSETS binding. The OAuth discovery

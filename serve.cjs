@@ -306,7 +306,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-+8IFmjtr+CwiDGM/eNnG9uHG1HAHzLuqiZgpqtgzmqc='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
-  "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
+  "'sha256-bBLmD1FrvkOBl+RUkaKpJ3PCaD05i4bSieJF2H0UqwE='",
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='",
   "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='",
   "'sha256-LY0JQdz5654g5F/8MX9rar85L79qpG8PQlbE3Az/y/4='",
@@ -875,6 +875,17 @@ const server = http.createServer((req, res) => {
       res.writeHead(403);
       res.end('forbidden');
       return;
+    }
+    // 2026-11-24: internal links are extensionless (/about) because the edge
+    // 307s a .html URL and Google counted those redirects as unindexable
+    // pages. The Worker resolves the extensionless route; this dev server has
+    // to do the same or every harness that clicks a real link lands on a 404.
+    if (!fs.existsSync(file) && !path.extname(p)) {
+      const asHtml = path.join(ROOT, p + '.html');
+      if (fs.existsSync(asHtml) && fs.statSync(asHtml).isFile()) {
+        p = p + '.html';
+        file = asHtml;
+      }
     }
     if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
       // CSS dev fallback: when dist/*.min.css is requested but doesn't exist

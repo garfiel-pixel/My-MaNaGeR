@@ -2352,7 +2352,11 @@ Date: ____________  Focus: ____________</pre>
   /* ---- scrollspy: highlight active nav link ---- */
   var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
   var sections = navLinks.map(function(a){
-    return document.querySelector(a.getAttribute('href'));
+    // 2026-11-24: nav links include real destinations (/app) as well as
+    // in-page anchors. Only a hash href is a CSS selector - passing an
+    // extensionless URL to querySelector throws and kills the scrollspy.
+    var href = a.getAttribute('href');
+    return href && href.charAt(0) === '#' ? document.querySelector(href) : null;
   }).filter(Boolean);
 
   var spy = new IntersectionObserver(function(entries){

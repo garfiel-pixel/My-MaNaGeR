@@ -118,7 +118,11 @@ for (const href of anchorTargets) {
       href
     );
   } else {
-    check('link ' + href + ' is a real page', fs.existsSync(path.join(ROOT, href)), href);
+    // 2026-11-24: internal links are extensionless (/admin, /calculator).
+    // The edge resolves them to the .html file; do the same here or a valid
+    // link reads as a missing page.
+    const page = href.startsWith('/') && !path.extname(href) ? href.slice(1) + '.html' : href;
+    check('link ' + href + ' is a real page', fs.existsSync(path.join(ROOT, page)), href);
   }
 }
 check('at least 3 sidebar links', anchorTargets.length >= 3);

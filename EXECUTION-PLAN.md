@@ -69,7 +69,7 @@ stylesheet split), and both are now done.
 ### 1.7 - Owner UI audit batch: S1-S7 ALL DONE 2026-10-31
 
 Twelve findings came out of the owner's live walk. The four the first draft of
-this section listed as untouched (`JIC rate book` in `js/calculator-page.js`
+this section listed as untouched (`book rate book` in `js/calculator-page.js`
 and `calculator.html`, `.escrow-badge` pills, `.hdr-back` box chrome, the
 `.card-title > div` gap) were all addressed by S1/S2 - the rate book wording is
 now gated by `verify-ratebook-wording` and the header badges are a dot plus
@@ -127,7 +127,7 @@ bug when it is the pin sync, and call a `saveFloatState()` that does not exist).
 | 3.2 | **F4 D1 backup restore drill** | **PARTIAL (3.2, local)** - the local rehearsal is green; the production restore is owner-gated | `tools/qa-d1-restore-drill.cjs` migrates a throwaway D1, seeds it, exports with `wrangler d1 export`, deletes the D1 storage directory, re-imports the dump and verifies counts + a project row's exact hash + the indexes + no orphaned changelog rows (9/9). `docs/RESTORE-DRILL-2026-11-05.md`: export 1184 ms, import **1354 ms**, dump 19 KB. That is the floor, not the production RTO - the remote path adds the dump download, the network and Time Travel, and needs the owner |
 | 3.3 | **F5 targets + incident log** | **DONE 2026-11-05** (verified 2026-11-08) | `docs/RELIABILITY-TARGETS.md` (SLO table, RTO/RPO, measurement gaps, review policy; cites the F2 load run + local restore drill) and `docs/INCIDENTS.md` (severity ladder, log, detect/contain/communicate/fix/post-mortem process, runbook links). Both complete; no public number published, as required until 3.1 staging + 3.2 production drill land. |
 | 3.4 | **G3 activation/retention/tickets + feedback button** | **Feedback button DONE 2026-11-08; activation/retention/tickets still queued after 2.1** (schema collision) | In-app "Send feedback" row in project Controls -> `contact.html?topic=Feedback` (contact form pre-selects the topic from `?topic=`), reusing the one moderated channel (Turnstile already there), no new endpoint/schema. Commit `9767fb5`. The analytics/tickets half needs the schema slot after 2.1. |
-| 3.5 | **G1 provenance decision, then G4 currency/market copy** | **DONE 2026-11-17** | G1: the book is My MaNaGeR's own first-party data (`RATEBOOK_PROVENANCE.publisher = 'My MaNaGeR'`, status `first-party`), so the JIC/GIC permission question is moot and no other publisher is named. G4: `JMD`/`J$` and `Jamaica` are named on `pricing.html` and `features.html` and in the calculator's rate-book copy. Q11 ("combat purchase" wording) stays open with the owner; no task depends on it. |
+| 3.5 | **G1 provenance decision, then G4 currency/market copy** | **DONE 2026-11-17** | G1: the book is My MaNaGeR's own first-party data (`RATEBOOK_PROVENANCE.publisher = 'My MaNaGeR'`, status `first-party`), so the book/GIC permission question is moot and no other publisher is named. G4: `JMD`/`J$` and `Jamaica` are named on `pricing.html` and `features.html` and in the calculator's rate-book copy. Q11 ("combat purchase" wording) stays open with the owner; no task depends on it. |
 | 3.6 | **G2 pilots** (5-10 contractors) | **Owner**, last | Only after 1.3, 3.2 and the deploy |
 
 ### Wave 5 - owner walkthrough 2026-11-01 (admin panel, project UI, landing)
@@ -695,9 +695,9 @@ allows one origin per provider), F4 one timed D1 restore written up as a
 runbook, F5 targets (99.9 percent on `/api/health`, p95 under 300 ms) and an
 incident log. No marketing number until F2 and F4 exist.
 
-**G (market, owner).** G1 rate-book provenance: permission for the JIC data or
+**G (market, owner).** G1 rate-book provenance: permission for the book data or
 a fully rebranded book from the owner's own site data; `pricing.html` already
-says "My MaNaGeR Rate Book", the calculator is the last place that says "JIC".
+says "My MaNaGeR Rate Book", the calculator is the last place that says "book".
 G2 pilot contractors. G3 activation, week-4 retention, tickets, feedback
 button (queued after C1 so it does not share schema v26). G4 (added by the
 second review pass): the landing and pricing copy never names the currency or

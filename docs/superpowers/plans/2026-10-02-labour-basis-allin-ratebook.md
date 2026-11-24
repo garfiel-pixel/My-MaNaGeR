@@ -1,4 +1,4 @@
-# Plan — All-in (JIC) rate + per-day labour basis
+# Plan — All-in (book) rate + per-day labour basis
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use `executing-plans` to work this
 > plan task by task. Load `no-slacking` + `verification-before-completion` first;
@@ -6,15 +6,15 @@
 > `plain-language-copy` before writing any visible string.
 
 **Goal:** let a tradesman price work the way the trade actually prices it —
-either an **all-in rate** (the JIC combined figure, no faked material/labour
-split) or a **per-day crew rate** they type themselves — while the JIC book
+either an **all-in rate** (the book combined figure, no faked material/labour
+split) or a **per-day crew rate** they type themselves — while the book book
 stays the default and any typed rate wins. Every document (screen, CSV, print,
 quote) shows **one labour total per line**, never a row per person.
 
 **Architecture:** two new optional, per-line pricing inputs on the existing form.
 Both are pure additions to `computeFor` (the single pure engine every surface
 already calls), so screen, CSV, print, quote, comparison table, history recall
-and bill lines all inherit them from one place. The JIC rates stop being
+and bill lines all inherit them from one place. The book rates stop being
 hardcoded per-trade variant numbers and become a real **rate book** through the
 existing import mechanism, so there is one code path for "a source of rates".
 
@@ -37,7 +37,7 @@ These were agreed in conversation. Do not re-litigate; do not invert them.
 | D4 | **Book is the default; typed always wins.** No lock. | Already the engine contract (`matOverridden`/`labOverridden`, gated by `RF1`). Reuse it; add no new switch. |
 | D5 | **Rate fields are always COST; Overhead & margin % always converts cost → price** — one consistent rule, including for book-filled lines. | A published market rate read as a *selling* price would silently double-count margin. Uniform rule under-quotes (recoverable) rather than over-quotes (never learned). |
 | D6 | **Per-day offered per trade**, not globally — rendering/painting stay measurement-only. | A day's output swings with weather/coats/substrate; it is a poor selling rate and a fine costing rate. |
-| D7 | Both notifiers ship: *"not recommended for this work"* and *"verify against JIC"*. | Owner's explicit ask. |
+| D7 | Both notifiers ship: *"not recommended for this work"* and *"verify against book"*. | Owner's explicit ask. |
 | D8 | **Finish-level (economy/standard/premium) does NOT apply to a typed day rate** — it scales material only. | A crew's day rate is a price, not a unit rate. Multiplying it by a finish multiplier would silently inflate it. |
 | D9 | **The per-day opt-out list is the confirmed set only** (rendering, painting, tiling and similar finishes whose daily output swings with weather/coats/substrate). Everything else **offers** per-day. | The owner could not vouch for further trades and chose not to guess. Offering a mode that does not fit is recoverable and is the user's call; wrongly *hiding* a mode they need is not. |
 
@@ -114,7 +114,7 @@ Two additions, both additive and both default-inert:
 
 | File | Change |
 |---|---|
-| `js/calculator-page.js` | All-in + per-day maths in `computeFor`; snapshot fields; new controls; the two notifiers; document rendering; the JIC book object |
+| `js/calculator-page.js` | All-in + per-day maths in `computeFor`; snapshot fields; new controls; the two notifiers; document rendering; the book book object |
 | `calculator.html` | Two new field blocks (all-in rate; days + rate per day) + the mode selector, all `hidden` by default; no new inline script |
 | `css/mmgr.css` | Token-driven styles for the new fields, the *not recommended* note and the *published market rate* note; `[hidden]` guards |
 | `tools/calc-golden-cases.json` | New cases: all-in line, per-day line, material+days, all-in recall round-trip |
@@ -192,7 +192,7 @@ here, since no role list exists).
   `NO_DAY_BASIS`) so it is reviewable in one place and easy to extend later.
 - [ ] Notifier 1 — *"not recommended for this work"* on trades in the opt-out
   list **and** on the margin field when such a trade is priced per-day.
-- [ ] Notifier 2 — *"these rates change — confirm against JIC before you
+- [ ] Notifier 2 — *"these rates change — confirm against book before you
   price"*, shown wherever the book filled a line, with a **"verified on"**
   stamp the user can set (per-line, stored with the estimate).
 - [ ] `css/mmgr.css`: token-driven styles; both notifiers use existing
@@ -201,7 +201,7 @@ here, since no role list exists).
 - [ ] Load `ui-modernization` before this task; check WCAG 2.2 contrast on both
   note styles in light **and** dark.
 
-### Task 5 — The JIC book becomes a real rate book
+### Task 5 — The book book becomes a real rate book
 
 - [ ] **The validator currently HARD-REQUIRES both halves.** In `importBooks`
   (~line 1094) the per-rate guard is
@@ -219,7 +219,7 @@ here, since no role list exists).
 - [ ] Extend the rate-book schema with an optional `allIn` per rate entry
   (`{mat?, lab?, allIn?, unit?}`). Unknown/invalid entries are rejected and
   counted exactly like unknown work keys today.
-- [ ] Build the shipped JIC book from `JIC_RATES` (JMD, effective 2025-2027,
+- [ ] Build the shipped book book from `JIC_RATES` (JMD, effective 2025-2027,
   100 entries). This data is **verified 100/100 against the owner's extract**
   (`JIC_Rate_Book_2025-2027.md`) — do not re-key it by hand; generate it.
 - [ ] **Currency honesty (the easy mistake here).** The book is JMD; the engine
@@ -232,7 +232,7 @@ here, since no role list exists).
 - [ ] Set `bookFilled` when the number came from the book — this drives the
   *published market rate* note (D5/D7). The note is informational; the maths
   stays the uniform cost→price rule.
-- [ ] **Ship-side test that would have caught the silent skip:** import the JIC
+- [ ] **Ship-side test that would have caught the silent skip:** import the book
   book and assert `merged` counts 100 rates with `skipped === 0`. If the
   validator rejects them, this gate fails immediately.
 
@@ -275,7 +275,7 @@ D9).** The remaining points are implementation choices, not open questions:
 2. **All-in beats `piece`/`labourOnly`** when combined, rather than erroring —
    a form should never trap the user in an error state.
 3. **`verifiedOn` stamp** — per line (rides the estimate) rather than global.
-4. **Sequencing** — Task 5 (the JIC book feeding the all-in field) is the
+4. **Sequencing** — Task 5 (the book book feeding the all-in field) is the
    substance the owner most wants; Tasks 1-4 are the all-in and per-day inputs
    that receive it. Task 5 can be pulled forward if the book should land first,
    but it needs the `allIn` field from Task 1 to have somewhere to land, so
@@ -296,7 +296,7 @@ D9).** The remaining points are implementation choices, not open questions:
   (fallback), all-in + piece (all-in wins, reported), invalid all-in (ignored),
   a per-day line on an opted-out trade (note, not a block).
 - **The quietest failure in this wave:** the book validator at `importBooks`
-  (~line 1094) requires both `mat` and `lab`, so an `allIn`-only JIC book imports
+  (~line 1094) requires both `mat` and `lab`, so an `allIn`-only book book imports
   as **empty with no error** — a whole rate book that simply does not arrive.
   Task 5 names the exact guard, the `bookChecksum` dependency, and requires a
   merge-count assertion so it cannot regress silently.

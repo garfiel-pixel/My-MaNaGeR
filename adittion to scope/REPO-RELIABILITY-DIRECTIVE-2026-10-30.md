@@ -25,7 +25,7 @@ Do not re-litigate what section 2 already settles.
 | No backup restore drill | `qa-restore-verify.cjs` and `qa-drive-smoke.cjs` cover local/Drive restore, not a D1 backup restore with a written runbook and a measured time | confirmed gap |
 | No file-size limits in CI | no size gate exists; `verify-doc-size.cjs` caps only `AGENTS.md`, `CLAUDE.md`, `CONTINUATION-DIRECTIVE.md` | confirmed |
 | No type checking | no `tsconfig*.json`, no `checkJs`, no `tsc` in `package.json` | confirmed |
-| Rate book is JIC-derived and sold | `pricing.html` already sells it as the **"My MaNaGeR Rate Book" (811 planning rates)**; but `calculator.html` still labels the picker and popup **"JIC"** and `js/calc-ai.js` names the JIC book in comments and UI strings | **half true, and the half that is true is the risk** |
+| Rate book is book-derived and sold | `pricing.html` already sells it as the **"My MaNaGeR Rate Book" (811 planning rates)**; but `calculator.html` still labels the picker and popup **"book"** and `js/calc-ai.js` names the book book in comments and UI strings | **half true, and the half that is true is the risk** |
 
 ---
 
@@ -44,7 +44,7 @@ Do not re-litigate what section 2 already settles.
 3. **The rate book is already rebranded where it is sold**, not where it is
    used. `pricing.html` says "My MaNaGeR Rate Book". What remains is the
    provenance question the owner already opened
-   (`DIRECTIVE-ASSISTANT-JIC-RATES-ACCESS.md`), plus the visible "JIC" strings
+   (`DIRECTIVE-ASSISTANT-book-RATES-ACCESS.md`), plus the visible "book" strings
    in the calculator. Task G1, and it is an owner decision, not a code task.
 4. **The parked folder is not in `.gitignore` today**, and it must never be
    staged (EXECUTION-PLAN section 0). Task E0 fixes the first half only.
@@ -182,10 +182,10 @@ The agent does not sign customers. These are recorded so they are not lost, and
 the code items they imply are queued where they belong.
 
 **G1. Rate book provenance (owner decision, then code).** Either obtain written
-permission for the JIC data, or replace it with rates built from the owner's own
-site data and rebrand fully. Until permission exists, do not put JIC anywhere a
+permission for the book data, or replace it with rates built from the owner's own
+site data and rebrand fully. Until permission exists, do not put book anywhere a
 customer pays for. Code side when the decision lands: remove the remaining
-"JIC" strings from `calculator.html` (picker label, popup title) and
+"book" strings from `calculator.html` (picker label, popup title) and
 `js/calc-ai.js`, or keep them with the permission recorded in
 `docs/RATEBOOK-PROVENANCE.md`. `pricing.html`'s "My MaNaGeR Rate Book" already
 reads as ours; the calculator is the last place that contradicts it.
@@ -242,7 +242,7 @@ recommendation it makes is already half-shipped in a place it did not look.
 | File-size limits in CI | shipped this session: `tools/verify-sizes.cjs` 9/9, in `npm run verify` and the `static` job | **E5 done** |
 | JSDoc plus `tsc --checkJs` on state, sync, billing first | no `tsconfig`, no `checkJs`, no `typescript` dependency | **E7** |
 | One source of truth; finished plans into `docs/history/` | `CONTINUATION-DIRECTIVE.md` and `AGENTS.md` are the live index; the finished plans are still at the root | **E1, E2** |
-| Rate book: written JIC permission, or own data rebranded; do not charge without it | `pricing.html` sells it as "My MaNaGeR Rate Book"; **7** "JIC" strings remain in `calculator.html` and **5** in `js/calc-ai.js`; no permission record anywhere in the repo | **G1**, and it is an owner decision before it is a code task |
+| Rate book: written book permission, or own data rebranded; do not charge without it | `pricing.html` sells it as "My MaNaGeR Rate Book"; **7** "book" strings remain in `calculator.html` and **5** in `js/calc-ai.js`; no permission record anywhere in the repo | **G1**, and it is an owner decision before it is a code task |
 | Pilots, positioning, activation and support metrics | none recorded | **G2, G3**, plus G4 below |
 
 **Corrections this pass adds.**
@@ -271,6 +271,6 @@ recommendation it makes is already half-shipped in a place it did not look.
 
 **G4 (new, small).** Say where the rates come from and who they are for, in the
 copy that already exists: name the currency and the market on `index.html` and
-`pricing.html`, and let G1 decide whether the wording says "JIC" or the owner's
+`pricing.html`, and let G1 decide whether the wording says "book" or the owner's
 own book. No new page, no new claim, and no number that F2 or F4 has not
 produced. Blocked by G1's decision, because the sentence differs depending on it.

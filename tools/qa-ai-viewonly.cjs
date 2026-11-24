@@ -16,7 +16,7 @@
         your own project to use the AI."
 
    Both notices carry a 44px "Create a project" button that opens the
-   new-project flow (admin.html?new=1). The composer, Send, voice, the
+   new-project flow (/admin?new=1). The composer, Send, voice, the
    tier select, the Presets tab and every preset button are disabled.
    An AI action never produces the generic "View-only mode" toast.
    Editors see no change.
@@ -237,7 +237,7 @@ const READ_PANEL = `(function () {
     check('V2a the demo notice is shown before typing', norm(ask.text) === DEMO_MSG, ask.text);
     check(
       'V2b the Create-a-project link opens the new-project flow',
-      /admin\.html\?new=1/.test(ask.ctaHref),
+      /\/admin\?new=1/.test(ask.ctaHref),
       ask.ctaHref
     );
     check('V2c the Create-a-project button is 44px', ask.ctaH >= 44 || ask.ctaMin === '44px', ask);
@@ -319,7 +319,7 @@ const READ_PANEL = `(function () {
     );
     check(
       'V5c the viewer notice still offers Create a project',
-      /admin\.html\?new=1/.test(vask.ctaHref),
+      /\/admin\?new=1/.test(vask.ctaHref),
       vask.ctaHref
     );
     await viewer.evaluate(() => {

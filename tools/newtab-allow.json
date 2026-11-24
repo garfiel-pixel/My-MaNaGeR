@@ -33,7 +33,7 @@
     },
     {
       "file": "js/mmgr-cloud.js",
-      "contains": "mymanager-field-guide.html#connect-ai",
+      "contains": "/mymanager-field-guide#connect-ai",
       "reason": "A link to the Field Guide - one of the four things the owner's rule allows a new tab for."
     },
     {

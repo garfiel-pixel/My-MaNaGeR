@@ -1116,7 +1116,7 @@
   window.MMGR_SHEET_COUNT = SHEET_COUNT;
 
   var NAV_DD = {
-    'index.html#features': {
+    '/#features': {
       groups: FEATURE_GROUPS.map(function (name) {
         return {
           name: name,
@@ -1132,9 +1132,9 @@
           })
         };
       }),
-      foot: { href: 'features.html', label: 'See every feature in detail' }
+      foot: { href: '/features', label: 'See every feature in detail' }
     },
-    'about.html': {
+    '/about': {
       groups: [
         {
           name: 'About',
@@ -1161,7 +1161,7 @@
         }
       ]
     },
-    'index.html#who': {
+    '/#who': {
       groups: [
         {
           name: 'Who we are',
@@ -1182,7 +1182,7 @@
         }
       ]
     },
-    'contact.html': {
+    '/contact': {
       groups: [
         {
           name: 'Contact',
@@ -1211,7 +1211,7 @@
         }
       ]
     },
-    'reviews.html': {
+    '/reviews': {
       groups: [
         {
           name: 'Reviews',

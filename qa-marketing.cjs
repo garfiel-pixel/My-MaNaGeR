@@ -144,7 +144,7 @@ async function check(name, expr, hint) {
   })()`
   );
   await check(
-    'mkt-03 homepage: 15 feature cards (solid content layer)',
+    'mkt-03 homepage: 16 feature cards (solid content layer)',
     `(function(){
     // The auto-ticking feature bar CLONES the first 5 cards (aria-hidden) for
     // its seamless loop — count only the real (non-clone) cards.
@@ -162,9 +162,9 @@ async function check(name, expr, hint) {
     // Built-In AI, Voice→Notes, Weather-Aware, Offline-First, Health &
     // Portfolio, Meetings & Decisions, Claims & Digests, Registers &
     // Compliance, Bid Leveling & Go/No-Go, Lookahead & Field Metrics). The
-    // old 9-count was the pre-2026-08-17 grid; cards must stay SOLID (the
-    // owner's reduced-glass rule).
-    return {val: cards.length === 15 && !glassOnCards, n: cards.length, glassOnCards: glassOnCards};
+    // old 9-count was the pre-2026-08-17 grid; the MCP card (f-mcp) brings
+    // it to sixteen. Cards must stay SOLID (the owner's reduced-glass rule).
+    return {val: cards.length === 16 && !glassOnCards, n: cards.length, glassOnCards: glassOnCards};
   })()`
   );
   await check(
@@ -177,19 +177,24 @@ async function check(name, expr, hint) {
     return {val: !!document.querySelector('.guide-band') && document.querySelectorAll('.faq details').length >= 3 && !!document.querySelector('.site-footer')};
   })()`
   );
+  // OWNER 2026-10-30: the header is SOLID at rest and frosts only once
+  // content is beneath it (data-scrolled), so scroll before reading the blur.
+  await ev(`window.scrollTo(0, 600)`);
+  await delay(500);
   await check(
-    'mkt-06 homepage: header uses real glass (blur applied)',
+    'mkt-06 homepage: header uses real glass once scrolled (blur applied)',
     `(function(){
     var h = document.querySelector('.site-header');
     var cs = getComputedStyle(h);
-    return {val: cs.backdropFilter.indexOf('blur') > -1 || cs.webkitBackdropFilter.indexOf('blur') > -1};
+    var bf = cs.backdropFilter || cs.webkitBackdropFilter || '';
+    return {val: h.getAttribute('data-scrolled') === 'true' && bf.indexOf('blur') > -1};
   })()`
   );
   await check(
-    'mkt-07 homepage: Open App links point at app.html',
+    'mkt-07 homepage: Open App links point at the app route',
     `(function(){
     var hrefs = Array.prototype.slice.call(document.querySelectorAll('a[href]')).map(a => a.getAttribute('href'));
-    return {val: hrefs.some(h => h === 'app.html')};
+    return {val: hrefs.some(h => h === '/app' || h === 'app.html' || h === 'app')};
   })()`
   );
 
@@ -197,9 +202,11 @@ async function check(name, expr, hint) {
   await ev(`document.querySelector('.header-cta-desktop a.btn').click()`);
   await delay(2200);
   await check(
-    'mkt-08 open-app: header CTA navigates to app.html (project list)',
+    'mkt-08 open-app: header CTA navigates to the app route (project list)',
     `(function(){
-    return {val: location.pathname.indexOf('app.html') > -1 && document.querySelectorAll('.pcard').length > 0, path: location.pathname, cards: document.querySelectorAll('.pcard').length};
+    var p = location.pathname;
+    var onApp = p.indexOf('app.html') > -1 || /\\/app\\/?$/.test(p);
+    return {val: onApp && document.querySelectorAll('.pcard').length > 0, path: p, cards: document.querySelectorAll('.pcard').length};
   })()`
   );
 
@@ -264,7 +271,9 @@ async function check(name, expr, hint) {
     `(function(){
     var exit = document.querySelector('.site-exit');
     var cols = Array.prototype.slice.call(document.querySelectorAll('.footer-col b')).map(b => b.textContent);
-    return {val: !!exit && exit.getAttribute('href') === 'index.html' && cols.indexOf('Site') > -1};
+    var href = exit ? exit.getAttribute('href') : '';
+    var home = href === 'index.html' || href === '/' || href === '';
+    return {val: !!exit && home && cols.indexOf('Site') > -1};
   })()`
   );
   await ev(
@@ -337,9 +346,9 @@ async function check(name, expr, hint) {
   await send('Page.navigate', { url: BASE + '/project.html?id=locked-mkt' });
   await delay(2600);
   await check(
-    'mkt-14 gate: locked project redirects to app.html?locked=',
+    'mkt-14 gate: locked project redirects to the app route with locked=',
     `(function(){
-    return {val: location.href.indexOf('app.html?locked=') > -1, href: location.href};
+    return {val: /\\/app(\\.html)?\\?locked=/.test(location.href), href: location.href};
   })()`
   );
 

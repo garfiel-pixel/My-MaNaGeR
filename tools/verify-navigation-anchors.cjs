@@ -104,10 +104,23 @@ try {
   process.exit(1);
 }
 
+// NAV_DD keys are extensionless routes ('/about', '/#features') since the
+// 2026-11-24 SEO wave; map them back to the served file they land on.
+function pageFile(route) {
+  if (!route) {
+    return 'index.html';
+  }
+  if (/\.html$/.test(route)) {
+    return route;
+  }
+  const bare = route.charAt(0) === '/' ? route.slice(1) : route;
+  return (bare || 'index') + '.html';
+}
+
 const navBroken = [];
 for (const key of Object.keys(NAV_DD)) {
   const hashAt = key.indexOf('#');
-  const page = hashAt > -1 ? key.slice(0, hashAt) : key;
+  const page = pageFile(hashAt > -1 ? key.slice(0, hashAt) : key);
   const section = hashAt > -1 ? key.slice(hashAt + 1) : '';
   const ids = pageIds[page] || new Set();
   if (section && !ids.has(section)) {

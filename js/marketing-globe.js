@@ -68,7 +68,7 @@
       id: 'schedule',
       title: 'Schedule and Gantt',
       blurb: 'Plan the work in a WBS, then watch it as a Gantt with float and critical chains.',
-      href: 'features.html#f-wbs',
+      href: '/features#f-wbs',
       tier: 'free',
       lat: 40.71,
       lon: -74.01,
@@ -78,7 +78,7 @@
       id: 'budget',
       title: 'Budget and EVM',
       blurb: 'Planned against earned, cost index and forecast, all fed by the same numbers.',
-      href: 'features.html#f-budget',
+      href: '/features#f-budget',
       tier: 'free',
       lat: 51.51,
       lon: -0.13,
@@ -89,7 +89,7 @@
       title: 'My MaNaGeR AI',
       blurb:
         'Ask about your live project in plain words and get an answer read from your own data.',
-      href: 'features.html#f-ai',
+      href: '/features#f-ai',
       tier: 'free',
       lat: 37.39,
       lon: -122.08,
@@ -99,7 +99,7 @@
       id: 'calculator',
       title: 'Cost calculator with published rates',
       blurb: 'Price a build in minutes with the My MaNaGeR Rate Book built in.',
-      href: 'calculator.html',
+      href: '/calculator',
       tier: 'free',
       lat: 17.97,
       lon: -76.79
@@ -108,7 +108,7 @@
       id: 'montecarlo',
       title: 'Monte Carlo schedule risk',
       blurb: 'Run the schedule thousands of times and see the dates you can actually promise.',
-      href: 'features.html#f-risk',
+      href: '/features#f-risk',
       tier: 'free',
       lat: 46.82,
       lon: 8.23
@@ -122,7 +122,7 @@
       // The features page IS the panels tour; it carries no #features
       // anchor (that id only exists on index.html), so the card links to the
       // page itself rather than to an anchor that would not scroll.
-      href: 'features.html',
+      href: '/features',
       tier: 'free',
       lat: 35.69,
       lon: 139.69
@@ -131,7 +131,7 @@
       id: 'risks',
       title: 'Risks and issues',
       blurb: 'Log what could go wrong, score it, and keep the register where the work is.',
-      href: 'mymanager-field-guide.html#risk',
+      href: '/mymanager-field-guide#risk',
       tier: 'free',
       lat: -33.92,
       lon: 18.42
@@ -140,7 +140,7 @@
       id: 'offline',
       title: 'Offline and voice',
       blurb: 'Keep working with no signal, and capture site notes by voice as you walk.',
-      href: 'features.html#f-offline',
+      href: '/features#f-offline',
       tier: 'free',
       lat: 64.14,
       lon: -21.93
@@ -150,7 +150,7 @@
       title: 'MCP server',
       blurb:
         'Point an AI tool at a project over MCP. Optional - the app works the same without it.',
-      href: 'mymanager-field-guide.html#connect-ai',
+      href: '/mymanager-field-guide#connect-ai',
       tier: 'premium',
       lat: 47.61,
       lon: -122.33

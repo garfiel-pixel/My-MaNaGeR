@@ -43,13 +43,18 @@ if (!shellMatch) {
   console.error('[verify-sw-cache] FAIL: no SHELL array found in sw.js.');
   process.exit(1);
 }
+// Strip line comments BEFORE extracting quoted assets. The SHELL array is
+// heavily commented, and an apostrophe in a comment (e.g. "the tag's stub")
+// paired with the next quote made /'...'/ produce a phantom asset that does
+// not exist on disk, failing this gate for a reason unrelated to the shell.
+// The (?<!:) guard keeps a URL's "://" intact in case a same-origin asset is
+// ever written with an explicit scheme.
 const shellAssets = [];
-const strRe = /'([^']+)'/g;
-let m;
-while ((m = strRe.exec(shellMatch[1])) !== null) {
-  const asset = m[1];
-  if (asset !== './') {
-    shellAssets.push(asset);
+for (const line of shellMatch[1].split('\n')) {
+  const code = line.replace(/(?<!:)\/\/.*$/, '');
+  const sm = code.match(/'([^']+)'/);
+  if (sm && sm[1] !== './') {
+    shellAssets.push(sm[1]);
   }
 }
 

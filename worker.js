@@ -38,10 +38,10 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-hkXebphLbybaZt8yNpjkxPc3WjJNQDh0zB2AxsplVEg='",
-  "'sha256-Aq+8yLJoJxV9idFD/gxx4YiAcB2XRjD1tbkzQmeOnJo='",
+  "'sha256-+8IFmjtr+CwiDGM/eNnG9uHG1HAHzLuqiZgpqtgzmqc='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
-  "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
+  "'sha256-bBLmD1FrvkOBl+RUkaKpJ3PCaD05i4bSieJF2H0UqwE='",
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='",
   "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='",
   "'sha256-LY0JQdz5654g5F/8MX9rar85L79qpG8PQlbE3Az/y/4='",
@@ -77,7 +77,11 @@ const CONSENT_ANALYTICS_HOST = ' https://static.cloudflareinsights.com';
 // MUST match INVENTORY_VERSION in js/consent.js and
 // CONSENT_INVENTORY_VERSION in serve.cjs - tools/qa-consent.cjs phase S
 // fails the build if the three drift.
-const CONSENT_INVENTORY_VERSION = 3;
+//
+// v4 (2026-11-24): Microsoft Clarity joins the optional "Usage statistics"
+// category, so every existing choice is re-asked once. Adding a processor
+// without re-asking would apply an old yes to a new vendor.
+const CONSENT_INVENTORY_VERSION = 4;
 // A choice is re-asked every 12 months (js/consent.js MAX_AGE_MS).
 const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 // Tolerate a device clock a little ahead of this server's.
@@ -253,10 +257,10 @@ export function cspPoliciesForTooling(request, env) {
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com https://www.clarity.ms https://scripts.clarity.ms " +
     INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://c.clarity.ms",
   "media-src 'self' data: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
@@ -289,10 +293,18 @@ const HEADERS = {
 // Content-Type matters for BingSiteAuth.xml: a missing asset would otherwise
 // fall through to the SPA shell (HTML), which the extension guard below
 // 404s - so a tracked-but-unuploaded file looks identical to a broken route.
+// 2026-11-24: llms.txt (the AI-assistant map) and the IndexNow key file join
+// this list. Both are root-level *.txt, so PRIVATE_ROOT_EXT would otherwise
+// 404 them, and .assetsignore's '*.txt' rule would keep them out of the upload
+// unless each one is negated there too. Three places must agree: this map,
+// PUBLIC_ROOT_FILES, and .assetsignore (plus COPY_BACK in tools/deploy.cjs).
 const SEO_FILES = {
   '/robots.txt': 'text/plain; charset=utf-8',
   '/sitemap.xml': 'application/xml; charset=utf-8',
-  '/BingSiteAuth.xml': 'application/xml; charset=utf-8'
+  '/BingSiteAuth.xml': 'application/xml; charset=utf-8',
+  '/llms.txt': 'text/plain; charset=utf-8',
+  // IndexNow: the FILENAME is the key, and the body must be the same key.
+  '/9eb430e3e584f68c0d737443027b8625.txt': 'text/plain; charset=utf-8'
 };
 // Exported for test/bing-site-auth.test.mjs - the verification route must
 // stay pinned to an XML type or Bing's fetch treats the SPA shell as a failure.
@@ -342,10 +354,10 @@ const WHISPER_CSP = [
 // together with its script-src entry - never one without the other.
 const PADDLE_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com https://www.clarity.ms https://scripts.clarity.ms " +
     INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdn.paddle.com",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://c.clarity.ms",
   "media-src 'self' data: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
@@ -393,19 +405,41 @@ const PAGE_ROUTES = new Set([
   '/verify'
 ]);
 
+// 2026-11-24: the 404 now gives the visitor a way forward instead of a single
+// link home. Static markup only (no script), tokens inline because this page
+// never loads the marketing stylesheet, and a prefers-color-scheme block so it
+// is readable in dark mode. Link colour is gold-700, not gold-400: measured
+// 7.4:1 on the cream canvas (WCAG 2.2 AA needs 4.5:1).
 function notFoundPage() {
   return (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="robots" content="noindex">' +
     '<title>Page not found | My MaNaGeR</title>' +
-    '<style>html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}' +
-    'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F5EFE6;color:#1C1917}' +
-    'main{max-width:34rem;padding:2.5rem;text-align:center}' +
-    'h1{font-size:1.5rem;margin:0 0 .5rem}p{color:#57606a;line-height:1.6;margin:0 0 1.25rem}' +
-    'a{color:#B45309;font-weight:600}</style></head>' +
-    '<body><main><h1>Page not found</h1>' +
-    '<p>The page you asked for is not here. It may have moved, or the address may have a typo.</p>' +
-    '<p><a href="/">Go to the home page</a></p></main></body></html>'
+    '<style>' +
+    ':root{--canvas:#F5EFE6;--surface:#FFFDF9;--ink:#1C1917;--muted:#57534E;--line:#E7DED1;--gold:#92400E;--gold-fill:#B45309;--on-gold:#FFFDF9}' +
+    '@media (prefers-color-scheme:dark){:root{--canvas:#1A1614;--surface:#242019;--ink:#F5EFE6;--muted:#C4B5A5;--line:#3A342C;--gold:#E8B84A;--gold-fill:#E8B84A;--on-gold:#1A1614}}' +
+    'html{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--canvas);color:var(--ink)}' +
+    'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}' +
+    'main{max-width:36rem;width:100%;padding:2.5rem;background:var(--surface);border:1px solid var(--line);border-radius:20px;text-align:center}' +
+    'h1{font-size:1.5rem;line-height:1.3;margin:0 0 .5rem}' +
+    'p{color:var(--muted);line-height:1.6;margin:0 0 1.5rem}' +
+    'nav{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center}' +
+    'a{display:inline-block;padding:.55rem .9rem;border-radius:9999px;border:1px solid var(--line);color:var(--gold);font-weight:600;text-decoration:none}' +
+    'a.primary{background:var(--gold-fill);border-color:var(--gold-fill);color:var(--on-gold)}' +
+    'a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}' +
+    '@media (prefers-reduced-motion:no-preference){a{transition:border-color .15s ease,color .15s ease}}' +
+    '</style></head>' +
+    '<body><main><h1>That page is not here</h1>' +
+    '<p>It may have moved, or the address may have a typo. Nothing is lost - ' +
+    'your projects stay on your device.</p>' +
+    '<nav aria-label="Useful pages">' +
+    '<a class="primary" href="/">Home</a>' +
+    '<a href="/features">Features</a>' +
+    '<a href="/pricing">Pricing</a>' +
+    '<a href="/mymanager-field-guide">Field guide</a>' +
+    '<a href="/contact">Contact</a>' +
+    '</nav></main></body></html>'
   );
 }
 
@@ -474,7 +508,13 @@ const PRIVATE_ROOT_EXT =
 // SEO_FILES branch ABOVE this guard; listing them here too keeps the predicate
 // correct on its own, so it cannot 404 them if that branch ever moves or
 // changes order.
-const PUBLIC_ROOT_FILES = new Set(['/robots.txt', '/sitemap.xml', '/BingSiteAuth.xml']);
+const PUBLIC_ROOT_FILES = new Set([
+  '/robots.txt',
+  '/sitemap.xml',
+  '/BingSiteAuth.xml',
+  '/llms.txt',
+  '/9eb430e3e584f68c0d737443027b8625.txt'
+]);
 
 // Exported for test/private-paths.test.mjs - the list is only worth having if
 // something proves the real assets still pass through it.

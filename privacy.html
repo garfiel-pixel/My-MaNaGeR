@@ -28,22 +28,22 @@
 
 <header class="site-header">
   <div class="container header-inner">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <span class="brand-mark" aria-hidden="true">
         <svg class="ico" aria-hidden="true" style="width:21px;height:21px;"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
       </span>
       <span><b>My <span>MaNaGeR</span></b><small>Project Workspace</small></span>
     </a>
     <nav class="site-nav" aria-label="Primary">
-      <a class="nav-link" href="index.html" data-back title="Back to the previous page">Back</a>
-      <a class="nav-link" href="index.html#features">Features</a>
-      <a class="nav-link" href="mymanager-field-guide.html">Guide</a>
-      <a class="nav-link" href="about.html">About</a>
-      <a class="nav-link" href="contact.html">Contact</a>
-      <a class="nav-link" href="reviews.html">Reviews</a>
+      <a class="nav-link" href="/" data-back title="Back to the previous page">Back</a>
+      <a class="nav-link" href="/#features">Features</a>
+      <a class="nav-link" href="/mymanager-field-guide">Guide</a>
+      <a class="nav-link" href="/about">About</a>
+      <a class="nav-link" href="/contact">Contact</a>
+      <a class="nav-link" href="/reviews">Reviews</a>
     </nav>
     <div class="header-cta-desktop">
-      <a class="btn btn-gold btn-sm" href="app.html">
+      <a class="btn btn-gold btn-sm" href="/app">
         Get Started
         <svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg>
       </a>
@@ -69,13 +69,13 @@
 </div>
 
 <nav class="mobile-menu" id="mobile-menu" aria-label="Mobile">
-  <a href="index.html" data-back>Back</a>
-  <a href="index.html#features">Features</a>
-  <a href="mymanager-field-guide.html">Field Guide</a>
-  <a href="about.html">About</a>
-  <a href="contact.html">Contact</a>
-  <a href="reviews.html">Reviews</a>
-  <a class="btn btn-gold" href="app.html">Get Started</a>
+  <a href="/" data-back>Back</a>
+  <a href="/#features">Features</a>
+  <a href="/mymanager-field-guide">Field Guide</a>
+  <a href="/about">About</a>
+  <a href="/contact">Contact</a>
+  <a href="/reviews">Reviews</a>
+  <a class="btn btn-gold" href="/app">Get Started</a>
   <span class="pal-switch mobile-pal" role="group" aria-label="Theme mode">
 
   </span>
@@ -84,14 +84,14 @@
 <main id="main">
   <section class="page-hero">
     <div class="container">
-      <span class="crumbs"><a href="index.html">Home</a> &middot; Privacy Policy</span>
+      <span class="crumbs"><a href="/">Home</a> &middot; Privacy Policy</span>
       <h1>Privacy Policy</h1>
       <p>Global data privacy policy for My MaNaGeR.</p>
       <p class="privacy-updated">Effective Date: August 30, 2026 · Last Revised: October 20, 2026</p>
       <p class="privacy-toc">
-        <a href="terms.html">Terms of Service</a> &middot;
-        <a href="pricing.html">Pricing</a> &middot;
-        <a href="refund.html">Refund Policy</a> &middot;
+        <a href="/terms">Terms of Service</a> &middot;
+        <a href="/pricing">Pricing</a> &middot;
+        <a href="/refund">Refund Policy</a> &middot;
         <a href="#storage">Storage</a> &middot;
         <a href="#contact-legal">Contact</a>
       </p>
@@ -105,11 +105,11 @@
       <p>This Privacy Policy governs the use of My MaNaGeR ("the Application"), an offline-first, local-browser construction project management workspace deployed as static web assets via Cloudflare Workers. This document establishes how the Application natively honors global data sovereignty laws, including but not limited to the EU General Data Protection Regulation (GDPR), the California Consumer Privacy Act (CCPA/CPRA), Canada's PIPEDA, Brazil's LGPD, India's DPDP Act, South Africa's POPIA, and Australian Privacy Principles across all continents and jurisdictions.</p>
 
       <h3>1. Core Principle: Local-First Privacy (Data Minimization)</h3>
-      <p>The Application is architected as a local-first utility. We do not operate remote application databases for user project data, server-side data collection mechanisms, user tracking endpoints, or analytical profiling systems.</p>
+      <p>The Application is architected as a local-first utility. We do not operate remote application databases for user project data, user tracking endpoints, or analytical profiling systems. The one exception is optional, consent-gated visit statistics, described in section 3.1; those never receive project content and are switched off until you allow them.</p>
       <ul>
         <li><strong>Absolute User Control:</strong> Every piece of information input into the platform, including work breakdown structures (WBS), schedules, budgets, risk matrix evaluations, field voice notes, meeting minutes, procurement sheets, claims packages, and all other project data, is stored exclusively in your local web browser sandbox (localStorage, IndexedDB). No project data leaves your device during standard operation.</li>
         <li><strong>Zero Server Transmission of Project Data:</strong> Your project data is never uploaded, transferred, shared, or sold to us or any remote third-party server during standard operation. Closing your browser tab preserves your information natively on your local device. The Application functions fully offline with zero network dependency.</li>
-        <li><strong>No Behavioral Profiling:</strong> The Application contains zero advertising SDKs, zero tracking pixels, zero third-party analytics beacons, and zero monetization hooks that observe, profile, or monetize your usage patterns, workflows, or project content.</li>
+        <li><strong>No Advertising or Profiling:</strong> The Application contains zero advertising SDKs, zero tracking pixels, and zero monetization hooks that observe, profile, or monetize your usage patterns, workflows, or project content. Optional usage statistics (Cloudflare Web Analytics and Microsoft Clarity) run only after you choose Accept all, never receive project content, and are never sold or used for advertising.</li>
       </ul>
 
       <h3>2. Statutory Data Subject Rights (Global Compliance)</h3>
@@ -137,12 +137,12 @@
         <li><strong>Local data is not encrypted:</strong> Project data stored on your device (in localStorage/IndexedDB) is stored in plaintext by the browser. If you share a device or are concerned about local access, use your operating system's or browser's own encryption and lock features. This is an architectural trade-off of the offline-first design.</li>
       </ul>
       <h3>3.1 Cookies &amp; Local Storage</h3>
-      <p>The Application places no advertising, marketing, or third-party tracking cookies. The only cookies and browser storage used are:</p>
+      <p>The Application places no advertising or marketing cookies. The only optional third-party cookies are Microsoft Clarity's, and they are set only after you accept Usage statistics (section 3.1). The other cookies and browser storage used are:</p>
       <ul>
         <li><strong>Session cookie (mmgr_session):</strong> A single HttpOnly, Secure, SameSite=Lax cookie issued when you sign in, used for authentication on cloud features. Expires after 7 days. Contains no project data.</li>
         <li><strong>Email-based account recovery:</strong> If you sign in with an email account and forget your password, the Application can send a one-time recovery link to the email address on your account so you can set a new password. These recovery emails are sent through the Resend transactional email service. The recovery link expires after 15 minutes and can be used only once. Google-signed-in accounts do not have a password and do not use this flow; use your Google account to sign in instead.</li>
         <li><strong>Local site storage (localStorage/IndexedDB):</strong> Stores your project data and preferences (theme, palette, view mode, dock settings, project files). This data never leaves your device except through features you explicitly enable (cloud sync, export, sharing codes). You can clear it at any time through your browser's site-data controls.</li>
-        <li><strong>No fingerprinting or cross-site identifiers:</strong> No device fingerprinting, tracking pixels, or identifiers shared across sites.</li>
+        <li><strong>Optional usage statistics (Microsoft Clarity):</strong> Only after you accept Usage statistics, the site loads Microsoft Clarity to see how pages are used: clicks, scrolling, and anonymised session replays. Input fields, numbers and email addresses are masked before anything is sent, and no project data can be recorded because the workspace runs on your device. Clarity sets its own cookies and keeps them for up to a year. Choosing Necessary only, or using "Change your choice", stops it and deletes its cookies.</li>
       </ul>
       <p>You may delete your account and all associated server-side data at any time via the Application's account settings. Account deletion is permanent and irreversible.</p>
 
@@ -188,7 +188,7 @@
       <h3>10. Contact &amp; Data Protection Officer</h3>
       <p id="contact-legal">For questions about this privacy policy, your data, or to exercise any data-subject right, contact us at <a href="mailto:admin@mymanagerworkspace.com">admin@mymanagerworkspace.com</a>. For GDPR-related inquiries, you may also contact the relevant supervisory authority in your EU member state.</p>
 
-      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on October 20, 2026. Use of My MaNaGeR is also governed by the <a href="terms.html">Terms of Service</a>.</p>
+      <p style="text-align:center;font-size:.82rem;color:var(--text-secondary);">This document was last revised on October 20, 2026. Use of My MaNaGeR is also governed by the <a href="/terms">Terms of Service</a>.</p>
 
     </div>
   </section>
@@ -204,6 +204,7 @@
         <tbody>
           <tr><td><code>mmgr_session</code></td><td>Keeps you signed in. The site's own scripts cannot read it.</td><td>Necessary</td></tr>
           <tr><td><code>mmgr_consent_a</code></td><td>Carries your cookie choice to the server, so the site can allow or block the visit-counting script.</td><td>Necessary</td></tr>
+          <tr><td><code>_clck</code>, <code>_clsk</code> (Microsoft Clarity)</td><td>Usage statistics: which pages are used and how. Set only after you accept Usage statistics.</td><td>Optional</td></tr>
           <tr><td>Cloudflare challenge cookies</td><td>Bot and attack protection, set by the network that hosts the site.</td><td>Necessary</td></tr>
         </tbody>
       </table>
@@ -224,8 +225,10 @@
         </tbody>
       </table>
 
-      <h3>Optional: visit counts</h3>
-      <p>With your permission, the site counts visits and page views through Cloudflare Web Analytics, so we know which pages get used. It does not build a profile of you and is not used for advertising. It stays blocked until you choose Accept all, and you can change your mind at any time with the button below.</p>
+      <h3>Optional: visit counts and usage statistics</h3>
+      <p>With your permission, the site counts visits and page views through Cloudflare Web Analytics, so we know which pages get used. It does not build a profile of you and is not used for advertising.</p>
+      <p>Also with your permission, the site loads Microsoft Clarity to see how pages are used: clicks, scrolling, and anonymised session replays. Form fields, numbers and email addresses are masked, and no project data is recorded because the workspace runs on your device. Neither service is used for advertising and neither is sold.</p>
+      <p>Both stay blocked until you choose Accept all. You can change your mind at any time with the button below, and choosing Necessary only deletes Clarity's cookies.</p>
       <p><button type="button" class="consent-btn" data-consent-open>Change your choice</button></p>
     </div>
   </section>
@@ -240,14 +243,14 @@
       <span>My MaNaGeR</span>
     </div>
     <div class="footer-links">
-      <a href="index.html">Home</a>
-      <a href="features.html">Features</a>
-      <a href="about.html">About</a>
-      <a href="contact.html">Contact</a>
-      <a href="privacy.html" aria-current="page">Privacy Policy</a>
-      <a href="terms.html">Terms of Service</a>
-      <a href="pricing.html">Pricing</a>
-      <a href="refund.html">Refund Policy</a>
+      <a href="/">Home</a>
+      <a href="/features">Features</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+      <a href="/privacy" aria-current="page">Privacy Policy</a>
+      <a href="/terms">Terms of Service</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/refund">Refund Policy</a>
       <button type="button" class="consent-link" data-consent-open>Cookie settings</button>
     </div>
     <p class="footer-copy">&copy; 2026 My MaNaGeR. All rights reserved.</p>
@@ -256,6 +259,7 @@
 
 <script src="js/mmgr-google-auth.js"></script>
 <script src="js/consent.js" defer></script>
+<script src="js/mmgr-clarity.js" defer></script>
 <script defer src="dist/marketing-bundle.js"></script>
 <script>
 /* CSP (2026-10-27): an inline onerror ATTRIBUTE is blocked by our

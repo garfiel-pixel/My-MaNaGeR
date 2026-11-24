@@ -268,7 +268,7 @@ const MCP_AUTH_REFUSAL =
 // one older than twelve months, is refused here - the server judges the
 // cookie on its own, before any script runs. Keep this in lockstep with
 // worker.js: CONSENT_INVENTORY_VERSION and the parser below.
-const CONSENT_INVENTORY_VERSION = 3;
+const CONSENT_INVENTORY_VERSION = 4;
 const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 const CONSENT_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
 
@@ -303,10 +303,10 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-hkXebphLbybaZt8yNpjkxPc3WjJNQDh0zB2AxsplVEg='",
-  "'sha256-Aq+8yLJoJxV9idFD/gxx4YiAcB2XRjD1tbkzQmeOnJo='",
+  "'sha256-+8IFmjtr+CwiDGM/eNnG9uHG1HAHzLuqiZgpqtgzmqc='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
-  "'sha256-7cQZf8bzyvMY1EwebBo5YuL3PZ9T/X5CTWFRXO3Aq5E='",
+  "'sha256-bBLmD1FrvkOBl+RUkaKpJ3PCaD05i4bSieJF2H0UqwE='",
   "'sha256-c2U+m5SzyupzeOrPEiOjlnaSgS1KdAxZTFnYA5dW/Rk='",
   "'sha256-Is0jD76ptemzKTfgnVGlSCSEHBJeveC1gRTl/Wv4JBw='",
   "'sha256-LY0JQdz5654g5F/8MX9rar85L79qpG8PQlbE3Az/y/4='",
@@ -325,10 +325,10 @@ const SECURITY_HEADERS = {
   // %%ANALYTICS%% placeholder before the response is written.
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
+    "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com https://www.clarity.ms https://scripts.clarity.ms " +
       INLINE_SCRIPT_HASHES,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
-    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://c.clarity.ms",
     "media-src 'self' data: blob:",
     "font-src 'self' data: https://fonts.gstatic.com",
     "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
@@ -390,10 +390,10 @@ const WHISPER_CSP = [
 // not required for checkout.
 const PADDLE_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com " +
+  "script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com%%ANALYTICS%% https://challenges.cloudflare.com https://cdn.paddle.com https://www.clarity.ms https://scripts.clarity.ms " +
     INLINE_SCRIPT_HASHES,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://cdn.paddle.com",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://c.clarity.ms",
   "media-src 'self' data: blob:",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: https://accounts.google.com https://oauth2.googleapis.com blob:",
@@ -875,6 +875,17 @@ const server = http.createServer((req, res) => {
       res.writeHead(403);
       res.end('forbidden');
       return;
+    }
+    // 2026-11-24: internal links are extensionless (/about) because the edge
+    // 307s a .html URL and Google counted those redirects as unindexable
+    // pages. The Worker resolves the extensionless route; this dev server has
+    // to do the same or every harness that clicks a real link lands on a 404.
+    if (!fs.existsSync(file) && !path.extname(p)) {
+      const asHtml = path.join(ROOT, p + '.html');
+      if (fs.existsSync(asHtml) && fs.statSync(asHtml).isFile()) {
+        p = p + '.html';
+        file = asHtml;
+      }
     }
     if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
       // CSS dev fallback: when dist/*.min.css is requested but doesn't exist

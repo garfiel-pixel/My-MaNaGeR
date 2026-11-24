@@ -83,6 +83,20 @@ for (const f of files.filter(x => x.endsWith('.html'))) {
 const isExternal = h => /^(https?:)?\/\//.test(h) || /^(mailto:|tel:|javascript:|data:)/.test(h);
 const WORKER_ROUTE = h => h === '/' || /^\/(api|auth|cdn-cgi)(\/|$)/.test(h);
 
+// 2026-11-24: internal links are extensionless (/about, not about.html).
+// The edge resolves them to the .html file and the static id map is keyed by
+// that filename, so resolve here too - otherwise every extensionless link is
+// a dead file and its fragment is never checked. Paths with a real extension
+// (css, svg, xml, webmanifest) are left alone.
+function resolveLocal(href) {
+  const rel = href.replace(/^\//, '');
+  if (!rel || path.extname(rel)) {
+    return rel;
+  }
+  const asHtml = rel + '.html';
+  return fs.existsSync(path.join(ROOT, asHtml)) ? asHtml : rel;
+}
+
 // ---- gate -------------------------------------------------------------------
 let hrefs = 0;
 let anchors = 0;
@@ -120,7 +134,7 @@ for (const f of files) {
       const before = raw.split('${')[0];
       const staticPath = before.split('#')[0].split('?')[0];
       if (staticPath) {
-        const rel = staticPath.startsWith('/') ? staticPath.slice(1) : staticPath;
+        const rel = resolveLocal(staticPath);
         if (!fs.existsSync(path.join(ROOT, rel))) {
           badFiles.push(
             where + ' -> ' + raw + ' (static prefix does not exist: ' + staticPath + ')'
@@ -138,7 +152,7 @@ for (const f of files) {
     // absolute path: Worker route or a static file
     if (clean.startsWith('/')) {
       if (WORKER_ROUTE(clean)) continue;
-      const rel = clean.slice(1);
+      const rel = resolveLocal(clean);
       if (!fs.existsSync(path.join(ROOT, rel))) {
         badFiles.push(where + ' -> ' + raw + ' (no file at ' + rel + ')');
       } else if (frag && rel.endsWith('.html') && !(ids.get(rel) || new Set()).has(frag)) {
@@ -148,14 +162,15 @@ for (const f of files) {
     }
 
     // relative file
-    if (!fs.existsSync(path.join(ROOT, clean))) {
-      badFiles.push(where + ' -> ' + raw + ' (file does not exist: ' + clean + ')');
+    const rel = resolveLocal(clean);
+    if (!fs.existsSync(path.join(ROOT, rel))) {
+      badFiles.push(where + ' -> ' + raw + ' (file does not exist: ' + rel + ')');
       continue;
     }
-    if (frag && clean.endsWith('.html')) {
+    if (frag && rel.endsWith('.html')) {
       anchors++;
-      if (!(ids.get(clean) || new Set()).has(frag)) {
-        badAnchors.push(where + ' -> ' + raw + ' (no static id in ' + clean + ')');
+      if (!(ids.get(rel) || new Set()).has(frag)) {
+        badAnchors.push(where + ' -> ' + raw + ' (no static id in ' + rel + ')');
       }
     }
   }

@@ -91,9 +91,7 @@ var MMGR = window.MMGR || {};
       localStorage.setItem('mmgr_current_project', slug);
       localStorage.setItem('mmgr_cloud_id_' + slug, id); // keep the cloud twin reachable
       if (!urlParams.get('id')) {
-        window.location.replace(
-          'project.html?id=' + encodeURIComponent(slug) + window.location.hash
-        );
+        window.location.replace('/project?id=' + encodeURIComponent(slug) + window.location.hash);
       }
     } catch (e) {
       /* migration must never block boot */
@@ -145,7 +143,7 @@ var MMGR = window.MMGR || {};
     if (!unlocked) {
       // The app entry now lives at app.html (index.html is the marketing
       // site). A locked visitor is sent back to the project list + unlock.
-      window.location.href = 'app.html?locked=' + encodeURIComponent(projectId);
+      window.location.href = '/app?locked=' + encodeURIComponent(projectId);
       return false;
     }
     // If this browser opened the project with a view-only code, drop the
@@ -226,7 +224,7 @@ var MMGR = window.MMGR || {};
     }
     note.innerHTML =
       '<p class="ai-viewonly-msg"></p>' +
-      '<a class="btn btn-g ai-viewonly-cta" href="admin.html?new=1">Create a project</a>';
+      '<a class="btn btn-g ai-viewonly-cta" href="/admin?new=1">Create a project</a>';
     note.querySelector('.ai-viewonly-msg').textContent = info.message;
     const inp = U.$('ai-command-input');
     if (inp) {
@@ -1292,9 +1290,9 @@ var MMGR = window.MMGR || {};
     // external site, checkout, the Field Guide and the explicit project
     // popout. The contact form is one of our own pages.
     try {
-      ns.Nav.go('contact.html?topic=Feedback');
+      ns.Nav.go('/contact?topic=Feedback');
     } catch (e) {
-      window.location.assign('contact.html?topic=Feedback');
+      window.location.assign('/contact?topic=Feedback');
     }
   }
 
@@ -5212,7 +5210,7 @@ var MMGR = window.MMGR || {};
       // Server cleared the session cookie; clear the local chip + go home.
       document.dispatchEvent(new CustomEvent('mmgr:google-signed-out'));
       setTimeout(function () {
-        window.location.href = 'index.html';
+        window.location.href = '/';
       }, 900);
     } else {
       showToast((out && out.error) || 'Could not delete your account. Try again.', 'err');

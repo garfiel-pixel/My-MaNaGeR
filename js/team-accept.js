@@ -82,7 +82,7 @@
   function signedOut() {
     var a = $('ta-signin');
     if (a) {
-      a.href = 'signin.html?next=' + encodeURIComponent(window.location.pathname);
+      a.href = '/signin?next=' + encodeURIComponent(window.location.pathname);
     }
     show('ta-signedout');
   }
@@ -117,7 +117,7 @@
         var open = $('ta-open');
         var msg = $('ta-ok-msg');
         if (open && r.body.projectId) {
-          open.href = 'app.html';
+          open.href = '/app';
           open.setAttribute('data-project', r.body.projectId);
         }
         if (msg) {

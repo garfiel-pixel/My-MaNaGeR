@@ -151,3 +151,4 @@ origin-scoped, survives a reload, and is cleared by "Clear site data".
 | Item | What it is | Category |
 |---|---|---|
 | Cloudflare Web Analytics beacon (`static.cloudflareinsights.com`) | Counts page visits and views. Cookieless by the provider's design; no personal profiles. Blocked by the site's security policy until "Accept all" is chosen. | optional |
+| Microsoft Clarity (`www.clarity.ms`, `scripts.clarity.ms`, `c.clarity.ms`) plus its `_clck` and `_clsk` cookies | Usage statistics: clicks, scrolling and anonymised session replays, so the pages can be improved. Form fields, numbers and email addresses are masked. Blocked by the site's security policy until "Accept all" is chosen; choosing "Necessary only" deletes the cookies. Added in inventory version 4. | optional |

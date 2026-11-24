@@ -305,7 +305,9 @@ const CLOUD = [
   check(
     'P-08',
     'clicking the card body opens the project viewer',
-    /project\.html\?id=parity-cloud-active/.test(page.url()),
+    // Both forms: the app navigates to the extensionless /project route, and
+    // production resolves it to the same page.
+    /\/project(\.html)?\?id=parity-cloud-active/.test(page.url()),
     page.url().replace(BASE, '')
   );
 
@@ -325,7 +327,8 @@ const CLOUD = [
   check(
     'P-09',
     'opening the menu does not open the project',
-    loadHits === 0 && !/project\.html/.test(page.url()),
+    // Both forms: the menu must not navigate to /project or /project.html.
+    loadHits === 0 && !/\/project(\.html)?(\?|$)/.test(page.url()),
     loadHits
   );
 

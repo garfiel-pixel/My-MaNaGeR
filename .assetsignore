@@ -100,6 +100,12 @@ css/src
 # verified 2026-10-15: live /robots.txt was 1248 bytes of the zone file while
 # the repo's own robots.txt is 530 bytes and was never served.
 !robots.txt
+# 2026-11-24: llms.txt and the IndexNow key are root *.txt files the Worker
+# serves through SEO_FILES. The '*.txt' rule above would otherwise keep them
+# out of the upload while every local check stays green - the exact shape of
+# the 2026-11-24 BingSiteAuth.xml incident.
+!llms.txt
+!9eb430e3e584f68c0d737443027b8625.txt
 # 2026-10-24 (T-6): the monolith reference snippet excluded from deploy - see CONTINUATION-DIRECTIVE-2026-10-24.md
 # 2026-10-25 (RB-1, REFINEMENT-DIRECTIVE-2026-10-24 3.4): no PDF is a served
 # asset. The publisher's rate-book PDF used to sit in the repo root and the

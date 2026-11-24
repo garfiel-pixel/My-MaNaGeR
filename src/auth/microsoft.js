@@ -326,7 +326,7 @@ export async function handleMicrosoftCallback(request, env) {
   );
 
   const headers = new Headers({
-    Location: next || '/app.html',
+    Location: next || '/app',
     'Cache-Control': 'no-store',
     'Referrer-Policy': 'no-referrer'
   });

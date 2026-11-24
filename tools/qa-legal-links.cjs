@@ -110,11 +110,11 @@ const check = (name, val, detail) => {
     await send('Page.navigate', { url: BASE + '/' + page });
     await delay(1800);
     const foot =
-      await ev(`(function(){    var links = Array.prototype.slice.call(document.querySelectorAll('.site-footer a[href="privacy.html"], .site-footer a[href="terms.html"]'))
+      await ev(`(function(){    var links = Array.prototype.slice.call(document.querySelectorAll('.site-footer a[href="/privacy"], .site-footer a[href="/terms"]'))
       .map(function(a){ return a.getAttribute('href') + '|' + a.textContent.trim(); });
       return { legal: links };
     })()`);
-    const need = ['privacy.html|Privacy Policy', 'terms.html|Terms of Service'];
+    const need = ['/privacy|Privacy Policy', '/terms|Terms of Service'];
     const ok = foot && foot.legal && need.every(n => foot.legal.indexOf(n) > -1);
     check(page + ' footer links Privacy Policy + Terms of Service', ok === true, foot);
   }
@@ -123,7 +123,7 @@ const check = (name, val, detail) => {
   await send('Page.navigate', { url: BASE + '/privacy.html' });
   await delay(1500);
   const priv = await ev(`(function(){
-    return { hasPrivacy: !!document.getElementById('privacy'), toc: !!document.querySelector('.privacy-toc'), termsLink: !!document.querySelector('a[href="terms.html"]') };
+    return { hasPrivacy: !!document.getElementById('privacy'), toc: !!document.querySelector('.privacy-toc'), termsLink: !!document.querySelector('a[href="/terms"]') };
   })()`);
   check(
     'privacy.html exposes #privacy anchor, TOC, and terms.html link',
@@ -134,7 +134,7 @@ const check = (name, val, detail) => {
   await send('Page.navigate', { url: BASE + '/terms.html' });
   await delay(1500);
   const tems = await ev(`(function(){
-    return { hasTerms: !!document.getElementById('terms'), toc: !!document.querySelector('.privacy-toc'), privLink: !!document.querySelector('a[href="privacy.html"]') };
+    return { hasTerms: !!document.getElementById('terms'), toc: !!document.querySelector('.privacy-toc'), privLink: !!document.querySelector('a[href="/privacy"]') };
   })()`);
   check(
     'terms.html exposes #terms anchor, TOC, and privacy.html link',

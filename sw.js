@@ -797,7 +797,16 @@
 // index.html drops invalid list roles, and the weather lead-time table gains a
 // Review column header. The served HTML and the project bundle both change, so
 // returning clients must refetch.
-const CACHE = 'mmgr-shell-v711';
+// v712 - SEO launch hardening 2026-11-24: every internal link is extensionless
+// (the edge 307s a .html URL, which filled Search Console's "page with
+// redirect" bucket), so all precached pages change. Microsoft Clarity joins the
+// optional consent category: js/mmgr-clarity.js is a new shell asset and the
+// inventory version rises to 4, so a returning visitor is asked once more.
+// v713 - extensionless nav lookups 2026-11-24: the bundled js/ modules (search
+// index, sign-in default, billing, team accept, launcher, cloud dash) now point
+// at /app, /project, /pricing and friends instead of the .html URLs, so the
+// precached bundles must be replaced.
+const CACHE = 'mmgr-shell-v713';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated
@@ -1705,6 +1714,11 @@ const SHELL = [
   // still appear (and the choice must still be readable) with no network, so
   // the module is in the shell, not fetched on demand.
   'js/consent.js',
+  // 2026-11-24: the Clarity loader runs on every public page next to the
+  // banner. Offline it finds no consent and no network, so it does nothing -
+  // but it must be present or the tag's stub never exists on a cold offline
+  // open after the visitor accepted online.
+  'js/mmgr-clarity.js',
   // RBAC sprint 2: the invitation landing page reads the token from its path
   // and posts it once. It is loaded by team-accept.html only, so it is not in
   // any bundle; the page must survive a cold offline open with a clear error
@@ -1810,6 +1824,32 @@ function withoutAnalyticsHost(res) {
   }
 }
 
+// 2026-11-24: internal links are extensionless now (/about, /features) while
+// the offline shell stores the files by their real names (about.html). The
+// Worker rewrites one to the other online; offline there is no Worker, so the
+// navigation fallback has to do it or a cached page's own nav would land the
+// visitor on the app shell instead of the page they asked for.
+function cachedPage(req) {
+  var url = new URL(req.url);
+  var p = url.pathname.replace(/^\//, '');
+  var candidates;
+  if (!p) {
+    candidates = ['index.html'];
+  } else if (/\/$/.test(p)) {
+    candidates = [p + 'index.html'];
+  } else if (/\.[a-z0-9]+$/i.test(p)) {
+    candidates = [];
+  } else {
+    candidates = [p, p + '.html'];
+  }
+  return candidates.reduce(function (chain, key) {
+    return chain.then(function (found) {
+      if (found) return found;
+      return caches.match(key);
+    });
+  }, Promise.resolve(undefined));
+}
+
 self.addEventListener('fetch', function (e) {
   const req = e.request;
   const url = new URL(req.url);
@@ -1842,8 +1882,11 @@ self.addEventListener('fetch', function (e) {
           // never with the analytics host - see withoutAnalyticsHost above.
           return caches.match(req).then(function (hit) {
             if (hit) return withoutAnalyticsHost(hit);
-            return caches.match('project.html').then(function (fallback) {
-              return withoutAnalyticsHost(fallback);
+            return cachedPage(req).then(function (page) {
+              if (page) return withoutAnalyticsHost(page);
+              return caches.match('project.html').then(function (fallback) {
+                return withoutAnalyticsHost(fallback);
+              });
             });
           });
         })

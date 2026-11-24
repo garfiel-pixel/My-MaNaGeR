@@ -51,7 +51,8 @@
   // checks the SAME number (CONSENT_INVENTORY_VERSION in worker.js and
   // serve.cjs), so the three must be bumped together - tools/qa-consent.cjs
   // phase S fails the build if they drift.
-  var INVENTORY_VERSION = 3;
+  // v4 (2026-11-24): Microsoft Clarity added to the optional category.
+  var INVENTORY_VERSION = 4;
   var MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // re-ask every 12 months
   var CLOCK_SKEW_MS = 24 * 60 * 60 * 1000; // a record dated in the future is not credible
   var CARD_ID = 'consent-card';
@@ -170,6 +171,17 @@
     }
     writeMirror(mirrorValue(c));
     hide();
+    // 2026-11-24: anything that must not run before consent (js/mmgr-clarity.js)
+    // listens for this, so a visitor who accepts the banner does not need to
+    // reload for the tag to start - and a visitor who withdraws gets the stop
+    // signal in the same page view.
+    try {
+      document.dispatchEvent(
+        new CustomEvent('mmgr:consent', { detail: { analytics: !!analytics } })
+      );
+    } catch (e) {
+      /* no CustomEvent: the loader re-checks on the next page view */
+    }
   }
 
   function card() {

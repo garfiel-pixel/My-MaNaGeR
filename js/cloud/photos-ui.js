@@ -322,7 +322,7 @@ var MMGR = window.MMGR || {};
       '</div>' +
       '<div class="photos-upgrade is-hide" id="photos-upgrade" role="note">' +
       '<p class="photos-upgrade-text" id="photos-upgrade-text"></p>' +
-      '<a class="btn btn-g btn-s" href="pricing.html">See plans</a>' +
+      '<a class="btn btn-g btn-s" href="/pricing">See plans</a>' +
       '</div>' +
       '<form class="photos-form is-hide" id="photos-form" novalidate>' +
       '<input type="file" id="photos-upload-input" accept="image/*" multiple>' +

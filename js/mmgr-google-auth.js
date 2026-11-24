@@ -1271,7 +1271,7 @@ var MMGR = window.MMGR || {};
       // Owner directive: Privacy/Terms live on the sign-in sheet and in the
       // field guide - nowhere else new.
       '<p class="email-auth-trust">You are signing in to save projects to your own cloud. Nothing is shared.</p>' +
-      '<p class="auth-legal"><a href="privacy.html">Privacy Policy</a><span aria-hidden="true"> \u00b7 </span><a href="terms.html">Terms of Service</a></p>' +
+      '<p class="auth-legal"><a href="/privacy">Privacy Policy</a><span aria-hidden="true"> \u00b7 </span><a href="/terms">Terms of Service</a></p>' +
       '</div>' +
       '<div class="email-auth-alt">' +
       '<button type="button" class="email-auth-mode">Create an account instead</button>' +

@@ -49,7 +49,7 @@
 <div class="signin-sky" aria-hidden="true"></div>
 
 <header class="auth-header">
-  <a class="brand" href="index.html">
+  <a class="brand" href="/">
     <span class="brand-mark" aria-hidden="true">
       <svg class="ico" aria-hidden="true" style="width:21px;height:21px;"><use href="css/mmgr-icons.svg#i-mpw"></use></svg>
     </span>
@@ -71,8 +71,8 @@
     <div class="auth-state" id="ta-signedout" hidden>
       <h1>Sign in to accept</h1>
       <p id="ta-signedout-msg">Sign in with the email address this invitation was sent to, then return here to accept it.</p>
-      <a class="btn btn-gold" id="ta-signin" href="signin.html">Sign in</a>
-      <a class="btn btn-ghost" href="app.html">Go to My MaNaGeR</a>
+      <a class="btn btn-gold" id="ta-signin" href="/signin">Sign in</a>
+      <a class="btn btn-ghost" href="/app">Go to My MaNaGeR</a>
     </div>
 
     <!-- DONE. -->
@@ -80,8 +80,8 @@
       <svg class="auth-icon ok" aria-hidden="true"><use href="css/mmgr-icons.svg#i-check"></use></svg>
       <h1>Invitation accepted</h1>
       <p id="ta-ok-msg">You now have access to this project.</p>
-      <a class="btn btn-gold" id="ta-open" href="app.html">Open the project</a>
-      <a class="btn btn-ghost" href="app.html">Go to My MaNaGeR</a>
+      <a class="btn btn-gold" id="ta-open" href="/app">Open the project</a>
+      <a class="btn btn-ghost" href="/app">Go to My MaNaGeR</a>
     </div>
 
     <!-- REFUSED: expired, already used, or addressed to another email. -->
@@ -89,23 +89,23 @@
       <svg class="auth-icon" aria-hidden="true"><use href="css/mmgr-icons.svg#i-alert-triangle"></use></svg>
       <h1 id="ta-err-title">This invitation cannot be used</h1>
       <p id="ta-err-msg">Ask the project owner to send a fresh invitation.</p>
-      <a class="btn btn-gold" href="app.html">Go to My MaNaGeR</a>
+      <a class="btn btn-gold" href="/app">Go to My MaNaGeR</a>
     </div>
 
     <p class="signin-legal">
       Invitations are tied to the email address they were sent to. Signing in
       with a different address will not accept this one. Read our
-      <a href="terms.html">Terms of Service</a> and
-      <a href="privacy.html">Privacy Policy</a>.
+      <a href="/terms">Terms of Service</a> and
+      <a href="/privacy">Privacy Policy</a>.
     </p>
 
   </div>
 </main>
 
 <footer class="signin-foot">
-  <a href="index.html">Home</a>
-  <a href="pricing.html">Pricing</a>
-  <a href="contact.html">Contact</a>
+  <a href="/">Home</a>
+  <a href="/pricing">Pricing</a>
+  <a href="/contact">Contact</a>
   <button type="button" class="consent-link" data-consent-open>Cookie settings</button>
 </footer>
 

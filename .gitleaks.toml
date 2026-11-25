@@ -31,6 +31,15 @@
 # Any pdl_live_apikey_ occurrence, or the same token shape anywhere else in
 # the tree, still fails the scan.
 
+# Inherit gitleaks' full default ruleset. Passing --config REPLACES the
+# defaults with an empty rule set unless this block is present, so without it
+# the scan had ZERO detection rules and found nothing. Every default rule is
+# active; the allowlist below narrows only the public-by-design Paddle client
+# token, and .gitleaksignore baselines the known documentation and test-mock
+# false positives (no production credential is suppressed).
+[extend]
+useDefault = true
+
 [allowlist]
 description = "Paddle client-side token - public by design, only opens checkouts"
 paths = [

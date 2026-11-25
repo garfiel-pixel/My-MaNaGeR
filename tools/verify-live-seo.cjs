@@ -33,7 +33,9 @@
      3. route hygiene: /manifest.webmanifest 200, /app.html 307 -> /app, and
         an unknown path still 404s (the SPA fallback guard);
      4. app surface: /signin serves HTML carrying a sign-in affordance, and
-        /api/health returns 200 JSON with { ok: true, app: 'my-manager' }.
+        /api/health returns 200 JSON with { ok: true, app: 'my-manager' };
+     5. canonical host: www 301s to the apex with the path and query intact,
+        so the site never answers 200 on two hostnames.
 
    Env / args
      node tools/verify-live-seo.cjs [origin]     # default: production
@@ -232,6 +234,23 @@ async function collect() {
     healthDetail = 'fetch failed: ' + health.message;
   }
   check('/api/health answers ok JSON', healthOk, healthDetail);
+
+  // www is a permanent alias of the apex (2026-11-24): the Worker answers 301
+  // with the path and query intact, so one canonical origin serves every page
+  // and the host-only session cookie and OAuth redirect URIs never split.
+  // Only meaningful against the real apex - a local or workers.dev override
+  // has no www host to probe, so the check is skipped rather than failed.
+  if (new URL(ORIGIN).hostname === 'mymanagerworkspace.com') {
+    const wwwPath = '/pricing?plan=pro';
+    const wwwWant = ORIGIN + wwwPath;
+    const www = await get(ORIGIN.replace('://', '://www.') + wwwPath).catch(e => e);
+    const wwwLoc = www && www.headers ? www.headers.get('location') : null;
+    check(
+      'www redirects to the apex with path and query preserved',
+      www && www.status === 301 && wwwLoc === wwwWant,
+      www && www.status ? 'HTTP ' + www.status + ' -> ' + wwwLoc : 'no answer'
+    );
+  }
 
   return results;
 }

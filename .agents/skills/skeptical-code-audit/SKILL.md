@@ -131,6 +131,23 @@ Run these checks systematically across every relevant file, not just the one cur
 
 24. **Use `--gold-text` for gold-coloured words, never `--gold`** — in this repo `--gold` is the accent for borders, icons and focus rings; on a light surface it is ~2:1 against white and cannot carry text. The token pair is `--gold-text: var(--gold-text-on-light)` (`#7a5a0b`) in light and `var(--gold)` in dark, defined in `css/mmgr.css` (and mirrored in `css/marketing.css`). On 2026-11-25 a new `.forgot-link` button on `admin.html` inherited `color: var(--gold)` and failed the live axe gate at 2:1; `npm run verify` stayed green because the static gates do not run axe. Before pushing any new text/button colour, run `QA_BASE=http://127.0.0.1:8765 node tools/qa-a11y-axe.cjs` — the gate measures all 18 served pages in both themes.
 
+25. **A refresh after an operator action must not erase the action's answer** — `js/operator.js` called
+    `loadCloud()` at the end of `cloudAction()`, and that refresh wrote "N cloud project(s) loaded." over the
+    reissue result. The browser gate could prove the token was sent but never saw "New owner code emailed to
+    the project owner." Give the follow-up reload a quiet mode (`loadCloud(true)`) that repaints the rows and
+    skips every status write, so the action's status stays the last word. Any list/quota/count refresh after an
+    action needs the same treatment: assert the result TEXT in the harness, not just the network call.
+
+26. **A soft delete still owns its subscription — say so** — a cloud-project delete is
+    `UPDATE cloud_projects SET deleted_at = ?`, so the row is deliberately kept restorable.
+    `accountPresence()` counts that row as proof of account presence, which means deleting the auth account
+    does not turn its paid subscription row into an orphan on refresh. That is correct (purging the project is
+    the only release) but reads as a bug because the evidence only said "owns a cloud project". The probe now
+    prefers a live row and reports "owns a soft-deleted cloud project (Delete permanently to release it)"
+    when only deleted rows remain. Before calling a persistent subscription row a cache bug, check all FIVE
+    proofs (auth_users, cloud_projects, cloud_adoptions, cloud_team_members, unexpired auth_sessions) and the
+    required provider cancel: the billing API is already `no-store`.
+
 ## Reporting findings
 
 Structure the final report as:

@@ -167,6 +167,16 @@ const VALID_CODE = '12345678901234567890';
         })
       })
     );
+    let recoverHeader = '';
+    await page.route('**/api/cloud/projects/op-1/recover', route => {
+      const req = route.request();
+      recoverHeader = req.headers()['x-admin-session'] || '';
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, delivered: 'email', to: 'owner@example.com' })
+      });
+    });
     await page.route('**/api/admin/billing/subscriptions', route =>
       route.fulfill({
         status: 200,
@@ -276,6 +286,30 @@ const VALID_CODE = '12345678901234567890';
       'O7 the console loads cloud projects and subscriptions once unlocked',
       cloudRows === 1 && /No subscriptions/.test(billingHtml),
       { cloudRows, billingHtml: billingHtml.slice(0, 120) }
+    );
+
+    // O9: reissue sends the admin token and reports email delivery; the new
+    // code is never printed in the console (the worker owns that contract).
+    page.once('dialog', d => d.accept());
+    await page.click('#op-cloud-list [data-op-action="reissue"]');
+    for (let i = 0; i < 30; i++) {
+      const txt = await page.evaluate(
+        () => (document.getElementById('op-cloud-status') || {}).textContent || ''
+      );
+      if (/emailed to the project owner/.test(txt)) {
+        break;
+      }
+      await delay(100);
+    }
+    const reissueStatus = await page.evaluate(
+      () => (document.getElementById('op-cloud-status') || {}).textContent || ''
+    );
+    check(
+      'O9 reissue carries the admin token and reports email delivery, never showing a code',
+      recoverHeader === 'stub-operator-token' &&
+        /emailed to the project owner/.test(reissueStatus) &&
+        !/New owner code: [A-Za-z0-9]/.test(reissueStatus),
+      { recoverHeader, reissueStatus }
     );
 
     // O8: sign out returns to the lock and clears the token.

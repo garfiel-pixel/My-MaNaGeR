@@ -8,7 +8,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My MaNaGeR | Admin</title>
+<title>My MaNaGeR | Settings</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/images/mpw-favicon.svg">
@@ -113,8 +113,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:16p
   flex-wrap:wrap;gap:10px;}
 header h1{font-size:1rem;display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;}
 /* Admin uses the same db-side class system as app.html for the sidebar.
-   Override the top offset to match admin's sticky header height. */
-body.admin-page .db-side{top:var(--hdr-h,64px);}
+   OWNER 2026-11-25: the rail used to start at the header's height, which left
+   a bare grey block in the top-left corner and made the panel look crooked
+   against the dashboard. The header lives INSIDE <main> here, so the rail can
+   run the full height exactly like app.html does. */
+body.admin-page .db-side,
+body.admin-page #app-sidebar{top:0;}
 /* Admin sidebar: */
 body.admin-page .db-side{display:flex!important;transform:translateX(-105%)!important;visibility:hidden!important;
   transition:transform var(--release-duration) var(--ease-ios),visibility var(--release-duration);}
@@ -124,11 +128,27 @@ body.admin-page.side-open .db-scrim{display:block!important;opacity:1!important;
 @media(min-width:769px){
   /* Desktop: */
   body.admin-page .db-scrim,body.admin-page.side-open .db-scrim{display:none!important;}
-  body.admin-page.side-open main{margin-left:264px;}
+  /* OWNER 2026-11-25: the rail is var(--rail-w) = 272px wide, but this
+     offset was hard-coded at 264px, so the content column slid 8px UNDER
+     the rail and the cards ran flush into the window edge - the "crooked"
+     panel the owner reported. Follow the token instead of a stale number. */
+  body.admin-page.side-open main{margin-left:calc(var(--rail-w,272px) + 8px);}
   body.admin-page main{transition:margin-left var(--release-duration) var(--ease-ios);}
   body.admin-page .db-side-close .ico{transition:transform .18s ease;}
   body.admin-page.side-open .db-side-close .ico{transform:rotate(90deg);}
 }
+/* OWNER 2026-11-25: match the dashboard's reading column. app.html insets
+   its .wrap by 24px on both sides; the deck here had no gutter at all, so
+   cards touched the window edge on the right while the left edge sat under
+   the rail. Same 24px on both sides gives a symmetric column. */
+body.admin-page .view-deck{padding-left:24px;padding-right:24px;}
+/* OWNER 2026-11-25: the gate screens (setup, login, recovery) are centred
+   in <main>. While the rail is open main carries a left offset, which pushed
+   the lock box 132px right of the window centre. A gate is a full-window
+   state: no rail, no offset, centred on the real viewport. */
+body.admin-page.gate-open main{margin-left:0!important;}
+body.admin-page.gate-open .db-side,
+body.admin-page.gate-open .db-scrim{display:none!important;}
 /* STABILIZATION (2026-08-16): the Cloud Projects list's "Deleted" state , 
    a tombstoned project renders with a danger badge + note + Undo / Delete
    permanently actions instead of looking live. */
@@ -245,7 +265,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 } catch (e) {} })();
 </script>
 </head>
-<body class="admin-page db-page has-dock dock-inline-active">
+<body class="admin-page db-page has-dock dock-inline-active gate-open">
 <script>
 /* Transfer classes from <html> to <body> (CSS selectors target body.*). */
 (function(){ try {
@@ -416,7 +436,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
            opens the left rail/drawer. Theme stays theme-only (never reused
            as the menu control , brief §2.1). -->
       <button type="button" class="nav-btn" id="nav-btn" data-action="tglNav" aria-label="Open navigation menu" aria-expanded="false" aria-controls="app-sidebar"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
-      <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Admin</span> Panel</h1>
+      <h1><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> <span class="mark">Settings</span></h1>
     </div>
     <div class="hdr-actions">
       <!-- T-15 (UI-IA-AND-MCP 2026-11-11): search this panel's rail, cards and
@@ -1238,6 +1258,10 @@ function showScreen(id){
   ['setup-screen','login-screen','forgot-screen','admin-app'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
+  // OWNER 2026-11-25: while a gate is showing the page is a full-window
+  // state - no rail and no content offset, so the box centres on the real
+  // viewport. See the .gate-open rules in this file's <style> block.
+  document.body.classList.toggle('gate-open', id !== 'admin-app');
   // Theme/appearance controls live in the unlocked rail's Customize section
   // (v228 moved the old gate preference pill into the shared bottom dock);
   // nothing to toggle on the gate screens themselves anymore.

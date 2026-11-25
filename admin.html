@@ -76,7 +76,7 @@ body.dark-mode .gbox input{background:rgba(0,0,0,.3);}
 .rc-divider{display:flex;align-items:center;gap:12px;color:var(--slate);font-size:.7rem;margin:16px 0;}
 .rc-divider[hidden]{display:none;}
 .rc-divider::before,.rc-divider::after{content:'';flex:1;height:1px;background:var(--border);}
-.forgot-link{background:none;border:none;padding:0;margin-top:14px;font-size:.78rem;color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-family:inherit;}
+.forgot-link{background:none;border:none;padding:0;margin-top:14px;font-size:.78rem;color:var(--gold-text);cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-family:inherit;}
 .forgot-link:hover{color:var(--text);}
 #forgot-screen .gbox{text-align:left;}
 #forgot-screen h1{text-align:center;}
@@ -293,6 +293,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     </span>
     <div class="gerr" id="setup-err" role="alert"></div>
     <button class="btn btn-g full" data-action="adminSetupPassword" type="submit"><span class="btn-txt">Create Admin Password</span><span class="spin-dot" aria-hidden="true"></span></button>
+    <button type="button" class="forgot-link" data-action="openOtpLogin">Sign in with an emailed code instead</button>
     <!-- OWNER 2026-09-09: a signed-in admin on a NEW device gets a restore
          path here instead of only "create a new Admin panel code". Hidden until
          the session restore reports signed-in (initGate + mmgr:user-changed). -->
@@ -320,7 +321,18 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
   <form class="gbox" id="login-form" novalidate>
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> </div>
     <h1>Admin Login</h1>
-    <p>Enter your admin password to manage projects.</p>
+    <p>We email a single-use code to the admin inbox. Sign in to the site with the admin account first, then ask for a code.</p>
+    <div id="admin-otp-block">
+      <button class="btn btn-g full" data-action="adminOtpSend" type="button" id="admin-otp-send"><span class="btn-txt">Email me a sign-in code</span><span class="spin-dot" aria-hidden="true"></span></button>
+      <div id="admin-otp-row" hidden>
+        <label class="sr-only" for="admin-otp-code">Emailed sign-in code</label>
+        <input id="admin-otp-code" type="text" autocomplete="one-time-code" spellcheck="false" autocapitalize="characters" placeholder="8-character code from the email">
+        <div class="gerr" id="admin-otp-err" role="alert"></div>
+        <button class="btn btn-g full" data-action="adminOtpVerify" type="button" id="admin-otp-verify"><span class="btn-txt">Verify and open</span><span class="spin-dot" aria-hidden="true"></span></button>
+      </div>
+      <p class="gbox-sub" id="admin-otp-status" role="status" style="margin:8px 0 0"></p>
+    </div>
+    <div class="rc-divider">or use this device's password</div>
     <label class="sr-only" for="login-pass">Admin password</label>
     <span class="pw-wrap">
       <input id="login-pass" type="password" placeholder="Admin password" autocomplete="current-password">
@@ -530,10 +542,12 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <p class="hint" style="margin:0 0 4px">For the deployment operator. Your own panel, projects and backup work without this.</p>
 
     <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 , cloud projects visibility.
-         Operator-gated by the Worker's ADMIN_CODE secret (typed once per
-         session here, held in sessionStorage only). Owner-code reissue reuses
-         /recover, which enforces plan §9: the signed-in Google account must
-         match the record on file , no code is ever issued to a stranger. -->
+         Operator-gated by the emailed admin sign-in (2026-11-24): the Admin
+         Login code mints a 45-minute token, held in sessionStorage only. The
+         site admin code field below is the legacy fallback for a deployment
+         that still sets ADMIN_CODE. Owner-code reissue reuses /recover, which
+         enforces plan §9: the signed-in Google account must match the record
+         on file , no code is ever issued to a stranger. -->
     <div class="card" id="cloud-admin-section" style="margin-top:16px">
       <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects</div>
       <div class="field">
@@ -1302,11 +1316,134 @@ function showScreen(id){
   // nothing to toggle on the gate screens themselves anymore.
 }
 async function initGate(){
+  // EMAILED SIGN-IN (owner 2026-11-24): a live admin token is the primary way
+  // in and needs no device password, so it is checked before any local-hash
+  // branch. The token lives in sessionStorage (per tab, gone on close).
+  if (adminToken()) {
+    if (await adminTokenLive()) {
+      sessionStorage.setItem('mmgr_admin_session', '1');
+      enterAdmin();
+      return;
+    }
+    setAdminToken('');
+  }
   const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
   if(!storedHash){ showScreen('setup-screen'); setupRestoreVisibility(); return; }
   if(sessionStorage.getItem('mmgr_admin_session') === '1'){ enterAdmin(); return; }
   showScreen('login-screen');
-  setTimeout(()=>document.getElementById('login-pass').focus(), 50);
+  setTimeout(()=>{
+    const otpBtn = document.getElementById('admin-otp-send');
+    const pw = document.getElementById('login-pass');
+    if (otpBtn) { otpBtn.focus(); } else if (pw) { pw.focus(); }
+  }, 50);
+}
+/* ---- Emailed admin sign-in (2026-11-24) ----
+   The operator credential is a single-use code emailed to the admin inbox and
+   exchanged for a 45-minute admin token. The token is only accepted alongside
+   the site session cookie of the same account, so a leaked header value alone
+   cannot open the panel. The legacy device password stays below it. */
+const ADMIN_TOKEN_KEY = 'mmgr_admin_token';
+function adminToken(){
+  try{ return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ''; }catch(e){ return ''; }
+}
+function setAdminToken(t){
+  try{
+    if (t) { sessionStorage.setItem(ADMIN_TOKEN_KEY, t); }
+    else { sessionStorage.removeItem(ADMIN_TOKEN_KEY); }
+  }catch(e){ /* storage can be unavailable in private mode */ }
+}
+async function adminTokenLive(){
+  const t = adminToken();
+  if (!t) { return false; }
+  try{
+    const res = await fetch('/api/admin/signin/session', {
+      headers: { 'X-Admin-Session': t },
+      credentials: 'same-origin'
+    });
+    return res.ok;
+  }catch(e){
+    return false;
+  }
+}
+function adminAuthHeaders(extra){
+  const h = Object.assign({}, extra || {});
+  const t = adminToken();
+  if (t) { h['X-Admin-Session'] = t; }
+  else if (cloudAdminCode()) { h['X-Admin-Code'] = cloudAdminCode(); }
+  return h;
+}
+async function adminOtpSend(){
+  const btn = document.getElementById('admin-otp-send');
+  const status = document.getElementById('admin-otp-status');
+  const err = document.getElementById('admin-otp-err');
+  if (btn && btn.disabled) { return; }
+  if (err) { err.textContent = ''; }
+  if (status) { status.textContent = ''; }
+  if (btn) { btn.disabled = true; }
+  try{
+    const res = await fetch('/api/admin/signin/request', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    const data = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !data.ok){
+      if (err) { err.textContent = (data && data.error) || ('Could not send the code (HTTP ' + res.status + ').'); }
+      return;
+    }
+    const row = document.getElementById('admin-otp-row');
+    if (row) { row.hidden = false; }
+    if (status) { status.textContent = 'Code sent to ' + (data.emailMasked || 'the admin inbox') + '. It expires in 10 minutes and works once.'; }
+    const inp = document.getElementById('admin-otp-code');
+    if (inp) { inp.value = ''; inp.focus(); }
+  }catch(e){
+    if (err) { err.textContent = 'Network error. Try again.'; }
+  }finally{
+    if (btn) { btn.disabled = false; }
+  }
+}
+async function adminOtpVerify(){
+  const inp = document.getElementById('admin-otp-code');
+  const err = document.getElementById('admin-otp-err');
+  const status = document.getElementById('admin-otp-status');
+  const btn = document.getElementById('admin-otp-verify');
+  const code = String((inp && inp.value) || '').trim().toUpperCase();
+  if (!code){ if (err) { err.textContent = 'Enter the 8-character code from the email.'; } return; }
+  if (btn && btn.disabled) { return; }
+  if (btn) { btn.disabled = true; }
+  if (err) { err.textContent = ''; }
+  try{
+    const res = await fetch('/api/admin/signin/verify', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    });
+    const data = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !data.ok || !data.token){
+      if (err) { err.textContent = (data && data.error) || ('That code was not accepted (HTTP ' + res.status + ').'); }
+      return;
+    }
+    setAdminToken(data.token);
+    sessionStorage.setItem('mmgr_admin_session', '1');
+    if (status) { status.textContent = ''; }
+    if (inp) { inp.value = ''; }
+    enterAdmin();
+  }catch(e){
+    if (err) { err.textContent = 'Network error. Try again.'; }
+  }finally{
+    if (btn) { btn.disabled = false; }
+  }
+}
+function openOtpLogin(){
+  showScreen('login-screen');
+  const s = document.getElementById('admin-otp-status');
+  if (s) { s.textContent = ''; }
+  const e = document.getElementById('admin-otp-err');
+  if (e) { e.textContent = ''; }
+  const b = document.getElementById('admin-otp-send');
+  if (b) { b.focus(); }
 }
 /* ---- OWNER 2026-09-09: NEW-DEVICE ADMIN RESTORE ("Enter my Admin panel code") ----
    The admin password is a device-local SHA-256 of the code itself, so the
@@ -1731,8 +1868,20 @@ async function verifyAdminRecovery(){
   }
 }
 function lockAdmin(){
+  // Revoke the emailed-sign-in token server-side as well as dropping it here,
+  // so a copied sessionStorage value stops working the moment you lock.
+  const t = adminToken();
+  if (t) {
+    fetch('/api/admin/signout', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-Admin-Session': t }
+    }).catch(function(){ /* locking must never block on the network */ });
+  }
+  setAdminToken('');
   sessionStorage.removeItem('mmgr_admin_session');
-  document.getElementById('login-pass').value = '';
+  const pw = document.getElementById('login-pass');
+  if (pw) { pw.value = ''; }
   showScreen('login-screen');
 }
 // Device-level theme toggle , writes the same localStorage slot (mmgr_theme)
@@ -3179,11 +3328,11 @@ function cloudAdminStatus(msg, kind){
 }
 async function cloudAdminList(){
   const inp = document.getElementById('cloud-admin-code');
-  const code = (inp && inp.value.trim()) || cloudAdminCode();    if(!code){ cloudAdminStatus('Enter the site admin code first.', 'err'); return; }
-  cloudAdminSetCode(code);
+  const code = (inp && inp.value.trim()) || cloudAdminCode();    if(!adminToken() && !code){ cloudAdminStatus('Sign in with an emailed code first (Admin Login).', 'err'); return; }
+  if (code) { cloudAdminSetCode(code); }
   cloudAdminStatus('Loading cloud projects…', '');
   try{
-    const res = await fetch('/api/cloud/admin/projects', { headers:{ 'X-Admin-Code': code } });
+    const res = await fetch('/api/cloud/admin/projects', { headers: adminAuthHeaders() });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok){
       cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'No site admin code is set for this site.' : res.status === 403 ? 'That is not the site admin code. Project codes (owner/editor/viewer) do NOT unlock this section. Enter those on the launcher (app.html). The site admin code is set when the site is deployed.' : ''), 'err');
@@ -3233,11 +3382,11 @@ function billingAdminStatus(msg, kind){
 async function billingAdminList(){
   const inp = document.getElementById('cloud-admin-code');
   const code = (inp && inp.value.trim()) || cloudAdminCode();
-  if(!code){ billingAdminStatus('Enter the site admin code first, it is the field in the card above.', 'err'); return; }
-  cloudAdminSetCode(code);
+  if(!adminToken() && !code){ billingAdminStatus('Sign in with an emailed code first (Admin Login).', 'err'); return; }
+  if (code) { cloudAdminSetCode(code); }
   billingAdminStatus('Loading subscriptions\u2026', '');
   try{
-    const res = await fetch('/api/admin/billing/subscriptions', { headers:{ 'X-Admin-Code': code } });
+    const res = await fetch('/api/admin/billing/subscriptions', { headers: adminAuthHeaders() });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok){
       billingAdminStatus((data && data.error) || ('Failed (HTTP ' + res.status + ').'), 'err');
@@ -3272,7 +3421,7 @@ async function billingAdminList(){
 }
 async function billingAdminClear(ownerSub){
   const code = cloudAdminCode() || '';
-  if(!code){ billingAdminStatus('Enter the site admin code first.', 'err'); return; }
+  if(!adminToken() && !code){ billingAdminStatus('Sign in with an emailed code first (Admin Login).', 'err'); return; }
   admConfirm({
     title: 'Cancel and clear this subscription?',
     message: ownerSub + ' has no account, project, sharing, team row or live session anywhere in the app, so nothing can reach this subscription from a customer screen. The provider is asked to cancel it first. The row is only removed if the provider accepts; if it refuses, the row stays and the reason is shown.',
@@ -3283,7 +3432,7 @@ async function billingAdminClear(ownerSub){
       try{
         const res = await fetch('/api/admin/billing/subscriptions/clear', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Admin-Code': code },
+          headers: adminAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ ownerSub: ownerSub })
         });
         const data = await res.json().catch(()=>({}));
@@ -3335,14 +3484,14 @@ async function cloudAdminReissue(projectId){
    after the 5s delete-toast window); Delete permanently (fortify) hard-
    purges the backend NOW , R2 blobs, codes, adoptions, changelog, D1 row , 
    with no undo ("no more cloud until another cloud upload"). Both ride the
-   X-Admin-Code header like the list itself; the Worker accepts admin auth
-   for these two owner-style actions by design (the site operator IS the
-   owner). */
+   admin auth header like the list itself (the emailed-code token, or the
+   legacy site code); the Worker accepts admin auth for these two owner-style
+   actions by design (the site operator IS the owner). */
 async function cloudAdminRestore(projectId){
   cloudAdminStatus('Restoring project…', '');
   try{
     const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/restore', {
-      method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json', 'X-Admin-Code': cloudAdminCode() || ''}, body: JSON.stringify({})
+      method:'POST', credentials:'same-origin', headers: adminAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({})
     });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok){
@@ -3371,7 +3520,7 @@ async function cloudAdminPurge(projectId){
       cloudAdminStatus('Deleting permanently…', '');
       try{
         const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/purge', {
-          method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json', 'X-Admin-Code': cloudAdminCode() || ''}, body: JSON.stringify({})
+          method:'POST', credentials:'same-origin', headers: adminAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({})
         });
         const data = await res.json().catch(()=>({}));
         if(!res.ok || !data.ok){
@@ -4099,6 +4248,9 @@ const ADMIN_ACTION_MAP = {
   'adminSetupPassword': () => handleSetupPassword(),
   'restoreAdminCodeFromAccount': () => restoreAdminCodeFromAccount(),
   'adminLogin': () => handleLogin(),
+  'adminOtpSend': () => adminOtpSend(),
+  'adminOtpVerify': () => adminOtpVerify(),
+  'openOtpLogin': () => openOtpLogin(),
   'restoreAdminCode': () => restoreAdminCode(),
   'dismissRestoreRecap': (el) => { const c = document.getElementById('restore-recap'); if (c) c.hidden = true; },
   'tglPwVis': (el) => tglPwVis(el),

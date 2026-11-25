@@ -28,6 +28,7 @@ fails the gate.
 |---|---|---|---|
 | `mmgr_session` | server (`src/auth/session.js`) | Keeps you signed in. HttpOnly, Secure, SameSite=Lax - never readable by page scripts. | necessary |
 | `mmgr_ms_state` , `mmgr_ms_pkce` , `mmgr_ms_next` | server (`src/auth/microsoft.js`) | Short-lived cookies for the Microsoft sign-in round trip: the anti-CSRF state value, the PKCE verifier, and the page to return to after consent. HttpOnly, Secure, SameSite=Lax, scoped to `/api/auth`, and expire after 10 minutes. Needed for the sign-in the visitor asked for, so nothing here is re-consented and `INVENTORY_VERSION` stays 2. | necessary |
+| `mmgr_admin_chal` | server (`src/auth/admin-otp.js`) | Binds an emailed admin sign-in code to the browser that requested it. Holds an opaque challenge id only, HttpOnly, Secure, SameSite=Strict, scoped to `/`, expires after 10 minutes, and is cleared on both success and failure. Needed for the sign-in the operator asked for, so nothing here is re-consented. | necessary |
 | `mmgr_consent_a` | `js/consent.js` | Carries your cookie choice to the server so the security policy can allow or block the analytics script. Holds the inventory version and the moment you chose, so the server can tell a current choice from an old one without asking the browser. | necessary |
 | Cloudflare `/cdn-cgi/` challenge cookies | Cloudflare edge | Bot protection and DDoS defence. Set by the network, not by this site's code. | necessary |
 
@@ -128,6 +129,7 @@ fails the gate.
 | Key | Purpose | Category |
 |---|---|---|
 | `mmgr_drive_pass` | Drive backup password, kept only while the tab is open. | necessary |
+| `mmgr_admin_token` | Short-lived admin token from the emailed sign-in code, held only while the admin tab is open and sent as `X-Admin-Session` alongside the site session cookie. Removed on Lock and on sign-out. | necessary |
 
 ## IndexedDB
 

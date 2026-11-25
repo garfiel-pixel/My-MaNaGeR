@@ -199,6 +199,12 @@ import {
 } from './auth/recovery.js';
 import { handleAdminCodePut, handleAdminCodeGet } from './auth/admin-code.js';
 import {
+  handleAdminOtpRequest,
+  handleAdminOtpVerify,
+  handleAdminSessionCheck,
+  handleAdminSignout
+} from './auth/admin-otp.js';
+import {
   handleAuthRegister,
   handleAuthLogin,
   handleAuthPasswordChange,
@@ -914,6 +920,38 @@ export async function routeApi(request, env, url) {
     }
 
     // 8. CLOUD ADMIN
+    // Emailed admin sign-in (2026-11-24): request a single-use code, redeem it
+    // for a short-lived admin token, check it, revoke it. Same-origin on every
+    // POST; request rides the authmail bucket, verify the general one.
+    if (path === '/api/admin/signin/request' && request.method === 'POST') {
+      if (!sameOriginOnly(request)) {
+        return json({ ok: false, error: 'cross-origin request refused' }, 403);
+      }
+      const r = await rl(request, 'authmail', env);
+      if (r) {
+        return r;
+      }
+      return handleAdminOtpRequest(request, env);
+    }
+    if (path === '/api/admin/signin/verify' && request.method === 'POST') {
+      if (!sameOriginOnly(request)) {
+        return json({ ok: false, error: 'cross-origin request refused' }, 403);
+      }
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleAdminOtpVerify(request, env);
+    }
+    if (path === '/api/admin/signin/session' && request.method === 'GET') {
+      return handleAdminSessionCheck(request, env);
+    }
+    if (path === '/api/admin/signout' && request.method === 'POST') {
+      if (!sameOriginOnly(request)) {
+        return json({ ok: false, error: 'cross-origin request refused' }, 403);
+      }
+      return handleAdminSignout(request, env);
+    }
     if (path === '/api/cloud/admin/projects' && request.method === 'GET') {
       const r = await rl(request, 'general', env);
       if (r) {

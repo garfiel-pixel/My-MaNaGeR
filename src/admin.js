@@ -5,6 +5,7 @@
    projects with theme preferences surfaced per project.
    ============================================================ */
 import { json, codesEqual, cloudDummyHash, cloudTimingSink, readJsonBody } from './lib/http.js';
+import { adminAuthorized } from './auth/admin-otp.js';
 import { billingProvider, billingStatusActive, paddleCancelSubscription } from './billing.js';
 
 const CLOUD_PREFS_PREFIX = 'prefs/';
@@ -16,6 +17,20 @@ function cloudSanitizePalette(v) {
 }
 
 export async function cloudAdminAuth(request, env) {
+  // Emailed sign-in (2026-11-24): an X-Admin-Session token minted by
+  // /api/admin/signin/verify, valid only alongside the same account's site
+  // session cookie. Checked first so the static code can be retired without
+  // touching the handlers.
+  const tokenAuth = await adminAuthorized(request, env);
+  if (tokenAuth && tokenAuth.ok) {
+    return { ok: true, via: 'otp' };
+  }
+  if (tokenAuth === null) {
+    // A token was presented and rejected: do not fall through to the legacy
+    // code path, or a revoked token would silently downgrade to a weaker gate.
+    await Promise.all([cloudDummyHash(), cloudTimingSink()]);
+    return null;
+  }
   const expected = env && typeof env.ADMIN_CODE === 'string' ? env.ADMIN_CODE.trim() : '';
   if (!expected) {
     return { disabled: true };
@@ -25,7 +40,7 @@ export async function cloudAdminAuth(request, env) {
     await Promise.all([cloudDummyHash(), cloudTimingSink()]);
     return null;
   }
-  return { ok: true };
+  return { ok: true, via: 'code' };
 }
 
 /* ============================================================
@@ -114,7 +129,7 @@ async function accountPresence(env, ownerSub) {
 export async function handleAdminSubscriptionList(request, env) {
   const auth = await cloudAdminAuth(request, env);
   if (auth && auth.disabled) {
-    return json({ ok: false, error: 'admin API not configured , set the ADMIN_CODE secret' }, 503);
+    return json({ ok: false, error: 'admin access is not configured on this deployment' }, 503);
   }
   if (!auth) {
     return json({ ok: false, error: 'invalid site admin code' }, 403);
@@ -152,7 +167,7 @@ export async function handleAdminSubscriptionList(request, env) {
 export async function handleAdminSubscriptionClear(request, env) {
   const auth = await cloudAdminAuth(request, env);
   if (auth && auth.disabled) {
-    return json({ ok: false, error: 'admin API not configured , set the ADMIN_CODE secret' }, 503);
+    return json({ ok: false, error: 'admin access is not configured on this deployment' }, 503);
   }
   if (!auth) {
     return json({ ok: false, error: 'invalid site admin code' }, 403);
@@ -253,7 +268,7 @@ export async function handleAdminSubscriptionClear(request, env) {
 export async function handleAdminCloudList(request, env) {
   const auth = await cloudAdminAuth(request, env);
   if (auth && auth.disabled) {
-    return json({ ok: false, error: 'admin API not configured , set the ADMIN_CODE secret' }, 503);
+    return json({ ok: false, error: 'admin access is not configured on this deployment' }, 503);
   }
   if (!auth) {
     return json({ ok: false, error: 'invalid site admin code' }, 403);

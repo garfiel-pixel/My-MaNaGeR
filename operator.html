@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!--
+  My MaNaGeR - site operator console (owner 2026-11-25).
+  Direct address or bookmark only: no navigation link points here. The Worker
+  returns a real 404 to anyone who is not signed in as the owner address, so
+  this page is not linked, indexed or reachable from the app. The lock screen
+  is the whole page until a 20-digit code emailed to the fixed operator inbox
+  is redeemed; the console is appended only afterwards.
+--><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My MaNaGeR | Operator</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/images/mpw-favicon.svg">
+<link rel="stylesheet" href="dist/mmgr.min.css">
+<script src="js/mmgr-perf-boot.js" data-sync="1"></script>
+<style>
+  :root{--op-bg:#F5EFE6;--op-card:#FFFDF9;--op-line:#E7DED1;--op-ink:#1C1917;--op-muted:#57534E;--op-gold:#92400E}
+  @media (prefers-color-scheme:dark){:root{--op-bg:#1A1614;--op-card:#242019;--op-line:#3A342C;--op-ink:#F5EFE6;--op-muted:#C4B5A5;--op-gold:#E8B84A}}
+  html{background:var(--op-bg);color:var(--op-ink)}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.5}
+  #op-main{max-width:60rem;margin:0 auto;padding:32px 20px 64px}
+  .op-lock{min-height:70vh;display:grid;place-items:center}
+  .op-card{background:var(--op-card);border:1px solid var(--op-line);border-radius:16px;padding:28px;width:100%;max-width:26rem;box-shadow:0 10px 30px rgba(0,0,0,.05)}
+  .op-card h1,.op-console h1{font-size:1.5rem;line-height:1.3;margin:0 0 8px}
+  .op-card p{color:var(--op-muted);margin:0 0 20px}
+  .op-label{display:block;font-weight:600;font-size:.85rem;margin:0 0 6px}
+  .op-input{width:100%;box-sizing:border-box;font-size:1rem;letter-spacing:.08em;padding:10px 12px;border:1px solid var(--op-line);border-radius:8px;background:var(--op-card);color:var(--op-ink)}
+  .op-stack{display:grid;gap:10px}
+  .op-status{min-height:1.25rem;font-size:.85rem;color:var(--op-muted);margin:8px 0 0!important}
+  .op-status[data-kind="err"]{color:#B91C1C}
+  .op-status[data-kind="ok"]{color:#15803D}
+  .op-console[hidden],.op-lock[hidden],[hidden]{display:none!important}
+  .op-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin:0 0 24px}
+  .op-section{background:var(--op-card);border:1px solid var(--op-line);border-radius:16px;padding:20px;margin:0 0 20px}
+  .op-section h2{font-size:1.1rem;margin:0 0 12px}
+  .op-row{border-top:1px solid var(--op-line);padding:12px 0}
+  .op-row:first-of-type{border-top:0}
+  .op-title{font-weight:600;word-break:break-word}
+  .op-meta{font-size:.85rem;color:var(--op-muted);word-break:break-word}
+  .op-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .op-empty{color:var(--op-muted);font-size:.9rem}
+  :focus-visible{outline:2px solid var(--op-gold);outline-offset:2px}
+</style>
+</head>
+<body>
+<main id="op-main">
+  <section class="op-lock" id="op-lock" aria-labelledby="op-lock-title">
+    <div class="op-card">
+      <h1 id="op-lock-title">Site operator</h1>
+      <p>Request a one-time code for the operator console. Sign in to the site with the owner account first.</p>
+      <div class="op-stack">
+        <button type="button" class="btn btn-g full" id="op-send"><span class="btn-txt">Email me a sign-in code</span></button>
+        <p class="op-status" id="op-status" role="status" aria-live="polite"></p>
+        <form id="op-verify-form" hidden novalidate>
+          <label class="op-label" for="op-code">20-digit code from the email</label>
+          <input class="op-input" id="op-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="20" pattern="[0-9]{20}" spellcheck="false" placeholder="20 digits">
+          <p class="op-error" id="op-error" role="alert"></p>
+          <button type="submit" class="btn btn-g full" id="op-verify"><span class="btn-txt">Verify and open</span></button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="op-console" id="op-console" hidden aria-labelledby="op-console-title">
+    <div class="op-head">
+      <h1 id="op-console-title">Site operator</h1>
+      <button type="button" class="btn btn-n btn-s" id="op-signout">Sign out</button>
+    </div>
+    <section class="op-section" aria-labelledby="op-cloud-title">
+      <h2 id="op-cloud-title">Cloud projects</h2>
+      <div class="op-stack">
+        <button type="button" class="btn btn-g" id="op-cloud-load">Load cloud projects</button>
+        <p class="op-status" id="op-cloud-status" role="status" aria-live="polite"></p>
+        <div id="op-cloud-list"></div>
+      </div>
+    </section>
+    <section class="op-section" aria-labelledby="op-billing-title">
+      <h2 id="op-billing-title">Subscriptions</h2>
+      <div class="op-stack">
+        <button type="button" class="btn btn-g" id="op-billing-load">Load subscriptions</button>
+        <p class="op-status" id="op-billing-status" role="status" aria-live="polite"></p>
+        <div id="op-billing-list"></div>
+      </div>
+    </section>
+  </section>
+</main>
+<script defer src="js/operator.js"></script>
+</body>
+</html>

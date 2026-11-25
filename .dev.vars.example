@@ -17,3 +17,8 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 # via this var so the email path is tested end to end without hitting
 # api.resend.com. Never set it in production.
 # RESEND_API_BASE=http://127.0.0.1:8797
+
+# Dedicated HMAC key for site session cookies. Generate it outside the
+# transcript and set it with: npx wrangler secret put SESSION_SECRET
+# Never commit a value here. Until set, GOOGLE_CLIENT_SECRET still signs.
+# SESSION_SECRET=

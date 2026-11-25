@@ -7,8 +7,8 @@
    short-lived admin session token.
 
    Flow
-     POST /api/admin/signin/request  (signed-in, verified account)
-       -> 8-char code emailed to ADMIN_EMAIL, challenge id in an HttpOnly
+     POST /api/admin/signin/request  (signed-in, verified OWNER account)
+       -> 20-digit code emailed to ADMIN_EMAIL, challenge id in an HttpOnly
           cookie so the code only redeems in the browser that asked for it
      POST /api/admin/signin/verify   { code } + challenge cookie
        -> opaque admin token (45 min), stored as SHA-256
@@ -19,7 +19,8 @@
    X-Admin-Code path stays while env.ADMIN_CODE is set.
 
    Guards
-     - session required, and the address must be verified (provenEmail);
+     - session required, the address verified (provenEmail) AND equal to the
+       one owner address below - no other account can request a code;
      - the destination address is SERVER-SIDE only - never read from the
        request, so this cannot become an open mail relay;
      - 3 sends/hour/account, 5 verify attempts per challenge, 10-minute code,
@@ -44,8 +45,11 @@ import {
 
 const CHALLENGE_COOKIE = 'mmgr_admin_chal';
 const ADMIN_TOKEN_HEADER = 'X-Admin-Session';
-const CODE_LEN = 8;
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/l
+// Owner 2026-11-25: the operator code is 20 random digits, not the old
+// 8-character alphabet. Digits only so it reads cleanly from an email on a
+// phone, and long enough that an online guess is not a realistic attack.
+const CODE_LEN = 20;
+export const ADMIN_OWNER_EMAIL = 'garfieldprocis@gmail.com';
 const CODE_TTL_MS = 10 * 60 * 1000;
 const TOKEN_TTL_MS = 45 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -84,14 +88,14 @@ function readCookie(request, name) {
 
 function randomCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(CODE_LEN));
-  const limit = 256 - (256 % CODE_ALPHABET.length);
+  const limit = 256 - (256 % 10);
   let out = '';
   for (let i = 0; i < bytes.length; i++) {
     let b = bytes[i];
     while (b >= limit) {
       b = crypto.getRandomValues(new Uint8Array(1))[0];
     }
-    out += CODE_ALPHABET[b % CODE_ALPHABET.length];
+    out += String(b % 10);
   }
   return out;
 }
@@ -141,6 +145,14 @@ async function requireVerifiedSession(request, env) {
         403
       )
     };
+  }
+  if (email !== ADMIN_OWNER_EMAIL) {
+    // The operator console belongs to one address. A code for anyone else
+    // would still land in the owner's inbox and burn the send quota, so refuse
+    // before touching D1 or the mail provider. The message stays generic: no
+    // oracle for which accounts exist beyond "not this one".
+    await cloudTimingSink();
+    return { error: json({ ok: false, error: 'this account cannot use admin sign-in' }, 403) };
   }
   return { session: session, email: email };
 }
@@ -278,6 +290,11 @@ export async function handleAdminOtpVerify(request, env) {
   const session = await readSession(request, env);
   if (!session || !session.sub) {
     return json({ ok: false, error: 'sign in to the site first' }, 401);
+  }
+  const ownerEmail = await provenEmail(session, env);
+  if (!ownerEmail || ownerEmail !== ADMIN_OWNER_EMAIL) {
+    await cloudTimingSink();
+    return json({ ok: false, error: 'this account cannot use admin sign-in' }, 403);
   }
   const read = await readJsonBody(request, BODY_CAP);
   if (read.tooLarge) {

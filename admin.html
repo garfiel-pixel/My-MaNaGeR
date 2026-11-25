@@ -146,18 +146,6 @@ header h1 .mark{color:var(--gold);}
   .hdr-actions > .btn{background:transparent;border:0;border-radius:6px;padding:5px 7px;color:var(--slate);box-shadow:none;}
   .hdr-actions > .btn:hover{color:var(--gold-text);background:color-mix(in srgb, var(--gold) 10%, transparent);}
   .hdr-actions > .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
-/* OWNER 2026-11-05: the admin panel is for every user, so the two site-wide
-   operator cards do not sit open. One line, native details, keyboard-safe. */
-.operator-tools{margin-top:16px;}
-.operator-tools>summary{cursor:pointer;padding:10px 2px;font-size:.74rem;font-weight:700;color:var(--slate);list-style-position:inside;}
-.operator-tools>summary:hover{color:var(--gold-text);}
-.operator-tools>summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
-main{max-width:1000px;margin:0 auto;padding:26px 24px 70px;}
-/* Wide monitors (owner 2026-10-19): the create/admin flow fills the screen it
-   is opened on instead of a 1000px strip with empty canvas either side. Under
-   1200px the reading width above still governs. */
-@media (min-width:1200px){main{max-width:none;}}
-
 /* ── project rows ── */
 .prow{border:1px solid var(--border);border-radius:var(--radius,8px);padding:16px 18px;margin-bottom:10px;background:var(--card);transition:border-color var(--tr),box-shadow var(--tr);}
 .prow:hover{border-color:rgba(var(--gold-rgb),.35);box-shadow:0 2px 12px rgba(16,24,40,.06);}
@@ -293,7 +281,6 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     </span>
     <div class="gerr" id="setup-err" role="alert"></div>
     <button class="btn btn-g full" data-action="adminSetupPassword" type="submit"><span class="btn-txt">Create Admin Password</span><span class="spin-dot" aria-hidden="true"></span></button>
-    <button type="button" class="forgot-link" data-action="openOtpLogin">Sign in with an emailed code instead</button>
     <!-- OWNER 2026-09-09: a signed-in admin on a NEW device gets a restore
          path here instead of only "create a new Admin panel code". Hidden until
          the session restore reports signed-in (initGate + mmgr:user-changed). -->
@@ -320,26 +307,15 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
 <div class="gatewrap hidden" id="login-screen">
   <form class="gbox" id="login-form" novalidate>
     <div class="icon"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> </div>
-    <h1>Admin Login</h1>
-    <p>We email a single-use code to the admin inbox. Sign in to the site with the admin account first, then ask for a code.</p>
-    <div id="admin-otp-block">
-      <button class="btn btn-g full" data-action="adminOtpSend" type="button" id="admin-otp-send"><span class="btn-txt">Email me a sign-in code</span><span class="spin-dot" aria-hidden="true"></span></button>
-      <div id="admin-otp-row" hidden>
-        <label class="sr-only" for="admin-otp-code">Emailed sign-in code</label>
-        <input id="admin-otp-code" type="text" autocomplete="one-time-code" spellcheck="false" autocapitalize="characters" placeholder="8-character code from the email">
-        <div class="gerr" id="admin-otp-err" role="alert"></div>
-        <button class="btn btn-g full" data-action="adminOtpVerify" type="button" id="admin-otp-verify"><span class="btn-txt">Verify and open</span><span class="spin-dot" aria-hidden="true"></span></button>
-      </div>
-      <p class="gbox-sub" id="admin-otp-status" role="status" style="margin:8px 0 0"></p>
-    </div>
-    <div class="rc-divider">or use this device's password</div>
+    <h1>Settings</h1>
+    <p>Enter this device's settings password to open your projects and backup.</p>
     <label class="sr-only" for="login-pass">Admin password</label>
     <span class="pw-wrap">
       <input id="login-pass" type="password" placeholder="Admin password" autocomplete="current-password">
       <button type="button" class="pw-eye" data-action="tglPwVis" data-target="login-pass" aria-pressed="false" aria-controls="login-pass"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-eye"></use></svg><span class="sr-only">Show password</span></button>
     </span>
     <div class="gerr" id="login-err" role="alert"></div>
-    <button class="btn btn-g full" data-action="adminLogin" type="submit"><span class="btn-txt">Unlock Admin Panel</span><span class="spin-dot" aria-hidden="true"></span></button>
+    <button class="btn btn-g full" data-action="adminLogin" type="submit"><span class="btn-txt">Unlock Settings</span><span class="spin-dot" aria-hidden="true"></span></button>
     <button type="button" class="forgot-link" data-action="openForgot">Forgot password?</button>
   </form>
 </div>
@@ -446,7 +422,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
       <!-- T-15 (UI-IA-AND-MCP 2026-11-11): search this panel's rail, cards and
            project rows. The palette is built by js/app/search.js; Ctrl+K opens
            it too. -->
-      <button type="button" class="btn btn-n btn-s" data-app-search-open aria-label="Search the admin panel" title="Search (Ctrl+K)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search</button>
+      <button type="button" class="btn btn-n btn-s" data-app-search-open aria-label="Search Settings" title="Search (Ctrl+K)"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-search"></use></svg> Search</button>
       <!-- YOUR PLAN (owner 2026-11-06): visible in the header, not buried in
            the off-canvas rail. Free -> "Upgrade to Premium" opens the pricing
            page; paid -> "Premium" opens a popover with Manage subscription and
@@ -495,7 +471,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         </div>
       </div>
       <button class="btn btn-n btn-s" data-action="changePassword"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Password</button>
-      <button class="btn btn-n btn-s" data-action="lockAdmin" style="color:var(--dot-red);" title="Lock the admin panel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock</button>
+      <button class="btn btn-n btn-s" data-action="lockAdmin" style="color:var(--dot-red);" title="Lock Settings"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-lock"></use></svg> Lock</button>
     </div>
   </header>
 
@@ -537,55 +513,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
     <!-- OWNER 2026-11-05: both site-wide cards live inside one closed
          disclosure. A normal user never needs them, and the panel is for
          everyone - one line instead of two large bars. -->
-    <details class="operator-tools" id="operator-tools">
-      <summary>Site operator tools</summary>
-      <p class="hint" style="margin:0 0 4px">For the deployment operator. Your own panel, projects and backup work without this.</p>
 
-    <!-- CLOUD-BACKEND-ARCHITECTURE-PLAN Phase 2/3 , cloud projects visibility.
-         Operator-gated by the emailed admin sign-in (2026-11-24): the Admin
-         Login code mints a 45-minute token, held in sessionStorage only. The
-         site admin code field below is the legacy fallback for a deployment
-         that still sets ADMIN_CODE. Owner-code reissue reuses /recover, which
-         enforces plan §9: the signed-in Google account must match the record
-         on file , no code is ever issued to a stranger. -->
-    <div class="card" id="cloud-admin-section" style="margin-top:16px">
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Projects</div>
-      <div class="field">
-        <label for="cloud-admin-code">Site admin code</label>
-        <div class="code-row">
-          <input id="cloud-admin-code" type="password" autocomplete="off" placeholder="Site admin code" style="flex:1">
-          <button class="btn btn-g" data-action="cloudAdminList"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Load</button>
-        </div>
-        <div class="code-which-row"><button type="button" class="code-which" popovertarget="which-code-pop"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-help"></use></svg> Which code is this?</button></div>
-        <div class="hint">The site admin code set when the site was deployed. Project codes do not work here. It stays in this tab only.</div>
-      </div>
-      <div class="t-xs mb8" id="cloud-admin-status"></div>
-      <div id="cloud-admin-list"></div>
-    </div>
-
-    <!-- 5.2 (owner 2026-11-01): a subscription row that outlived its account is
-         a billable ghost. Paddle keeps charging, the app grants a paid tier to
-         nobody, and no customer screen can show the row - only this panel can.
-         Same site admin code as the list above. "Cancel and clear" asks Paddle
-         FIRST; if Paddle refuses, the row stays exactly where it is and the
-         reason is shown. Clearing the row first would delete the only handle
-         on a live charge. -->
-    <!-- OWNER 2026-11-05: this card is SITE-WIDE and operator-only. It ships
-         hidden and cloudAdminList() reveals it only after the site admin code
-         has actually been accepted, so a normal user never sees a control
-         that can only answer 403. It is not your own plan - that is the rail's
-         Manage subscription (js/mmgr-billing-manage.js), which is per-account. -->
-    <div class="card" id="billing-admin-section" style="margin-top:16px" hidden>
-      <div class="card-title"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-receipt"></use></svg> Subscriptions</div>
-      <div class="code-row mb8">
-        <button class="btn btn-g" data-action="billingAdminList"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Load</button>
-        <span class="t-xs" id="billing-admin-count"></span>
-      </div>
-      <div class="t-xs mb8" id="billing-admin-status"></div>
-      <div id="billing-admin-list"><div class="empty">Load to list the subscriptions on this site.</div></div>
-      <div class="hint"><strong>Site-wide, not your own plan.</strong> Your own subscription is the rail's Manage subscription. A row is listed here as an orphan only when nothing in the app still holds its account: no account, no project, no shared project, no team membership and no live session. Cancelling at the provider happens before the row is removed, every time.</div>
-    </div>
-    </details>
 
     <!-- T-25 (2026-11-12): account-scoped MCP server panel. It sits outside
          the operator disclosure because it is the owner's own account, not a
@@ -702,7 +630,7 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
        scrim tap, and rail navigation close it (tglNav / closeAdminNav). -->
   <aside class="db-side" id="app-sidebar" aria-label="Admin navigation">
     <div class="db-side-head">
-      <span class="db-brand"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Admin Panel</span>
+      <span class="db-brand"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-shield"></use></svg> Settings</span>
       <button type="button" class="db-side-close" data-action="tglNav" aria-label="Close menu" title="Close menu"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-menu"></use></svg></button>
     </div>
     <nav class="db-nav" id="db-nav">
@@ -715,7 +643,6 @@ pre.snippet{background:var(--tile-bg);border:1px solid var(--border);border-radi
         <button type="button" class="db-link db-link-sub" data-action="openProjectModal"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-plus"></use></svg> New Project</button>
         <button type="button" class="db-link db-link-sub" data-action="importProject"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-upload"></use></svg> Import Project</button>
         <a class="db-link db-link-sub" href="#project-list"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-folder"></use></svg> Project List</a>
-        <a class="db-link db-link-sub" href="#operator-tools" id="rail-operator"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> Cloud Admin</a>
       </div>
       <button type="button" class="db-link db-grp" data-rail-toggle="rail-g-export" aria-expanded="false" aria-controls="rail-g-export"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-download"></use></svg> Export <svg class="ico ico-caret" aria-hidden="true"><use href="css/mmgr-icons.svg#i-arrow-right"></use></svg></button>
       <div class="db-sub" id="rail-g-export" hidden>
@@ -1316,134 +1243,14 @@ function showScreen(id){
   // nothing to toggle on the gate screens themselves anymore.
 }
 async function initGate(){
-  // EMAILED SIGN-IN (owner 2026-11-24): a live admin token is the primary way
-  // in and needs no device password, so it is checked before any local-hash
-  // branch. The token lives in sessionStorage (per tab, gone on close).
-  if (adminToken()) {
-    if (await adminTokenLive()) {
-      sessionStorage.setItem('mmgr_admin_session', '1');
-      enterAdmin();
-      return;
-    }
-    setAdminToken('');
-  }
   const storedHash = localStorage.getItem('mmgr_admin_pass_hash');
   if(!storedHash){ showScreen('setup-screen'); setupRestoreVisibility(); return; }
   if(sessionStorage.getItem('mmgr_admin_session') === '1'){ enterAdmin(); return; }
   showScreen('login-screen');
   setTimeout(()=>{
-    const otpBtn = document.getElementById('admin-otp-send');
     const pw = document.getElementById('login-pass');
-    if (otpBtn) { otpBtn.focus(); } else if (pw) { pw.focus(); }
+    if (pw) { pw.focus(); }
   }, 50);
-}
-/* ---- Emailed admin sign-in (2026-11-24) ----
-   The operator credential is a single-use code emailed to the admin inbox and
-   exchanged for a 45-minute admin token. The token is only accepted alongside
-   the site session cookie of the same account, so a leaked header value alone
-   cannot open the panel. The legacy device password stays below it. */
-const ADMIN_TOKEN_KEY = 'mmgr_admin_token';
-function adminToken(){
-  try{ return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ''; }catch(e){ return ''; }
-}
-function setAdminToken(t){
-  try{
-    if (t) { sessionStorage.setItem(ADMIN_TOKEN_KEY, t); }
-    else { sessionStorage.removeItem(ADMIN_TOKEN_KEY); }
-  }catch(e){ /* storage can be unavailable in private mode */ }
-}
-async function adminTokenLive(){
-  const t = adminToken();
-  if (!t) { return false; }
-  try{
-    const res = await fetch('/api/admin/signin/session', {
-      headers: { 'X-Admin-Session': t },
-      credentials: 'same-origin'
-    });
-    return res.ok;
-  }catch(e){
-    return false;
-  }
-}
-function adminAuthHeaders(extra){
-  const h = Object.assign({}, extra || {});
-  const t = adminToken();
-  if (t) { h['X-Admin-Session'] = t; }
-  else if (cloudAdminCode()) { h['X-Admin-Code'] = cloudAdminCode(); }
-  return h;
-}
-async function adminOtpSend(){
-  const btn = document.getElementById('admin-otp-send');
-  const status = document.getElementById('admin-otp-status');
-  const err = document.getElementById('admin-otp-err');
-  if (btn && btn.disabled) { return; }
-  if (err) { err.textContent = ''; }
-  if (status) { status.textContent = ''; }
-  if (btn) { btn.disabled = true; }
-  try{
-    const res = await fetch('/api/admin/signin/request', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}'
-    });
-    const data = await res.json().catch(function(){ return {}; });
-    if (!res.ok || !data.ok){
-      if (err) { err.textContent = (data && data.error) || ('Could not send the code (HTTP ' + res.status + ').'); }
-      return;
-    }
-    const row = document.getElementById('admin-otp-row');
-    if (row) { row.hidden = false; }
-    if (status) { status.textContent = 'Code sent to ' + (data.emailMasked || 'the admin inbox') + '. It expires in 10 minutes and works once.'; }
-    const inp = document.getElementById('admin-otp-code');
-    if (inp) { inp.value = ''; inp.focus(); }
-  }catch(e){
-    if (err) { err.textContent = 'Network error. Try again.'; }
-  }finally{
-    if (btn) { btn.disabled = false; }
-  }
-}
-async function adminOtpVerify(){
-  const inp = document.getElementById('admin-otp-code');
-  const err = document.getElementById('admin-otp-err');
-  const status = document.getElementById('admin-otp-status');
-  const btn = document.getElementById('admin-otp-verify');
-  const code = String((inp && inp.value) || '').trim().toUpperCase();
-  if (!code){ if (err) { err.textContent = 'Enter the 8-character code from the email.'; } return; }
-  if (btn && btn.disabled) { return; }
-  if (btn) { btn.disabled = true; }
-  if (err) { err.textContent = ''; }
-  try{
-    const res = await fetch('/api/admin/signin/verify', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code })
-    });
-    const data = await res.json().catch(function(){ return {}; });
-    if (!res.ok || !data.ok || !data.token){
-      if (err) { err.textContent = (data && data.error) || ('That code was not accepted (HTTP ' + res.status + ').'); }
-      return;
-    }
-    setAdminToken(data.token);
-    sessionStorage.setItem('mmgr_admin_session', '1');
-    if (status) { status.textContent = ''; }
-    if (inp) { inp.value = ''; }
-    enterAdmin();
-  }catch(e){
-    if (err) { err.textContent = 'Network error. Try again.'; }
-  }finally{
-    if (btn) { btn.disabled = false; }
-  }
-}
-function openOtpLogin(){
-  showScreen('login-screen');
-  const s = document.getElementById('admin-otp-status');
-  if (s) { s.textContent = ''; }
-  const e = document.getElementById('admin-otp-err');
-  if (e) { e.textContent = ''; }
-  const b = document.getElementById('admin-otp-send');
-  if (b) { b.focus(); }
 }
 /* ---- OWNER 2026-09-09: NEW-DEVICE ADMIN RESTORE ("Enter my Admin panel code") ----
    The admin password is a device-local SHA-256 of the code itself, so the
@@ -1868,17 +1675,6 @@ async function verifyAdminRecovery(){
   }
 }
 function lockAdmin(){
-  // Revoke the emailed-sign-in token server-side as well as dropping it here,
-  // so a copied sessionStorage value stops working the moment you lock.
-  const t = adminToken();
-  if (t) {
-    fetch('/api/admin/signout', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'X-Admin-Session': t }
-    }).catch(function(){ /* locking must never block on the network */ });
-  }
-  setAdminToken('');
   sessionStorage.removeItem('mmgr_admin_session');
   const pw = document.getElementById('login-pass');
   if (pw) { pw.value = ''; }
@@ -2315,15 +2111,6 @@ function refreshBackupStatus(){
     .catch(function(){ _escrowHasCode = false; syncEscrowPop(); });
 }
 wireEscrowPop();
-// The rail's Cloud Admin link points at the operator disclosure; a closed
-// <details> hides its children, so open it before the anchor scrolls.
-(function(){
-  var link = document.getElementById('rail-operator');
-  var box = document.getElementById('operator-tools');
-  if (link && box){
-    link.addEventListener('click', function(){ box.open = true; });
-  }
-})();
 function markRestoredNow(){
   try{ sessionStorage.setItem('mmgr_restore_recap','1'); }catch(e){}
 }
@@ -2569,7 +2356,6 @@ function deleteProject(i){
             // The Cloud Projects list below must reflect the tombstone
             // immediately , the owner's exact complaint was that a deleted
             // project kept showing there as live.
-            try { if (cloudAdminCode()) cloudAdminList(); } catch (e2) { /* list refresh is best-effort */ }
           } catch (e) {
             toast('Removed from this list, but the cloud copy could NOT be deleted (cloud unreachable). It still works for anyone with a code.', 'error');
             return;
@@ -2795,7 +2581,7 @@ function downloadPublicData(){
   const content =
 `/* ============================================================
    My MaNaGeR , Public Projects Manifest
-   Generated by Admin Panel on ${new Date().toLocaleString()}.
+   Generated by Settings on ${new Date().toLocaleString()}.
    Commit this file to your repository and deploy via npx wrangler deploy (Cloudflare Workers static assets) to publish.
    Contains hashes only , no plaintext codes.
    ============================================================ */
@@ -3298,242 +3084,6 @@ function copyCloudCode(i){
   navigator.clipboard.writeText(p.cloudOwnerCode)
     .then(()=>toast('Cloud owner code copied. Share it to grant access.'))
     .catch(()=>toast('Could not access clipboard. The code is stored with this project.','error'));
-}
-
-/* ============================================================
-   CLOUD ADMIN , visibility into cloud-linked projects (Phase 2/3)
-   ------------------------------------------------------------
-   The ADMIN_CODE Wrangler secret is the operator credential for the
-   listing API (GET /api/cloud/admin/projects). Reissue reuses the
-   existing /recover route: the Worker only reissues when the signed-in
-   Google session's sub matches the project record's google_sub (plan
-   §9), so a lost code can never be handed to a stranger even by an
-   operator.
-   ============================================================ */
-let _cloudAdminCode = null;
-function cloudAdminCode(){
-  if(_cloudAdminCode) return _cloudAdminCode;
-  try{ _cloudAdminCode = sessionStorage.getItem('mmgr_admin_cloud_code') || ''; }catch(e){ _cloudAdminCode = ''; }
-  return _cloudAdminCode;
-}
-function cloudAdminSetCode(v){
-  _cloudAdminCode = v;
-  try{ if(v) sessionStorage.setItem('mmgr_admin_cloud_code', v); else sessionStorage.removeItem('mmgr_admin_cloud_code'); }catch(e){}
-}
-function cloudAdminStatus(msg, kind){
-  const el = document.getElementById('cloud-admin-status');
-  if(!el) return;
-  el.textContent = msg || '';
-  el.style.color = kind === 'err' ? 'var(--danger)' : kind === 'ok' ? 'var(--green)' : 'var(--slate)';
-}
-async function cloudAdminList(){
-  const inp = document.getElementById('cloud-admin-code');
-  const code = (inp && inp.value.trim()) || cloudAdminCode();    if(!adminToken() && !code){ cloudAdminStatus('Sign in with an emailed code first (Admin Login).', 'err'); return; }
-  if (code) { cloudAdminSetCode(code); }
-  cloudAdminStatus('Loading cloud projects…', '');
-  try{
-    const res = await fetch('/api/cloud/admin/projects', { headers: adminAuthHeaders() });
-    const data = await res.json().catch(()=>({}));
-    if(!res.ok || !data.ok){
-      cloudAdminStatus((data && data.error) || 'Failed (HTTP ' + res.status + '). ' + (res.status === 503 ? 'No site admin code is set for this site.' : res.status === 403 ? 'That is not the site admin code. Project codes (owner/editor/viewer) do NOT unlock this section. Enter those on the launcher (app.html). The site admin code is set when the site is deployed.' : ''), 'err');
-      return;
-    }
-    const list = document.getElementById('cloud-admin-list');
-    // The site admin code was accepted. Only now is the site-wide billing card
-    // allowed on screen; it ships hidden so a normal user never sees a control
-    // that can only answer 403.
-    const billingSec = document.getElementById('billing-admin-section');
-    if(billingSec) billingSec.hidden = false;
-    const projects = data.projects || [];
-    if(!projects.length){ list.innerHTML = '<div class="empty">No cloud-linked projects yet.</div>'; cloudAdminStatus(''); return; }
-    list.innerHTML = projects.map(function(p){
-      // STABILIZATION (2026-08-16): a tombstoned project renders its
-      // "Deleted" state instead of looking live , the owner's exact report.
-      // Undo (restore) is the only recovery path after the 5s toast window;
-      // Delete permanently (purge) wipes the backend NOW, no undo.
-      const deleted = !!p.deletedAt;
-      const meta = '<span>Created: ' + escapeHtml(String(p.createdAt||'').slice(0,10)) + '</span><span>Updated: ' + escapeHtml(String(p.updatedAt||'').slice(0,19).replace('T',' ')) + '</span>' + (p.themePrefs ? '<span>Theme: ' + escapeHtml(p.themePrefs.palette) + (p.themePrefs.dark ? ' · dark' : '') + (p.themePrefs.updatedAt ? ' · saved ' + escapeHtml(String(p.themePrefs.updatedAt).slice(0,10)) : '') + '</span>' : '') + '</div>';
-      const actions = deleted
-        ? '<div class="prow-actions"><button class="btn btn-o btn-s" data-action="cloudAdminRestore" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Undo</button>' +
-          '<button class="btn btn-d btn-s" data-action="cloudAdminPurge" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Delete permanently</button></div>'
-        : '<div class="prow-actions"><button class="btn btn-o btn-s" data-action="cloudAdminReissue" data-id="' + escapeAttr(p.projectId) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-refresh"></use></svg> Reissue owner code</button></div>';
-      return '<div class="prow"><div class="prow-top"><div><div class="prow-title">' + escapeHtml(p.label || p.projectId) + '</div>' +
-        '<div class="prow-desc">ID: <code>' + escapeHtml(p.projectId) + '</code> · linked account: ' + (p.linkedName ? escapeHtml(p.linkedName) : '<em>none</em>') + ' · snapshot: ' + (p.hasSnapshot ? 'yes' : 'no') + (deleted ? ' · <span class="del-note">deleted ' + escapeHtml(String(p.deletedAt).slice(0,19).replace('T',' ')) + '</span>' : '') + '</div></div>' +
-        '<span class="badge ' + (deleted ? 'del' : (p.hasSnapshot ? 'active' : 'planning')) + '"><span class="sdot"></span>' + (deleted ? 'deleted' : (p.hasSnapshot ? 'snapshot' : 'no snapshot')) + '</span></div>' +
-        '<div class="prow-meta">' + meta + actions + '</div></div>';
-    }).join('');
-    cloudAdminStatus(projects.length + ' cloud project(s) loaded.', 'ok');
-  }catch(e){
-    cloudAdminStatus('Cloud API unreachable on this host.', 'err');
-  }
-}
-/* 5.2 (owner 2026-11-01) , ORPHANED SUBSCRIPTIONS. Same site admin code as
-   the Cloud Projects card above, same status line style. The clear action is
-   deliberately two steps: confirm here, then the Worker asks the payment
-   provider FIRST and only removes the row when the provider has answered. A
-   refusal leaves the row exactly where it was and says why, because clearing
-   the row first would delete the only handle on a live charge. */
-function billingAdminStatus(msg, kind){
-  const el = document.getElementById('billing-admin-status');
-  if(!el) return;
-  el.textContent = msg || '';
-  el.style.color = kind === 'err' ? 'var(--danger)' : kind === 'ok' ? 'var(--green)' : 'var(--slate)';
-}
-async function billingAdminList(){
-  const inp = document.getElementById('cloud-admin-code');
-  const code = (inp && inp.value.trim()) || cloudAdminCode();
-  if(!adminToken() && !code){ billingAdminStatus('Sign in with an emailed code first (Admin Login).', 'err'); return; }
-  if (code) { cloudAdminSetCode(code); }
-  billingAdminStatus('Loading subscriptions\u2026', '');
-  try{
-    const res = await fetch('/api/admin/billing/subscriptions', { headers: adminAuthHeaders() });
-    const data = await res.json().catch(()=>({}));
-    if(!res.ok || !data.ok){
-      billingAdminStatus((data && data.error) || ('Failed (HTTP ' + res.status + ').'), 'err');
-      return;
-    }
-    const list = document.getElementById('billing-admin-list');
-    const rows = data.subscriptions || [];
-    const count = document.getElementById('billing-admin-count');
-    if(count) count.textContent = rows.length + (rows.length === 1 ? ' subscription' : ' subscriptions');
-    if(!rows.length){ list.innerHTML = '<div class="empty">No subscriptions on this site.</div>'; billingAdminStatus('', ''); return; }
-    const canClear = !!data.cancellable;
-    list.innerHTML = rows.map(function(s){
-      const orphan = !!s.orphaned;
-      const badge = orphan
-        ? '<span class="badge del"><span class="sdot"></span>orphan</span>'
-        : (s.billable ? '<span class="badge active"><span class="sdot"></span>live</span>' : '<span class="badge planning"><span class="sdot"></span>' + escapeHtml(String(s.status || 'unknown')) + '</span>');
-      const action = orphan && canClear
-        ? '<div class="prow-actions"><button class="btn btn-d btn-s" data-action="billingAdminClear" data-id="' + escapeAttr(s.ownerSub) + '"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-trash"></use></svg> Cancel and clear</button></div>'
-        : '';
-      return '<div class="prow"><div class="prow-top"><div><div class="prow-title">' + escapeHtml(s.ownerSub) + '</div>' +
-        '<div class="prow-desc">Plan: ' + escapeHtml(String(s.tier || 'unknown')) + ' \u00b7 provider id: ' +
-        (s.subscriptionId ? '<code>' + escapeHtml(s.subscriptionId) + '</code>' : '<em>none</em>') +
-        ' \u00b7 why: ' + escapeHtml(s.evidence) + '</div></div>' + badge + '</div>' +
-        '<div class="prow-meta"><span>Status: ' + escapeHtml(String(s.status || '')) + '</span>' +
-        '<span>Updated: ' + escapeHtml(String(s.updatedAt || '').slice(0, 19).replace('T', ' ')) + '</span>' + action + '</div></div>';
-    }).join('');
-    const orphans = rows.filter(function(s){ return !!s.orphaned; }).length;
-    billingAdminStatus(orphans + ' orphaned of ' + rows.length + ' listed.', orphans ? 'err' : 'ok');
-  }catch(e){
-    billingAdminStatus('Cloud API unreachable on this host.', 'err');
-  }
-}
-async function billingAdminClear(ownerSub){
-  const code = cloudAdminCode() || '';
-  if(!adminToken() && !code){ billingAdminStatus('Sign in with an emailed code first (Admin Login).', 'err'); return; }
-  admConfirm({
-    title: 'Cancel and clear this subscription?',
-    message: ownerSub + ' has no account, project, sharing, team row or live session anywhere in the app, so nothing can reach this subscription from a customer screen. The provider is asked to cancel it first. The row is only removed if the provider accepts; if it refuses, the row stays and the reason is shown.',
-    danger: true,
-    confirmLabel: 'Cancel and clear',
-    onOk: async function(){
-      billingAdminStatus('Asking the payment provider to cancel\u2026', '');
-      try{
-        const res = await fetch('/api/admin/billing/subscriptions/clear', {
-          method: 'POST',
-          headers: adminAuthHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ ownerSub: ownerSub })
-        });
-        const data = await res.json().catch(()=>({}));
-        if(!res.ok || !data.ok){
-          billingAdminStatus('Not cleared: ' + ((data && data.error) || ('HTTP ' + res.status)) + ((data && data.keptRow) ? ' The subscription row is still in place.' : ''), 'err');
-          return;
-        }
-        billingAdminStatus('Cancelled at the provider and cleared. That account is on the free plan now.', 'ok');
-        billingAdminList();
-      }catch(e){
-        billingAdminStatus('Cloud API unreachable on this host.', 'err');
-      }
-    }
-  });
-}
-async function cloudAdminReissue(projectId){
-  let label = projectId;
-  const row = document.querySelector('#cloud-admin-list [data-action="cloudAdminReissue"][data-id="' + String(projectId).replace(/"/g,'&quot;') + '"]');
-  if(row && row.closest('.prow')){
-    const t = row.closest('.prow').querySelector('.prow-title');
-    if(t) label = t.textContent;
-  }
-  admConfirm({
-    title: 'Reissue owner code?',
-    message: 'Reissue the owner code for "' + label + '"? The OLD owner code stops working immediately. This browser must be signed in to the Google account linked to the project, or the Worker rejects the reissue (recovery requires the account on file).',
-    danger: true,
-    confirmLabel: 'Reissue',
-    onOk: async function(){
-      cloudAdminStatus('Reissuing owner code…', '');
-      try{
-        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/recover', {
-          method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
-        });
-        const data = await res.json().catch(()=>({}));
-        if(!res.ok || !data.ok || !data.ownerCode){
-          cloudAdminStatus('Reissue rejected. Sign in to the Google account linked to this project (the Worker enforces the match), then try again.', 'err');
-          return;
-        }
-        cloudAdminStatus('New owner code: ' + data.ownerCode + '. Copy it now, it is shown once.', 'ok');
-      }catch(e){
-        cloudAdminStatus('Cloud API unreachable on this host.', 'err');
-      }
-    }
-  });
-}
-
-/* STABILIZATION (2026-08-16) , "Deleted" state actions for the Cloud
-   Projects list. Undo restores a tombstoned project (the only recovery path
-   after the 5s delete-toast window); Delete permanently (fortify) hard-
-   purges the backend NOW , R2 blobs, codes, adoptions, changelog, D1 row , 
-   with no undo ("no more cloud until another cloud upload"). Both ride the
-   admin auth header like the list itself (the emailed-code token, or the
-   legacy site code); the Worker accepts admin auth for these two owner-style
-   actions by design (the site operator IS the owner). */
-async function cloudAdminRestore(projectId){
-  cloudAdminStatus('Restoring project…', '');
-  try{
-    const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/restore', {
-      method:'POST', credentials:'same-origin', headers: adminAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({})
-    });
-    const data = await res.json().catch(()=>({}));
-    if(!res.ok || !data.ok){
-      cloudAdminStatus('Restore failed: ' + ((data && data.error) || 'HTTP ' + res.status) + '.', 'err');
-      return;
-    }
-    cloudAdminStatus('Project restored. It is live again for every code holder.', 'ok');
-    cloudAdminList();
-  }catch(e){
-    cloudAdminStatus('Cloud API unreachable on this host.', 'err');
-  }
-}
-async function cloudAdminPurge(projectId){
-  let label = projectId;
-  const row = document.querySelector('#cloud-admin-list [data-action="cloudAdminPurge"][data-id="' + String(projectId).replace(/"/g,'&quot;') + '"]');
-  if(row && row.closest('.prow')){
-    const t = row.closest('.prow').querySelector('.prow-title');
-    if(t) label = t.textContent;
-  }
-  admConfirm({
-    title: 'Delete permanently?',
-    message: 'Permanently delete "' + label + '" from the cloud backend NOW? This wipes the project from D1 and R2: its snapshot, every editor/viewer code, adoptions and the changelog are gone, and no one can load it again. There is NO undo for this. Your local copy on this device is not affected.',
-    danger: true,
-    confirmLabel: 'Delete permanently',
-    onOk: async function(){
-      cloudAdminStatus('Deleting permanently…', '');
-      try{
-        const res = await fetch('/api/cloud/projects/' + encodeURIComponent(projectId) + '/purge', {
-          method:'POST', credentials:'same-origin', headers: adminAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({})
-        });
-        const data = await res.json().catch(()=>({}));
-        if(!res.ok || !data.ok){
-          cloudAdminStatus('Delete failed: ' + ((data && data.error) || 'HTTP ' + res.status) + '.', 'err');
-          return;
-        }
-        toast('Project permanently deleted from the cloud. No more cloud until the next upload.', 'ok');
-        cloudAdminList();
-      }catch(e){
-        cloudAdminStatus('Cloud API unreachable on this host.', 'err');
-      }
-    }
-  });
 }
 
 /* ============================================================
@@ -4248,9 +3798,6 @@ const ADMIN_ACTION_MAP = {
   'adminSetupPassword': () => handleSetupPassword(),
   'restoreAdminCodeFromAccount': () => restoreAdminCodeFromAccount(),
   'adminLogin': () => handleLogin(),
-  'adminOtpSend': () => adminOtpSend(),
-  'adminOtpVerify': () => adminOtpVerify(),
-  'openOtpLogin': () => openOtpLogin(),
   'restoreAdminCode': () => restoreAdminCode(),
   'dismissRestoreRecap': (el) => { const c = document.getElementById('restore-recap'); if (c) c.hidden = true; },
   'tglPwVis': (el) => tglPwVis(el),
@@ -4298,12 +3845,6 @@ const ADMIN_ACTION_MAP = {
   'tglCrossProject': () => tglCrossProject(),
   'openSignIn': () => { var GA = window.MMGR && MMGR.GoogleAuth ? MMGR.GoogleAuth : null; if (GA && GA.openSignInPrompt) GA.openSignInPrompt(); openSignInModal(); },
   'closeSignIn': () => closeSignInModal(),
-  'cloudAdminList': () => cloudAdminList(),
-  'billingAdminList': () => billingAdminList(),
-  'billingAdminClear': (el) => billingAdminClear(el.getAttribute('data-id')),
-  'cloudAdminReissue': (el) => cloudAdminReissue(el.getAttribute('data-id')),
-  'cloudAdminRestore': (el) => cloudAdminRestore(el.getAttribute('data-id')),
-  'cloudAdminPurge': (el) => cloudAdminPurge(el.getAttribute('data-id')),
   'codesManager': (el) => openCodesManager(_admIdx(el)),
   'closeCodesModal': () => closeCodesModal(),
   'codesCreate': () => createCloudCode(),

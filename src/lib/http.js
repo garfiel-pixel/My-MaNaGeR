@@ -128,10 +128,18 @@ export const SESSION_MAX_AGE = 604800; // 7 days, seconds
 let _fallbackSessionKeyPromise = null;
 
 export async function sessionKey(env) {
-  const secret =
-    env && typeof env.GOOGLE_CLIENT_SECRET === 'string' && env.GOOGLE_CLIENT_SECRET.length
-      ? env.GOOGLE_CLIENT_SECRET
-      : null;
+  // Owner 2026-11-25: sessions are signed with a dedicated SESSION_SECRET,
+  // never with the OAuth client secret. Using one secret for two jobs meant a
+  // leak of either forged sessions AND decrypted admin-code escrow material.
+  // GOOGLE_CLIENT_SECRET is kept as a fallback so an existing deployment with
+  // the new secret not yet set keeps signing (and reading) sessions exactly as
+  // before; adding the secret is a one-time sign-out, not a lockout. The
+  // escrow key in src/auth/admin-code.js derives from GOOGLE_CLIENT_SECRET
+  // directly and is deliberately NOT changed here, so existing backups stay
+  // readable.
+  const from = name =>
+    env && typeof env[name] === 'string' && env[name].length ? env[name] : null;
+  const secret = from('SESSION_SECRET') || from('GOOGLE_CLIENT_SECRET');
   if (secret) {
     return crypto.subtle.importKey(
       'raw',

@@ -10,7 +10,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { adminEmail, adminAuthorized, handleAdminOtpVerify } from '../src/auth/admin-otp.js';
+import {
+  adminEmail,
+  adminAuthorized,
+  handleAdminOtpRequest,
+  handleAdminOtpVerify,
+  ADMIN_OWNER_EMAIL
+} from '../src/auth/admin-otp.js';
 import { signSession, sessionKey, hashOwnerCode } from '../src/lib/http.js';
 
 const SECRET = 'test-session-secret';
@@ -78,12 +84,9 @@ function makeDb(state) {
   return db;
 }
 
-async function cookieFor(env, sub = SUB) {
+async function cookieFor(env, sub = SUB, email = ADMIN_OWNER_EMAIL) {
   const key = await sessionKey(env);
-  const token = await signSession(
-    { sub, email: 'owner@example.com', exp: Math.floor(Date.now() / 1000) + 3600 },
-    key
-  );
+  const token = await signSession({ sub, email, exp: Math.floor(Date.now() / 1000) + 3600 }, key);
   return 'mmgr_session=' + token;
 }
 
@@ -125,7 +128,10 @@ test('the destination inbox is server-side, with a documented default', () => {
 test('verify refuses without a site session', async () => {
   const state = { challenges: [], sessions: [] };
   const env = { DB: makeDb(state), GOOGLE_CLIENT_SECRET: SECRET };
-  const res = await handleAdminOtpVerify(verifyRequest({ code: 'ABCD2345' }, null), env);
+  const res = await handleAdminOtpVerify(
+    verifyRequest({ code: '12345678901234567890' }, null),
+    env
+  );
   assert.equal(res.status, 401);
 });
 
@@ -133,7 +139,10 @@ test('verify refuses without the challenge cookie that requested the code', asyn
   const state = { challenges: [], sessions: [] };
   const env = { DB: makeDb(state), GOOGLE_CLIENT_SECRET: SECRET };
   const cookie = await cookieFor(env);
-  const res = await handleAdminOtpVerify(verifyRequest({ code: 'ABCD2345' }, cookie), env);
+  const res = await handleAdminOtpVerify(
+    verifyRequest({ code: '12345678901234567890' }, cookie),
+    env
+  );
   assert.equal(res.status, 400);
   assert.match(await res.text(), /this browser/);
 });
@@ -141,9 +150,12 @@ test('verify refuses without the challenge cookie that requested the code', asyn
 test('a wrong code is rejected and counted, and never issues a token', async () => {
   const state = { challenges: [], sessions: [] };
   const env = { DB: makeDb(state), GOOGLE_CLIENT_SECRET: SECRET };
-  const row = await freshChallenge(state, 'ABCD2345');
+  const row = await freshChallenge(state, '12345678901234567890');
   const cookie = await cookieFor(env);
-  const res = await handleAdminOtpVerify(verifyRequest({ code: 'WRONG999' }, cookie, row.id), env);
+  const res = await handleAdminOtpVerify(
+    verifyRequest({ code: '99999999999999999999' }, cookie, row.id),
+    env
+  );
   assert.equal(res.status, 400);
   assert.equal(state.challenges[0].attempts, 1);
   assert.equal(state.sessions.length, 0);
@@ -152,11 +164,11 @@ test('a wrong code is rejected and counted, and never issues a token', async () 
 test('the right code issues one token and cannot be replayed', async () => {
   const state = { challenges: [], sessions: [] };
   const env = { DB: makeDb(state), GOOGLE_CLIENT_SECRET: SECRET };
-  const row = await freshChallenge(state, 'ABCD2345');
+  const row = await freshChallenge(state, '12345678901234567890');
   const cookie = await cookieFor(env);
 
   const first = await handleAdminOtpVerify(
-    verifyRequest({ code: 'abcd2345' }, cookie, row.id),
+    verifyRequest({ code: '12345678901234567890' }, cookie, row.id),
     env
   );
   assert.equal(first.status, 200);
@@ -168,7 +180,7 @@ test('the right code issues one token and cannot be replayed', async () => {
   assert.ok(state.challenges[0].consumed_at, 'the challenge is consumed on success');
 
   const again = await handleAdminOtpVerify(
-    verifyRequest({ code: 'ABCD2345' }, cookie, row.id),
+    verifyRequest({ code: '12345678901234567890' }, cookie, row.id),
     env
   );
   assert.equal(again.status, 400);
@@ -178,11 +190,14 @@ test('the right code issues one token and cannot be replayed', async () => {
 test('an expired challenge is refused even with the right code', async () => {
   const state = { challenges: [], sessions: [] };
   const env = { DB: makeDb(state), GOOGLE_CLIENT_SECRET: SECRET };
-  const row = await freshChallenge(state, 'ABCD2345', {
+  const row = await freshChallenge(state, '12345678901234567890', {
     expires_at: new Date(Date.now() - 1000).toISOString()
   });
   const cookie = await cookieFor(env);
-  const res = await handleAdminOtpVerify(verifyRequest({ code: 'ABCD2345' }, cookie, row.id), env);
+  const res = await handleAdminOtpVerify(
+    verifyRequest({ code: '12345678901234567890' }, cookie, row.id),
+    env
+  );
   assert.equal(res.status, 400);
   assert.equal(state.sessions.length, 0);
 });
@@ -190,9 +205,12 @@ test('an expired challenge is refused even with the right code', async () => {
 test('a challenge minted for another account cannot be redeemed in this session', async () => {
   const state = { challenges: [], sessions: [] };
   const env = { DB: makeDb(state), GOOGLE_CLIENT_SECRET: SECRET };
-  const row = await freshChallenge(state, 'ABCD2345', { sub: 'google:someone-else' });
+  const row = await freshChallenge(state, '12345678901234567890', { sub: 'google:someone-else' });
   const cookie = await cookieFor(env);
-  const res = await handleAdminOtpVerify(verifyRequest({ code: 'ABCD2345' }, cookie, row.id), env);
+  const res = await handleAdminOtpVerify(
+    verifyRequest({ code: '12345678901234567890' }, cookie, row.id),
+    env
+  );
   assert.equal(res.status, 400);
   assert.equal(state.sessions.length, 0);
 });
@@ -248,4 +266,77 @@ test('the admin token only authenticates alongside the same account session', as
   );
   assert.equal(ok.ok, true);
   assert.equal(ok.via, 'otp');
+});
+
+test('a fresh sign-in code is 20 random digits and goes to the fixed inbox', async () => {
+  const state = { challenges: [], sessions: [] };
+  const env = {
+    DB: makeDb(state),
+    GOOGLE_CLIENT_SECRET: SECRET,
+    RESEND_API_KEY: 'test-key'
+  };
+  const realFetch = globalThis.fetch;
+  let captured = null;
+  globalThis.fetch = async function (url, init) {
+    captured = { url: String(url), body: JSON.parse(init.body) };
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    const cookie = await cookieFor(env);
+    const res = await handleAdminOtpRequest(
+      new Request('https://mymanagerworkspace.com/api/admin/signin/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: '{}'
+      }),
+      env
+    );
+    assert.equal(res.status, 200);
+    assert.ok(captured, 'the code was actually emailed');
+    assert.deepEqual(captured.body.to, ['admin@mymanagerworkspace.com']);
+    const code = /\b(\d{20})\b/.exec(captured.body.text);
+    assert.ok(code, 'the email carries exactly one 20-digit code');
+    assert.match(code[1], /^\d{20}$/);
+    assert.ok(!/[A-Za-z]/.test(code[1]), 'the code contains no letters');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('a non-owner account cannot request or redeem an admin code', async () => {
+  const state = { challenges: [], sessions: [] };
+  const env = {
+    DB: makeDb(state),
+    GOOGLE_CLIENT_SECRET: SECRET,
+    RESEND_API_KEY: 'test-key'
+  };
+  const realFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async function () {
+    called = true;
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    const stranger = await cookieFor(env, 'google:someone-else', 'someone@example.com');
+    const request = await handleAdminOtpRequest(
+      new Request('https://mymanagerworkspace.com/api/admin/signin/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: stranger },
+        body: '{}'
+      }),
+      env
+    );
+    assert.equal(request.status, 403);
+    assert.equal(called, false, 'no email is sent for a stranger');
+
+    const row = await freshChallenge(state, '12345678901234567890');
+    const verify = await handleAdminOtpVerify(
+      verifyRequest({ code: '12345678901234567890' }, stranger, row.id),
+      env
+    );
+    assert.equal(verify.status, 403);
+    assert.equal(state.sessions.length, 0);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });

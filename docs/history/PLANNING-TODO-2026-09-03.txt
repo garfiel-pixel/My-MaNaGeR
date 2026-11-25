@@ -3001,3 +3001,18 @@ narrower reading of §14.3).
   W6 added: 5 new checks, 32/32 overall. SW cache bumped to v718; no CSP
   churn (style/markup only). Durable guard item 27 added to the local
   skeptical-code-audit skill; re-hashed in skills-lock.json.
+
+- GITLEAKS DEFAULT-RULES HARDENING 2026-11-25 (PR #63): .gitleaks.toml
+  passed a custom --config without [extend] useDefault, which REPLACES the
+  default ruleset with an empty one - the pre-commit hook and CI's
+  gitleaks-action had zero detection rules and had been silent no-ops.
+  Added [extend] useDefault = true (keeping the narrow Paddle client-token
+  allowlist). Enabling real rules surfaced 21 full-history findings, all
+  confirmed non-production false positives (vendored Cloudflare skill docs,
+  a planning directive, the public-by-design IndexNow key, QA/test mock
+  secrets and a crafted fake JWT for the redaction test); baselined each by
+  fingerprint in .gitleaksignore. Verified: full-history gitleaks scan clean
+  (0 findings), npm run verify green, pre-commit green, and both the PR and
+  main CI "Gitleaks secrets scan" steps pass with real rules. Repo-only
+  config, so no production deploy. Durable guard item 28 added to the local
+  skeptical-code-audit skill; re-hashed in skills-lock.json.

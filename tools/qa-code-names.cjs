@@ -24,9 +24,9 @@
      B1  signed out, the admin header reads "Not backed up"; the badge opens
          the backup panel, cloud backup is on by default and writes
          mmgr_autosave_cloud, Drive is off/disabled with a reason and writes
-         mmgr_drive_auto, and the site-wide Subscriptions card ships hidden
-         while the two operator cards ship collapsed; entering the site code
-         renders Cloud Projects and reveals Subscriptions
+         mmgr_drive_auto, and Settings carries NO operator surface (the
+         operator cards and the site-wide Subscriptions card moved to the
+         private /operator page on 2026-11-25)
      B2  the trigger on the restore field opens the popover with all
          three names, Escape closes it
      B3  the launcher's "Have a code?" trigger opens the same popover
@@ -37,7 +37,9 @@
          stubbed here so the arm needs no account), plus the plain
          sentence about what a code cannot restore
      B5  re-entering the panel does not show the recap again (flag is
-         consumed), and the backup status line is still honest
+         consumed), the backup status line is still honest, and Settings
+         exposes no operator console (that flow is owned by
+         tools/qa-operator.cjs against the private /operator page)
 
    Usage:  node tools/qa-code-names.cjs
    Registry: docs/CI-TEST-COVERAGE.md -> CI row; wired in ci.yml T4.
@@ -149,9 +151,15 @@ function bareAdminCodeHits(text) {
     const adminHtml = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf8');
     const appHtml = fs.readFileSync(path.join(ROOT, 'app.html'), 'utf8');
     const projHtml = fs.readFileSync(path.join(ROOT, 'project.html'), 'utf8');
+    // OWNER 2026-11-25: the operator UI (Cloud Projects + Subscriptions) moved
+    // off the personal Settings panel to the private /operator page, and the
+    // static Site admin code field left the UI entirely (ADMIN_CODE is now a
+    // hidden server fallback). This asserts the field is gone rather than the
+    // old "names the field" contract.
     check(
-      'S2a admin.html names the Site admin code field',
-      /<label[^>]*>Site admin code<\/label>/.test(adminHtml)
+      'S2a admin.html no longer carries the Site admin code field (operator UI moved to /operator)',
+      !/<label[^>]*>Site admin code<\/label>/.test(adminHtml) &&
+        adminHtml.indexOf('id="cloud-admin-code"') === -1
     );
     check(
       'S2b admin.html names the Admin panel code restore field',
@@ -164,8 +172,8 @@ function bareAdminCodeHits(text) {
 
     const trig = s => (s.match(/class="code-which" popovertarget="which-code-pop"/g) || []).length;
     check(
-      'S3a admin.html has two triggers (restore + site admin)',
-      trig(adminHtml) === 2,
+      'S3a admin.html has one trigger (restore only; the site-admin field moved to /operator)',
+      trig(adminHtml) === 1,
       trig(adminHtml)
     );
     check(
@@ -323,25 +331,19 @@ function bareAdminCodeHits(text) {
       );
       await page.evaluate(() => document.getElementById('escrow-status').click());
 
-      // The site-wide billing card is operator-only; a normal user must never
-      // see a control that can only answer 403.
-      const billingHidden = await page.evaluate(() => {
-        const el = document.getElementById('billing-admin-section');
-        return el ? el.hidden : null;
-      });
+      // OWNER 2026-11-25: the operator cards and the site-wide Subscriptions
+      // card moved off Settings to the private /operator page. Settings must
+      // no longer carry either element - a normal user never sees an operator
+      // control here that could only answer 403.
+      const operatorUiGone = await page.evaluate(() => ({
+        billing: !document.getElementById('billing-admin-section'),
+        tools: !document.getElementById('operator-tools'),
+        cloudSection: !document.getElementById('cloud-admin-section')
+      }));
       check(
-        'B1c the site-wide subscriptions card ships hidden for a normal user',
-        billingHidden === true,
-        billingHidden
-      );
-      const operatorClosed = await page.evaluate(() => {
-        const d = document.getElementById('operator-tools');
-        return d ? !d.open : null;
-      });
-      check(
-        'B1c2 the operator cards ship collapsed to one line',
-        operatorClosed === true,
-        operatorClosed
+        'B1c Settings no longer carries the operator cards (Subscriptions, Cloud Projects)',
+        operatorUiGone.billing && operatorUiGone.tools && operatorUiGone.cloudSection,
+        operatorUiGone
       );
 
       // B1d: the switch must write the SAME pref the workspace reads, not a
@@ -581,67 +583,20 @@ function bareAdminCodeHits(text) {
       });
       check('B5b the recap is shown once, not on every entry', again === false, again);
 
-      // The operator cards live in a closed disclosure now; open it before
-      // reaching the site admin code field inside.
-      await page.evaluate(() => {
-        const box = document.getElementById('operator-tools');
-        if (box) {
-          box.open = true;
-        }
-      });
-      const pop2 = await openPopover(page, '#cloud-admin-section .code-which').catch(() => null);
-      check(
-        'B5c the site admin code field inside the panel opens the popover',
-        !!(pop2 && pop2.open),
-        pop2
-      );
-
-      // B5d: the operator flow. Stub the site-wide endpoint, enter a code, and
-      // prove the list renders AND the Subscriptions card is only revealed
-      // after the code is accepted.
-      await page.route('**/api/cloud/admin/projects', route =>
-        route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            ok: true,
-            projects: [
-              {
-                projectId: 'op-1',
-                label: 'Operator Project',
-                hasSnapshot: true,
-                createdAt: '2026-11-01T00:00:00Z',
-                updatedAt: '2026-11-01T00:00:00Z'
-              }
-            ]
-          })
-        })
-      );
-      const opBefore = await page.evaluate(() => {
-        const box = document.getElementById('operator-tools');
-        if (box) {
-          box.open = true;
-        }
-        const inp = document.getElementById('cloud-admin-code');
-        if (inp) {
-          inp.value = 'test-site-code';
-        }
-        const btn = document.querySelector('#cloud-admin-section [data-action="cloudAdminList"]');
-        if (btn) {
-          btn.click();
-        }
-        return document.getElementById('billing-admin-section').hidden;
-      });
-      await delay(500);
-      const opAfter = await page.evaluate(() => ({
-        rows: document.querySelectorAll('#cloud-admin-list .prow').length,
-        billingHidden: document.getElementById('billing-admin-section').hidden,
-        status: (document.getElementById('cloud-admin-status') || {}).textContent || ''
+      // OWNER 2026-11-25: the operator console (Cloud Projects + Subscriptions,
+      // unlocked by an emailed code) is now the private /operator page, not a
+      // disclosure inside Settings. This harness no longer drives that flow -
+      // tools/qa-operator.cjs owns it. Here we only pin that Settings carries
+      // no operator surface at all, so a code cannot be typed into it.
+      const opSurfaceGone = await page.evaluate(() => ({
+        tools: !document.getElementById('operator-tools'),
+        cloudCode: !document.getElementById('cloud-admin-code'),
+        billing: !document.getElementById('billing-admin-section')
       }));
       check(
-        'B5d the site admin code unlocks Cloud Projects and reveals Subscriptions',
-        opBefore === true && opAfter.rows === 1 && opAfter.billingHidden === false,
-        { opBefore, opAfter }
+        'B5c Settings carries no operator console (moved to the private /operator page)',
+        opSurfaceGone.tools && opSurfaceGone.cloudCode && opSurfaceGone.billing,
+        opSurfaceGone
       );
       await page.close();
     }

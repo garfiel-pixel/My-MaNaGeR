@@ -1476,6 +1476,15 @@ jobs:
         id: qa-code-names
         run: node tools/qa-code-names.cjs
 
+      # Private /operator console (owner 2026-11-25): the lock screen stays up
+      # until a 20-digit emailed code is redeemed, the console data appears only
+      # after that, and sign-out clears the token. The server-side account gate
+      # is unit-tested in test/operator-gate.test.mjs. Reuses the serve.cjs
+      # started above; it starts its own only if :8765 is down.
+      - name: "T4: Operator console lock + reveal (qa-operator)"
+        id: qa-operator
+        run: node tools/qa-operator.cjs
+
       # S2 remainder of AUDIT-DIRECTIVE-2026-10-18: C6 sticky panel +
       # mobile total bar, C7 switch rows, X-1 render scheduler, X-2 paint
       # cost. Static checks + real DOM/CSSOM assertions (setContent, no

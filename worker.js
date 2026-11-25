@@ -5,7 +5,8 @@ import { sweepExpiredInvitations, sweepExpiredAccess } from './src/cloud/team.js
 import { evaluateWebhooks } from './src/webhooks.js';
 import { fxRefresh } from './src/fx.js';
 import { pruneDecidedReports } from './src/mcp/report-store.js';
-import { bindRequestContext } from './src/lib/http.js';
+import { bindRequestContext, readSession, provenEmail } from './src/lib/http.js';
+import { ADMIN_OWNER_EMAIL } from './src/auth/admin-otp.js';
 
 export { Presence }; // wrangler requires DO classes in the entrypoint
 
@@ -38,7 +39,7 @@ const INLINE_SCRIPT_HASHES = [
   "'sha256-7BIp3SE8LrjSq5puH0lRtmP51SnLzcmBy32sBq0Zcps='",
   "'sha256-PcY9TdIJsXGVPic0Qujx0Ov+GCt9gZG0hEtBVRDiLiM='",
   "'sha256-hkXebphLbybaZt8yNpjkxPc3WjJNQDh0zB2AxsplVEg='",
-  "'sha256-9W3oQUx3avUZhzvwRsHoeiTGs9egZdr727W0/xaFkKU='",
+  "'sha256-XQPN554SOA/1tdfg5LQFG3qhOyoi2dwvOukLhQ6apG8='",
   "'sha256-Oa7ON+9A164SSXhnxu08mFn0V9Tj2SlZ2SzFXFoqKNE='",
   "'sha256-pmiUsOqQa0BPAXsieggzTCopGA0jQO863MBE2hEoBb8='",
   "'sha256-bBLmD1FrvkOBl+RUkaKpJ3PCaD05i4bSieJF2H0UqwE='",
@@ -392,6 +393,9 @@ const PAGE_ROUTES = new Set([
   '/features',
   '/mymanager-field-guide',
   '/offline-construction-software',
+  // Operator console: a real page, but only reachable by direct address and
+  // only for the owner (the gate below runs before the asset fetch).
+  '/operator',
   '/pricing',
   '/privacy',
   '/project',
@@ -736,6 +740,20 @@ export default {
         normalized === '/.well-known/microsoft-identity-association'
       ) {
         return routeApi(request, env, url);
+      }
+
+      // OPERATOR CONSOLE (owner 2026-11-25): a private page reached only by
+      // direct address or bookmark. Both spellings hit this gate, so the edge's
+      // extensionless redirect cannot walk around it. A signed-out visitor or
+      // any other account gets the same real 404 as a missing page, with no
+      // hint that the address exists. The page's own JS still requires the
+      // emailed-code token before it shows any console data.
+      if (normalized === '/operator' || normalized === '/operator.html') {
+        const session = await readSession(request, env);
+        const email = session ? await provenEmail(session, env) : null;
+        if (!email || email !== ADMIN_OWNER_EMAIL) {
+          return privateNotFound();
+        }
       }
 
       // SEO-FILES: robots.txt/sitemap.xml with pinned Content-Type.

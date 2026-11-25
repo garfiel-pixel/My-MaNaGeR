@@ -83,6 +83,7 @@ const PAGES = [
   'app.html',
   'project.html?id=demo-project',
   'admin.html',
+  'operator.html',
   'calculator.html',
   'seed-test.html'
 ];
@@ -125,7 +126,14 @@ const LIGHT_ONLY = [
   'privacy.html',
   'terms.html',
   'refund.html',
-  'mymanager-field-guide.html'
+  'mymanager-field-guide.html',
+  // operator.html (owner 2026-11-25) is the one page whose dark palette is a
+  // native prefers-color-scheme media query rather than the app's mmgr_theme
+  // class. Playwright launches with the light scheme, so the dark class never
+  // engages and the dark pass is skipped - the page is measured in its real
+  // default palette. It is a private owner-only console, not a marketing page,
+  // so it is listed here explicitly rather than being silently relabelled.
+  'operator.html'
 ];
 
 function resolvePlaywright() {
@@ -345,7 +353,7 @@ function axeSource() {
     { expected: LIGHT_ONLY, measured: lightOnlySeen }
   );
   check(
-    'zero serious or critical axe violations (18 pages; dark measured only where it engages)',
+    'zero serious or critical axe violations (19 pages; dark measured only where it engages)',
     blocking.length === 0,
     blocking.slice(0, 12)
   );

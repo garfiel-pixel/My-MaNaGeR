@@ -541,7 +541,7 @@ function check(name, val, detail) {
       (await ev('MMGR.AppSearch.isOpen()')) === true
     );
     const a2 = await ev(`(function(){
-      var hits = MMGR.AppSearch.search('cloud projects').map(function(e){ return e.label; });
+      var hits = MMGR.AppSearch.search('import project').map(function(e){ return e.label; });
       return {
         hits: hits,
         noShortcuts: typeof window.MMGR.Shortcuts === 'undefined',
@@ -550,7 +550,7 @@ function check(name, val, detail) {
     })()`);
     check(
       'S23 admin: the rail and the cards are indexed (Shortcuts still absent)',
-      a2 && a2.rail === true && a2.hits.indexOf('Cloud Projects') > -1 && a2.noShortcuts === true,
+      a2 && a2.rail === true && a2.hits.indexOf('Import Project') > -1 && a2.noShortcuts === true,
       a2
     );
     await ev('MMGR.AppSearch.close(false)');

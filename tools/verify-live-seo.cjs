@@ -31,7 +31,9 @@
      2. every SEO_FILES entry has a real file in the checkout, so a route
         added to worker.js without its asset is caught before the deploy;
      3. route hygiene: /manifest.webmanifest 200, /app.html 307 -> /app, and
-        an unknown path still 404s (the SPA fallback guard).
+        an unknown path still 404s (the SPA fallback guard);
+     4. app surface: /signin serves HTML carrying a sign-in affordance, and
+        /api/health returns 200 JSON with { ok: true, app: 'my-manager' }.
 
    Env / args
      node tools/verify-live-seo.cjs [origin]     # default: production
@@ -186,6 +188,50 @@ async function collect() {
     missing && missing.status === 404,
     missing && missing.status ? 'HTTP ' + missing.status : 'no answer'
   );
+
+  const signin = await get(ORIGIN + '/signin').catch(e => e);
+  let signinOk = false;
+  let signinDetail = 'no answer';
+  if (signin && signin.status === 200) {
+    const ct = (signin.headers.get('content-type') || '').toLowerCase();
+    let body = '';
+    try {
+      body = await signin.text();
+    } catch (e) {
+      body = '';
+    }
+    signinOk = /text\/html/i.test(ct) && /google-signin-button|signin-done/i.test(body);
+    signinDetail =
+      'HTTP ' + signin.status + ', type "' + ct + '"' + (signinOk ? '' : ' (marker missing)');
+  } else if (signin && signin.status) {
+    signinDetail = 'HTTP ' + signin.status;
+  } else if (signin && signin.message) {
+    signinDetail = 'fetch failed: ' + signin.message;
+  }
+  check('/signin is served (HTML with a sign-in affordance)', signinOk, signinDetail);
+
+  const health = await get(ORIGIN + '/api/health').catch(e => e);
+  let healthOk = false;
+  let healthDetail = 'no answer';
+  if (health && health.status === 200) {
+    const ct = (health.headers.get('content-type') || '').toLowerCase();
+    let parsed = null;
+    let raw = '';
+    try {
+      raw = await health.text();
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      parsed = null;
+    }
+    healthOk = /json/i.test(ct) && !!parsed && parsed.ok === true && parsed.app === 'my-manager';
+    healthDetail =
+      'HTTP ' + health.status + ', body ' + (parsed ? JSON.stringify(parsed) : raw.slice(0, 80));
+  } else if (health && health.status) {
+    healthDetail = 'HTTP ' + health.status;
+  } else if (health && health.message) {
+    healthDetail = 'fetch failed: ' + health.message;
+  }
+  check('/api/health answers ok JSON', healthOk, healthDetail);
 
   return results;
 }

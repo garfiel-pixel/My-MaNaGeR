@@ -714,6 +714,15 @@ export default {
         url.protocol = 'https:';
         return Response.redirect(url.toString(), 301);
       }
+      // SEO: www is a permanent alias of the apex host. Redirecting keeps one
+      // canonical origin for the session cookie, the OAuth redirect URIs and
+      // every indexed URL instead of splitting them across two hostnames.
+      if (url.hostname === 'www.mymanagerworkspace.com') {
+        const canonical = new URL(url.href);
+        canonical.protocol = 'https:';
+        canonical.hostname = 'mymanagerworkspace.com';
+        return Response.redirect(canonical.toString(), 301);
+      }
       let normalized = normalizePathname(url.pathname);
 
       // API routes run BEFORE the ASSETS binding. The OAuth discovery

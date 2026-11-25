@@ -27,8 +27,8 @@
          mmgr_drive_auto, and Settings carries NO operator surface (the
          operator cards and the site-wide Subscriptions card moved to the
          private /operator page on 2026-11-25)
-     B2  the trigger on the restore field opens the popover with all
-         three names, Escape closes it
+     B2  the trigger on the restore field opens the popover with the two
+         live names (the retired site admin code is gone), Escape closes it
      B3  the launcher's "Have a code?" trigger opens the same popover
      B4  RESTORE E2E: a fresh profile, a signed-in signal, a typed
          Admin panel code, the real recovery modal, then the panel -
@@ -444,8 +444,9 @@ function bareAdminCodeHits(text) {
       const pop = await openPopover(page, '#setup-restore .code-which');
       check('B2a the restore field opens the popover', pop.open, pop);
       check(
-        'B2b the popover names all three codes',
-        pop.dts.join('|') === 'Site admin code|Admin panel code|Project code and Client code',
+        'B2b the popover names the two live codes and drops the retired site admin code',
+        pop.dts.join('|') === 'Admin panel code|Project code and Client code' &&
+          pop.dts.indexOf('Site admin code') === -1,
         pop.dts
       );
       await page.keyboard.press('Escape');
@@ -468,7 +469,11 @@ function bareAdminCodeHits(text) {
       await delay(900);
       const pop = await openPopover(page, '#code-entry .code-which');
       check('B3a the launcher code field opens the popover', pop.open, pop);
-      check('B3b it carries the same three names', pop.dts.length === 3, pop.dts);
+      check(
+        'B3b it carries the same two live names and no retired site admin code',
+        pop.dts.length === 2 && pop.dts.indexOf('Site admin code') === -1,
+        pop.dts
+      );
       await page.keyboard.press('Escape');
       await delay(150);
       await page.close();

@@ -2988,3 +2988,16 @@ narrower reading of §14.3).
   project in its evidence; new test/subscription-orphan-evidence.test.mjs
   4/4. Durable guard items 25 and 26 added to the local
   skeptical-code-audit skill; re-hashed in skills-lock.json.
+
+- SETTINGS CONNECTED SHELL 2026-11-25 (branch feat/settings-connected-band):
+  Owner reported "bricks", two Settings words and a disconnect between the
+  rail and Back to Dashboard. Root cause: admin.html indented <main> while
+  the rail sat at top:0, splitting one band into two with a beige strip,
+  and the rail brand repeated the page title. Owner chose header-only for
+  the label. admin.html now keeps the header full width, indents only
+  .view-deck by var(--rail-w), aligns the rail to top:var(--hdr-h) (the
+  app.html pattern) and brands the rail "My MaNaGeR" with i-mpw. Gate
+  screens still centre at 1920 (box centre 960 = window centre). qa-widescreen
+  W6 added: 5 new checks, 32/32 overall. SW cache bumped to v718; no CSP
+  churn (style/markup only). Durable guard item 27 added to the local
+  skeptical-code-audit skill; re-hashed in skills-lock.json.

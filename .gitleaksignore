@@ -32,3 +32,36 @@ b5397ae3b31840da95bdd41ccf836d52d6f2cbf7:tools/qa-prefs-roundtrip.cjs:generic-ap
 
 # Reference showing a fake hash constant in monolith feature reference
 1f848ffdb00de8e35d9be463dd257a02454295b9:monolith html to reference from all features.html:generic-api-key:1550
+
+# ── Baseline for the gitleaks DEFAULT ruleset (2026-11-25) ────────────────
+# .gitleaks.toml used to pass --config without [extend] useDefault, so the scan
+# had ZERO rules and these were never surfaced. With the default rules now on,
+# every full-history finding is triaged below. All are non-production:
+#   - vendored Cloudflare skill docs (curl examples, placeholder keys)
+#   - a planning directive showing an access label
+#   - the PUBLIC-BY-DESIGN IndexNow key (it is submitted to search engines in
+#     a public key file, so it is not a secret)
+#   - QA/test mock secrets (qa-*/test-* fixtures) and a crafted fake JWT used
+#     by the observability redaction test
+# No production credential is suppressed. Fingerprint: <commit>:<file>:<rule>:<line>
+57c9cdaa45ebe178c1a4098fdaf6a829b27538d4:.agents/skills/cloudflare/references/argo-smart-routing/api.md:curl-auth-header:27
+57c9cdaa45ebe178c1a4098fdaf6a829b27538d4:.agents/skills/cloudflare/references/argo-smart-routing/api.md:curl-auth-header:84
+57c9cdaa45ebe178c1a4098fdaf6a829b27538d4:.agents/skills/cloudflare/references/argo-smart-routing/README.md:curl-auth-header:13
+57c9cdaa45ebe178c1a4098fdaf6a829b27538d4:.agents/skills/cloudflare/references/bindings/patterns.md:generic-api-key:82
+57c9cdaa45ebe178c1a4098fdaf6a829b27538d4:.agents/skills/cloudflare/references/bindings/patterns.md:generic-api-key:182
+6ae5d05036abe30427e8f5aeb0ab1ebd33cf67a5:.agents/skills/workers-best-practices/references/rules.md:generic-api-key:82
+57c9cdaa45ebe178c1a4098fdaf6a829b27538d4:.agents/skills/workers-best-practices/references/rules.md:generic-api-key:82
+6ded42d5ffbb658ef107f93c9d2d184992eb2dcb:.gitleaksignore:generic-api-key:4
+e75790814c2578e1218eafb4cb25c447a9a3dda6:MCP-DIRECTIVE-2026-11-11.md:generic-api-key:160
+cc99ecf2162d8840f44a2cbc6952d2c14deb402d:test/seo-files.test.mjs:generic-api-key:21
+cc99ecf2162d8840f44a2cbc6952d2c14deb402d:tools/indexnow.cjs:generic-api-key:31
+118552032d10901ab452091eee3c2abf4e735137:tools/qa-api-keys.cjs:generic-api-key:105
+837e19bde8e44869d435f028797f0045e99ae019:tools/qa-approval.cjs:generic-api-key:41
+6d5e930720024dea8b7749d050fddd03d427f06c:tools/qa-billing-orphan.cjs:generic-api-key:43
+118552032d10901ab452091eee3c2abf4e735137:tools/qa-mcp-live-e2e.cjs:generic-api-key:56
+1f21087575f14b0113553558e5981ff10633a26d:tools/qa-prefs-roundtrip.cjs:generic-api-key:65
+7ae4e323c861c837b7ae5c220b8b5fefcf5dbc43:tools/qa-presence.cjs:generic-api-key:51
+7ae4e323c861c837b7ae5c220b8b5fefcf5dbc43:tools/qa-rank9-api.cjs:generic-api-key:68
+d7a66dda8bc149b2b168840a0b3195cd5c42416e:tools/qa-reviews.cjs:generic-api-key:66
+c562f5d9dccf5255618ae3e21d0e8ab0756dbed9:tools/qa-reviews.cjs:generic-api-key:66
+95ee97873e4018fe6bd311c5cac0eb86a6eba777:tools/verify-observability-redaction.cjs:jwt:168

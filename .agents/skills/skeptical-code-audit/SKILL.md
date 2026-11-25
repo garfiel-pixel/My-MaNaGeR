@@ -173,7 +173,10 @@ Run these checks systematically across every relevant file, not just the one cur
     (`gitleaks detect --no-git --source <dir> --config .gitleaks.toml`): (a) the known-bad
     pattern placed INSIDE the allowlisted path (here `pricing.html`) must STILL be flagged
     (exit 1); an allowlist that names the path but allows every secret there is a bug. (b) the
-    allowed shape (`live_<hex>` in `pricing.html`) must pass (exit 0). The repo now extends
+    allowed shape (`live_<hex>` in `pricing.html`) must pass (exit 0). (c) re-run (b) with the
+    `[allowlist]` block removed and confirm the finding REAPPEARS (exit 1, e.g.
+    `generic-api-key`); otherwise (b) only proved no rule matched, not that the allowlist is
+    engaged. The repo now extends
     the defaults and baselines the confirmed false
     positives (vendored docs, the public-by-design IndexNow key, QA/test mocks) by
     fingerprint in `.gitleaksignore`; verify the full-history scan is clean

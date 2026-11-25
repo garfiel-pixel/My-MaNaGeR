@@ -2949,3 +2949,15 @@ narrower reading of §14.3).
   the Microsoft sign-in cookies); qa-consent 39/39 locally. Durable guard
   item 23 added to the local skeptical-code-audit skill; re-hashed in
   skills-lock.json.
+
+- PR 56 CI REPAIR 2 2026-11-25 (pull_request rerun, browser-app):
+  After the inventory fix, the next red step was qa-a11y-axe "zero
+  serious or critical axe violations" - the new "Sign in with an emailed
+  code instead" button reused .forgot-link, whose colour was var(--gold)
+  (#d4af37) on #f8fafc = 2:1 at 12.48px, below the 4.5:1 floor. Fix:
+  .forgot-link now uses var(--gold-text), the repo's semantic gold-as-words
+  token (#7a5a0b light / var(--gold) dark), which also lifts the existing
+  Forgot password and Back to login links. qa-a11y-axe 8/8 locally via
+  QA_BASE against serve.cjs; no CSP hash churn (style-only edit). Durable
+  guard item 24 added to the local skeptical-code-audit skill; re-hashed
+  in skills-lock.json.

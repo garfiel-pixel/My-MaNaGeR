@@ -806,7 +806,7 @@
 // index, sign-in default, billing, team accept, launcher, cloud dash) now point
 // at /app, /project, /pricing and friends instead of the .html URLs, so the
 // precached bundles must be replaced.
-const CACHE = 'mmgr-shell-v713';
+const CACHE = 'mmgr-shell-v714';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

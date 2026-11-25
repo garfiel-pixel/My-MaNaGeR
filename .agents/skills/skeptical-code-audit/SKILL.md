@@ -167,9 +167,14 @@ Run these checks systematically across every relevant file, not just the one cur
     block it drops every default rule, so the scan runs green while detecting zero patterns.
     On 2026-11-25 `.gitleaks.toml` had only an `[allowlist]` and no `[extend]`, so both the
     pre-commit hook and CI's gitleaks-action had been silent no-ops. Never trust a green
-    secret scan on its own: prove detection by feeding a known-bad pattern (e.g. a fake
-    `ghp_` token) and confirming a non-zero exit, and prove the allowlist still narrows only
-    the intended file. The repo now extends the defaults and baselines the confirmed false
+    secret scan on its own. Prove DETECTION by feeding a known-bad pattern (e.g. a fake
+    `ghp_` token) and confirming a non-zero exit. Then prove the ALLOWLIST is scoped, not a
+    blanket pass, with a two-file test against a throwaway dir
+    (`gitleaks detect --no-git --source <dir> --config .gitleaks.toml`): (a) the known-bad
+    pattern placed INSIDE the allowlisted path (here `pricing.html`) must STILL be flagged
+    (exit 1); an allowlist that names the path but allows every secret there is a bug. (b) the
+    allowed shape (`live_<hex>` in `pricing.html`) must pass (exit 0). The repo now extends
+    the defaults and baselines the confirmed false
     positives (vendored docs, the public-by-design IndexNow key, QA/test mocks) by
     fingerprint in `.gitleaksignore`; verify the full-history scan is clean
     (`gitleaks git --config .gitleaks.toml`) before merging any secret-scan change.

@@ -346,6 +346,86 @@ function resolvePlaywright() {
       dark
     );
 
+    // ---- W6: Settings uses the SAME connected shell as project/app ----
+    // OWNER 2026-11-25: the header is one full-width band (Back to Dashboard,
+    // hamburger, Settings); the rail slides in BELOW it and only the reading
+    // column indents. The old design offset <main>, splitting the band into
+    // two rows with a beige strip between them and a second "Settings" in
+    // the rail. Measure the real boxes in both rail states.
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await page.goto(BASE + '/admin.html', { waitUntil: 'load', timeout: 45000 });
+    await page.waitForTimeout(700);
+    if (!(await unlockAdmin())) {
+      check('W6 admin could not pass the password gate', false, 'gate stayed shut');
+    } else {
+      await page.waitForTimeout(400);
+      const shell = await page.evaluate(() => {
+        const rect = sel => {
+          const el = document.querySelector(sel);
+          if (!el) {
+            return null;
+          }
+          const r = el.getBoundingClientRect();
+          return {
+            x: Math.round(r.x),
+            y: Math.round(r.y),
+            w: Math.round(r.width),
+            h: Math.round(r.height),
+            right: Math.round(r.right)
+          };
+        };
+        const rail = rect('#app-sidebar');
+        const head = rect('#admin-app header');
+        const deck = rect('#admin-app .view-deck');
+        const brand = document.querySelector('#app-sidebar .db-brand');
+        return {
+          vw: document.documentElement.clientWidth,
+          head,
+          rail,
+          deck,
+          brand: brand ? brand.textContent.trim() : '',
+          settingsInHeader: (document.querySelector('#admin-app header h1') || {}).textContent || ''
+        };
+      });
+      check(
+        'W6 Settings header is one full-width band',
+        shell.head && shell.head.x === 0 && shell.head.right === shell.vw,
+        shell.head
+      );
+      check(
+        'W6 the rail starts exactly under the header band',
+        shell.rail && shell.head.y + shell.head.h === shell.rail.y && shell.rail.x === 0,
+        { head: shell.head, rail: shell.rail }
+      );
+      check(
+        'W6 the reading column starts at the rail edge, with no gap',
+        shell.deck && shell.deck.x === shell.rail.w,
+        { rail: shell.rail, deck: shell.deck }
+      );
+      check(
+        'W6 the word Settings appears only in the header, not the rail',
+        /Settings/.test(shell.settingsInHeader) &&
+          !/Settings/.test(shell.brand) &&
+          /My MaNaGeR/.test(shell.brand),
+        { brand: shell.brand, header: shell.settingsInHeader }
+      );
+      await page.click('#nav-btn');
+      await page.waitForTimeout(700);
+      const closed = await page.evaluate(() => {
+        const el = document.querySelector('#admin-app .view-deck');
+        const head = document.querySelector('#admin-app header');
+        return {
+          deckX: el ? Math.round(el.getBoundingClientRect().x) : -1,
+          headX: head ? Math.round(head.getBoundingClientRect().x) : -1
+        };
+      });
+      check(
+        'W6 closing the rail returns the column and keeps the band full width',
+        closed.deckX === 0 && closed.headX === 0,
+        closed
+      );
+    }
+
     log('==== qa-widescreen: ' + passed + ' passed / ' + failed + ' failed ====');
     if (failed) {
       process.exitCode = 1;

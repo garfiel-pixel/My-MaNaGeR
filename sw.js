@@ -811,7 +811,11 @@
 // Settings console and its unlock screen centre correctly; dist/admin-bundle.js
 // carries the reissue/restore/purge token + quiet refresh. Both are SHELL
 // assets, so returning clients must refetch.
-const CACHE = 'mmgr-shell-v717';
+// v718 - Settings connected shell 2026-11-25: admin.html keeps the header a
+// full-width band, slides the rail in below it, and drops the duplicate
+// Settings label from the rail (brand is now My MaNaGeR, as in app.html).
+// admin.html is a SHELL asset, so returning clients must refetch.
+const CACHE = 'mmgr-shell-v718';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

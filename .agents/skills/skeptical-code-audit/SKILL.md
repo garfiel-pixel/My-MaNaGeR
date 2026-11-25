@@ -148,6 +148,20 @@ Run these checks systematically across every relevant file, not just the one cur
     proofs (auth_users, cloud_projects, cloud_adoptions, cloud_team_members, unexpired auth_sessions) and the
     required provider cancel: the billing API is already `no-store`.
 
+27. **An open rail must not split the header band** — the owner's reference is
+    project.html / app.html: one full-width header holds Back, hamburger and
+    the page title, and the rail slides in BELOW it. On 2026-11-25 admin.html
+    indented `<main>` by `calc(--rail-w + 8px)` and set the rail `top:0`, so
+    the header started after the rail, the rail's own brand repeated the page
+    title, and a beige strip sat between the two bands ("bricks", "two
+    Settings words", "disconnected"). Fix = keep the header full width, move
+    the indent to the reading column below the header
+    (`.view-deck{margin-left:var(--rail-w)}`), align the rail to
+    `top:var(--hdr-h)`, and make the rail brand the product brand, not the
+    page title. Measure it in both rail states: header x=0 and right=vw, rail
+    y = header.y + header.h, deck.x = rail.w when open and 0 when closed, and
+    exactly one visible page-title word. `qa-widescreen` W6 pins this.
+
 ## Reporting findings
 
 Structure the final report as:

@@ -91,9 +91,12 @@ async function accountPresence(env, ownerSub) {
   }
   const probes = [
     {
-      sql: 'SELECT project_id FROM cloud_projects WHERE google_sub = ? LIMIT 1',
+      // Prefer a live project; a soft-deleted one still owns the subscription
+      // (it can be restored) but the operator needs to know that is the case.
+      sql: 'SELECT deleted_at FROM cloud_projects WHERE google_sub = ? ORDER BY (deleted_at IS NULL) DESC LIMIT 1',
       why: 'owns a cloud project',
-      binds: [sub]
+      binds: [sub],
+      deletedProof: true
     },
     {
       sql: 'SELECT project_id FROM cloud_adoptions WHERE recipient_sub = ? LIMIT 1',
@@ -117,7 +120,11 @@ async function accountPresence(env, ownerSub) {
         .bind(...probes[i].binds)
         .first();
       if (row) {
-        proofs.push(probes[i].why);
+        proofs.push(
+          probes[i].deletedProof && row.deleted_at
+            ? 'owns a soft-deleted cloud project (Delete permanently to release it)'
+            : probes[i].why
+        );
       }
     } catch (e) {
       /* a table this deployment does not have cannot prove existence either */

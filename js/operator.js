@@ -193,8 +193,10 @@
     showLock();
   }
 
-  async function loadCloud() {
-    status('op-cloud-status', 'Loading...', '');
+  async function loadCloud(quiet) {
+    if (!quiet) {
+      status('op-cloud-status', 'Loading...', '');
+    }
     try {
       var res = await fetch('/api/cloud/admin/projects', {
         headers: headers(),
@@ -204,14 +206,22 @@
         return {};
       });
       if (!res.ok || !data.ok) {
-        status('op-cloud-status', (data && data.error) || 'Could not load cloud projects.', 'err');
+        if (!quiet) {
+          status(
+            'op-cloud-status',
+            (data && data.error) || 'Could not load cloud projects.',
+            'err'
+          );
+        }
         return;
       }
       var projects = data.projects || [];
       var list = $('op-cloud-list');
       if (!projects.length) {
         list.innerHTML = '<p class="op-empty">No cloud-linked projects yet.</p>';
-        status('op-cloud-status', '', '');
+        if (!quiet) {
+          status('op-cloud-status', '', '');
+        }
         return;
       }
       list.innerHTML = projects
@@ -249,9 +259,13 @@
           );
         })
         .join('');
-      status('op-cloud-status', projects.length + ' cloud project(s) loaded.', 'ok');
+      if (!quiet) {
+        status('op-cloud-status', projects.length + ' cloud project(s) loaded.', 'ok');
+      }
     } catch (e) {
-      status('op-cloud-status', 'Cloud API unreachable on this host.', 'err');
+      if (!quiet) {
+        status('op-cloud-status', 'Cloud API unreachable on this host.', 'err');
+      }
     }
   }
 
@@ -323,10 +337,10 @@
       return;
     }
     var path;
-    var needAdminHeader = action !== 'reissue';
     if (action === 'reissue') {
-      // Recovery reissues only to the Google account on file; the Worker
-      // enforces that match, so this route needs no operator token.
+      // The emailed-code token is required here for projects owned by
+      // somebody else. The Worker emails the new code to the project's
+      // verified owner address - it is never shown in this console.
       path = '/api/cloud/projects/' + encodeURIComponent(id) + '/recover';
     } else if (action === 'restore') {
       path = '/api/cloud/projects/' + encodeURIComponent(id) + '/restore';
@@ -337,7 +351,7 @@
     }
     var label =
       action === 'reissue'
-        ? 'Reissue the owner code for this project? The old code stops working.'
+        ? 'Reissue the owner code? The old code stops working and the new one is emailed to the project owner.'
         : action === 'restore'
           ? 'Restore this project? It becomes live again for existing code holders.'
           : 'Delete this project permanently from the cloud? This cannot be undone.';
@@ -349,9 +363,7 @@
       var res = await fetch(path, {
         method: 'POST',
         credentials: 'same-origin',
-        headers: needAdminHeader
-          ? headers({ 'Content-Type': 'application/json' })
-          : { 'Content-Type': 'application/json' },
+        headers: headers({ 'Content-Type': 'application/json' }),
         body: '{}'
       });
       var data = await res.json().catch(function () {
@@ -363,10 +375,14 @@
       }
       status(
         'op-cloud-status',
-        action === 'reissue' ? 'New owner code: ' + (data.ownerCode || '') : 'Done.',
+        action === 'reissue'
+          ? data.delivered === 'email'
+            ? 'New owner code emailed to the project owner.'
+            : 'New owner code: ' + (data.ownerCode || '')
+          : 'Done.',
         'ok'
       );
-      loadCloud();
+      loadCloud(true);
     } catch (e) {
       status('op-cloud-status', 'Cloud API unreachable on this host.', 'err');
     }

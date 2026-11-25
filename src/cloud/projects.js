@@ -46,11 +46,13 @@ import {
   authEmailConfigured,
   CLOUD_ORPHAN_WARN_MS,
   sendOrphanWarningEmail,
+  sendAuthEmail,
   cloudAuthApiKey,
   cloudScopeState,
   nextRevision,
   stateRevision
 } from '../lib/http.js';
+import { adminAuthorized } from '../auth/admin-otp.js';
 import { billingConfigured, billingFreeCap, subscriptionActive } from '../billing.js';
 import { enrichDiffs } from './proposal-diffs.js';
 import { emptyProjectState } from './empty-state.js';
@@ -1231,17 +1233,69 @@ export async function handleCloudRecover(request, env, projectId) {
     return cloudForbidden();
   }
   const row = await env.DB.prepare(
-    'SELECT owner_code_salt, owner_code_hash, google_sub, google_name FROM cloud_projects WHERE project_id = ?'
+    'SELECT owner_code_salt, owner_code_hash, google_sub, google_name, owner_email, owner_label FROM cloud_projects WHERE project_id = ?'
   )
     .bind(projectId)
     .first();
-  if (!row || !row.google_sub || row.google_sub !== session.sub) {
+  if (!row) {
     await cloudTimingSink();
     return cloudForbidden();
+  }
+  const isOwner = !!row.google_sub && row.google_sub === session.sub;
+  const op = isOwner ? null : await adminAuthorized(request, env);
+  if (!isOwner && !(op && op.ok)) {
+    await cloudTimingSink();
+    return cloudForbidden();
+  }
+  // OPERATOR 2026-11-25: the operator console cannot show the new code - it
+  // belongs to the project owner. owner_email is the verified account address
+  // the project was linked to (src/lib/http.js cloudAuthOwnerSession uses it
+  // as the identity anchor), so it is the safe destination. Refuse before
+  // rotating when there is no address or no mail provider, otherwise we would
+  // invalidate the old code with no way to deliver the new one.
+  const byOperator = !isOwner;
+  if (byOperator && (!row.owner_email || !authEmailConfigured(env))) {
+    return json(
+      {
+        ok: false,
+        error: row.owner_email
+          ? 'email delivery is not configured on this host'
+          : 'this project has no verified owner email, so the new code cannot be delivered'
+      },
+      409
+    );
   }
   const rec = await rotateOwnerCode(env, projectId);
   if (!rec) {
     return cloudForbidden();
+  }
+  if (byOperator) {
+    const label = String(row.owner_label || row.google_name || projectId).slice(0, 120);
+    const sent = await sendAuthEmail(
+      env,
+      row.owner_email,
+      'Your My MaNaGeR project owner code was reissued',
+      'The owner code for ' +
+        label +
+        ' was reissued from the site operator console.\n\nNew owner code: ' +
+        rec.ownerCode +
+        '\n\nEnter this code in My MaNaGeR to open the project. The previous code no longer works.\n'
+    );
+    if (!sent) {
+      return json(
+        {
+          ok: false,
+          error: 'the new code was issued but the email was refused; the old code no longer works'
+        },
+        502
+      );
+    }
+    return json({
+      ok: true,
+      delivered: 'email',
+      to: row.owner_email,
+      recoveredAt: new Date().toISOString()
+    });
   }
   return json({ ok: true, ownerCode: rec.ownerCode, recoveredAt: new Date().toISOString() });
 }
@@ -1580,9 +1634,28 @@ export async function handleCloudProjectDelete(request, env, projectId) {
   return json({ ok: true, deleted: projectId, deletedAt: now });
 }
 
+/* OPERATOR 2026-11-25: /operator lists EVERY project on the site, but these
+   three actions used the normal owner-code / owner-session gate. An operator
+   looking at somebody else's project therefore always got 403 and the row
+   stayed on the list after refresh - reported as "delete did nothing".
+   The emailed-code admin token is minted only for the verified owner account
+   and must travel with that same account's session cookie, so accepting it
+   here is an explicit owner override, not a weaker project gate. */
+async function projectOwnerOrOperator(request, env, projectId) {
+  const owner = await cloudAuthOwnerEither(request, env, projectId);
+  if (owner) {
+    return { operator: false, auth: owner };
+  }
+  const op = await adminAuthorized(request, env);
+  if (op && op.ok) {
+    return { operator: true, auth: { sub: op.sub || 'operator', source: 'admin-token' } };
+  }
+  return null;
+}
+
 export async function handleCloudProjectRestore(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) {
+  const gate = await projectOwnerOrOperator(request, env, projectId);
+  if (!gate) {
     return cloudForbidden();
   }
   const res = await env.DB.prepare(
@@ -1597,8 +1670,8 @@ export async function handleCloudProjectRestore(request, env, projectId) {
 }
 
 export async function handleCloudProjectPurge(request, env, projectId) {
-  const auth = await cloudAuthOwnerEither(request, env, projectId);
-  if (!auth) {
+  const gate = await projectOwnerOrOperator(request, env, projectId);
+  if (!gate) {
     return cloudForbidden();
   }
   const now = new Date().toISOString();

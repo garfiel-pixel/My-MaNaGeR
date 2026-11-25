@@ -806,7 +806,12 @@
 // index, sign-in default, billing, team accept, launcher, cloud dash) now point
 // at /app, /project, /pricing and friends instead of the .html URLs, so the
 // precached bundles must be replaced.
-const CACHE = 'mmgr-shell-v716';
+// v717 - Settings layout + operator actions 2026-11-25: admin.html fixes the
+// rail/main offset, symmetric reading gutter and full-window gate so the
+// Settings console and its unlock screen centre correctly; dist/admin-bundle.js
+// carries the reissue/restore/purge token + quiet refresh. Both are SHELL
+// assets, so returning clients must refetch.
+const CACHE = 'mmgr-shell-v717';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

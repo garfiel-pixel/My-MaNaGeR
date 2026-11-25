@@ -2961,3 +2961,30 @@ narrower reading of §14.3).
   QA_BASE against serve.cjs; no CSP hash churn (style-only edit). Durable
   guard item 24 added to the local skeptical-code-audit skill; re-hashed
   in skills-lock.json.
+
+- SETTINGS LAYOUT + OPERATOR ACTIONS 2026-11-25 (branch
+  feat/settings-layout-operator-actions):
+  Owner reported Settings looked crooked and its sign-in/unlock screen was
+  not centred. Geometry probes found the sidebar was 272px while main had a
+  hard-coded 264px offset, .view-deck had no symmetric gutter, the rail
+  started below the header, and the gate screens were centred inside the
+  offset main. admin.html now uses calc(var(--rail-w,272px) + 8px), a 24px
+  gutter, top:0 rail, body.gate-open full-window centring, and the real
+  "Settings" title. Because admin.html inline script + dist/admin-bundle.js
+  changed, CSP hashes were regenerated (25) and the SW cache bumped to v717.
+  Operator reissue previously needed the PROJECT OWNER's session, so the
+  operator got 403 on other people's projects and the code was never
+  emailed. src/cloud/projects.js now accepts adminAuthorized() as an
+  override for restore/purge/recover; reissue refuses before rotating when
+  there is no verified owner email or mail provider, then emails the new
+  code and returns delivered:'email' with no ownerCode. js/operator.js
+  sends X-Admin-Session for every action and uses a quiet loadCloud(true)
+  refresh so the list reload no longer erases the result text. New
+  test/operator-actions.test.mjs 6/6; qa-operator O9 added, 8/8.
+  Stale premium rows were NOT a cache bug: a project delete is a soft
+  delete, the cloud_projects row remains restorable and is one of the five
+  accountPresence proofs, and subscriptions only clear after Paddle cancel
+  + explicit operator action. accountPresence now names a soft-deleted
+  project in its evidence; new test/subscription-orphan-evidence.test.mjs
+  4/4. Durable guard items 25 and 26 added to the local
+  skeptical-code-audit skill; re-hashed in skills-lock.json.

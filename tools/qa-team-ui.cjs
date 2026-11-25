@@ -1090,7 +1090,14 @@ async function main() {
         // (budget hidden, WBS shared). On a slow CI runner the old predicate
         // returned early and read wbsHidden:false while the scope was still
         // being applied - a harness race, not a product defect.
-        if (!bud.classList.contains('client-hidden')) return false;
+        // Wait for the FINAL, settled scope, not just a negative mark. bud is
+        // never shared with a client, so it becomes hidden first; wbs (shared)
+        // is un-hidden in the same pass, but an earlier/empty-scope pass can
+        // leave BOTH hidden and still satisfy "bud hidden". Sampling that pass
+        // read wbsHidden:true and failed G10 on CI (2026-11-24) while passing
+        // locally. Require the grant to have landed (wbs visible) too.
+        if (bud.classList.contains('client-hidden') === false) return false;
+        if (wbs.classList.contains('client-hidden')) return false;
         return {
           clientScope: true,
           teamBanner: true,

@@ -120,3 +120,11 @@ css/src
 # returned 200 for a worktree's js/mmgr-state.js. Mirrors .gitignore and
 # tools/deploy.cjs SKIP_DIRS - keep all three in parity.
 .codebuddy
+# 2026-11-24: the owner's icon source images. tools/deploy.cjs has skipped all
+# three since 2026-11-12 (SKIP_FILE_RE), but this file never listed them, so a
+# raw `wrangler deploy` from the repo root still uploaded them while the real
+# icons are favicon.ico and images/mpw-favicon.svg. favicon.png alone is 179 KB
+# of unserved source image. Mirrors the deploy script - keep them in parity.
+/favicon.png
+/my_manager_web favicon image to use.png
+/mymanagerworkspace.com favicon.png

@@ -56,7 +56,7 @@
     "verify:exports": "node tools/verify-render-exports.cjs",
     "verify:wiring": "node tools/verify-wiring.cjs",
     "test": "node --test test/*.test.mjs",
-    "verify": "npm run verify:csp && npm run verify:inline && npm run verify:js && npm run verify:three && npm run verify:csp-origins && npm run verify:asset-ext && npm run typecheck && npm run verify:eol && npm run verify:sw && npm run verify:demo-dates && npm run verify:hidden && npm run verify:skills && npm run verify:exports && npm run verify:wiring && npm run verify:css && npm run verify:ratebook-sync && npm run verify:empty-state && npm run verify:ratebook && npm run verify:lump && npm run verify:wording && npm run verify:reach && npm run verify:sweep13 && npm run verify:sw10 && npm run verify:gantt && npm run verify:a11y && npm run verify:eslint && npm run verify:prettier && npm run verify:marketing && npm run verify:feature-registry && npm run verify:nav-anchors && npm run verify:observe && npm run verify:google && npm run verify:csp-eval && npm test && npm run verify:sizes && npm run verify:major-colors && npm run verify:registry",
+    "verify": "npm run verify:csp && npm run verify:inline && npm run verify:js && npm run verify:three && npm run verify:csp-origins && npm run verify:asset-ext && npm run verify:action-pins && npm run typecheck && npm run verify:eol && npm run verify:sw && npm run verify:demo-dates && npm run verify:hidden && npm run verify:skills && npm run verify:exports && npm run verify:wiring && npm run verify:css && npm run verify:ratebook-sync && npm run verify:empty-state && npm run verify:ratebook && npm run verify:lump && npm run verify:wording && npm run verify:reach && npm run verify:sweep13 && npm run verify:sw10 && npm run verify:gantt && npm run verify:a11y && npm run verify:eslint && npm run verify:prettier && npm run verify:marketing && npm run verify:feature-registry && npm run verify:nav-anchors && npm run verify:observe && npm run verify:google && npm run verify:csp-eval && npm test && npm run verify:sizes && npm run verify:major-colors && npm run verify:registry",
     "qa:cloud": "node tools/qa-cloud-phase1.cjs",
     "qa:csp": "node tools/qa-csp-sweep.cjs",
     "qa:cloud-import": "node tools/qa-cloud-import.cjs",
@@ -89,6 +89,7 @@
     "qa:load": "node tools/qa-load-test.cjs",
     "qa:drill": "node tools/qa-d1-restore-drill.cjs",
     "qa:budget-truth": "node tools/qa-budget-truth.cjs",
-    "verify:wording": "node tools/verify-assistant-wording.cjs"
+    "verify:wording": "node tools/verify-assistant-wording.cjs",
+    "verify:action-pins": "node tools/verify-action-pins.cjs"
   }
 }

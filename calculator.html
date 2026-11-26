@@ -378,8 +378,17 @@
             <option value="standard" selected>Standard</option>
             <option value="economy">Economy (-15%)</option>
             <option value="premium">Premium (+35%)</option>
+            <option value="custom">Custom %</option>
           </select>
         </div>
+      </div>
+      <!-- OWNER 2026-11-26: the finish level was a fixed -15 / +35 pair with no
+           custom value and no on-screen evidence that it had been applied. The
+           custom percent is signed (20 = +20%, -10 = -10%) and rides the same
+           material/labour/equipment unit rates the presets scale. -->
+      <div class="bcp-field" id="calc-quality-custom-wrap" hidden>
+        <label for="calc-quality-custom">Custom finish % (on material and labour)</label>
+        <input type="number" id="calc-quality-custom" min="-50" max="200" step="1" inputmode="decimal" placeholder="e.g. 20 for +20%">
       </div>
       <!-- UI-2 (REFINEMENT-DIRECTIVE-2026-10-24): the tax setting is one row
            with a drawer. The switch is the whole tax decision; the drawer holds
@@ -466,6 +475,11 @@
         </label>
         <label class="tgl"><input type="checkbox" id="calc-labour-only" role="switch" aria-describedby="calc-labour-only-hint"><span class="tsl"></span></label>
       </div>
+      <!-- OWNER 2026-11-26: the switch is conditionally inert (an all-in rate,
+           a crew-day rate, or a typed material rate all keep material in the
+           price). This note says which case applies, so the switch never looks
+           broken when it is simply not the active rule. -->
+      <p class="bcp-jm-note" id="calc-labour-note" role="status" hidden></p>
 
       <!-- MAT-1 (REFINEMENT-DIRECTIVE-2026-10-24): ITEMISED MATERIALS. The
            material rate of a trade covers several things the user cannot see

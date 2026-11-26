@@ -483,6 +483,39 @@ function criticalChain(tasks, schedMap, workWeek) {
  * @param {object} [opts] { workWeek }
  * @returns {object} the schedule report described in get_schedule
  */
+// A row is schedule scaffolding when it is a phase OR any row its children
+// name as their parent (parentId or parentName). Scaffolding dates are a span
+// over the children and it never counts as a work item.
+export function parentKeys(tasks) {
+  const ids = Object.create(null);
+  const names = Object.create(null);
+  (tasks || []).forEach(function (c) {
+    if (!c) {
+      return;
+    }
+    if (c.parentId != null && c.parentId !== '') {
+      ids[String(c.parentId)] = true;
+    }
+    if (c.parentName) {
+      names[String(c.parentName)] = true;
+    }
+  });
+  return { ids: ids, names: names };
+}
+
+export function isParentRow(row, keys) {
+  if (!row) {
+    return false;
+  }
+  if (row.isPhase) {
+    return true;
+  }
+  return !!(
+    (row.id != null && keys.ids[String(row.id)]) ||
+    (row.name && keys.names[String(row.name)])
+  );
+}
+
 export function computeSchedule(state, opts) {
   const s = state || {};
   const options = opts || {};
@@ -524,14 +557,18 @@ export function computeSchedule(state, opts) {
   sched = calcFloat(work, sched, workWeek);
 
   const schedMap = toSchedMap(sched);
-  // Phase roll-up, exactly as computePlan does it.
-  live
-    .filter(function (t) {
-      return t && t.isPhase;
-    })
-    .forEach(function (phase) {
+  // Parent roll-up, exactly as computePlan does it: a phase or any row with
+  // children spans its children (min ES -> max EF), never the sum of their
+  // durations. Repeated passes settle nested parents.
+  const pkeys = parentKeys(live);
+  const parentRows = live.filter(function (t) {
+    return isParentRow(t, pkeys);
+  });
+  for (let pass = 0; pass < 16; pass++) {
+    let passChanged = 0;
+    parentRows.forEach(function (parent) {
       const children = live.filter(function (c) {
-        return c.parentName === phase.name || c.parentId === phase.id;
+        return c !== parent && (c.parentName === parent.name || c.parentId === parent.id);
       });
       const childRecs = children
         .map(function (c) {
@@ -553,10 +590,17 @@ export function computeSchedule(state, opts) {
           maxEF = r.ef;
         }
       });
-      const rec = schedMap[phase.id] || (schedMap[phase.id] = { id: phase.id });
-      rec.es = minES;
-      rec.ef = maxEF;
+      const rec = schedMap[parent.id] || (schedMap[parent.id] = { id: parent.id });
+      if (rec.es !== minES || rec.ef !== maxEF) {
+        rec.es = minES;
+        rec.ef = maxEF;
+        passChanged++;
+      }
     });
+    if (!passChanged) {
+      break;
+    }
+  }
 
   let projectStart = null;
   let projectEnd = null;
@@ -564,7 +608,8 @@ export function computeSchedule(state, opts) {
   let noDates = 0;
   const rows = live.map(function (t) {
     const rec = schedMap[t.id] || {};
-    if (!t.isPhase) {
+    const isParent = isParentRow(t, pkeys);
+    if (!isParent) {
       if (!t.duration) {
         noDuration++;
       }
@@ -584,6 +629,7 @@ export function computeSchedule(state, opts) {
       name: t.name || t.id,
       status: t.status || 'todo',
       isPhase: !!t.isPhase,
+      isParent: !!isParent,
       milestone: !!t.milestone,
       duration: t.duration === '' || t.duration == null ? null : t.duration,
       startDate: t.startDate || null,
@@ -602,14 +648,14 @@ export function computeSchedule(state, opts) {
 
   const criticalTasks = rows
     .filter(function (r) {
-      return r.critical && !r.isPhase;
+      return r.critical && !r.isParent;
     })
     .map(function (r) {
       return r.id;
     });
   const chain = criticalChain(work, schedMap, workWeek);
   const unlinked = rows.filter(function (r) {
-    return !r.isPhase && !linked[String(r.id)] && !hasSucc[String(r.id)];
+    return !r.isParent && !linked[String(r.id)] && !hasSucc[String(r.id)];
   });
 
   const deadlineDate = parseDL(s.projectDeadline);
@@ -623,7 +669,7 @@ export function computeSchedule(state, opts) {
     workWeek: workWeek,
     taskCount: live.length,
     workItemCount: rows.filter(function (r) {
-      return !r.isPhase;
+      return !r.isParent;
     }).length,
     scheduledCount: rows.filter(function (r) {
       return r.ef;

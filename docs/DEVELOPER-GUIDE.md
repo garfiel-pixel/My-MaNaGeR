@@ -476,6 +476,28 @@ same group list: each major contributes its own share, weighted by its work,
 and the ring's arc length is that share. If you need a second percentage,
 compute it from `getMajorGroups` too rather than inventing a parallel count.
 
+### 5.1a A parent is a SPAN, and scaffolding is not work
+
+A parent row (a phase, or any task that other rows name in `parentId` /
+`parentName`) takes its dates from its children: **earliest child start to
+latest child end**. Its duration is that calendar span in working days - never
+the sum of the children's durations. Ten 6-day subtasks are a 6-day parent in
+parallel and a 60-working-day parent in sequence.
+
+Two predicates own this, and every count must route through them:
+
+- `isParentRow(row, keys)` - true when `row.isPhase` is set OR the row is named
+  by a child. `parentKeys(tasks)` builds the id/name maps it needs.
+- Browser: `js/mmgr-schedule.js`. Server port: `src/domain/task-effects.js`.
+  MCP port: `src/mcp/schedule.js` (which re-exports both).
+
+Scaffolding is excluded from work-item counts, completion, Monte Carlo, the
+critical set and unlinked-network reporting. The law was previously duplicated
+as `!t.isPhase` in ~17 places, which is why a non-phase parent used to be
+simulated as work and reported as missing a duration. `tools/qa-rollup-parents.cjs`
+pins the parallel-6 / sequential-60 proof, browser/port parity and the health
+and lint surfaces.
+
 ### 5.2 Ring and colour rules
 
 - Geometry: `r = 39`, circumference `245`, stroke `14.4px`, SVG rotated

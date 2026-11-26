@@ -259,6 +259,33 @@ test('deleting a phase that still has children is refused', () => {
   assert.match(r.report[0].reason, /child tasks/);
 });
 
+test('deleting a phase with a parentId-linked child is refused', () => {
+  const st = base();
+  st.tasks.push({ id: 't4', name: 'child', status: 'todo', parentId: 't3', predecessors: [] });
+  const r = applyOps(
+    st,
+    [{ id: 10, scope: ['wbs'], ops: [{ op: 'delete', path: 'tasks', recordId: 't3' }] }],
+    { model }
+  );
+  assert.equal(r.report[0].result, 'conflict');
+  assert.match(r.report[0].reason, /child tasks/);
+});
+
+test('deleting a non-phase parent with children is refused', () => {
+  const st = base();
+  st.tasks.push(
+    { id: 'm1', name: 'Main', status: 'todo', predecessors: [] },
+    { id: 'm2', name: 'Child', status: 'todo', parentId: 'm1', predecessors: [] }
+  );
+  const r = applyOps(
+    st,
+    [{ id: 10, scope: ['wbs'], ops: [{ op: 'delete', path: 'tasks', recordId: 'm1' }] }],
+    { model }
+  );
+  assert.equal(r.report[0].result, 'conflict');
+  assert.match(r.report[0].reason, /child tasks/);
+});
+
 test('a non-deletable list (budgetLines) refuses delete', () => {
   const r = applyOps(
     base(),

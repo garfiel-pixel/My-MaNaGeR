@@ -3399,6 +3399,34 @@
     JPY: '\u00A5'
   };
   const QUALITY = { economy: 0.85, standard: 1, premium: 1.35 };
+  // OWNER 2026-11-26: the finish level also accepts a signed custom percent
+  // (20 = +20%, -10 = -10%) on the material/labour/equipment unit rates. One
+  // helper, so every pricing path (measured, all-in, equipment) agrees.
+  function qualityFactor(q, custom) {
+    if (q === 'custom') {
+      const v = parseFloat(custom);
+      if (!isFinite(v)) {
+        return 1;
+      }
+      return Math.max(0, 1 + v / 100);
+    }
+    return QUALITY[q] || 1;
+  }
+  // One readable label for the screen, the sheet and the export.
+  function finishLevelText(q, custom) {
+    const key = q || 'standard';
+    if (key === 'custom') {
+      const v = parseFloat(custom);
+      return isFinite(v) ? (v >= 0 ? '+' : '') + v + '% (your rate)' : 'Custom';
+    }
+    if (key === 'economy') {
+      return 'Economy (-15%)';
+    }
+    if (key === 'premium') {
+      return 'Premium (+35%)';
+    }
+    return 'Standard';
+  }
 
   // ---- E1 (plan v2 Phase 1): CURRENCY BASE + FX TABLE ----------------------
   // Model rates in the WORK table are planning-grade figures written in US
@@ -3751,6 +3779,7 @@
       currency: ($('calc-currency') || {}).value || DEFAULT_CURRENCY,
       country: ($('calc-country') || {}).value || DEFAULT_COUNTRY,
       quality: ($('calc-quality') || {}).value || 'standard',
+      qualityCustom: ($('calc-quality-custom') || {}).value || '',
       taxOverride: ($('calc-tax-override') || {}).value || '',
       wastePct: ($('calc-waste') || {}).value || '',
       rateMat: ($('calc-rate-mat') || {}).value || '',
@@ -4182,6 +4211,9 @@
     }
     if ($('calc-quality')) {
       $('calc-quality').value = st.quality || 'standard';
+    }
+    if ($('calc-quality-custom')) {
+      $('calc-quality-custom').value = st.qualityCustom != null ? st.qualityCustom : '';
     }
     if ($('calc-tax-override')) {
       $('calc-tax-override').value = st.taxOverride || '';
@@ -4682,7 +4714,7 @@
         }
       }
     }
-    const quality = QUALITY[st.quality] || 1;
+    const quality = qualityFactor(st.quality, st.qualityCustom);
     // E3: rates (model or typed - both follow the labeled rate basis)
     // convert from the item's rate-entry unit into the engine unit. Piece
     // pricing already prices per engine unit and never takes the factor.
@@ -9074,7 +9106,7 @@
       );
     };
     body.innerHTML =
-      line('Works (the priced bill)', r.works) +
+      line('Works (priced bill, before overhead and tax)', r.works) +
       line('Site &amp; other costs', r.prelims) +
       (r.discount > 0
         ? line(
@@ -9091,10 +9123,11 @@
       (r.esc > 0
         ? line('Escalation (' + r.escPct + '%/yr over ' + r.months + ' months)', r.esc)
         : '') +
-      '<div class="calc-line calc-line-total"><span>Planning subtotal (before tax)</span><strong>' +
+      '<div class="calc-line calc-line-total"><span>Planning subtotal (works + site costs + contingency, before overhead and tax)</span><strong>' +
       cur +
       Math.round(r.subtotal).toLocaleString() +
-      '</strong></div>';
+      '</strong></div>' +
+      '<p class="calc-fine">This is a planning envelope, not the quoted estimate: it adds design and construction contingency and escalation. Overhead and tax are added separately when the bill is sent to a project.</p>';
   }
 
   // ---- W6 (owner 2026-09-30): CASH FLOW - monthly curve + CSV -------------
@@ -9432,6 +9465,7 @@
     'wastePct',
     'matMode',
     'quality',
+    'qualityCustom',
     'labourOnly'
   ];
   function sameQuote(a, b) {
@@ -10293,7 +10327,7 @@
     add(
       'Assumption',
       'Finish level',
-      ($('calc-quality') || {}).value || 'standard',
+      finishLevelText(($('calc-quality') || {}).value, ($('calc-quality-custom') || {}).value),
       '',
       '',
       '',
@@ -11110,6 +11144,7 @@
     // per-trade field.
     if (e.target && e.target.id === 'calc-labour-only') {
       syncLabels();
+      syncLabourNote();
       render();
     }
   });
@@ -11782,7 +11817,11 @@
   let heavyHandle = null;
   let heavyUsedIdle = false;
   function heavyPass(r) {
-    renderPrelims(r && !r.error ? r.sub : 0);
+    // OWNER 2026-11-26: ONE works base for the prelims headline and the
+    // rollup below it. Passing the live line's subtotal here while
+    // renderRollup() re-derived from the saved bill made the two numbers
+    // disagree in the same render - the "bloated site costs" report.
+    renderPrelims();
     renderRollup();
     renderCash();
     renderAccessories();
@@ -11967,6 +12006,18 @@
         '  -  ' +
         new Date().toISOString().slice(0, 10);
     }
+    // OWNER 2026-11-26: the finish level used to be applied silently. It now
+    // states itself in the breakdown, so toggling Premium or a custom percent
+    // is visible instead of looking like nothing happened.
+    const qualityKey = stRates.quality || 'standard';
+    const qualityMult = qualityFactor(qualityKey, stRates.qualityCustom);
+    const finishLabel = finishLevelText(qualityKey, stRates.qualityCustom);
+    const finishNoteHtml =
+      qualityKey === 'standard' || qualityMult === 1
+        ? ''
+        : '<p class="calc-fine">Finish level: <strong>' +
+          esc(finishLabel) +
+          '</strong> applied to the material, labour and equipment rates.</p>';
     // W3: the full document sheet - logo, contact block, document number
     // and bill-to appear ONLY when their data exists (plain by default).
     setOut(
@@ -12063,6 +12114,7 @@
             ' exchange rate is set. Type a price on the line, or set the rate in Exchange rates, so the total is not short.</p>'
           : '') +
         labRowHtml +
+        finishNoteHtml +
         (r.onCost > 0
           ? row(
               'Labor statutory costs (NIS, NHT, HEART, Education) ' + r.onCostPct + '%',
@@ -14793,6 +14845,57 @@
     renderAcc();
   }
 
+  // OWNER 2026-11-26: reveal the custom finish % only when Custom is picked.
+  function syncQuality() {
+    const sel = $('calc-quality');
+    const wrap = $('calc-quality-custom-wrap');
+    if (wrap) {
+      wrap.hidden = !sel || sel.value !== 'custom';
+    }
+  }
+  // True when a material rate is present and differs from the model prefill -
+  // the same rule computeFor uses (matOverride), so the note cannot disagree
+  // with the money.
+  function matRateTyped(st) {
+    const raw = parseFloat(st.rateMat);
+    if (!isFinite(raw) || raw < 0) {
+      return false;
+    }
+    const model = st.matModel != null ? String(st.matModel) : '';
+    return !model || String(raw) !== model;
+  }
+  // OWNER 2026-11-26: labour-only is conditionally inert (all-in, crew days, a
+  // typed material rate, plant hire). Say which case applies, so the switch
+  // never looks broken when it is simply not the active rule.
+  function syncLabourNote() {
+    const n = $('calc-labour-note');
+    if (!n) {
+      return;
+    }
+    const on = !!($('calc-labour-only') || {}).checked;
+    if (!on) {
+      n.hidden = true;
+      n.textContent = '';
+      return;
+    }
+    const st = readState();
+    const basis = ($('calc-basis') || {}).value || 'measured';
+    let msg;
+    if (basis === 'allin') {
+      msg = 'Not applied: an all-in rate already covers material and labour.';
+    } else if (basis === 'days') {
+      msg = 'A crew-day rate is already labour only, so this switch changes nothing on this line.';
+    } else if (matRateTyped(st)) {
+      msg = 'Your own material rate still prices on this line - clear it to exclude materials.';
+    } else if (parseFloat(st.rateEq) > 0) {
+      msg = 'Plant hire still prices separately - labour only removes material, not equipment.';
+    } else {
+      msg = 'Material prices are excluded on this line.';
+    }
+    n.textContent = msg;
+    n.hidden = false;
+  }
+
   // ---- Pricing basis: measured / all-in rate / crew days (owner 2026-10-02)
   // One chooser drives which inputs are visible. Everything starts hidden, so a
   // line priced the ordinary measured way looks and behaves exactly as before.
@@ -14858,6 +14961,10 @@
     syncBookNote();
     // G1: entering or leaving the all-in basis fills or drops the split.
     prefillSplitFromAllin();
+    // OWNER 2026-11-26: the finish-level custom field and the labour-only
+    // status note follow every basis/trade/restore pass.
+    syncQuality();
+    syncLabourNote();
   }
   // The published-rate note follows the CHOSEN currency, not the engine's.
   function syncBookNote() {
@@ -15090,6 +15197,9 @@
     if ($('calc-quality')) {
       $('calc-quality').value = h.quality || 'standard';
     }
+    if ($('calc-quality-custom')) {
+      $('calc-quality-custom').value = h.qualityCustom != null ? h.qualityCustom : '';
+    }
     if ($('calc-rate-mat')) {
       $('calc-rate-mat').value = '';
     }
@@ -15273,6 +15383,7 @@
       'calc-currency',
       'calc-country',
       'calc-quality',
+      'calc-quality-custom',
       'calc-tax-override',
       'calc-rate-mat',
       'calc-rate-lab',
@@ -15290,6 +15401,14 @@
           // the sum no longer matches the published figure.
           if (id === 'calc-rate-mat' || id === 'calc-rate-lab') {
             syncAllinFromSplit();
+          }
+          // OWNER 2026-11-26: keep the custom-percent field and the
+          // labour-only status note truthful as the inputs change.
+          if (id === 'calc-quality' || id === 'calc-quality-custom') {
+            syncQuality();
+          }
+          if (id === 'calc-rate-mat' || id === 'calc-rate-eq') {
+            syncLabourNote();
           }
           render();
         });
@@ -15600,6 +15719,10 @@
   // W4 site & other costs: restore the stored items on load.
   prelimItems = loadPrelims();
   renderPrelims();
+  // OWNER 2026-11-26: the custom finish field and the labour-only note are
+  // painted from the restored state on load, not only after a change.
+  syncQuality();
+  syncLabourNote();
   // W8 location packs: seed the first run, paint the picker.
   ensurePackSeeds();
   renderPacks();

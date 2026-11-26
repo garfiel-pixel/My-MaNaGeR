@@ -432,6 +432,10 @@ jobs:
         id: qa-mcp-surface
         run: node tools/qa-mcp-surface.cjs
 
+      - name: "T1: MCP messy real projects"
+        id: qa-mcp-messy-projects
+        run: node tools/qa-mcp-messy-projects.cjs
+
       # MCP-FINAL F1.2 (2026-11-16): the pure server port of the client's task
       # side effects (stampStatus + working-day triad + phase roll-up) must
       # match the real client function. Pure-Node (no Chrome, no wrangler).

@@ -275,9 +275,13 @@ tables and inferring:
   recomputes those when it opens. `tools/qa-mcp-surface.cjs` S3 loads the real
   browser engine in a vm and fails on any drift, so the two cannot diverge.
 - **`get_project_health`** — readiness gates for schedule, budget, resources,
-  risk and data, each `ok|warn|fail` with a plain reason, plus `executable`.
-  The budget gate is dropped entirely for a key without the budget read
-  switch, so a gate can never leak money.
+  risk and data, each `ok|warn|fail` with a plain reason, plus `executable`,
+  a plain-language `verdict` and a ranked `nextActions` list. Each action is
+  `{code, severity, gate, count, ids[], action}` and is scoped to the sections
+  the key can read, so a wbs-only caller gets the link-network fix but no
+  budget advice. Clean fixtures prove correctness; `qa-mcp-messy-projects`
+  proves the conclusions stay useful on real-shaped projects. The budget
+  gate is dropped entirely for a key without the budget read switch.
 - **`get_resources`** — utilisation on the app's own capacity basis
   (availability × work-week × 4 × 8h) and labour cost, with the budget
   comparison only when the key may read money.

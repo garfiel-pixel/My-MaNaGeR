@@ -22,9 +22,11 @@
 // The MCP server's own version. 2.0.0 marked the agent-first contract; 2.1.0
 // adds tier-aware limits and the releaseNotes block. 2.3.0 adds the readiness
 // surface (get_project_health, get_schedule, get_resources) and advertises
-// tempId + idempotencyKey in the JSON Schema, not only in prose. v2 ops,
-// change sets, cross-proposal dependencies, fixed error codes and typed output.
-export const MCP_SERVER_VERSION = '2.3.0';
+// tempId + idempotencyKey in the JSON Schema, not only in prose. 2.4.0 adds
+// action conclusions (verdict + ranked nextActions) for messy real projects.
+// v2 ops, change sets, cross-proposal dependencies, fixed error codes and
+// typed output.
+export const MCP_SERVER_VERSION = '2.4.0';
 
 // Record text is attacker-reachable (an agent can be told to paste a task name
 // or a supplier reference written by someone else), so the server says once,
@@ -175,12 +177,26 @@ export const OUTPUT_SCHEMAS = Object.freeze({
       projectId: str('Cloud project id'),
       overall: str('ok, warn or fail'),
       executable: bool('True when no gate fails, links exist and there is no cycle'),
+      verdict: str('Plain-language conclusion: what blocks the plan, or that it is executable'),
+      nextActions: arr(
+        'Ranked fixes: {code, severity, gate, count, ids[], action}; scoped to readable sections'
+      ),
       gates: obj('Gate id -> {status, checks[]} for schedule, budget, resources, risk and data'),
       failingGates: arr('Gate ids with status fail'),
       warningGates: arr('Gate ids with status warn'),
       schedule: obj('Schedule headline: counts, edges, cycles, window, deadline, critical tasks')
     },
-    ['projectId', 'overall', 'executable', 'gates', 'failingGates', 'warningGates', 'schedule']
+    [
+      'projectId',
+      'overall',
+      'executable',
+      'verdict',
+      'nextActions',
+      'gates',
+      'failingGates',
+      'warningGates',
+      'schedule'
+    ]
   ),
   get_schedule: schema(
     {

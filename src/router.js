@@ -177,7 +177,8 @@ import {
   handleOauthMetadata,
   handleOauthAuthorize,
   handleOauthToken,
-  handleOauthRegister
+  handleOauthRegister,
+  handleOauthRevoke
 } from './mcp/oauth.js';
 import {
   handleAuthGoogle,
@@ -410,6 +411,15 @@ export async function routeApi(request, env, url) {
         return r;
       }
       return handleOauthRegister(request, env);
+    }
+    // RFC 7009 revocation: a connector unlinking on its own side tells the
+    // server to kill the token. Public clients only, so no credentials.
+    if (path === '/api/oauth/revoke') {
+      const r = await rl(request, 'general', env);
+      if (r) {
+        return r;
+      }
+      return handleOauthRevoke(request, env);
     }
     /* The path is routed for every method so the handler can answer 405 with
        Allow. Matching POST only sent GET/DELETE to the asset fallback, which

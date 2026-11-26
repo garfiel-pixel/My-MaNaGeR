@@ -230,20 +230,21 @@ server. Settle that question before spending a wave on G1/G2.
 **P0 - observe, no code.** Run the probe sequence above and record the outcome in
 this section. Nothing else starts until the DCR request body is known.
 
-**P1 - refresh sessions that survive (G1 + G3).** In `src/mcp/oauth.js`:
-return the same refresh token on refresh and extend `refresh_expires_at` instead
-of revoking the row; keep the hash comparison and the client binding; add
-`offline_access` to `scopes_supported` and accept it in the authorize `scope`
-without changing stored scope semantics. Gate: `tools/qa-appwide-mcp.cjs` proves
-two consecutive refreshes return the same refresh token, the expiry moves
-forward, a revoked token is still refused, and the metadata advertises
-`offline_access`. Re-check with Gemini that the link survives past one hour and
-with Claude that its existing refresh still works.
+**P1 - refresh sessions that survive (G1 + G3). SHIPPED 2026-11-26.** In
+`src/mcp/oauth.js`, `refreshTokens` now keeps the token row and renews only the
+access half, so the refresh token a client receives is the same string for the
+life of the link and `refresh_expires_at` moves 30 days forward on every
+refresh. The old access token stops verifying because its hash is replaced,
+which keeps the revocation half of the old rotation. `offline_access` is in
+`scopes_supported` and accepted at `/authorize`; the granted scope is stored on
+the code and echoed at `/token`. Gate: `tools/qa-appwide-mcp.cjs` O6 proves the
+same refresh token twice, a later expiry, one row, the new access token works,
+the old one does not, and O15 proves the offline_access grant is echoed.
 
-**P2 - revocation endpoint (G4).** `POST /api/oauth/revoke`, hashed lookup,
-revoke the row, always answer 200. Gate: revoking a token makes the next
-`/api/mcp` call answer 401 with the metadata challenge; an unknown token still
-answers 200.
+**P2 - revocation endpoint (G4). SHIPPED 2026-11-26.** `POST /api/oauth/revoke`,
+hashed lookup on either half, revoke the row, always answer 200, advertised as
+`revocation_endpoint` with `none` auth. Gate: O14 revokes the access half and
+the refresh half, and an unknown token still answers 200.
 
 **P3 - CIMD (G5), only if a vendor asks.** Accept an HTTPS `client_id` that
 resolves to a client metadata document, validate its redirect URIs with the same
@@ -253,10 +254,39 @@ Not planned unless the probe demands it: confidential-client support (G2's
 second half). Google's docs and forum answer say a public PKCE client is valid,
 so a secret is a workaround, not a requirement.
 
-Gates to extend alongside P1: `tools/qa-appwide-mcp.cjs` gains the Google
-redirect hosts (`oauth-redirect.googleusercontent.com/r/*` and `/a/*`) as an
-accepted registration, plus the refusal case for a manually registered client
-with an unlisted redirect URI.
+Gates extended with P1/P2: `tools/qa-appwide-mcp.cjs` O13 registers
+`https://oauth-redirect.googleusercontent.com/r/<id>` (the exact production
+Gemini redirect) and proves a sibling `/r/<other-id>` is still refused, so the
+policy stays an exact-match boundary rather than a host wildcard. A
+manually registered client with an unlisted redirect URI is still refused by
+O11.
+
+### Gemini connection record (2026-11-26)
+
+The owner supplied the redirect Gemini hands out for a custom MCP app:
+`https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-f6492779cacd5f618adb99b9`.
+Probed against production, read-only first and then one registration:
+
+- `/.well-known/oauth-authorization-server` answered **200** and `/api/mcp`
+  answered **401** with the `resource_metadata` challenge.
+- `POST /api/oauth/register` accepted that exact redirect and returned public
+  client `mmgr_mc_44ad6b9150a7d6a530b81a47` (`token_endpoint_auth_method:
+  none`). The row is unbound until a signed-in owner presses Allow.
+
+So **Dynamic Client Registration works with the Google redirect**, and the
+manual form is satisfiable too: paste that client id and leave the secret
+blank (the server issues none and never checks one). The remaining Gemini
+blockers were G1 and G3, both shipped above. The link should now survive past
+one hour instead of asking the owner to link again.
+
+If the row is ever lost, recreate it with the same body:
+
+```
+POST https://mymanagerworkspace.com/api/oauth/register
+{"client_name":"Google Gemini",
+ "redirect_uris":["https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-f6492779cacd5f618adb99b9"],
+ "token_endpoint_auth_method":"none"}
+```
 
 Keep the project surface static-key only. The app-wide URL is the ChatGPT and
 Gemini route; the project URL is the Cursor route.

@@ -14,9 +14,15 @@
        O3  wrong / expired token is rejected
        O4  authorization code flow enforces PKCE S256 (bad verifier fails)
        O5  code is single-use (replay fails)
-       O6  refresh token rotates the pair
-       O7  RFC 8414 / RFC 9728 metadata documents carry required fields
+       O6  refresh keeps the same refresh token and extends its expiry
+           (Gemini Persistent Linking, 2026-11-26)
+       O7  RFC 8414 / RFC 9728 metadata documents carry required fields,
+           offline_access and the revocation endpoint
        O8  consent page has NO inline <script> (CSP-safe)
+       O13 the Google Gemini redirect host registers and authorizes, and a
+           sibling redirect is still refused (exact-match boundary)
+       O14 RFC 7009 revocation kills the access and refresh half
+       O15 offline_access is accepted at authorize and echoed at token
      APP-WIDE MCP
        M1  initialize returns protocol + serverInfo
        M2  tools/list catalog has list_projects + create_project + read
@@ -110,6 +116,25 @@ function handleUpdate(s, args, store) {
   if (s.includes('mcp_tokens')) {
     let row = null;
     const last = args[args.length - 1];
+    // RFC 7009 revoke: either hash can name the row.
+    if (s.includes('access_hash = ? or refresh_hash = ?')) {
+      row = store.mcp_tokens.find(t => t.access_hash === args[0] || t.refresh_hash === args[1]);
+      if (row) {
+        row.revoked = 1;
+      }
+      return { meta: { changes: row ? 1 : 0 } };
+    }
+    // Persistent Linking (2026-11-26): the refresh keeps the row and renews
+    // only the access half, so the refresh token never changes.
+    if (s.includes('set access_hash = ?') && s.includes('refresh_expires_at = ?')) {
+      row = store.mcp_tokens.find(t => t.token_id === last);
+      if (row) {
+        row.access_hash = args[0];
+        row.expires_at = args[1];
+        row.refresh_expires_at = args[2];
+      }
+      return { meta: { changes: row ? 1 : 0 } };
+    }
     if (s.includes('token_id')) {
       row = store.mcp_tokens.find(t => t.token_id === last);
     } else {
@@ -517,17 +542,48 @@ async function sessionCookie(env, sub) {
   const replay = await oauth.exchangeCode(envC, code, verifier, 'client-1', 'https://app/cb');
   check('replaying a consumed code is refused', replay.error === 'invalid_grant', replay);
 
-  section('OAUTH O6 — refresh token rotation');
+  section('OAUTH O6 — refresh keeps the link (Gemini Persistent Linking)');
   const envR = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
-  const issuedR = await oauth.issueTokens(envR, 'sub-abc', 'client-1');
+  const issuedR = await oauth.issueTokens(envR, 'sub-abc', 'client-1', 'account offline_access');
+  const rowR = envR.__store.mcp_tokens[0];
+  // Move the refresh expiry close to now so the extension is measurable.
+  rowR.refresh_expires_at = new Date(Date.now() + 60 * 1000).toISOString();
+  const expiryBefore = new Date(rowR.refresh_expires_at).getTime();
   const refreshed = await oauth.refreshTokens(envR, issuedR.refreshToken, 'client-1');
   check(
-    'refresh returns a fresh token pair',
+    'refresh returns a new access token',
     refreshed.ok === true && refreshed.accessToken !== issuedR.accessToken,
     refreshed
   );
+  check('refresh returns the SAME refresh token', refreshed.refreshToken === issuedR.refreshToken, {
+    issued: issuedR.refreshToken,
+    refreshed: refreshed.refreshToken
+  });
+  check(
+    'refresh extends the refresh expiry',
+    new Date(rowR.refresh_expires_at).getTime() > expiryBefore + 24 * 60 * 60 * 1000,
+    { before: expiryBefore, after: rowR.refresh_expires_at }
+  );
+  check(
+    'refresh does not add a token row',
+    envR.__store.mcp_tokens.length === 1,
+    envR.__store.mcp_tokens.length
+  );
+  check(
+    'refresh echoes offline_access when it was granted',
+    refreshed.scope === 'account offline_access',
+    refreshed.scope
+  );
+  const newUsed = await oauth.verifyAccessToken(envR, refreshed.accessToken);
+  check('the new access token verifies', newUsed && newUsed.accountSub === 'sub-abc', newUsed);
   const oldUsed = await oauth.verifyAccessToken(envR, issuedR.accessToken);
-  check('old access token is revoked after rotation', oldUsed === null, oldUsed);
+  check('the old access token stops working', oldUsed === null, oldUsed);
+  const again = await oauth.refreshTokens(envR, issuedR.refreshToken, 'client-1');
+  check(
+    'a second refresh with the same token still works',
+    again.ok === true && again.refreshToken === issuedR.refreshToken,
+    again
+  );
 
   section('OAUTH O7 — metadata documents');
   const asMeta = (await metaCall(env0, '/.well-known/oauth-authorization-server')).body;
@@ -540,6 +596,12 @@ async function sessionCookie(env, sub) {
       /register$/.test(asMeta.registration_endpoint) &&
       asMeta.code_challenge_methods_supported.indexOf('S256') > -1,
     asMeta
+  );
+  check(
+    'metadata advertises offline_access and a revocation endpoint',
+    asMeta.scopes_supported.indexOf('offline_access') > -1 &&
+      /\/api\/oauth\/revoke$/.test(asMeta.revocation_endpoint || ''),
+    { scopes: asMeta.scopes_supported, revoke: asMeta.revocation_endpoint }
   );
   const prMeta = (await metaCall(env0, '/.well-known/oauth-protected-resource')).body;
   check(
@@ -675,6 +737,136 @@ async function sessionCookie(env, sub) {
     redirectUri
   );
   check('the issued code exchanges for a token', flow.ok === true && !!flow.accessToken, flow);
+
+  section('OAUTH O13 — Google Gemini redirect (manual client registration)');
+  const envG = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
+  const googleRedirect =
+    'https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-f6492779cacd5f618adb99b9';
+  const gRegRes = await oauth.handleOauthRegister(
+    new Request('http://localhost/api/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_name: 'Google Gemini',
+        redirect_uris: [googleRedirect],
+        token_endpoint_auth_method: 'none'
+      })
+    }),
+    envG
+  );
+  const gReg = await gRegRes.json();
+  check(
+    'registration accepts the Google Gemini redirect',
+    gRegRes.status === 201 && gReg.redirect_uris && gReg.redirect_uris[0] === googleRedirect,
+    { status: gRegRes.status, gReg }
+  );
+  const gCookie = await sessionCookie(envG, 'sub-abc');
+  function geminiAuthUrl(uri) {
+    return new URL(
+      'http://localhost/api/oauth/authorize?response_type=code&client_id=' +
+        encodeURIComponent(gReg.client_id) +
+        '&redirect_uri=' +
+        encodeURIComponent(uri) +
+        '&scope=' +
+        encodeURIComponent('account offline_access') +
+        '&code_challenge=' +
+        challenge +
+        '&code_challenge_method=S256&state=g1'
+    );
+  }
+  const gUrl = geminiAuthUrl(googleRedirect);
+  const gAuth = await oauth.handleOauthAuthorize(
+    new Request(gUrl, { headers: { cookie: gCookie } }),
+    envG,
+    gUrl
+  );
+  const gConsent = await gAuth.text();
+  // Assert the whole registered redirect arrives in the form field, which is
+  // stronger than a host check and keeps the gate free of URL-substring logic.
+  check(
+    'authorize opens the consent page for the Google redirect',
+    gAuth.status === 200 &&
+      gConsent.indexOf('name="redirect_uri" value="' + googleRedirect + '"') > -1,
+    gAuth.status
+  );
+  const siblingUrl = geminiAuthUrl(
+    'https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-other'
+  );
+  const siblingAuth = await oauth.handleOauthAuthorize(
+    new Request(siblingUrl, { headers: { cookie: gCookie } }),
+    envG,
+    siblingUrl
+  );
+  check(
+    'a sibling Google redirect is refused (exact match, not a host wildcard)',
+    siblingAuth.status === 400,
+    siblingAuth.status
+  );
+
+  section('OAUTH O14 — RFC 7009 revocation');
+  const envX = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
+  const issuedX = await oauth.issueTokens(envX, 'sub-abc', 'client-1');
+  const revAccess = await oauth.handleOauthRevoke(
+    new Request('http://localhost/api/oauth/revoke', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: issuedX.accessToken, token_type_hint: 'access_token' })
+    }),
+    envX
+  );
+  check('revoke answers 200', revAccess.status === 200, revAccess.status);
+  check(
+    'the revoked access token is refused',
+    (await oauth.verifyAccessToken(envX, issuedX.accessToken)) === null,
+    ''
+  );
+  const envY = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
+  const issuedY = await oauth.issueTokens(envY, 'sub-abc', 'client-1');
+  await oauth.handleOauthRevoke(
+    new Request('http://localhost/api/oauth/revoke', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: issuedY.refreshToken, token_type_hint: 'refresh_token' })
+    }),
+    envY
+  );
+  const afterRefreshRevoke = await oauth.refreshTokens(envY, issuedY.refreshToken, 'client-1');
+  check(
+    'a revoked refresh token cannot mint a new access token',
+    afterRefreshRevoke.error === 'invalid_grant',
+    afterRefreshRevoke
+  );
+  const revUnknown = await oauth.handleOauthRevoke(
+    new Request('http://localhost/api/oauth/revoke', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'mmgr_at_not_a_real_token' })
+    }),
+    envY
+  );
+  check(
+    'an unknown token still answers 200 (no existence oracle)',
+    revUnknown.status === 200,
+    revUnknown.status
+  );
+
+  section('OAUTH O15 — offline_access is granted and echoed');
+  const envS = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
+  const codeS = await oauth.issueAuthCode(
+    envS,
+    'sub-abc',
+    'client-1',
+    challenge,
+    'S256',
+    'https://app/cb',
+    'account offline_access'
+  );
+  const exS = await oauth.exchangeCode(envS, codeS, verifier, 'client-1', 'https://app/cb');
+  check(
+    'exchange grants account + offline_access',
+    exS.ok === true && exS.scope === 'account offline_access',
+    exS
+  );
 
   // Each env keeps its OWN in-memory D1 store, so a bearer must be issued
   // against the SAME env that the MCP call is dispatched to (verifyAccessToken

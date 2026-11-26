@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-label="Your key, your model">
+  <defs>
+    <pattern id="g" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#f5efe6" stroke-opacity="0.035"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="400" fill="#1c1a18"/>
+  <rect width="1200" height="400" fill="url(#g)"/>
+  <rect x="18" y="18" width="1164" height="364" rx="5" fill="none" stroke="#d4af37" stroke-opacity="0.2"/>
+  <path d="M18 40V18h22M1182 18h-22v22M1160 382h22v-22M40 382H18v-22" fill="none" stroke="#d4af37" stroke-opacity="0.5" stroke-width="1.6"/>
+
+  <text x="64" y="88" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9.5" letter-spacing="2.2" fill="#e05624">ASSISTANT</text>
+  <text x="64" y="136" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-weight="800" font-size="34" letter-spacing="-0.8" fill="#f5efe6">Your key, your model</text>
+  <text x="64" y="172" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="13.5" fill="#f5efe6" fill-opacity="0.6">A relay in the Worker forwards the provider key you supply. The</text>
+  <text x="64" y="196" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="13.5" fill="#f5efe6" fill-opacity="0.6">assistant reads the same project model the screen renders.</text>
+  <path d="M64 216H600" stroke="#f5efe6" stroke-opacity="0.1"/>
+  <circle cx="68" cy="252" r="3" fill="#d4af37"/><text x="82" y="256" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">BRING YOUR OWN KEY</text>
+  <circle cx="68" cy="278" r="3" fill="#d4af37"/><text x="82" y="282" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">THE KEY IS NEVER STORED SERVER-SIDE</text>
+  <circle cx="68" cy="304" r="3" fill="#d4af37"/><text x="82" y="308" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">READS SCHEDULE, BUDGET AND RISK</text>
+
+  <rect x="632" y="60" width="504" height="280" rx="10" fill="#221f1c" stroke="#f5efe6" stroke-opacity="0.09"/>
+  <text x="656" y="90" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.9" fill="#d4af37">REQUEST PATH</text>
+  <text x="1112" y="90" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.6" fill="#f5efe6" fill-opacity="0.38">ONE RELAY</text>
+  <path d="M656 104H1112" stroke="#f5efe6" stroke-opacity="0.09"/><g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9.5" fill="#f5efe6" fill-opacity="0.8">
+    <text x="656" y="140">YOUR DEVICE</text>
+    <text x="656" y="186">/api/ai/chat</text>
+    <text x="656" y="232">PROVIDER</text>
+  </g>
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" fill="#f5efe6" fill-opacity="0.4">
+    <text x="860" y="140">PROJECT CONTEXT, KEY HEADER</text>
+    <text x="860" y="186">FALLBACK LADDER, NO STORAGE</text>
+    <text x="860" y="232">STREAMED ANSWER</text>
+  </g>
+  <g fill="none" stroke="#d4af37" stroke-opacity="0.5">
+    <path d="M676 150v18M676 196v18"/>
+    <path d="M670 164l6 6 6-6M670 210l6 6 6-6"/>
+  </g>
+  <path d="M656 288H1112" stroke="#f5efe6" stroke-opacity="0.08"/>
+  <text x="656" y="312" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" fill="#f5efe6" fill-opacity="0.42">THE ASSISTANT IS OFF ON VIEW-ONLY AND OFFLINE PAGES.</text>
+
+  <path d="M64 360H1136" stroke="#f5efe6" stroke-opacity="0.08"/>
+  <text x="64" y="380" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.8" fill="#f5efe6" fill-opacity="0.35">mymanagerworkspace.com</text>
+  <text x="1136" y="380" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.8" fill="#f5efe6" fill-opacity="0.35">AI RELAY · MODEL LADDER · OPT-IN</text>
+</svg>

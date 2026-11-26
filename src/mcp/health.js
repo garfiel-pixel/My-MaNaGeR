@@ -25,6 +25,241 @@ function gate(status, detail, count) {
   return out;
 }
 
+/**
+ * Turn the same facts the gates use into a short, ranked fix list. A gate
+ * answer of "warn" is not actionable on its own: on a 29-record WBS an agent
+ * needs to know the FIRST thing to fix and which records carry it. Every
+ * action is scoped to the sections the caller can see, so a scoped API key
+ * never receives advice about a budget it cannot read.
+ */
+function buildActions(s, schedule, workItems, c, scope) {
+  const tasks = Array.isArray(s.tasks) ? s.tasks : [];
+  const resources = Array.isArray(s.resources) ? s.resources : [];
+  const lint = buildLint(s, schedule);
+  const ids = Object.create(null);
+  tasks.forEach(function (t) {
+    if (t && t.id != null) {
+      const k = String(t.id);
+      ids[k] = (ids[k] || 0) + 1;
+    }
+  });
+  const duplicates = Object.keys(ids).filter(function (k) {
+    return ids[k] > 1;
+  });
+  const canSee = function (section) {
+    return !scope || scope.indexOf(section) !== -1;
+  };
+  // Gate names are not scope keys: the schedule gate lives in the "wbs"
+  // section, the data gate is always visible, and the rest are 1:1.
+  const scopeKey = { schedule: 'wbs', data: null, res: 'res', bud: 'bud' };
+  const actions = [];
+  const add = function (code, severity, section, priority, count, list, action) {
+    const key = scopeKey[section];
+    if (key && !canSee(key)) {
+      return;
+    }
+    actions.push({
+      code: code,
+      severity: severity,
+      gate: section,
+      count: count,
+      ids: list || [],
+      action: action,
+      priority: priority
+    });
+  };
+  const matching = function (pattern) {
+    return lint
+      .filter(function (l) {
+        return pattern.test(l.detail);
+      })
+      .map(function (l) {
+        return l.id;
+      });
+  };
+
+  if (schedule.cycles.length) {
+    add(
+      'break-cycle',
+      'fail',
+      'schedule',
+      10,
+      schedule.cycles.length,
+      schedule.cycles,
+      'Break the predecessor cycle through ' +
+        schedule.cycles.join(', ') +
+        '; no schedule can be computed while it remains.'
+    );
+  }
+  const dangling = lint
+    .filter(function (l) {
+      return /predecessor .* does not exist/.test(l.detail);
+    })
+    .map(function (l) {
+      const m = /predecessor (.*) does not exist/.exec(l.detail);
+      return m ? m[1] : l.id;
+    });
+  if (dangling.length) {
+    add(
+      'fix-dangling',
+      'fail',
+      'schedule',
+      11,
+      dangling.length,
+      dangling,
+      'Replace or remove the predecessor ids that point at tasks which do not exist.'
+    );
+  }
+  if (duplicates.length) {
+    add(
+      'duplicate-ids',
+      'fail',
+      'data',
+      12,
+      duplicates.length,
+      duplicates,
+      'Give each task a unique id: ' + duplicates.join(', ') + ' is used more than once.'
+    );
+  }
+
+  if (!schedule.links.edges && workItems.length > 1) {
+    add(
+      'link-network',
+      'warn',
+      'schedule',
+      20,
+      workItems.length,
+      workItems.slice(0, 5).map(function (t) {
+        return t.id;
+      }),
+      'Link the ' +
+        workItems.length +
+        ' work items with real predecessors before trusting the critical path or Monte Carlo.'
+    );
+  }
+  const noDuration = matching(/has dates but no duration/);
+  if (noDuration.length) {
+    add(
+      'set-duration',
+      'warn',
+      'schedule',
+      21,
+      noDuration.length,
+      noDuration,
+      'Set a duration on ' +
+        noDuration.length +
+        ' dated task(s); the schedule engine skips them until then.'
+    );
+  }
+  const reversed = matching(/end date is before the start date/);
+  if (reversed.length) {
+    add(
+      'fix-dates',
+      'warn',
+      'schedule',
+      22,
+      reversed.length,
+      reversed,
+      'Correct the reversed start/end dates on ' + reversed.length + ' task(s).'
+    );
+  }
+  if (schedule.deadlineMissed) {
+    add(
+      'deadline',
+      'warn',
+      'schedule',
+      23,
+      1,
+      schedule.criticalTasks.slice(0, 5),
+      'Compress the longest chain or move the deadline from ' +
+        schedule.deadline +
+        ' to ' +
+        schedule.projectEnd +
+        ' - the computed finish is past it.'
+    );
+  }
+  const idle = resources.filter(function (r) {
+    return resourceUtil(r, s.workWeek) === 0;
+  });
+  if (resources.length && idle.length === resources.length) {
+    add(
+      'effort-link',
+      'warn',
+      'res',
+      30,
+      resources.length,
+      resources.slice(0, 5).map(function (r) {
+        return r.id;
+      }),
+      'Tie the role allocations to task effort: every resource currently has zero utilisation.'
+    );
+  }
+  if (
+    resources.some(function (r) {
+      return +r.availability === 0;
+    })
+  ) {
+    add(
+      'capacity',
+      'warn',
+      'res',
+      31,
+      1,
+      resources
+        .filter(function (r) {
+          return +r.availability === 0;
+        })
+        .slice(0, 5)
+        .map(function (r) {
+          return r.id;
+        }),
+      'Set a real availability for the role with zero availability before reading utilisation.'
+    );
+  }
+  if (!c.baseline) {
+    add(
+      'freeze-baseline',
+      'warn',
+      'bud',
+      40,
+      1,
+      [],
+      'Freeze a budget baseline so variance and change control have something to compare against.'
+    );
+  }
+  const badBudgetLink = matching(/linked task .* does not exist/);
+  if (badBudgetLink.length) {
+    add(
+      'fix-budget-link',
+      'warn',
+      'bud',
+      41,
+      badBudgetLink.length,
+      badBudgetLink,
+      'Point the listed budget lines at existing tasks so cost can be earned against progress.'
+    );
+  }
+
+  actions.sort(function (a, b) {
+    if (a.severity !== b.severity) {
+      return a.severity === 'fail' ? -1 : 1;
+    }
+    return a.priority - b.priority;
+  });
+  const ranked = actions.slice(0, 6).map(function (a) {
+    const copy = Object.assign({}, a);
+    delete copy.priority;
+    return copy;
+  });
+  const first = ranked[0];
+  const verdict = !first
+    ? 'Executable: no blocking problems found in the sections you can read.'
+    : first.severity === 'fail'
+      ? 'Not executable: ' + first.action
+      : 'Manageable but not executable yet: ' + first.action + ' Then re-check health.';
+  return { verdict: verdict, nextActions: ranked };
+}
+
 function rollup(checks) {
   if (
     checks.some(function (c) {
@@ -177,6 +412,29 @@ export function buildHealth(state, ctx) {
         )
       );
     }
+  }
+  if (
+    schedule.links.edges &&
+    !schedule.criticalTasks.length &&
+    schedule.deadline &&
+    !schedule.deadlineMissed &&
+    schedule.projectEnd
+  ) {
+    const slack = Math.round(
+      (parseDL(schedule.deadline) - parseDL(schedule.projectEnd)) / 86400000
+    );
+    schedChecks.push(
+      gate(
+        'ok',
+        'the longest chain finishes ' +
+          schedule.projectEnd +
+          ', ' +
+          slack +
+          ' day(s) before the deadline ' +
+          schedule.deadline +
+          '; no zero-float tasks, so the critical set is empty by definition'
+      )
+    );
   }
   if (!schedChecks.length) {
     schedChecks.push(
@@ -390,6 +648,7 @@ export function buildHealth(state, ctx) {
     return gates[k] && gates[k].status === 'warn';
   });
 
+  const actions = buildActions(s, schedule, workItems, c, scope);
   return {
     overall: overall,
     // "Executable" means the plan can be managed against: no gate fails, no
@@ -399,6 +658,8 @@ export function buildHealth(state, ctx) {
       overall !== 'fail' &&
       schedule.cycles.length === 0 &&
       (schedule.links.edges > 0 || workItems.length <= 1),
+    verdict: actions.verdict,
+    nextActions: actions.nextActions,
     gates: gates,
     failingGates: failing,
     warningGates: warning,
@@ -425,15 +686,29 @@ export function buildHealth(state, ctx) {
  * @param {object} state
  * @returns {Array<object>}
  */
-export function buildLint(state) {
+export function buildLint(state, schedule) {
   const s = state || {};
   const tasks = Array.isArray(s.tasks) ? s.tasks : [];
   const out = [];
+  const sch = schedule || computeSchedule(s);
   const ids = Object.create(null);
   const childCount = Object.create(null);
+  const phaseNames = Object.create(null);
+  const phaseIds = Object.create(null);
+  tasks.forEach(function (t) {
+    if (t && t.isPhase) {
+      if (t.name) {
+        phaseNames[String(t.name)] = true;
+      }
+      if (t.id != null) {
+        phaseIds[String(t.id)] = true;
+      }
+    }
+  });
   tasks.forEach(function (t) {
     if (t && t.id != null) {
-      ids[String(t.id)] = true;
+      const k = String(t.id);
+      ids[k] = (ids[k] || 0) + 1;
     }
     if (t && (t.parentId || t.parentName)) {
       if (t.parentId) {
@@ -459,6 +734,36 @@ export function buildLint(state) {
         detail: label + ': end date is before the start date'
       });
     }
+    if (t.id != null && ids[String(t.id)] > 1) {
+      out.push({
+        severity: 'fail',
+        id: t.id,
+        detail: label + ': duplicate task id ' + t.id
+      });
+    }
+    if (t.parentName && !phaseNames[String(t.parentName)] && phaseIds[String(t.parentName)]) {
+      out.push({
+        severity: 'warn',
+        id: t.id,
+        detail: label + ': parentName ' + t.parentName + ' is a phase id, not a phase name'
+      });
+    }
+    const deadline = parseDL(s.projectDeadline);
+    if (deadline) {
+      if (start && start > deadline) {
+        out.push({
+          severity: 'warn',
+          id: t.id,
+          detail: label + ': starts after the project deadline ' + s.projectDeadline
+        });
+      } else if (end && end > deadline) {
+        out.push({
+          severity: 'warn',
+          id: t.id,
+          detail: label + ': finishes after the project deadline ' + s.projectDeadline
+        });
+      }
+    }
     if (t.isPhase) {
       const kids =
         (t.id ? childCount['id:' + t.id] || 0 : 0) +
@@ -476,6 +781,13 @@ export function buildLint(state) {
       }
       if (t.milestone && !t.endDate) {
         out.push({ severity: 'warn', id: t.id, detail: label + ': milestone has no date' });
+      }
+      if (t.milestone && t.duration) {
+        out.push({
+          severity: 'warn',
+          id: t.id,
+          detail: label + ': milestone carries a duration; use the date instead'
+        });
       }
     }
     (Array.isArray(t.predecessors) ? t.predecessors : []).forEach(function (p) {
@@ -523,6 +835,13 @@ export function buildLint(state) {
       out.push({ severity: 'warn', id: r.id, detail: (r.name || r.id) + ': resource has no rate' });
     }
   });
+  if (sch.cycles.length) {
+    out.push({
+      severity: 'fail',
+      id: sch.cycles[0],
+      detail: 'predecessor cycle through ' + sch.cycles.join(', ')
+    });
+  }
 
   return out;
 }

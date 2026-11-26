@@ -143,7 +143,7 @@ export const TOOLS = [
   {
     name: 'get_project_health',
     description:
-      'Answer "is this project executable yet?" in one call. Runs readiness gates and returns overall ok|warn|fail plus the failing and warning gate ids: schedule (dependency links, cycles, dangling predecessors, tasks with dates but no duration, late finishes, deadline overrun), budget (lines, planned vs envelope, frozen baseline, actuals, lines not linked to a task), resources (zero utilisation, labour cost missing from the budget), risk (open high x high, risks with no owner or mitigation) and data (status outside the enum, proposals still pending, missing charter). Every check carries a status and a plain-language reason. Read-only; a key without a section gets no gate for it.',
+      'Answer "is this project executable yet?" and "what do I fix first?" in one call. Runs readiness gates and returns a plain-language verdict plus a ranked nextActions list (code, severity, gate, count, ids, action), alongside overall ok|warn|fail and the failing and warning gate ids: schedule (dependency links, cycles, dangling predecessors, tasks with dates but no duration, late finishes, deadline overrun), budget (lines, planned vs envelope, frozen baseline, actuals, lines not linked to a task), resources (zero utilisation, labour cost missing from the budget), risk (open high x high, risks with no owner or mitigation) and data (status outside the enum, proposals still pending, missing charter). Every check carries a status and a plain-language reason. Read-only; a key without a section gets no gate for it.',
     inputSchema: { type: 'object', properties: {}, required: [] }
   },
   {

@@ -189,6 +189,21 @@ vm and fails on any date or float drift. `get_project_health`
 (`src/mcp/health.js`) is the readiness gate an agent should call before
 planning, and its `buildLint` is the structural lint `validate_changes`
 returns.
+
+12. **Readiness must answer "what first?", not just "something is wrong".** A
+    gate list with 25 near-identical warnings is not an actionable conclusion.
+    `get_project_health` therefore pairs its gates with a plain `verdict` and
+    a ranked `nextActions` list where every action carries `code`, `severity`,
+    `gate`, `count`, `ids[]` and an imperative `action`. Before adding a new
+    gate or lint rule, add the matching action and prove it on a messy fixture
+    in `tools/qa-mcp-messy-projects.cjs`: cycles, duplicate ids, dangling
+    predecessors, dates without duration, reversed dates, a parentName that
+    holds a phase id, and a deadline with slack. Actions MUST be scoped to the
+    sections the key can read — the gate-to-scope map is
+    `schedule -> wbs`, `data -> always`, `res -> res`, `bud -> bud`. An empty
+    zero-float critical set against a later deadline is slack, not an absent
+    risk: say so in the schedule gate instead of letting an agent conclude
+    "no critical path".
 - **Write:** `apply_changes`, `validate_changes`, `withdraw_changes`.
 
 Every tool is scope-aware and returns projected data only. `get_schema` is

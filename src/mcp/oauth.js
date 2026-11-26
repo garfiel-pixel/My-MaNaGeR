@@ -23,6 +23,12 @@ const ACCESS_TTL_MS = 60 * 60 * 1000; // 1 hour
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+// 'offline_access' is advertised and accepted because Google's Gemini custom-app
+// guide (and OpenAI's) ask a connector to confirm it before trusting a refresh
+// token. The stored authority is still the single 'account' scope: the marker
+// only says a refresh token was issued, which is always true here.
+const SCOPES_SUPPORTED = ['account', 'offline_access'];
+
 function randomHex(bytes) {
   const buf = crypto.getRandomValues(new Uint8Array(bytes));
   let out = '';
@@ -65,7 +71,14 @@ function isoIn(ms) {
 
 // ---- Token issue / verify ----------------------------------------------
 
-export async function issueTokens(env, accountSub, clientId) {
+function grantedScope(raw) {
+  const parts = String(raw == null ? '' : raw)
+    .split(/\s+/)
+    .filter(Boolean);
+  return parts.indexOf('offline_access') > -1 ? 'account offline_access' : 'account';
+}
+
+export async function issueTokens(env, accountSub, clientId, scope) {
   const tokenId = randomHex(16);
   const accessToken = 'mmgr_at_' + randomHex(24);
   const refreshToken = 'mmgr_rt_' + randomHex(24);
@@ -81,12 +94,17 @@ export async function issueTokens(env, accountSub, clientId) {
       clientId,
       accessHash,
       refreshHash,
-      'account',
+      grantedScope(scope),
       isoIn(ACCESS_TTL_MS),
       isoIn(REFRESH_TTL_MS)
     )
     .run();
-  return { accessToken, refreshToken, expiresAt: isoIn(ACCESS_TTL_MS) };
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt: isoIn(ACCESS_TTL_MS),
+    scope: grantedScope(scope)
+  };
 }
 
 export async function verifyAccessToken(env, bearer) {
@@ -118,7 +136,15 @@ export async function verifyAccessToken(env, bearer) {
 
 // ---- Authorization code flow (PKCE) -------------------------------------
 
-export async function issueAuthCode(env, accountSub, clientId, challenge, method, redirectUri) {
+export async function issueAuthCode(
+  env,
+  accountSub,
+  clientId,
+  challenge,
+  method,
+  redirectUri,
+  scope
+) {
   const code = 'mmgr_ac_' + randomHex(20);
   const now = new Date().toISOString();
   await env.DB.prepare(
@@ -131,7 +157,7 @@ export async function issueAuthCode(env, accountSub, clientId, challenge, method
       challenge,
       method || 'S256',
       redirectUri || '',
-      'account',
+      grantedScope(scope),
       now,
       isoIn(CODE_TTL_MS)
     )
@@ -144,7 +170,7 @@ export async function exchangeCode(env, code, codeVerifier, clientId, redirectUr
     return { error: 'invalid_request' };
   }
   const row = await env.DB.prepare(
-    'SELECT code, account_sub, client_id, code_challenge, code_challenge_method, redirect_uri, expires_at, consumed FROM mcp_auth_codes WHERE code = ?'
+    'SELECT code, account_sub, client_id, code_challenge, code_challenge_method, redirect_uri, scope, expires_at, consumed FROM mcp_auth_codes WHERE code = ?'
   )
     .bind(code)
     .first();
@@ -166,12 +192,13 @@ export async function exchangeCode(env, code, codeVerifier, clientId, redirectUr
   }
   // Single use.
   await env.DB.prepare('UPDATE mcp_auth_codes SET consumed = 1 WHERE code = ?').bind(code).run();
-  const tokens = await issueTokens(env, row.account_sub, clientId);
+  const tokens = await issueTokens(env, row.account_sub, clientId, row.scope);
   return {
     ok: true,
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
-    expiresAt: tokens.expiresAt
+    expiresAt: tokens.expiresAt,
+    scope: tokens.scope
   };
 }
 
@@ -181,7 +208,7 @@ export async function refreshTokens(env, refreshToken, clientId) {
   }
   const refreshHash = await sha256Hex(refreshToken);
   const row = await env.DB.prepare(
-    'SELECT token_id, account_sub, client_id, refresh_expires_at, revoked FROM mcp_tokens WHERE refresh_hash = ?'
+    'SELECT token_id, account_sub, client_id, scope, refresh_expires_at, revoked FROM mcp_tokens WHERE refresh_hash = ?'
   )
     .bind(refreshHash)
     .first();
@@ -191,17 +218,52 @@ export async function refreshTokens(env, refreshToken, clientId) {
   if (row.revoked === 1 || new Date(row.refresh_expires_at).getTime() <= Date.now()) {
     return { error: 'invalid_grant' };
   }
-  // Rotate: revoke the old token row, issue a fresh pair.
-  await env.DB.prepare('UPDATE mcp_tokens SET revoked = 1 WHERE token_id = ?')
-    .bind(row.token_id)
+  // PERSISTENT LINKING (2026-11-26, docs/MCP-CONTRACT.md G1): Google asks an
+  // authorization server to return the SAME refresh token on every refresh and
+  // to extend its expiry. Rotating it made Gemini ask the owner to link again
+  // about every hour, and a re-link loop is a failed connection. The row is
+  // kept, only the access half is renewed: the old access token stops verifying
+  // because its hash is replaced, and the refresh token stays valid to the new
+  // expiry (30 days from this refresh).
+  const accessToken = 'mmgr_at_' + randomHex(24);
+  const accessHash = await sha256Hex(accessToken);
+  const expiresAt = isoIn(ACCESS_TTL_MS);
+  await env.DB.prepare(
+    'UPDATE mcp_tokens SET access_hash = ?, expires_at = ?, refresh_expires_at = ? WHERE token_id = ?'
+  )
+    .bind(accessHash, expiresAt, isoIn(REFRESH_TTL_MS), row.token_id)
     .run();
-  const tokens = await issueTokens(env, row.account_sub, clientId);
   return {
     ok: true,
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    expiresAt: tokens.expiresAt
+    accessToken,
+    refreshToken,
+    expiresAt,
+    scope: row.scope || 'account'
   };
+}
+
+// ---- Token revocation (RFC 7009) ------------------------------------------
+// A connector that unlinks from its own side calls this. Without it the token
+// stayed live until expiry after the user thought they had disconnected.
+// RFC 7009 section 2.2: answer 200 even when the token is unknown or already
+// revoked, so a client cannot use this endpoint to test whether a token exists.
+
+export async function handleOauthRevoke(request, env) {
+  const form = await readForm(request);
+  const token = typeof form.token === 'string' ? form.token : '';
+  if (token) {
+    const hash = await sha256Hex(token);
+    try {
+      await env.DB.prepare(
+        'UPDATE mcp_tokens SET revoked = 1 WHERE access_hash = ? OR refresh_hash = ?'
+      )
+        .bind(hash, hash)
+        .run();
+    } catch (e) {
+      /* non-fatal: the answer is 200 either way */
+    }
+  }
+  return json({}, 200);
 }
 
 // ---- Dynamic Client Registration (RFC 7591) -----------------------------
@@ -334,11 +396,13 @@ export function authorizationServerMetadata(origin) {
     authorization_endpoint: origin + '/api/oauth/authorize',
     token_endpoint: origin + '/api/oauth/token',
     registration_endpoint: origin + '/api/oauth/register',
-    scopes_supported: ['account'],
+    revocation_endpoint: origin + '/api/oauth/revoke',
+    scopes_supported: SCOPES_SUPPORTED.slice(),
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'refresh_token'],
     code_challenge_methods_supported: ['S256'],
     token_endpoint_auth_methods_supported: ['none'],
+    revocation_endpoint_auth_methods_supported: ['none'],
     subject_types_supported: ['public']
   };
 }
@@ -347,7 +411,7 @@ export function protectedResourceMetadata(origin) {
   return {
     resource: origin + '/api/mcp',
     authorization_servers: [origin],
-    scopes_supported: ['account']
+    scopes_supported: SCOPES_SUPPORTED.slice()
   };
 }
 
@@ -639,7 +703,8 @@ export async function handleOauthAuthorize(request, env, url) {
       clientId,
       form.code_challenge || '',
       form.code_challenge_method || 'S256',
-      redirectUri
+      redirectUri,
+      form.scope || ''
     );
     const okUrl =
       redirectUri +
@@ -675,7 +740,7 @@ export async function handleOauthToken(request, env) {
         token_type: 'Bearer',
         expires_in: 3600,
         refresh_token: res.refreshToken,
-        scope: 'account'
+        scope: res.scope || 'account'
       },
       200
     );
@@ -691,7 +756,7 @@ export async function handleOauthToken(request, env) {
         token_type: 'Bearer',
         expires_in: 3600,
         refresh_token: res.refreshToken,
-        scope: 'account'
+        scope: res.scope || 'account'
       },
       200
     );

@@ -3016,3 +3016,17 @@ narrower reading of §14.3).
   main CI "Gitleaks secrets scan" steps pass with real rules. Repo-only
   config, so no production deploy. Durable guard item 28 added to the local
   skeptical-code-audit skill; re-hashed in skills-lock.json.
+- QA-TEAM-UI G10 SETTLE WINDOW 2026-11-25 (branch fix/qa-team-ui-g10-settle-window):
+  main CI went red twice (18b5fc2, c7b5aee) on the cloud-auth job, step
+  "T3: Team UI", while the same commits passed their PR runs. G10 expired
+  at exactly 15.0s in both: nav 4s + delay 1s + one 15s window. The
+  invitation HAD landed (the shared card and the client scope existed), so
+  only the panel paint lagged - the accept POST shares the member 30/min
+  general bucket with G9 retry ladder, which burns ~60s of 429s right
+  before this click. Harness fix, no app change: the settle window is 45s,
+  a second click is sent ONLY when /api/team/invitations still lists the
+  invitation as pending (never a double accept), and the gate now builds a
+  named-condition map so a red run prints failed: [...] first instead of a
+  truncated pre-click snapshot. Verified: qa-team-ui 27/27 locally before
+  and after the change. Durable guard item 29 added to the local
+  skeptical-code-audit skill; re-hashed in skills-lock.json.

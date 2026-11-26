@@ -182,6 +182,21 @@ Run these checks systematically across every relevant file, not just the one cur
     fingerprint in `.gitleaksignore`; verify the full-history scan is clean
     (`gitleaks git --config .gitleaks.toml`) before merging any secret-scan change.
 
+29. **A UI-convergence gate needs a window longer than the app's own retry, a server-truth
+    anchor, and a self-naming failure** — on 2026-11-25 two consecutive `main` CI runs failed
+    `qa-team-ui` G10 at exactly 15.0s while the same commit passed its PR run: the accept POST
+    shares the member's 30/min general bucket with the previous gate's retry ladder, so the
+    invitation HAD landed (shared card and client scope both existed) and only the panel paint
+    lagged. Three rules follow. (a) A convergence window must exceed the slowest documented
+    path it can sit behind - a 429 storm plus the app's own refresh - not the happy-path
+    latency; 15s was tuned on a laptop. (b) Anchor the gate on SERVER truth before judging the
+    paint: poll the API for the state change, then the DOM, and retry a refused write only
+    while the server still reports the old state (that retry is what a person does, and it
+    cannot double-apply). (c) Never ship a gate whose failure detail cannot name the condition
+    that broke: build a named-condition map, put `failed: [...]` FIRST in the detail (it is
+    sliced at 600 chars), and keep the raw snapshots after it. A boolean chain plus a
+    pre-click snapshot cost two CI cycles and still could not say which assertion was red.
+
 ## Reporting findings
 
 Structure the final report as:

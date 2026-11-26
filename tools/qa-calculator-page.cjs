@@ -5390,12 +5390,22 @@ async function withChrome(fn) {
     // model - the total renders and the note names the missing rate.
     const e2 = await ev(`(function(){
       localStorage.setItem('mmgr_calc_history', JSON.stringify([{ at:'2026-09-01', name:'Old row', qty:'96.9 m2', total:'J$1,000',
-        work:'tile', d1:'10', d2:'8', currency:'JMD', country:'JM', quality:'standard' }]));
+        work:'tile', d1:'10', d2:'8', currency:'JMD', country:'JM', quality:'custom', qualityCustom:'20' }]));
       document.querySelector('[data-action=calcRestore]').click();
-      return { work: document.getElementById('calc-work').value, d1: document.getElementById('calc-d1').value,
+      var wrap = document.getElementById('calc-quality-custom-wrap');
+      var snap = { work: document.getElementById('calc-work').value, d1: document.getElementById('calc-d1').value,
                units: localStorage.getItem('mmgr_calc_units'), rm: document.getElementById('calc-rate-mat').value,
                note: !document.getElementById('calc-fx-note').hidden,
+               q: document.getElementById('calc-quality').value,
+               custom: document.getElementById('calc-quality-custom').value,
+               customOpen: !!wrap && !wrap.hidden,
                priced: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1 };
+      // Leave the finish level at Standard for the gates that follow.
+      var qs = document.getElementById('calc-quality');
+      qs.value = 'standard'; qs.dispatchEvent(new Event('input',{bubbles:true}));
+      var cs = document.getElementById('calc-quality-custom');
+      cs.value = ''; cs.dispatchEvent(new Event('input',{bubbles:true}));
+      return snap;
     })()`);
     // OWNER 2026-10-02 (final): WE ARE NOT A CONVERTER. The USD planning-grade
     // model rates cannot become JMD without a rate the owner sets themselves,
@@ -5415,6 +5425,11 @@ async function withChrome(fn) {
         e2.units === 'metric' &&
         e2.rm === '3792' &&
         e2.note === false &&
+        // OWNER 2026-11-26: a legacy row carrying a custom finish percent must
+        // recall with the custom field OPEN, not hidden behind the select.
+        e2.q === 'custom' &&
+        e2.custom === '20' &&
+        e2.customOpen &&
         e2.priced,
       e2
     );

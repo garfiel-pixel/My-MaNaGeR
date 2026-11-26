@@ -15213,6 +15213,10 @@
       $('calc-piece-size').value = '';
     }
     refreshRateFields();
+    // OWNER 2026-11-26: a legacy row can carry Custom or labour-only, so the
+    // recall has to reveal the custom field and re-state the labour note.
+    syncQuality();
+    syncLabourNote();
   }
 
   // F4-1 core: switch unit system, re-label, remember, re-render only when

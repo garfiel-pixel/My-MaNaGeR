@@ -264,6 +264,30 @@ This is where:
   write them — the app recomputes them, an agent must never smuggle a computed
   value and read it back as if the app had produced it.
 
+### 4.1a Readiness reads (`src/mcp/schedule.js`, `src/mcp/health.js`)
+
+Three reads answer "is this project executable?" without the caller reading six
+tables and inferring:
+
+- **`get_schedule`** — the CPM pass (topological order, ES/EF/LS/LF, total and
+  free float, critical set and one critical chain) as a pure port of
+  `js/mmgr-schedule.js`. It never writes dates or floats back; the app
+  recomputes those when it opens. `tools/qa-mcp-surface.cjs` S3 loads the real
+  browser engine in a vm and fails on any drift, so the two cannot diverge.
+- **`get_project_health`** — readiness gates for schedule, budget, resources,
+  risk and data, each `ok|warn|fail` with a plain reason, plus `executable`.
+  The budget gate is dropped entirely for a key without the budget read
+  switch, so a gate can never leak money.
+- **`get_resources`** — utilisation on the app's own capacity basis
+  (availability × work-week × 4 × 8h) and labour cost, with the budget
+  comparison only when the key may read money.
+
+Two related behaviours: `run_monte_carlo` returns
+`networkHealth:{dependencyEdges,cycles,reliable}` and a "NOT A FORECAST" note
+on an unlinked network, and `validate_changes` returns `lint[]` — structural
+problems the proposal does not fix (empty phase, dated task with no duration,
+budget line pointing at a missing task) — without blocking the queue.
+
 ### 4.2 Proposal planning (`src/mcp/plan.js`)
 
 `planProposal(a, auth, …)` is the queuer-side validator. It takes the raw

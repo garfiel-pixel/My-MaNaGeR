@@ -34,6 +34,7 @@ import {
 } from './model.js';
 import { budgetWriteAllowed, BUDGET_WRITE_REFUSAL } from './budget-access.js';
 import { refusalCode } from './errors.js';
+import { buildLint } from './health.js';
 import { limitsFor, perCallCap, upsellFor } from './tier-limits.js';
 
 // MCP-DIRECTIVE 2026-11-11 P0: validate the apply_changes envelope BEFORE
@@ -454,7 +455,13 @@ function checkPredecessors(value, base, selfId, tempIds) {
       return 'predecessors[' + i + ']: a task cannot depend on itself';
     }
     if (!known[id]) {
-      return 'predecessors[' + i + ']: ' + id + ' is not a task in this project';
+      return (
+        'predecessors[' +
+        i +
+        ']: ' +
+        id +
+        ' is not a task in this project. If it is a task created in this same call, declare it with creates[].tempId and reference that tempId here.'
+      );
     }
   }
   return null;
@@ -1285,7 +1292,12 @@ export async function planProposal(toolArgs, liveState, auth, deps) {
       budget: budgetAll.length
     },
     budget: budgetBuilt,
-    usedLarge: usedLarge
+    usedLarge: usedLarge,
+    // Structural lint of the candidate state (base + the accepted ops). It
+    // never blocks a write - it tells the caller what will still be wrong
+    // after the owner accepts (a phase with no children, a dated task with no
+    // duration, a budget line pointing at a missing task).
+    lint: buildLint(Object.assign({}, base, submitted))
   };
 }
 
@@ -1338,6 +1350,15 @@ export async function validateChangesProposal(env, projectId, auth, toolArgs, id
     warnings: plan.warnings,
     wouldCreateOps: plan.ops.length,
     counts: plan.counts,
+    lint: plan.lint,
+    lintCount: {
+      fail: plan.lint.filter(function (l) {
+        return l.severity === 'fail';
+      }).length,
+      warn: plan.lint.filter(function (l) {
+        return l.severity === 'warn';
+      }).length
+    },
     largeChanges: {
       incoming: large,
       used: plan.usedLarge,

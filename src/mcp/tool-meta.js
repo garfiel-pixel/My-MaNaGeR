@@ -20,9 +20,11 @@
    ============================================================ */
 
 // The MCP server's own version. 2.0.0 marked the agent-first contract; 2.1.0
-// adds tier-aware limits and the releaseNotes block. v2 ops,
+// adds tier-aware limits and the releaseNotes block. 2.3.0 adds the readiness
+// surface (get_project_health, get_schedule, get_resources) and advertises
+// tempId + idempotencyKey in the JSON Schema, not only in prose. v2 ops,
 // change sets, cross-proposal dependencies, fixed error codes and typed output.
-export const MCP_SERVER_VERSION = '2.1.0';
+export const MCP_SERVER_VERSION = '2.3.0';
 
 // Record text is attacker-reachable (an agent can be told to paste a task name
 // or a supplier reference written by someone else), so the server says once,
@@ -80,7 +82,10 @@ function ann(title, hints) {
 
 export const TOOL_ANNOTATIONS = Object.freeze({
   get_project_summary: ann('Read the project summary', READ),
+  get_project_health: ann('Read project readiness gates', READ),
   get_tasks: ann('Read the task list', READ),
+  get_schedule: ann('Compute the project schedule', READ),
+  get_resources: ann('Read the resource plan', READ),
   get_budget: ann('Read the budget', READ),
   get_deliveries: ann('Read deliveries', READ),
   get_weekly_summary: ann('Read the weekly budget view', READ),
@@ -164,6 +169,69 @@ export const OUTPUT_SCHEMAS = Object.freeze({
       'projectDeadline',
       'charter'
     ]
+  ),
+  get_project_health: schema(
+    {
+      projectId: str('Cloud project id'),
+      overall: str('ok, warn or fail'),
+      executable: bool('True when no gate fails, links exist and there is no cycle'),
+      gates: obj('Gate id -> {status, checks[]} for schedule, budget, resources, risk and data'),
+      failingGates: arr('Gate ids with status fail'),
+      warningGates: arr('Gate ids with status warn'),
+      schedule: obj('Schedule headline: counts, edges, cycles, window, deadline, critical tasks')
+    },
+    ['projectId', 'overall', 'executable', 'gates', 'failingGates', 'warningGates', 'schedule']
+  ),
+  get_schedule: schema(
+    {
+      projectId: str('Cloud project id'),
+      workWeek: num('Working days per week used by the engine'),
+      taskCount: num('Every task row'),
+      workItemCount: num('Non-phase rows'),
+      scheduledCount: num('Rows with an early finish'),
+      missingDuration: num('Dated tasks the engine skips'),
+      missingDates: num('Tasks with no dates'),
+      links: obj('edges, linkedTasks, unlinkedTasks, unlinked ids, danglingPredecessors'),
+      cycles: arr('Task ids in a predecessor cycle'),
+      projectStart: nullable('string', 'Earliest early start'),
+      projectEnd: nullable('string', 'Latest early finish'),
+      deadline: nullable('string', 'Project deadline, or null'),
+      deadlineMissed: bool('Computed finish is past the deadline'),
+      criticalTasks: arr('Every zero-float work item'),
+      criticalPath: arr('One ordered critical chain'),
+      weather: obj('applied false plus the reason'),
+      rows: arr('Per-task es/ef/ls/lf/float/critical/late')
+    },
+    [
+      'projectId',
+      'workWeek',
+      'taskCount',
+      'workItemCount',
+      'scheduledCount',
+      'missingDuration',
+      'missingDates',
+      'links',
+      'cycles',
+      'projectStart',
+      'projectEnd',
+      'deadline',
+      'deadlineMissed',
+      'criticalTasks',
+      'criticalPath',
+      'weather',
+      'rows'
+    ]
+  ),
+  get_resources: schema(
+    {
+      projectId: str('Cloud project id'),
+      workWeek: num('Working days per week used for capacity'),
+      count: num('Resource rows'),
+      resources: arr('id, name, type, role, availability, rate, hoursAllocated, utilization, cost'),
+      totals: obj('hoursAllocated, labourCost, zeroUtilization'),
+      budget: nullable('object', 'planned, labourCost and gap when the key may read money')
+    },
+    ['projectId', 'workWeek', 'count', 'resources', 'totals']
   ),
   get_tasks: schema({ count: num('Tasks returned'), tasks: arr('Task rows') }, ['count', 'tasks']),
   get_budget: schema(

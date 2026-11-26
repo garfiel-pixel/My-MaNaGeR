@@ -2837,24 +2837,26 @@ function addReview(env, row) {
   // =====================================================================
   // AT26 (A5) — MCP polish. Every tool advertises machine-readable
   // annotations + an outputSchema, every successful call returns
-  // structuredContent that equals the JSON block, the server announces
-  // version 2.1.0, and both surfaces warn that record text is data.
+  // structuredContent that equals the JSON block, the server announces the
+  // shared MCP_SERVER_VERSION (never a hardcoded copy, so a version bump is
+  // one edit), and both surfaces warn that record text is data.
   // =====================================================================
   section('AT26 — MCP polish (annotations, outputSchema, version, injection warning)');
   {
+    const meta = await import('../src/mcp/tool-meta.js');
     const env = await makeEnv({ mod });
     const init = await call(env, { jsonrpc: '2.0', id: 960, method: 'initialize', params: {} });
     const info = init && init.result && init.result.serverInfo;
     const instr = (init && init.result && init.result.instructions) || '';
     check(
-      'AT26a initialize reports serverInfo.version 2.1.0 and the record-text warning',
+      'AT26a initialize reports the shared MCP_SERVER_VERSION and the record-text warning',
       !!(
         info &&
-        info.version === '2.1.0' &&
+        info.version === meta.MCP_SERVER_VERSION &&
         /record/i.test(instr) &&
         /not instructions/i.test(instr)
       ),
-      { version: info && info.version, instructions: instr.slice(0, 120) }
+      { version: info && info.version, expected: meta.MCP_SERVER_VERSION }
     );
 
     const list = await call(env, { jsonrpc: '2.0', id: 961, method: 'tools/list', params: {} });
@@ -2992,7 +2994,10 @@ function addReview(env, row) {
       'AT26j the app-wide catalog carries the same annotations and outputSchemas',
       awTools.length >= 17 &&
         awBad.length === 0 &&
-        !!(appwide.APPWIDE_SERVER_INFO && appwide.APPWIDE_SERVER_INFO.version === '2.1.0'),
+        !!(
+          appwide.APPWIDE_SERVER_INFO &&
+          appwide.APPWIDE_SERVER_INFO.version === meta.MCP_SERVER_VERSION
+        ),
       {
         tools: awTools.length,
         bad: awBad.map(function (t) {
@@ -3851,7 +3856,10 @@ function addReview(env, row) {
     // section null = no section gate; money = also needs "Read budget".
     const READS = [
       { tool: 'get_project_summary', args: {}, section: null },
+      { tool: 'get_project_health', args: {}, section: null },
       { tool: 'get_tasks', args: {}, section: 'wbs' },
+      { tool: 'get_schedule', args: {}, section: 'wbs' },
+      { tool: 'get_resources', args: {}, section: 'res' },
       { tool: 'get_risks', args: {}, section: 'risk' },
       { tool: 'get_meetings', args: {}, section: 'meet' },
       { tool: 'get_budget', args: {}, section: 'bud', money: true },

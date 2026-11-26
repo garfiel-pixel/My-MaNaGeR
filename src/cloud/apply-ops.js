@@ -414,12 +414,25 @@ export function applyOps(liveState, proposals, deps) {
         // Refusal rules (directive 3.4) before removing.
         if (op.path === 'tasks') {
           const rec = arr[idx];
-          if (rec.isPhase) {
-            const hasChildren = arr.some(r => !r.isPhase && r.parentName === rec.name);
-            if (hasChildren) {
-              recordResult(entry, 'conflict', 'phase still has child tasks');
-              continue;
-            }
+          // A phase OR any parent row still named by a surviving child must
+          // not be deleted. Children are matched by parentId AND parentName,
+          // the two ways the WBS and the MCP nest tasks; the old guard saw
+          // only a phase's parentName, so an id-linked child (or a non-phase
+          // parent) could be orphaned.
+          const hasChildren = arr.some(
+            r =>
+              r &&
+              String(r.id) !== String(rec.id) &&
+              ((rec.id != null && String(r.parentId) === String(rec.id)) ||
+                (rec.name && r.parentName === rec.name))
+          );
+          if (hasChildren) {
+            recordResult(
+              entry,
+              'conflict',
+              rec.isPhase ? 'phase still has child tasks' : 'task still has child tasks'
+            );
+            continue;
           }
           // A budget line references this task by id -> refuse.
           const referenced = (work.budgetLines || []).some(

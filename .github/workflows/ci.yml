@@ -443,6 +443,12 @@ jobs:
         id: qa-task-effects-parity
         run: node tools/qa-task-effects-parity.cjs
 
+      # WBS parent roll-up (owner 2026-11-26): a phase or a non-phase main task
+      # is a SPAN over its children, never a sum of durations. Pure-Node.
+      - name: "T1: WBS parent roll-up"
+        id: qa-rollup-parents
+        run: node tools/qa-rollup-parents.cjs
+
       # Chrome is needed from here on: the page-health sweep in T2 drives it
       # against wrangler dev, and the T3 batteries drive it directly.
 

@@ -1213,11 +1213,12 @@ async function withChrome(fn) {
       document.getElementById('calc-d1').dispatchEvent(new Event('input', { bubbles: true }));
       var body = document.getElementById('calc-rollup-body');
       var txt = body ? body.textContent : '';
-      return { hasWorks: txt.indexOf('Works (the priced bill)') > -1,
+      // OWNER 2026-11-26: labels re-baselined with the one-works-base fix.
+      return { hasWorks: txt.indexOf('Works (priced bill, before overhead and tax)') > -1,
                hasPrelim: txt.indexOf('Site & other costs') > -1,
                hasDesign: txt.indexOf('Design contingency (10%)') > -1,
                hasConstr: txt.indexOf('Construction contingency (5%)') > -1,
-               hasTotal: txt.indexOf('Planning subtotal (before tax)') > -1,
+               hasTotal: txt.indexOf('Planning subtotal (works + site costs + contingency, before overhead and tax)') > -1,
                noEsc: txt.indexOf('Escalation (') > -1 };
     })()`);
     // OWNER 2026-10-02: months now defaults to 12, so the escalation line is
@@ -3218,6 +3219,170 @@ async function withChrome(fn) {
         db6.recallDays === 0.75 &&
         db6.recallLab === 300,
       db6
+    );
+
+    // ---------- OWNER 2026-11-26: finish level, labour-only, one works base ---
+    // The finish level used to be a silent -15/+35/standard multiplier with no
+    // way to set your own figure and no on-screen evidence it was applied.
+    const db7 = await ev(`(function(){
+      var E = __calcEngine;
+      var base = Object.assign(E.readState(), { work:'siteprep', d1:'10', d2:'8',
+        basis:'measured', daysStr:'', dayRateStr:'', quality:'standard', qualityCustom:'' });
+      var std = E.computeFor(base);
+      var up = E.computeFor(Object.assign({}, base, { quality:'custom', qualityCustom:'20' }));
+      var down = E.computeFor(Object.assign({}, base, { quality:'custom', qualityCustom:'-10' }));
+      var zero = E.computeFor(Object.assign({}, base, { quality:'custom', qualityCustom:'-200' }));
+      var junk = E.computeFor(Object.assign({}, base, { quality:'custom', qualityCustom:'abc' }));
+      return { stdMat: std.mat, stdLab: std.lab,
+               upMat: up.mat, upLab: up.lab,
+               downMat: down.mat, downLab: down.lab,
+               zeroMat: zero.mat, zeroLab: zero.lab,
+               junkMat: junk.mat, junkLab: junk.lab };
+    })()`);
+    check(
+      'DB7 a custom finish percent is signed (+20 raises, -10 lowers), clamps at zero, and junk falls back to standard',
+      db7 &&
+        Math.abs(db7.upMat - db7.stdMat * 1.2) < 1 &&
+        Math.abs(db7.upLab - db7.stdLab * 1.2) < 1 &&
+        Math.abs(db7.downMat - db7.stdMat * 0.9) < 1 &&
+        Math.abs(db7.downLab - db7.stdLab * 0.9) < 1 &&
+        db7.zeroMat === 0 &&
+        db7.zeroLab === 0 &&
+        Math.abs(db7.junkMat - db7.stdMat) < 1 &&
+        Math.abs(db7.junkLab - db7.stdLab) < 1,
+      db7
+    );
+    const db8 = await ev(`(function(){
+      var w = document.getElementById('calc-work');
+      w.value = 'blockwall'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      var q = document.getElementById('calc-quality');
+      var c = document.getElementById('calc-quality-custom');
+      q.value = 'custom'; q.dispatchEvent(new Event('change',{bubbles:true}));
+      c.value = '20'; c.dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      return true;
+    })()`);
+    await delay(600);
+    const db8r = await ev(`(function(){
+      var out = document.getElementById('calc-output');
+      var txt = out ? out.textContent : '';
+      var wrap = document.getElementById('calc-quality-custom-wrap');
+      var shown = txt.indexOf('Finish level:') > -1 && txt.indexOf('+20% (your rate)') > -1;
+      var fieldOpen = !!wrap && !wrap.hidden;
+      var q = document.getElementById('calc-quality');
+      q.value = 'standard';
+      // A real select fires input AND change; syncQuality rides the input one.
+      q.dispatchEvent(new Event('input',{bubbles:true}));
+      q.dispatchEvent(new Event('change',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      return { shown: shown, fieldOpen: fieldOpen };
+    })()`);
+    await delay(600);
+    const db8b = await ev(`(function(){
+      var out = document.getElementById('calc-output');
+      var wrap = document.getElementById('calc-quality-custom-wrap');
+      return { gone: (out ? out.textContent : '').indexOf('Finish level:') === -1,
+               fieldClosed: !!wrap && wrap.hidden };
+    })()`);
+    check(
+      'DB8 a non-standard finish states itself in the breakdown, the custom field opens only on Custom, and Standard removes the note',
+      db8 && db8r && db8r.shown && db8r.fieldOpen && db8b && db8b.gone && db8b.fieldClosed,
+      {
+        shown: db8r && db8r.shown,
+        fieldOpen: db8r && db8r.fieldOpen,
+        gone: db8b && db8b.gone,
+        fieldClosed: db8b && db8b.fieldClosed
+      }
+    );
+    // Labour-only is conditionally inert: it does nothing on an all-in or
+    // crew-day basis, behind a typed material rate, or for plant hire. The
+    // note must say WHICH case applies, or the switch looks broken.
+    const db9 = await ev(`(function(){
+      var b = document.getElementById('calc-basis');
+      var lo = document.getElementById('calc-labour-only');
+      var note = document.getElementById('calc-labour-note');
+      var mat = document.getElementById('calc-rate-mat');
+      var w = document.getElementById('calc-work');
+      w.value = 'blockwall'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      var res = {};
+      function snap(k){ res[k] = { shown: !!note && !note.hidden, txt: note ? note.textContent : '' }; }
+      b.value = 'measured'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      mat.value = ''; mat.dataset.model = '';
+      lo.checked = true; lo.dispatchEvent(new Event('change',{bubbles:true}));
+      snap('measured');
+      b.value = 'allin'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      snap('allin');
+      b.value = 'days'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      snap('days');
+      b.value = 'measured'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      mat.value = '12.5'; mat.dispatchEvent(new Event('input',{bubbles:true}));
+      snap('typedMat');
+      lo.checked = false; lo.dispatchEvent(new Event('change',{bubbles:true}));
+      snap('off');
+      mat.value = ''; mat.dispatchEvent(new Event('input',{bubbles:true}));
+      b.value = 'measured'; b.dispatchEvent(new Event('change',{bubbles:true}));
+      return res;
+    })()`);
+    check(
+      'DB9 the labour-only note names the inactive reason per case and disappears when the switch is off',
+      db9 &&
+        db9.measured.shown &&
+        /Material prices are excluded/i.test(db9.measured.txt) &&
+        db9.allin.shown &&
+        /all-in rate/i.test(db9.allin.txt) &&
+        db9.days.shown &&
+        /crew-day rate/i.test(db9.days.txt) &&
+        db9.typedMat.shown &&
+        /material rate still prices/i.test(db9.typedMat.txt) &&
+        !db9.off.shown,
+      db9
+    );
+    // The "bloated" reading came from two different works bases: the prelims
+    // headline priced on one figure while the rollup priced on another. Both
+    // now read prelimWorks(), so the visible numbers must agree, and the
+    // subtotal must say it is a planning envelope (no overhead, no tax).
+    const db10 = await ev(`(function(){
+      // Earlier gates clear the site-cost list; restore the shipped preset so
+      // there is a real prelims figure to compare against the rollup.
+      var preset = document.querySelector('[data-action=calcPrelimPreset]');
+      if (preset) { preset.click(); }
+      var w = document.getElementById('calc-work');
+      w.value = 'blockwall'; w.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('calc-d1').value = '10';
+      document.getElementById('calc-d2').value = '2.4';
+      document.getElementById('calc-d1').dispatchEvent(new Event('input',{bubbles:true}));
+      document.querySelector('[data-action=calcRun]').click();
+      return true;
+    })()`);
+    await delay(700);
+    const db10r = await ev(`(function(){
+      var pt = document.getElementById('calc-prelims-total');
+      var rb = document.getElementById('calc-rollup-body');
+      var nums = (pt ? pt.textContent : '').match(/[0-9][0-9,]*/g) || [];
+      var headline = nums.length ? parseInt(nums[nums.length - 1].replace(/,/g,''), 10) : null;
+      var lines = rb ? rb.querySelectorAll('.calc-line') : [];
+      var site = null;
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i].textContent.indexOf('Site & other costs') > -1) {
+          var s = lines[i].querySelector('strong');
+          site = parseInt((s ? s.textContent : '').replace(/[^0-9]/g,''), 10);
+        }
+      }
+      return { headline: headline, site: site, lines: lines.length,
+               envNote: !!rb && rb.textContent.indexOf('planning envelope, not the quoted estimate') > -1 };
+    })()`);
+    check(
+      'DB10 one works base: the Site & other costs line equals the prelims headline, and the subtotal is labelled a planning envelope',
+      db10 &&
+        db10r &&
+        db10r.lines > 0 &&
+        db10r.headline !== null &&
+        db10r.site === db10r.headline &&
+        db10r.envNote,
+      db10r
     );
 
     // UNIT-SLIP GUARD (SLIP family, owner directive 2026-10-01).
@@ -5225,12 +5390,22 @@ async function withChrome(fn) {
     // model - the total renders and the note names the missing rate.
     const e2 = await ev(`(function(){
       localStorage.setItem('mmgr_calc_history', JSON.stringify([{ at:'2026-09-01', name:'Old row', qty:'96.9 m2', total:'J$1,000',
-        work:'tile', d1:'10', d2:'8', currency:'JMD', country:'JM', quality:'standard' }]));
+        work:'tile', d1:'10', d2:'8', currency:'JMD', country:'JM', quality:'custom', qualityCustom:'20' }]));
       document.querySelector('[data-action=calcRestore]').click();
-      return { work: document.getElementById('calc-work').value, d1: document.getElementById('calc-d1').value,
+      var wrap = document.getElementById('calc-quality-custom-wrap');
+      var snap = { work: document.getElementById('calc-work').value, d1: document.getElementById('calc-d1').value,
                units: localStorage.getItem('mmgr_calc_units'), rm: document.getElementById('calc-rate-mat').value,
                note: !document.getElementById('calc-fx-note').hidden,
+               q: document.getElementById('calc-quality').value,
+               custom: document.getElementById('calc-quality-custom').value,
+               customOpen: !!wrap && !wrap.hidden,
                priced: document.getElementById('calc-output').textContent.indexOf('Estimated total') > -1 };
+      // Leave the finish level at Standard for the gates that follow.
+      var qs = document.getElementById('calc-quality');
+      qs.value = 'standard'; qs.dispatchEvent(new Event('input',{bubbles:true}));
+      var cs = document.getElementById('calc-quality-custom');
+      cs.value = ''; cs.dispatchEvent(new Event('input',{bubbles:true}));
+      return snap;
     })()`);
     // OWNER 2026-10-02 (final): WE ARE NOT A CONVERTER. The USD planning-grade
     // model rates cannot become JMD without a rate the owner sets themselves,
@@ -5250,6 +5425,11 @@ async function withChrome(fn) {
         e2.units === 'metric' &&
         e2.rm === '3792' &&
         e2.note === false &&
+        // OWNER 2026-11-26: a legacy row carrying a custom finish percent must
+        // recall with the custom field OPEN, not hidden behind the select.
+        e2.q === 'custom' &&
+        e2.custom === '20' &&
+        e2.customOpen &&
         e2.priced,
       e2
     );

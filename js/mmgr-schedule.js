@@ -455,29 +455,43 @@ var MMGR = window.MMGR || {};
     sched = backwardPass(work, sched, deadline);
     sched = calcFloat(work, sched);
 
-    // Phase roll-up: phase spans derive from their children's plan.
+    // Parent roll-up: a phase or a non-phase main task spans its children's
+    // plan (min ES -> max EF). Repeated passes settle nested parents, the same
+    // law src/mcp/schedule.js applies so the two surfaces cannot disagree.
     const schedMap = toSchedMap(sched);
-    live
-      .filter(t => t.isPhase)
-      .forEach(phase => {
-        const children = live.filter(c => c.parentName === phase.name || c.parentId === phase.id);
+    const pkeys = parentKeys(live);
+    const parentRows = live.filter(t => isParentRow(t, pkeys));
+    for (let pass = 0; pass < 16; pass++) {
+      let passChanged = 0;
+      parentRows.forEach(parent => {
+        const children = live.filter(
+          c => c !== parent && (c.parentName === parent.name || c.parentId === parent.id)
+        );
         const childRecs = children.map(c => schedMap[c.id]).filter(r => r && r.es && r.ef);
-        if (childRecs.length) {
-          let minES = null,
-            maxEF = null;
-          childRecs.forEach(r => {
-            if (!minES || r.es < minES) {
-              minES = r.es;
-            }
-            if (!maxEF || r.ef > maxEF) {
-              maxEF = r.ef;
-            }
-          });
-          const rec = schedMap[phase.id] || (schedMap[phase.id] = { id: phase.id });
+        if (!childRecs.length) {
+          return;
+        }
+        let minES = null,
+          maxEF = null;
+        childRecs.forEach(r => {
+          if (!minES || r.es < minES) {
+            minES = r.es;
+          }
+          if (!maxEF || r.ef > maxEF) {
+            maxEF = r.ef;
+          }
+        });
+        const rec = schedMap[parent.id] || (schedMap[parent.id] = { id: parent.id });
+        if (rec.es !== minES || rec.ef !== maxEF) {
           rec.es = minES;
           rec.ef = maxEF;
+          passChanged++;
         }
       });
+      if (!passChanged) {
+        break;
+      }
+    }
 
     // Which live tasks would actually change? Status-aware (owner 2026-09-26
     // cascade-polish): completed and in-progress tasks carry ACTUAL dates -
@@ -903,20 +917,28 @@ var MMGR = window.MMGR || {};
           }
         }
       }
-      if (t.parentId) {
-        const parent = tasks.find(p => p.id === t.parentId);
-        if (parent && parent.startDate && t.startDate && parent.startDate > t.startDate) {
+      // A child can name its parent by id OR by name - the WBS import and the
+      // MCP path both use parentName, so checking only parentId left those
+      // hierarchies unvalidated.
+      const parent = t.parentId
+        ? tasks.find(p => p !== t && String(p.id) === String(t.parentId))
+        : t.parentName
+          ? tasks.find(p => p !== t && p.name === t.parentName)
+          : null;
+      if (parent) {
+        const parentLabel = parent.id != null ? parent.id : parent.name;
+        if (parent.startDate && t.startDate && parent.startDate > t.startDate) {
           issues.push({
             severity: 'warning',
             task: t.id,
-            message: 'Starts before parent ' + parent.id
+            message: 'Starts before parent ' + parentLabel
           });
         }
-        if (parent && parent.endDate && t.endDate && t.endDate > parent.endDate) {
+        if (parent.endDate && t.endDate && t.endDate > parent.endDate) {
           issues.push({
             severity: 'warning',
             task: t.id,
-            message: 'Ends after parent ' + parent.id
+            message: 'Ends after parent ' + parentLabel
           });
         }
       }
@@ -982,7 +1004,11 @@ var MMGR = window.MMGR || {};
   // schema has no SS/FF/type data, matching the schedule engine's model).
   function simulateSchedule(N, riskFactor, riskAdder) {
     const s = ns.State.getState();
-    const tasks = (s.tasks || []).filter(t => t.startDate && t.endDate && !t.isPhase);
+    // Scaffolding is not work: a phase or a roll-up parent is a summary of its
+    // children, so simulating it as a task would double-count the same days.
+    const allTasks = s.tasks || [];
+    const keys = parentKeys(allTasks);
+    const tasks = allTasks.filter(t => t.startDate && t.endDate && !isParentRow(t, keys));
     if (tasks.length < 2) {
       return null;
     }
@@ -1258,13 +1284,18 @@ var MMGR = window.MMGR || {};
   // ganttDragEnd), so the live chart, the WBS and the export can never
   // disagree about where a phase bar sits. Childless phases keep their
   // stored dates - there is nothing to derive from.
-  function phaseSpan(phase, all) {
+  // The span of a row's children: earliest start to latest end. A parent's
+  // "duration" is that CALENDAR SPAN, never the sum of the children's
+  // durations - ten subtasks totalling 60 days that run in parallel cover two
+  // weeks, and a parent that added them up would double-count the work.
+  function phaseSpan(parent, all) {
     const kids = all.filter(
       c =>
+        c !== parent &&
         !c.isPhase &&
         c.startDate &&
         c.endDate &&
-        (String(c.parentId) === String(phase.id) || c.parentName === phase.name)
+        (String(c.parentId) === String(parent.id) || c.parentName === parent.name)
     );
     if (!kids.length) {
       return null;
@@ -1281,20 +1312,90 @@ var MMGR = window.MMGR || {};
     });
     return { start: start, end: end };
   }
-  // Mutates the task list in place; returns how many phases were corrected.
+  // A row is a parent when it is a phase OR any row its children name as their
+  // parent (parentId or parentName). Both are schedule scaffolding: their dates
+  // are derived and they never count as work items.
+  function parentKeys(tasks) {
+    const ids = Object.create(null),
+      names = Object.create(null);
+    (tasks || []).forEach(c => {
+      if (!c) {
+        return;
+      }
+      if (c.parentId != null && c.parentId !== '') {
+        ids[String(c.parentId)] = true;
+      }
+      if (c.parentName) {
+        names[String(c.parentName)] = true;
+      }
+    });
+    return { ids: ids, names: names };
+  }
+  function isParentRow(row, keys) {
+    if (!row) {
+      return false;
+    }
+    if (row.isPhase) {
+      return true;
+    }
+    return !!(
+      (row.id != null && keys.ids[String(row.id)]) ||
+      (row.name && keys.names[String(row.name)])
+    );
+  }
+  // Inclusive working-day count over a span (the app's durationFromDates).
+  function spanWorkDays(start, end) {
+    if (!start || !end) {
+      return null;
+    }
+    if (start === end) {
+      return 1;
+    }
+    const between = U.workingDaysBetween(start, end);
+    if (between < 0) {
+      return null;
+    }
+    const raw = between + (U.isWorkDay(start) ? 1 : 0) + (U.isWorkDay(end) ? 1 : 0);
+    return Math.floor(raw + 0.5);
+  }
+  // Mutates the task list in place; returns how many rows were corrected.
+  // Repeated passes settle nested parents (a grandparent sees its child
+  // parent's corrected span on the next pass). A non-phase main task also
+  // takes its Days cell from the span, so ten subtasks that total 60 days
+  // cannot leave "60" on a parent that only covers two weeks.
   function rollupPhases(tasks) {
     const all = tasks || [];
+    const keys = parentKeys(all);
+    const parents = all.filter(t => isParentRow(t, keys));
     let changed = 0;
-    all
-      .filter(t => t.isPhase)
-      .forEach(ph => {
-        const span = phaseSpan(ph, all);
-        if (span && (ph.startDate !== span.start || ph.endDate !== span.end)) {
-          ph.startDate = span.start;
-          ph.endDate = span.end;
-          changed++;
+    for (let pass = 0; pass < 16; pass++) {
+      let passChanged = 0;
+      parents.forEach(p => {
+        const span = phaseSpan(p, all);
+        if (!span) {
+          return;
+        }
+        if (p.startDate !== span.start || p.endDate !== span.end) {
+          p.startDate = span.start;
+          p.endDate = span.end;
+          passChanged++;
+        }
+        // A phase keeps its stored duration (the Gantt treats it as a span and
+        // a phase may legitimately be zero days). A main-task roll-up is shown
+        // with a Days cell, so that cell must equal the span.
+        if (!p.isPhase) {
+          const days = spanWorkDays(span.start, span.end);
+          if (days != null && String(p.duration) !== String(days)) {
+            p.duration = String(days);
+            passChanged++;
+          }
         }
       });
+      changed += passChanged;
+      if (!passChanged) {
+        break;
+      }
+    }
     return changed;
   }
 

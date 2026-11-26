@@ -155,7 +155,15 @@ const EXACT = {
   // and shares this file's IIFE helpers ($, clampX, the gap constants), so it
   // could not be lifted out inside the wave; the next calculator feature
   // should move the tour engine to js/calc-tour.js rather than raise this.
-  'js/calculator-page.js': 614000,
+  // 2026-11-26 (finish level + labour note + one works base): raised
+  // 614000 -> 618000 (617005 measured). The finish level gained a signed
+  // custom percent with one label function shared by screen, sheet and
+  // export; labour-only gained a reason-bearing status note; heavyPass now
+  // hands renderPrelims no works override so the headline and the rollup
+  // price the SAME base. ~3 KB of that is the explanatory comments that keep
+  // the D8/D9 pricing rules from being re-broken. The tour split is still
+  // owed and remains the next calculator refactor.
+  'js/calculator-page.js': 618000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.
   // 2026-11-08 (C3 Phase 1): raised 215000 -> 220000 for the Documents view

@@ -150,14 +150,18 @@ export function stampStatus(task, status, day) {
   return task;
 }
 
-// ---- Phase span + roll-up (js/mmgr-schedule.js phaseSpan / rollupPhases) ---
-export function phaseSpan(phase, all) {
+// ---- Parent span + roll-up (js/mmgr-schedule.js phaseSpan / rollupPhases) --
+// A parent's dates are a SPAN over its children - earliest start to latest
+// end - never the sum of their durations. Both a phase row and a non-phase
+// "main task" that children name are parents (schedule scaffolding).
+export function phaseSpan(parent, all) {
   const kids = (all || []).filter(
     c =>
+      c !== parent &&
       !c.isPhase &&
       c.startDate &&
       c.endDate &&
-      (String(c.parentId) === String(phase.id) || c.parentName === phase.name)
+      (String(c.parentId) === String(parent.id) || c.parentName === parent.name)
   );
   if (!kids.length) {
     return null;
@@ -175,19 +179,68 @@ export function phaseSpan(phase, all) {
   return { start: start, end: end };
 }
 
-export function rollupPhases(tasks) {
+export function parentKeys(tasks) {
+  const ids = Object.create(null);
+  const names = Object.create(null);
+  (tasks || []).forEach(c => {
+    if (!c) {
+      return;
+    }
+    if (c.parentId != null && c.parentId !== '') {
+      ids[String(c.parentId)] = true;
+    }
+    if (c.parentName) {
+      names[String(c.parentName)] = true;
+    }
+  });
+  return { ids, names };
+}
+
+export function isParentRow(row, keys) {
+  if (!row) {
+    return false;
+  }
+  if (row.isPhase) {
+    return true;
+  }
+  return !!(
+    (row.id != null && keys.ids[String(row.id)]) ||
+    (row.name && keys.names[String(row.name)])
+  );
+}
+
+export function rollupPhases(tasks, workWeek) {
   const all = tasks || [];
+  const keys = parentKeys(all);
+  const parents = all.filter(t => isParentRow(t, keys));
   let changed = 0;
-  all
-    .filter(t => t.isPhase)
-    .forEach(ph => {
-      const span = phaseSpan(ph, all);
-      if (span && (ph.startDate !== span.start || ph.endDate !== span.end)) {
-        ph.startDate = span.start;
-        ph.endDate = span.end;
-        changed++;
+  for (let pass = 0; pass < 16; pass++) {
+    let passChanged = 0;
+    parents.forEach(p => {
+      const span = phaseSpan(p, all);
+      if (!span) {
+        return;
+      }
+      if (p.startDate !== span.start || p.endDate !== span.end) {
+        p.startDate = span.start;
+        p.endDate = span.end;
+        passChanged++;
+      }
+      // A phase keeps its stored duration; a main-task roll-up takes its Days
+      // cell from the span so it can never show a summed duration.
+      if (!p.isPhase) {
+        const days = durationFromDatesUTC(span.start, span.end, workWeek);
+        if (days != null && String(p.duration) !== String(days)) {
+          p.duration = String(days);
+          passChanged++;
+        }
       }
     });
+    changed += passChanged;
+    if (!passChanged) {
+      break;
+    }
+  }
   return changed;
 }
 
@@ -252,7 +305,7 @@ export function applyTaskEffects(tasks, beforeTasks, opts) {
     }
   });
   if (dateEdits) {
-    rollupPhases(tasks);
+    rollupPhases(tasks, workWeek);
   }
   return { statusChanges, dateEdits };
 }

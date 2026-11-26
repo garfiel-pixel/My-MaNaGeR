@@ -100,6 +100,20 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
     "NOT A FORECAST" instead of letting a caller read "0% by the deadline" as
     a schedule verdict. Apply the same rule to any new derived read: say what
     had to be true for the number to mean anything.
+14. **A parent is a SPAN, and scaffolding is not work — one predicate, everywhere.**
+    A phase OR any row that children name by `parentId` or `parentName` is a
+    parent: its dates are the earliest child start to the latest child end, never
+    the sum of the children's durations (ten 6-day subtasks that run in parallel
+    span 6 days, not 60), and it is never a work item. The rule was duplicated as
+    `!t.isPhase` in Monte Carlo, health counts, the schedule denominator, the
+    sprint picker and the watchers, so a non-phase main task was simulated and
+    counted as work while Kanban excluded it. Route every count, simulation and
+    roll-up through `isParentRow`/`parentKeys` (`src/mcp/schedule.js`, mirrored in
+    `js/mmgr-schedule.js` and `src/domain/task-effects.js`); a delete guard must
+    see both `parentId` and `parentName` children, and lint should flag a parent
+    whose stored dates do not cover its children. Prove it in
+    `tools/qa-rollup-parents.cjs` (parallel 6 vs sequential 60, browser/port
+    parity, work-item counts, delete guard).
 
 ## Architecture (reference: My MaNaGeR)
 

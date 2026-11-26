@@ -94,7 +94,7 @@ import {
   isDeletable
 } from './model.js';
 import { MCP_MAX_DIFFS, MCP_MAX_CREATES, MCP_MAX_SETS, MCP_WRITE_BUDGET_MS } from './plan.js';
-import { computeSchedule, findCycles } from './schedule.js';
+import { computeSchedule, findCycles, isParentRow, parentKeys } from './schedule.js';
 import { buildHealth, buildLint, resourceUtil } from './health.js';
 import {
   budgetReadAllowed,
@@ -853,8 +853,10 @@ function executeMonteCarlo(state, scope, args) {
       };
     }
   }
-  const tasks = (Array.isArray(state.tasks) ? state.tasks : []).filter(function (t) {
-    return t && t.startDate && t.endDate && !t.isPhase;
+  // Scaffolding is not work: a phase or roll-up parent summarises its
+  // children, so simulating it as a task would count the same days twice.
+  const tasks = mcpWorkItems(Array.isArray(state.tasks) ? state.tasks : []).filter(function (t) {
+    return t && t.startDate && t.endDate;
   });
   if (tasks.length < 2) {
     return {
@@ -1137,16 +1139,13 @@ function mcpRiskIsOpen(r) {
 }
 
 // js/mmgr-kanban.js workItems: phases and rollup parents are schedule
-// scaffolding, not work. Completion is measured on real cards only.
+// scaffolding, not work. Completion is measured on real cards only. A parent
+// is a phase OR any row its children name (parentId or parentName), so the
+// same predicate serves the Kanban, health, schedule and Monte Carlo.
 function mcpWorkItems(tasks) {
-  const rollups = {};
-  (tasks || []).forEach(function (t) {
-    if (t && t.parentName) {
-      rollups[t.parentName] = 1;
-    }
-  });
+  const keys = parentKeys(tasks);
   return (tasks || []).filter(function (t) {
-    return t && !t.isPhase && !((t.level || 0) === 0 && rollups[t.name]);
+    return t && !isParentRow(t, keys);
   });
 }
 

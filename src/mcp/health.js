@@ -15,7 +15,7 @@
    Neither writes, queues or mutates anything.
    ============================================================ */
 
-import { computeSchedule, parseDL } from './schedule.js';
+import { computeSchedule, parseDL, isParentRow, parentKeys } from './schedule.js';
 
 function gate(status, detail, count) {
   const out = { status: status, detail: detail };
@@ -310,8 +310,9 @@ export function buildHealth(state, ctx) {
     return !scope || scope.indexOf(section) !== -1;
   };
   const tasks = Array.isArray(s.tasks) ? s.tasks : [];
+  const pkeys = parentKeys(tasks);
   const workItems = tasks.filter(function (t) {
-    return t && !t.isPhase;
+    return t && !isParentRow(t, pkeys);
   });
   const schedule = computeSchedule(s);
   const gates = {};
@@ -401,7 +402,7 @@ export function buildHealth(state, ctx) {
       );
     }
     const undated = schedule.rows.filter(function (r) {
-      return !r.isPhase && !r.es;
+      return !r.isParent && !r.es;
     });
     if (undated.length) {
       schedChecks.push(
@@ -764,12 +765,48 @@ export function buildLint(state, schedule) {
         });
       }
     }
-    if (t.isPhase) {
-      const kids =
-        (t.id ? childCount['id:' + t.id] || 0 : 0) +
-        (t.name ? childCount['name:' + t.name] || 0 : 0);
-      if (!kids) {
+    const kids =
+      (t.id ? childCount['id:' + t.id] || 0 : 0) + (t.name ? childCount['name:' + t.name] || 0 : 0);
+    const isParent = !!t.isPhase || kids > 0;
+    if (isParent) {
+      if (t.isPhase && !kids) {
         out.push({ severity: 'warn', id: t.id, detail: label + ': phase has no child tasks' });
+      }
+      // A parent's dates are a SPAN over its children, never the sum of their
+      // durations. A child outside the stored span means the parent is stale
+      // or was priced by adding durations - flag it so the structure is fixed.
+      const kidRows = tasks.filter(function (c) {
+        return (
+          c !== t &&
+          ((t.id != null && String(c.parentId) === String(t.id)) ||
+            (t.name && c.parentName === t.name))
+        );
+      });
+      const dated = kidRows.filter(function (c) {
+        return parseDL(c.startDate) && parseDL(c.endDate);
+      });
+      if (dated.length && start && end) {
+        let min = parseDL(dated[0].startDate);
+        let max = parseDL(dated[0].endDate);
+        dated.forEach(function (c) {
+          const cs = parseDL(c.startDate);
+          const ce = parseDL(c.endDate);
+          if (cs < min) {
+            min = cs;
+          }
+          if (ce > max) {
+            max = ce;
+          }
+        });
+        if (start > min || end < max) {
+          out.push({
+            severity: 'info',
+            id: t.id,
+            detail:
+              label +
+              ': stored dates do not span its children (a parent is a span, not a sum of durations)'
+          });
+        }
       }
     } else {
       if ((t.startDate || t.endDate) && !t.duration) {

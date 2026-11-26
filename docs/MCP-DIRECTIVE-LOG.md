@@ -1036,3 +1036,24 @@ or merge a red run):
 
 No app behaviour changed by these three repairs. Local battery after: verify
 green, 459/459 unit, write-path 20, autosave-signin 12, tier-limits 5.
+
+## PR #73 — parent span and scaffolding exclusion (2026-11-26)
+
+`get_schedule`'s Monte Carlo simulated every row with dates, including roll-up
+parents, and health/schedule denominators counted those parents as work. A
+parent whose stored duration was the sum of its children's durations then read
+as a huge work item with a fake critical path.
+
+The law is now one predicate per runtime (`isParentRow` + `parentKeys`):
+a parent is a phase OR a row a child names by `parentId`/`parentName`, and its
+dates are `min(child start) -> max(child end)`, its duration the working-day
+span. `src/mcp/schedule.js` exports the predicate; `computeSchedule` settles
+nested parents in up to 16 passes and every denominator uses `!r.isParent`;
+`health.js` counts work items the same way and its lint reports a parent whose
+stored dates do not span its children; `server.js`'s `mcpWorkItems` (Monte
+Carlo) routes through it. The browser engine and the server port carry the
+same change, proven by `tools/qa-rollup-parents.cjs` (14 gates, registered in
+`ci.yml` and the coverage registry). `applyOps`' delete guard now refuses a
+parent with `parentId`-linked children as well as `parentName` ones.
+
+No MCP tool signature changed; `get_schedule` rows gained `isParent`.

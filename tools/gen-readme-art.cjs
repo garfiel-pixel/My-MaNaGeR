@@ -60,8 +60,12 @@ const C = {
 const MONO = "'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace";
 const SANS = "Inter,'Segoe UI',system-ui,-apple-system,sans-serif";
 
+/* Complete HTML escape: quotes are included because the escaped values also
+   land in attributes (aria-label, pattern ids). Same set as the app's esc(). */
 function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
 }
 
 /* One shared frame: eyebrow, title, lead lines, bullets on the left and a

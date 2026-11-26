@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-label="Gantt and dependencies">
+  <defs>
+    <pattern id="g" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#f5efe6" stroke-opacity="0.035"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="400" fill="#1c1a18"/>
+  <rect width="1200" height="400" fill="url(#g)"/>
+  <rect x="18" y="18" width="1164" height="364" rx="5" fill="none" stroke="#d4af37" stroke-opacity="0.2"/>
+  <path d="M18 40V18h22M1182 18h-22v22M1160 382h22v-22M40 382H18v-22" fill="none" stroke="#d4af37" stroke-opacity="0.5" stroke-width="1.6"/>
+
+  <text x="64" y="88" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9.5" letter-spacing="2.2" fill="#e05624">SCHEDULE</text>
+  <text x="64" y="136" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-weight="800" font-size="34" letter-spacing="-0.8" fill="#f5efe6">Gantt and dependencies</text>
+  <text x="64" y="172" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="13.5" fill="#f5efe6" fill-opacity="0.6">Bars, links and a live today line. Drag a date and the</text>
+  <text x="64" y="196" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="13.5" fill="#f5efe6" fill-opacity="0.6">downstream work moves with it.</text>
+  <path d="M64 216H600" stroke="#f5efe6" stroke-opacity="0.1"/>
+  <circle cx="68" cy="252" r="3" fill="#d4af37"/><text x="82" y="256" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">FINISH TO START LINKS</text>
+  <circle cx="68" cy="278" r="3" fill="#d4af37"/><text x="82" y="282" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">WORKING DAY CALENDAR</text>
+  <circle cx="68" cy="304" r="3" fill="#d4af37"/><text x="82" y="308" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">CRITICAL PATH HIGHLIGHTED</text>
+
+  <rect x="632" y="60" width="504" height="280" rx="10" fill="#221f1c" stroke="#f5efe6" stroke-opacity="0.09"/>
+  <text x="656" y="90" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.9" fill="#d4af37">PHASES</text>
+  <text x="1112" y="90" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.6" fill="#f5efe6" fill-opacity="0.38">6 BARS</text>
+  <path d="M656 104H1112" stroke="#f5efe6" stroke-opacity="0.09"/><path d="M900 128V300" stroke="#e05624" stroke-opacity="0.45" stroke-dasharray="3 4"/>
+  <text x="900" y="122" text-anchor="middle" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8" letter-spacing="1.2" fill="#e05624" fill-opacity="0.85">TODAY</text>
+  <g font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="10.5" fill="#f5efe6" fill-opacity="0.8">
+    <text x="656" y="152">Tenant Relocation</text>
+    <text x="656" y="176">Demolition</text>
+    <text x="656" y="200" font-weight="700" fill="#f5efe6">Seismic Retrofit</text>
+    <text x="656" y="224">MEP Rough-In</text>
+    <text x="656" y="248">Interior Finishes</text>
+    <text x="656" y="272">Commissioning</text>
+  </g>
+  <g>
+    <rect x="790" y="143" width="70" height="11" rx="3" fill="#d4af37" fill-opacity="0.42"/>
+    <rect x="846" y="167" width="70" height="11" rx="3" fill="#d4af37" fill-opacity="0.42"/>
+    <rect x="900" y="191" width="96" height="11" rx="3" fill="#e05624"/>
+    <rect x="982" y="215" width="66" height="11" rx="3" fill="#f5efe6" fill-opacity="0.18"/>
+    <rect x="1034" y="239" width="52" height="11" rx="3" fill="#f5efe6" fill-opacity="0.18"/>
+    <rect x="1072" y="263" width="40" height="11" rx="3" fill="#f5efe6" fill-opacity="0.18"/>
+  </g>
+  <g fill="none" stroke="#f5efe6" stroke-opacity="0.26">
+    <path d="M862 154v6h6v7M918 178v6h6v7M998 202v6h6v7M1050 226v6h6v7M1086 250v6h6v7"/>
+  </g>
+
+  <path d="M64 360H1136" stroke="#f5efe6" stroke-opacity="0.08"/>
+  <text x="64" y="380" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.8" fill="#f5efe6" fill-opacity="0.35">mymanagerworkspace.com</text>
+  <text x="1136" y="380" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.8" fill="#f5efe6" fill-opacity="0.35">GANTT · CPM · BASELINE</text>
+</svg>

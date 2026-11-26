@@ -17,6 +17,10 @@ tmp
 dogfood-output
 # Accountability evidence (logs + screenshots) is for human/AI review only.
 REVIEW-ARTIFACTS
+# 2026-11-26: README showcase art (hero banner, section cards, the dashboard
+# capture). Documentation images, not runtime assets - excluding the folder
+# keeps ~1.1 MB out of the upload that no page ever requests.
+images/readme
 serve.cjs
 planners/
 # E0 (2026-10-30): parked plans/specs and reference material, never served.

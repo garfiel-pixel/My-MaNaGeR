@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-label="Offline first, cloud by choice">
+  <defs>
+    <pattern id="g" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#f5efe6" stroke-opacity="0.035"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="400" fill="#1c1a18"/>
+  <rect width="1200" height="400" fill="url(#g)"/>
+  <rect x="18" y="18" width="1164" height="364" rx="5" fill="none" stroke="#d4af37" stroke-opacity="0.2"/>
+  <path d="M18 40V18h22M1182 18h-22v22M1160 382h22v-22M40 382H18v-22" fill="none" stroke="#d4af37" stroke-opacity="0.5" stroke-width="1.6"/>
+
+  <text x="64" y="88" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9.5" letter-spacing="2.2" fill="#e05624">OFFLINE / CLOUD</text>
+  <text x="64" y="136" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-weight="800" font-size="34" letter-spacing="-0.8" fill="#f5efe6">Offline first, cloud by choice</text>
+  <text x="64" y="172" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="13.5" fill="#f5efe6" fill-opacity="0.6">A project lives on your device first and opens with no network.</text>
+  <text x="64" y="196" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="13.5" fill="#f5efe6" fill-opacity="0.6">Cloud backup is switched on per project, and only when you ask.</text>
+  <path d="M64 216H600" stroke="#f5efe6" stroke-opacity="0.1"/>
+  <circle cx="68" cy="252" r="3" fill="#d4af37"/><text x="82" y="256" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">LOCAL-FIRST STORAGE</text>
+  <circle cx="68" cy="278" r="3" fill="#d4af37"/><text x="82" y="282" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">SYNC IS OPT-IN PER PROJECT</text>
+  <circle cx="68" cy="304" r="3" fill="#d4af37"/><text x="82" y="308" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">ONE ACCEPTED REVISION, NO SILENT MERGE</text>
+
+  <rect x="632" y="60" width="504" height="280" rx="10" fill="#221f1c" stroke="#f5efe6" stroke-opacity="0.09"/>
+  <text x="656" y="90" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.9" fill="#d4af37">TWO COPIES</text>
+  <text x="1112" y="90" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.6" fill="#f5efe6" fill-opacity="0.38">REVISION 42</text>
+  <path d="M656 104H1112" stroke="#f5efe6" stroke-opacity="0.09"/><circle cx="659" cy="130" r="3" fill="#7bb661"/>
+  <text x="670" y="134" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.7" fill="#f5efe6" fill-opacity="0.45">THIS DEVICE</text>
+  <text x="656" y="162" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" fill="#f5efe6" fill-opacity="0.85">IndexedDB project file</text>
+  <text x="656" y="184" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" fill="#f5efe6" fill-opacity="0.85">service worker cache</text>
+  <text x="656" y="206" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" fill="#f5efe6" fill-opacity="0.85">works with no network</text><circle cx="939" cy="130" r="3" fill="#d4af37"/>
+  <text x="950" y="134" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.7" fill="#f5efe6" fill-opacity="0.45">CLOUD</text>
+  <text x="936" y="162" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" fill="#f5efe6" fill-opacity="0.85">D1 project rows</text>
+  <text x="936" y="184" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" fill="#f5efe6" fill-opacity="0.85">R2 photo blobs</text>
+  <text x="936" y="206" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" fill="#f5efe6" fill-opacity="0.85">accepted revision</text><path d="M880 168h28" stroke="#f5efe6" stroke-opacity="0.35" stroke-dasharray="3 3"/>
+  <path d="M902 164l6 4-6 4" fill="none" stroke="#f5efe6" stroke-opacity="0.45"/>
+  <path d="M656 288H1112" stroke="#f5efe6" stroke-opacity="0.08"/>
+  <text x="656" y="312" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" fill="#f5efe6" fill-opacity="0.42">NOTHING LEAVES THE DEVICE UNTIL YOU TURN SYNC ON.</text>
+
+  <path d="M64 360H1136" stroke="#f5efe6" stroke-opacity="0.08"/>
+  <text x="64" y="380" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.8" fill="#f5efe6" fill-opacity="0.35">mymanagerworkspace.com</text>
+  <text x="1136" y="380" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.8" fill="#f5efe6" fill-opacity="0.35">PWA · D1 · R2 · SERVICE WORKER</text>
+</svg>

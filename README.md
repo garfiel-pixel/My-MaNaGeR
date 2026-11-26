@@ -1,5 +1,9 @@
 # My MaNaGeR
 
+<p align="center">
+  <img src="images/readme/mmgr-hero.png" alt="My MaNaGeR - construction project workspace" width="100%">
+</p>
+
 An offline-first construction project-management workspace that runs in the
 browser. No account and no payment are required to use it; an optional account
 adds cloud backup, more linked projects, project photos and the full AI
@@ -9,6 +13,65 @@ assistant. Nothing stored on your device depends on either of those.
 - **Terms of Service:** https://mymanagerworkspace.com/terms.html
 - **Privacy Policy:** https://mymanagerworkspace.com/privacy.html
 - **Refund Policy:** https://mymanagerworkspace.com/refund.html
+
+## What it does
+
+![The demo project dashboard](images/readme/mmgr-project-dashboard.png)
+
+*The demo project, captured from the running app - not a mockup. Every figure
+below the fold comes from the same data the reports print.*
+
+### Work breakdown
+
+![Work breakdown](images/readme/mmgr-section-wbs.png)
+
+Tasks hang off numbered work packages so scope stays traceable from the charter
+to the last snag. A parent row is a span over its children, so a rolled-up
+duration is never the sum of the work beneath it.
+
+### Schedule
+
+![Gantt and dependencies](images/readme/mmgr-section-gantt.png)
+
+Bars, finish-to-start links and a live today line over a working-day calendar.
+Move a date and the downstream work moves with it; the critical path is
+highlighted on the same row set.
+
+### Cost and earned value
+
+![Budget and earned value](images/readme/mmgr-section-cost.png)
+
+Planned, earned and actual on one curve, with CPI and SPI on every rollup.
+The estimate, the bill of quantities and the budget read the same numbers - there
+is no second spreadsheet to reconcile.
+
+### Agent surface
+
+![MCP server](images/readme/mmgr-section-mcp.png)
+
+A scoped Model Context Protocol endpoint over the same project model the app
+renders. Reads are direct; every write is a change set that is queued,
+validated and then accepted by the owner. Nothing auto-applies.
+
+### Offline and cloud
+
+![Offline first, cloud by choice](images/readme/mmgr-section-sync.png)
+
+A project lives on the device first and opens with no network. Cloud backup is
+switched on per project and only when you ask; sync carries one accepted
+revision, never a silent merge.
+
+### AI assistant
+
+![Your key, your model](images/readme/mmgr-section-ai.png)
+
+A relay in the Worker forwards the provider key you supply. The assistant reads
+the schedule, budget and risk model the screen shows, and is off on view-only
+and offline pages.
+
+The section art is generated from the repo:
+`node tools/gen-readme-art.cjs` rewrites the six cards (and `--dashboard`
+recaptures the demo dashboard).
 
 ## Stack
 

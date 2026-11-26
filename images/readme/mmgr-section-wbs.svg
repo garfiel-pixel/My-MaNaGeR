@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-label="Work breakdown">
+  <defs>
+    <pattern id="g" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#f5efe6" stroke-opacity="0.035"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="400" fill="#1c1a18"/>
+  <rect width="1200" height="400" fill="url(#g)"/>
+  <rect x="18" y="18" width="1164" height="364" rx="5" fill="none" stroke="#d4af37" stroke-opacity="0.2"/>
+  <path d="M18 40V18h22M1182 18h-22v22M1160 382h22v-22M40 382H18v-22" fill="none" stroke="#d4af37" stroke-opacity="0.5" stroke-width="1.6"/>
+
+  <text x="64" y="88" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9.5" letter-spacing="2.2" fill="#e05624">SCOPE</text>
+  <text x="64" y="136" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-weight="800" font-size="34" letter-spacing="-0.8" fill="#f5efe6">Work breakdown</text>
+  <text x="64" y="172" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="13.5" fill="#f5efe6" fill-opacity="0.6">Every task hangs off a numbered work package, so scope</text>
+  <text x="64" y="196" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="13.5" fill="#f5efe6" fill-opacity="0.6">stays traceable from the charter to the last snag.</text>
+  <path d="M64 216H600" stroke="#f5efe6" stroke-opacity="0.1"/>
+  <circle cx="68" cy="252" r="3" fill="#d4af37"/><text x="82" y="256" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">MAJOR GROUPS TO LEAF TASKS</text>
+  <circle cx="68" cy="278" r="3" fill="#d4af37"/><text x="82" y="282" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">PARENT ROLLUP ON EVERY FIGURE</text>
+  <circle cx="68" cy="304" r="3" fill="#d4af37"/><text x="82" y="308" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.1" fill="#f5efe6" fill-opacity="0.62">CODES STABLE ACROSS REVISIONS</text>
+
+  <rect x="632" y="60" width="504" height="280" rx="10" fill="#221f1c" stroke="#f5efe6" stroke-opacity="0.09"/>
+  <text x="656" y="90" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.9" fill="#d4af37">OUTLINE</text>
+  <text x="1112" y="90" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.6" fill="#f5efe6" fill-opacity="0.38">9 GROUPS</text>
+  <path d="M656 104H1112" stroke="#f5efe6" stroke-opacity="0.09"/><path d="M668 136v150M694 162v100" stroke="#f5efe6" stroke-opacity="0.14"/>
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" fill="#d4af37" fill-opacity="0.85">
+    <text x="656" y="140">1.0</text><text x="680" y="166">1.1</text>
+    <text x="706" y="192">1.1.1</text><text x="706" y="218">1.1.2</text>
+    <text x="680" y="244">1.2</text><text x="680" y="270">1.3</text>
+    <text x="680" y="296">1.4</text>
+  </g>
+  <g font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="11.5" fill="#f5efe6">
+    <text x="744" y="140" font-weight="700">Riverside Tower Renovation</text>
+    <text x="744" y="166" fill-opacity="0.8">Demolition</text>
+    <text x="770" y="192" fill-opacity="0.62">Demolition Floors 1-4</text>
+    <text x="770" y="218" fill-opacity="0.62">Demolition Floors 5-8</text>
+    <text x="744" y="244" fill-opacity="0.8">Planning</text>
+    <text x="744" y="270" fill-opacity="0.62">Procurement</text>
+    <text x="744" y="296" fill-opacity="0.85" font-weight="700">Structural</text>
+  </g>
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" text-anchor="end" fill="#f5efe6" fill-opacity="0.45">
+    <text x="1112" y="140">30 TASKS</text><text x="1112" y="166">6</text>
+    <text x="1112" y="192">2</text><text x="1112" y="218">2</text>
+    <text x="1112" y="244">3</text><text x="1112" y="270">2</text>
+    <text x="1112" y="296">3</text>
+  </g>
+
+  <path d="M64 360H1136" stroke="#f5efe6" stroke-opacity="0.08"/>
+  <text x="64" y="380" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.8" fill="#f5efe6" fill-opacity="0.35">mymanagerworkspace.com</text>
+  <text x="1136" y="380" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.8" fill="#f5efe6" fill-opacity="0.35">WBS · ROLLUP · DEPENDENCIES</text>
+</svg>

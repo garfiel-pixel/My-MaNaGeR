@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 700" width="1600" height="700" role="img" aria-labelledby="heroTitle heroDesc">
+  <title id="heroTitle">My MaNaGeR — construction project workspace</title>
+  <desc id="heroDesc">Charcoal banner showing the My MaNaGeR monogram, the project dashboard, a Gantt schedule and a work breakdown structure.</desc>
+
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#f5efe6" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#d4af37" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#d4af37" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="goldFade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d4af37" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#e05624" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="700" fill="#1c1a18"/>
+  <rect width="1600" height="700" fill="url(#grid)"/>
+  <ellipse cx="330" cy="150" rx="420" ry="240" fill="url(#glow)"/>
+
+  <rect x="26" y="26" width="1548" height="648" rx="6" fill="none" stroke="#d4af37" stroke-opacity="0.2"/>
+  <path d="M26 52V26h26M1548 26h26v26M1574 648v26h-26M52 674H26v-26" fill="none" stroke="#d4af37" stroke-opacity="0.55" stroke-width="2"/>
+
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="11" letter-spacing="2.2">
+    <text x="96" y="62" fill="#f5efe6" fill-opacity="0.45">MYMANAGERWORKSPACE.COM</text>
+    <text x="1504" y="62" fill="#f5efe6" fill-opacity="0.45" text-anchor="end">OFFLINE-FIRST · NO ACCOUNT NEEDED</text>
+  </g>
+
+  <g transform="translate(96,84) scale(3.8333)">
+    <rect x="0" y="0" width="24" height="24" rx="5.6" fill="#d4af37"/>
+    <g fill="none" stroke="#1c1a18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.5 17.5v-11l4.25 6L12 6.5l4.25 6 4.25-6v11"/>
+      <path d="M12 17.5v-5.2a2.4 2.4 0 1 1 2.4 2.4H12"/>
+      <path d="M3.5 21h17"/>
+    </g>
+  </g>
+
+  <g font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-weight="800" font-size="48" letter-spacing="-1.2">
+    <text x="214" y="140" fill="#f5efe6">MY MANAGER</text>
+    <text x="570" y="140" fill="#d4af37">/</text>
+    <text x="612" y="140" fill="#d4af37">PROJECT CONTROL</text>
+  </g>
+
+  <text x="214" y="190" font-family="Inter,'Segoe UI',system-ui,-apple-system,sans-serif" font-size="17" fill="#f5efe6" fill-opacity="0.62">Charter, WBS, Gantt, budget, EVM, risks and claims. One workspace that works with no signal.</text>
+
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="12.5" letter-spacing="2" fill="#f5efe6" fill-opacity="0.72">
+    <circle cx="218" cy="228" r="3.5" fill="#e05624"/>
+    <text x="232" y="233">PROJECT DASHBOARD</text>
+    <circle cx="430" cy="228" r="3.5" fill="#e05624"/>
+    <text x="444" y="233">WBS TREE</text>
+    <circle cx="556" cy="228" r="3.5" fill="#e05624"/>
+    <text x="570" y="233">GANTT SCHEDULE</text>
+    <circle cx="742" cy="228" r="3.5" fill="#e05624"/>
+    <text x="756" y="233">COST CONTROL</text>
+    <circle cx="906" cy="228" r="3.5" fill="#e05624"/>
+    <text x="920" y="233">EVM &amp; RISK</text>
+  </g>
+
+  <g>
+    <rect x="1140" y="84" width="364" height="196" rx="10" fill="#221f1c" stroke="#d4af37" stroke-opacity="0.22"/>
+    <circle cx="1162" cy="114" r="4" fill="#e05624"/>
+    <text x="1176" y="118" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10" letter-spacing="1.9" fill="#f5efe6" fill-opacity="0.55">PROJECT SNAPSHOT</text>
+    <text x="1160" y="148" font-family="Inter,'Segoe UI',system-ui,sans-serif" font-weight="700" font-size="16" fill="#f5efe6">Riverside Tower Renovation</text>
+    <text x="1160" y="170" font-family="Inter,'Segoe UI',system-ui,sans-serif" font-size="11.5" fill="#f5efe6" fill-opacity="0.45">Waterfall · Agile · Hybrid</text>
+
+    <g font-family="Inter,'Segoe UI',system-ui,sans-serif" font-weight="800" font-size="26">
+      <text x="1160" y="212" fill="#d4af37">37%</text>
+      <text x="1248" y="212" fill="#7bb661">73</text>
+      <text x="1322" y="212" fill="#f5efe6">30</text>
+      <text x="1398" y="212" fill="#e05624">1</text>
+    </g>
+    <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.4" fill="#f5efe6" fill-opacity="0.45">
+      <text x="1160" y="228">COMPLETE</text>
+      <text x="1248" y="228">HEALTH</text>
+      <text x="1322" y="228">TASKS</text>
+      <text x="1398" y="228">OVERDUE</text>
+    </g>
+
+    <rect x="1160" y="248" width="324" height="6" rx="3" fill="#f5efe6" fill-opacity="0.09"/>
+    <rect x="1160" y="248" width="120" height="6" rx="3" fill="url(#goldFade)"/>
+  </g>
+
+  <g>
+    <rect x="96" y="276" width="880" height="260" rx="10" fill="#f5efe6" fill-opacity="0.022" stroke="#f5efe6" stroke-opacity="0.09"/>
+    <text x="120" y="306" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10" letter-spacing="1.9" fill="#d4af37">GANTT SCHEDULE</text>
+    <text x="952" y="306" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9.5" letter-spacing="1.5" fill="#f5efe6" fill-opacity="0.4">6 PHASES · 30 TASKS</text>
+
+    <path d="M600 330V500" stroke="#e05624" stroke-opacity="0.5" stroke-width="1" stroke-dasharray="3 4"/>
+    <text x="600" y="326" text-anchor="middle" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8" letter-spacing="1.2" fill="#e05624" fill-opacity="0.8">TODAY</text>
+
+    <g font-family="Inter,'Segoe UI',system-ui,sans-serif" font-size="11.5" fill="#f5efe6" fill-opacity="0.82">
+      <text x="132" y="347">Tenant Relocation</text>
+      <text x="132" y="374">Demolition</text>
+      <text x="132" y="401" font-weight="700" fill="#f5efe6">Seismic Retrofit</text>
+      <text x="132" y="428">MEP Rough-In</text>
+      <text x="132" y="455">Interior Finishes</text>
+      <text x="132" y="482">Commissioning</text>
+    </g>
+
+    <g>
+      <rect x="316" y="337" width="100" height="12" rx="3" fill="#d4af37" fill-opacity="0.42"/>
+      <rect x="410" y="364" width="100" height="12" rx="3" fill="#d4af37" fill-opacity="0.42"/>
+      <rect x="500" y="391" width="150" height="12" rx="3" fill="#e05624"/>
+      <rect x="630" y="418" width="110" height="12" rx="3" fill="#f5efe6" fill-opacity="0.18"/>
+      <rect x="730" y="445" width="120" height="12" rx="3" fill="#f5efe6" fill-opacity="0.18"/>
+      <rect x="840" y="472" width="90" height="12" rx="3" fill="#f5efe6" fill-opacity="0.18"/>
+    </g>
+
+    <g fill="none" stroke="#f5efe6" stroke-opacity="0.28" stroke-width="1">
+      <path d="M416 349v8h8v11"/>
+      <path d="M510 376v8h8v11"/>
+      <path d="M650 403v8h8v11"/>
+      <path d="M740 430v8h8v11"/>
+      <path d="M850 457v8h8v11"/>
+    </g>
+    <g fill="#f5efe6" fill-opacity="0.28">
+      <path d="M424 364l-2.5 5h5z"/>
+      <path d="M518 391l-2.5 5h5z"/>
+      <path d="M658 418l-2.5 5h5z"/>
+      <path d="M748 445l-2.5 5h5z"/>
+      <path d="M858 472l-2.5 5h5z"/>
+    </g>
+
+    <path d="M316 500H940" stroke="#f5efe6" stroke-opacity="0.12"/>
+    <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="8.5" letter-spacing="1.2" fill="#f5efe6" fill-opacity="0.35">
+      <text x="316" y="518">JAN</text>
+      <text x="420" y="518">FEB</text>
+      <text x="524" y="518">MAR</text>
+      <text x="628" y="518">APR</text>
+      <text x="732" y="518">MAY</text>
+      <text x="836" y="518">JUN</text>
+    </g>
+  </g>
+
+  <g>
+    <rect x="996" y="276" width="508" height="260" rx="10" fill="#f5efe6" fill-opacity="0.022" stroke="#f5efe6" stroke-opacity="0.09"/>
+    <text x="1020" y="306" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10" letter-spacing="1.9" fill="#d4af37">WBS</text>
+    <text x="1480" y="306" text-anchor="end" font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9.5" letter-spacing="1.5" fill="#f5efe6" fill-opacity="0.4">9 MAJOR GROUPS</text>
+
+    <path d="M1032 340v184M1058 366v134" stroke="#f5efe6" stroke-opacity="0.14"/>
+
+    <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" fill="#d4af37" fill-opacity="0.85">
+      <text x="1020" y="345">1.0</text>
+      <text x="1044" y="369">1.1</text>
+      <text x="1068" y="393">1.1.1</text>
+      <text x="1068" y="417">1.1.2</text>
+      <text x="1044" y="441">1.2</text>
+      <text x="1044" y="465">1.3</text>
+      <text x="1044" y="489">1.4</text>
+      <text x="1044" y="513">1.5</text>
+    </g>
+
+    <g font-family="Inter,'Segoe UI',system-ui,sans-serif" font-size="11.5" fill="#f5efe6">
+      <text x="1104" y="345" font-weight="700">Riverside Tower Renovation</text>
+      <text x="1104" y="369" fill-opacity="0.8">Demolition</text>
+      <text x="1128" y="393" fill-opacity="0.6">Demolition Floors 1-4</text>
+      <text x="1128" y="417" fill-opacity="0.6">Demolition Floors 5-8</text>
+      <text x="1104" y="441" fill-opacity="0.8">Planning</text>
+      <text x="1104" y="465" fill-opacity="0.6">Procurement</text>
+      <text x="1104" y="489" fill-opacity="0.8">Structural</text>
+      <text x="1104" y="513" fill-opacity="0.6">Mechanical</text>
+    </g>
+
+    <g>
+      <circle cx="1436" cy="341" r="3.5" fill="#d4af37"/>
+      <circle cx="1436" cy="365" r="3.5" fill="#7bb661"/>
+      <circle cx="1436" cy="389" r="3.5" fill="#7bb661"/>
+      <circle cx="1436" cy="413" r="3.5" fill="#7bb661"/>
+      <circle cx="1436" cy="437" r="3.5" fill="#7bb661"/>
+      <circle cx="1436" cy="461" r="3.5" fill="#7bb661"/>
+      <circle cx="1436" cy="485" r="3.5" fill="#e05624"/>
+      <circle cx="1436" cy="509" r="3.5" fill="#f5efe6" fill-opacity="0.3"/>
+    </g>
+
+    <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" text-anchor="end" fill="#f5efe6" fill-opacity="0.5">
+      <text x="1480" y="345">37%</text>
+      <text x="1480" y="369">100%</text>
+      <text x="1480" y="393">100%</text>
+      <text x="1480" y="417">100%</text>
+      <text x="1480" y="441">100%</text>
+      <text x="1480" y="465">100%</text>
+      <text x="1480" y="489">62%</text>
+      <text x="1480" y="513">17%</text>
+    </g>
+  </g>
+
+  <g font-family="Inter,'Segoe UI',system-ui,sans-serif" font-weight="800" font-size="30">
+    <text x="96" y="596" fill="#d4af37">37%</text>
+    <text x="400" y="596" fill="#7bb661">73</text>
+    <text x="700" y="596" fill="#f5efe6">9</text>
+    <text x="1000" y="596" fill="#f5efe6">30</text>
+    <text x="1220" y="596" fill="#e05624">0</text>
+  </g>
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="9" letter-spacing="1.6" fill="#f5efe6" fill-opacity="0.42">
+    <text x="96" y="614">PROJECT COMPLETE</text>
+    <text x="400" y="614">HEALTH SCORE</text>
+    <text x="700" y="614">MAJOR GROUPS</text>
+    <text x="1000" y="614">TASKS</text>
+    <text x="1220" y="614">SIGNAL NEEDED</text>
+  </g>
+
+  <path d="M96 644H1504" stroke="#f5efe6" stroke-opacity="0.1"/>
+  <g font-family="'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace" font-size="10.5" letter-spacing="1.6">
+    <text x="96" y="670" fill="#d4af37">mymanagerworkspace.com</text>
+    <text x="420" y="670" fill="#f5efe6" fill-opacity="0.4">WORKS OFFLINE · YOUR DATA STAYS ON YOUR DEVICE</text>
+    <text x="1504" y="670" text-anchor="end" fill="#f5efe6" fill-opacity="0.4">© 2026 MY MANAGER</text>
+  </g>
+</svg>

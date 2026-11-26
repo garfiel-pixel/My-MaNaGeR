@@ -49,6 +49,7 @@ import {
   proposalStatusResult,
   applyReportResult,
   pendingDryRunResult,
+  pendingProposalCount,
   validateProposalEnvelope,
   MCP_PREMIUM_REFUSAL
 } from './server.js';
@@ -83,7 +84,10 @@ const WRITE_TOOLS = ['create_project', 'apply_changes', 'withdraw_changes'];
 function buildAppwideTools() {
   const readNames = [
     'get_project_summary',
+    'get_project_health',
     'get_tasks',
+    'get_schedule',
+    'get_resources',
     'get_budget',
     'get_deliveries',
     'get_weekly_summary',
@@ -638,7 +642,10 @@ export async function handleAppwideMcp(request, env) {
       toolArgs,
       auth,
       state,
-      tier
+      tier,
+      toolName === 'get_project_health'
+        ? { pendingProposals: await pendingProposalCount(env, projectId) }
+        : null
     );
     return rpcResult(id, result);
   }

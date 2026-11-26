@@ -83,6 +83,23 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
     to propose" and no delete can be proposed at all (AT14e, owner manual test
     7). A bare `base[path]` is deep-equal to `prev`, so `cloudScopeMerge` still
     sees no diff - the submitted array MUST differ from prev.
+12. **The JSON Schema is the contract, not the description.** Every argument a
+    handler accepts must be a declared property on that tool's `inputSchema`.
+    `creates[].tempId` and `idempotencyKey` were accepted by `planProposal` /
+    `handleMcpRequest` for weeks while only prose mentioned them, so a client
+    that validates arguments against the schema could never send them - an
+    agent building a WBS reported "the tool rejected temporary task
+    references" and shipped a plan with no dependency network. When you add an
+    argument: add the property, the description, and a harness assertion
+    (`tools/qa-mcp-surface.cjs` S1 proves the schema advertises it).
+13. **A computed answer must state its preconditions.** `run_monte_carlo` on a
+    WBS with zero dependency edges is not a forecast: each task only advances
+    from its own start date, so the project end is the latest single task and
+    P10-P90 collapse onto it. The tool now returns
+    `networkHealth:{dependencyEdges,cycles,reliable}` and a `note` beginning
+    "NOT A FORECAST" instead of letting a caller read "0% by the deadline" as
+    a schedule verdict. Apply the same rule to any new derived read: say what
+    had to be true for the number to mean anything.
 
 ## Architecture (reference: My MaNaGeR)
 
@@ -157,9 +174,21 @@ the My MaNaGeR implementation and `MCP-AGENT-FIRST-DIRECTIVE.md`.
 
 ## Tool catalog shape
 
-- **Read:** `get_project_summary`, `get_tasks`, `get_risks`, `get_issues`,
-  `get_budget`, `get_table`, `get_schema`, `get_pending`,
-  `get_proposal_status`, `get_apply_report`, `get_changes_since`.
+- **Read:** `get_project_summary`, `get_project_health`, `get_tasks`,
+  `get_schedule`, `get_resources`, `get_risks`, `get_issues`, `get_budget`,
+  `get_table`, `get_schema`, `get_pending`, `get_proposal_status`,
+  `get_apply_report`, `get_changes_since`.
+
+Every read tool is scope-aware and returns projected data only. `get_schema` is
+derived from the model; `validate_changes` and `apply_changes` share
+`planProposal`.
+
+`get_schedule` (`src/mcp/schedule.js`) is a pure port of the browser CPM
+engine; `tools/qa-mcp-surface.cjs` loads the real `js/mmgr-schedule.js` in a
+vm and fails on any date or float drift. `get_project_health`
+(`src/mcp/health.js`) is the readiness gate an agent should call before
+planning, and its `buildLint` is the structural lint `validate_changes`
+returns.
 - **Write:** `apply_changes`, `validate_changes`, `withdraw_changes`.
 
 Every tool is scope-aware and returns projected data only. `get_schema` is

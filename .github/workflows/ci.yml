@@ -423,6 +423,15 @@ jobs:
         id: qa-mcp-agent-first
         run: node tools/qa-mcp-agent-first.cjs
 
+      # MCP readiness surface (2026-11-26): schema contract (tempId /
+      # idempotencyKey advertised), tempId chains end to end, the CPM port
+      # against the REAL browser engine in a vm, get_project_health gates,
+      # get_schedule, get_resources, the Monte Carlo network guard and
+      # validate_changes lint. Pure-Node (no Chrome, no wrangler).
+      - name: "T1: MCP surface (health, schedule, resources, lint)"
+        id: qa-mcp-surface
+        run: node tools/qa-mcp-surface.cjs
+
       # MCP-FINAL F1.2 (2026-11-16): the pure server port of the client's task
       # side effects (stampStatus + working-day triad + phase roll-up) must
       # match the real client function. Pure-Node (no Chrome, no wrangler).

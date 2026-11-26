@@ -94,6 +94,8 @@ import {
   isDeletable
 } from './model.js';
 import { MCP_MAX_DIFFS, MCP_MAX_CREATES, MCP_MAX_SETS, MCP_WRITE_BUDGET_MS } from './plan.js';
+import { computeSchedule, findCycles } from './schedule.js';
+import { buildHealth, buildLint, resourceUtil } from './health.js';
 import {
   budgetReadAllowed,
   budgetWriteAllowed,
@@ -134,7 +136,14 @@ export const MCP_PREMIUM_REFUSAL =
 export const TOOLS = [
   {
     name: 'get_project_summary',
-    description: 'Get the project name, description, and completion percentage.',
+    description:
+      'Get the project overview in one call: name, charter description, completion percentage over Kanban work items, task counts by canonical status, total and work-item counts, open risk count, the project deadline, the full charter object, and a warnings list for data problems. budgetEnvelope is included only when the key also holds the budget read switch.',
+    inputSchema: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'get_project_health',
+    description:
+      'Answer "is this project executable yet?" in one call. Runs readiness gates and returns overall ok|warn|fail plus the failing and warning gate ids: schedule (dependency links, cycles, dangling predecessors, tasks with dates but no duration, late finishes, deadline overrun), budget (lines, planned vs envelope, frozen baseline, actuals, lines not linked to a task), resources (zero utilisation, labour cost missing from the budget), risk (open high x high, risks with no owner or mitigation) and data (status outside the enum, proposals still pending, missing charter). Every check carries a status and a plain-language reason. Read-only; a key without a section gets no gate for it.',
     inputSchema: { type: 'object', properties: {}, required: [] }
   },
   {
@@ -153,6 +162,18 @@ export const TOOLS = [
       },
       required: []
     }
+  },
+  {
+    name: 'get_schedule',
+    description:
+      'Compute the project schedule the way the app does: topological order, early and late start/finish, total and free float, the critical flag and the critical path. Returns one row per task plus project start/finish, the deadline comparison, link counts, any cycle members and the tasks the engine cannot schedule. Pure calculation - it does NOT write dates, floats or the critical flag back to the project (the app recomputes those when it opens). Weather padding is not applied; the app adds it from regional climate data. Needs the WBS section.',
+    inputSchema: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'get_resources',
+    description:
+      'Read the resource plan: every role or crew with type, rate, availability, allocated hours, utilisation on the same capacity basis the app uses (availability x work-week x 4 x 8h) and cost (rate x hours), plus the totals and how the labour cost compares with the planned budget. Needs the Resources section.',
+    inputSchema: { type: 'object', properties: {}, required: [] }
   },
   {
     name: 'get_budget',
@@ -327,7 +348,7 @@ export const TOOLS = [
   {
     name: 'apply_changes',
     description:
-      'Submit one change set to the project: edit existing records with diffs, create new records with creates, set whole values / nested object fields with sets, delete records with deletes, or propose budget lines with budget. Everything goes to the owner review queue - never auto-applied. Pass changeSetId (max 64) or let it default to cs_<UTC date>_<key id> so a key\'s same-day proposals group for an owner "Accept all". Validation is strict: unknown fields, wrong types, strings over the field limit and enum misses are refused with the allowed values, and derived fields (id, critical, totalFloat, statusSince, completedDate and the like) are refused because the app recomputes them. Enums (input is case-insensitive, the canonical value is stored): tasks.status todo|inprogress|blocked|completed; issues.status open|resolved|closed; changes.status submitted|review|approved|rejected|cancelled; confidence high|medium|low; probability, impact, influence and interest Low|Medium|High. Call get_schema for every field of every table, and validate_changes to dry-run the same call without queueing anything. diffs: {path, recordId, field, before?, after}; a supplied before that no longer matches the live value is refused as stale, an omitted before is reported as a warning. creates: {path, record, tempId?}; tempId (max 40, unique in the call) lets a later create or any predecessors entry reference the new id, and missing fields get the app defaults. sets: {path, field?, value} for charter, dmaic, closure, raci and the scalar keys projectName, projectDeadline, budgetEnvelope. budget: addLine, changeLine, addDelivery - needs the key\'s "Propose budget changes" switch; every money value is checked on the server and the server computes the delivery amount itself.',
+      'Submit one change set to the project: edit existing records with diffs, create new records with creates, set whole values / nested object fields with sets, delete records with deletes, or propose budget lines with budget. Everything goes to the owner review queue - never auto-applied. Pass changeSetId (max 64) or let it default to cs_<UTC date>_<key id> so a key\'s same-day proposals group for an owner "Accept all". Validation is strict: unknown fields, wrong types, strings over the field limit and enum misses are refused with the allowed values, and derived fields (id, critical, totalFloat, statusSince, completedDate and the like) are refused because the app recomputes them. Enums (input is case-insensitive, the canonical value is stored): tasks.status todo|inprogress|blocked|completed; issues.status open|resolved|closed; changes.status submitted|review|approved|rejected|cancelled; confidence high|medium|low; probability, impact, influence and interest Low|Medium|High. Call get_schema for every field of every table, and validate_changes to dry-run the same call without queueing anything. diffs: {path, recordId, field, before?, after}; a supplied before that no longer matches the live value is refused as stale, an omitted before is reported as a warning. creates: {path, record, tempId?}; tempId (max 40, unique in the call) lets a later create or any predecessors entry reference the new id, and missing fields get the app defaults. sets: {path, field?, value} for charter, dmaic, closure, raci and the scalar keys projectName, projectDeadline, budgetEnvelope. budget: addLine, changeLine, addDelivery - needs the key\'s "Propose budget changes" switch; every money value is checked on the server and the server computes the delivery amount itself. For a large scaffold (a whole WBS, a full risk register), split it by phase into one proposal per changeSetId - the per-call op cap is the project owner plan limit reported by get_schema, and one oversized call is refused rather than truncated.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -361,6 +382,11 @@ export const TOOLS = [
                 type: 'object',
                 description:
                   'The new record. Missing fields get the app defaults; unknown or derived fields are refused with the allowed list (see get_schema).'
+              },
+              tempId: {
+                type: 'string',
+                description:
+                  'Optional handle for this new record (max 40, unique in the call). A later create, or any predecessors entry, may reference it; the server resolves it to the real id before queueing.'
               }
             },
             required: ['path', 'record']
@@ -439,7 +465,12 @@ export const TOOLS = [
           description:
             "Optional change-set id (letters, numbers, dash, underscore; max 64). Defaults to cs_<UTC date>_<key id> so a key's same-day proposals group together for an owner Accept all."
         },
-        label: { type: 'string', description: 'Human-readable label for this change set' }
+        label: { type: 'string', description: 'Human-readable label for this change set' },
+        idempotencyKey: {
+          type: 'string',
+          description:
+            'Optional retry key (max 80). Repeating the same call with the same key inside the 10-minute bucket returns the first proposal with duplicate:true instead of queueing a second one. Use a fresh key when the arguments changed.'
+        }
       },
       required: []
     }
@@ -483,7 +514,7 @@ const APPLY_CHANGES_TOOL = TOOLS.find(function (t) {
 TOOLS.push({
   name: 'validate_changes',
   description:
-    'Dry run apply_changes: same diffs/creates/sets/budget input, same permission checks, nothing queued. Returns {ok, refused, warnings, wouldCreateOps, counts, largeChanges} so an agent can fix its proposal before the owner ever sees it.',
+    'Dry run apply_changes: same diffs/creates/sets/budget input, same permission checks, nothing queued. Returns {ok, refused, warnings, wouldCreateOps, counts, lint, lintCount, largeChanges} so an agent can fix its proposal before the owner ever sees it. lint lists structural problems the proposal does not fix (a phase with no children, a dated task with no duration, a budget line pointing at a missing task) with severity fail or warn; it never blocks the queue.',
   inputSchema: APPLY_CHANGES_TOOL.inputSchema
 });
 // MCP-AGENT-FIRST 2026-11-12 4.2: get_changes_since is the audit read. It
@@ -841,6 +872,25 @@ function executeMonteCarlo(state, scope, args) {
   }).length;
   const riskAdder = highRiskCount * 2;
 
+  // A simulation of an unlinked task list is not a forecast: with no edges the
+  // engine only advances each task from its own start date, so the project end
+  // is the latest single task and the percentiles collapse onto it. Report the
+  // network so a caller cannot read that as "the deadline will be missed".
+  const known = Object.create(null);
+  tasks.forEach(function (t) {
+    known[String(t.id)] = true;
+  });
+  let edges = 0;
+  tasks.forEach(function (t) {
+    (Array.isArray(t.predecessors) ? t.predecessors : []).forEach(function (p) {
+      if (known[String(p)]) {
+        edges++;
+      }
+    });
+  });
+  const cycles = findCycles(tasks);
+  const reliable = edges > 0 && cycles.length === 0;
+
   const results = [];
   for (let sim = 0; sim < N; sim++) {
     const simDur = {};
@@ -922,6 +972,11 @@ function executeMonteCarlo(state, scope, args) {
     highRiskCount: highRiskCount,
     riskFactor: riskFactor,
     riskAdder: riskAdder,
+    networkHealth: {
+      dependencyEdges: edges,
+      cycles: cycles,
+      reliable: reliable
+    },
     percentiles: {
       p10: iso(results[Math.floor(N * 0.1)]),
       p50: iso(results[Math.floor(N * 0.5)]),
@@ -929,6 +984,11 @@ function executeMonteCarlo(state, scope, args) {
       p90: iso(results[Math.floor(N * 0.9)])
     }
   };
+  if (!reliable) {
+    out.note = cycles.length
+      ? 'NOT A FORECAST: the simulated tasks contain a predecessor cycle, so the network cannot be ordered. Fix the cycle first.'
+      : 'NOT A FORECAST: the simulated tasks have no dependency links, so each finish is only its own start plus a sampled duration and the project end is the latest single task. Add predecessors (get_schedule reports the unlinked tasks), then rerun.';
+  }
   if (targetDate) {
     const pct = Math.round(
       (results.filter(function (d) {
@@ -959,6 +1019,22 @@ function sectionRefusal(scope) {
     (Array.isArray(scope) && scope.length ? scope.join(', ') : '(no sections)') +
     '. Ask the project owner to tick more sections for this key.'
   );
+}
+
+// How many proposals are still waiting for the owner. get_project_health is
+// the only reader, so this query runs only for that tool - never on the hot
+// read path.
+export async function pendingProposalCount(env, projectId) {
+  try {
+    const row = await env.DB.prepare(
+      "SELECT COUNT(*) AS c FROM cloud_reviews WHERE project_id = ? AND status IN ('pending','accepting')"
+    )
+      .bind(projectId)
+      .first();
+    return (row && Number(row.c)) || 0;
+  } catch (e) {
+    return 0;
+  }
 }
 
 // ---- H-5 budget access (BUDGET-BOQ directive 2026-11-05) ------------------
@@ -1457,7 +1533,18 @@ function weeklySummary(state, weekISO, taskSource) {
   };
 }
 
-export function executeTool(name, state, projectId, label, scope, args, auth, fullState, tier) {
+export function executeTool(
+  name,
+  state,
+  projectId,
+  label,
+  scope,
+  args,
+  auth,
+  fullState,
+  tier,
+  meta
+) {
   if (!state) {
     return {
       content: [{ type: 'text', text: 'No project data available. Save a snapshot first.' }],
@@ -1469,6 +1556,26 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
   }
 
   switch (name) {
+    case 'get_project_health': {
+      // A key without the budget read switch must not learn money through a
+      // gate, so the budget gate is dropped rather than blanked.
+      const effScope = Array.isArray(scope)
+        ? scope.filter(function (sec) {
+            return sec !== 'bud' || budgetReadAllowed(auth);
+          })
+        : scope;
+      const source = fullState || state;
+      const report = buildHealth(state, {
+        pendingProposals: (meta && meta.pendingProposals) || 0,
+        baseline: baselineOf(source),
+        scope: effScope,
+        revision: source.revision == null ? null : source.revision
+      });
+      report.projectId = projectId;
+      return {
+        content: [{ type: 'text', text: JSON.stringify(report, null, 2) }]
+      };
+    }
     case 'get_project_summary': {
       const tasks = Array.isArray(state.tasks) ? state.tasks : [];
       // 2.4: completion is measured on Kanban work items (phases and rollup
@@ -1612,6 +1719,75 @@ export function executeTool(name, state, projectId, label, scope, args, auth, fu
       }
       if (unknownFields.length) {
         body.unknownFields = unknownFields;
+      }
+      return {
+        content: [{ type: 'text', text: JSON.stringify(body, null, 2) }]
+      };
+    }
+    case 'get_schedule': {
+      if (!sectionAllowed(scope, 'wbs')) {
+        return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      }
+      const report = computeSchedule(state);
+      report.projectId = projectId;
+      return {
+        content: [{ type: 'text', text: JSON.stringify(report, null, 2) }]
+      };
+    }
+    case 'get_resources': {
+      if (!sectionAllowed(scope, 'res')) {
+        return { content: [{ type: 'text', text: sectionRefusal(scope) }], isError: true };
+      }
+      const resources = Array.isArray(state.resources) ? state.resources : [];
+      const rows = resources.map(function (r) {
+        const hours = +r.hoursAllocated || 0;
+        const rate = +r.rate || 0;
+        return {
+          id: r.id,
+          name: r.name || r.role || r.id,
+          type: r.type || 'Labor',
+          role: r.role || null,
+          availability: r.availability == null ? 100 : +r.availability,
+          rate: rate,
+          hoursAllocated: hours,
+          utilization: resourceUtil(r, state.workWeek),
+          cost: Math.round(rate * hours * 100) / 100
+        };
+      });
+      const totalCost =
+        Math.round(
+          rows.reduce(function (sum, r) {
+            return sum + r.cost;
+          }, 0) * 100
+        ) / 100;
+      const totalHours = rows.reduce(function (sum, r) {
+        return sum + r.hoursAllocated;
+      }, 0);
+      const body = {
+        projectId: projectId,
+        workWeek: +(state.workWeek || 5) || 5,
+        count: rows.length,
+        resources: rows,
+        totals: {
+          hoursAllocated: totalHours,
+          labourCost: totalCost,
+          zeroUtilization: rows.filter(function (r) {
+            return r.utilization === 0;
+          }).length
+        }
+      };
+      // Only a key that may read money learns how labour compares with the plan.
+      if (budgetReadAllowed(auth) && sectionAllowed(scope, 'bud')) {
+        const lines = Array.isArray(state.budgetLines) ? state.budgetLines : [];
+        const planned = lines.reduce(function (sum, l) {
+          return sum + (+l.planned || 0);
+        }, 0);
+        body.budget = {
+          planned: Math.round(planned * 100) / 100,
+          labourCost: totalCost,
+          gap: Math.round((planned - totalCost) * 100) / 100,
+          note: 'gap = planned minus labour cost; a large gap means the estimate is not effort-based (or carries non-labour cost)'
+        };
       }
       return {
         content: [{ type: 'text', text: JSON.stringify(body, null, 2) }]
@@ -2761,6 +2937,10 @@ async function handleMcpRequest(body, projectId, env, auth) {
 
     // Execute the tool. API-KEY-AUDIT F4: a scoped key's reads are filtered
     // to its granted sections; an owner-code caller gets scope=null (full).
+    const toolMeta =
+      toolName === 'get_project_health'
+        ? { pendingProposals: await pendingProposalCount(env, projectId) }
+        : null;
     const result = executeTool(
       toolName,
       state,
@@ -2770,7 +2950,8 @@ async function handleMcpRequest(body, projectId, env, auth) {
       toolArgs,
       auth,
       state,
-      mcpTier
+      mcpTier,
+      toolMeta
     );
 
     // Handle apply_changes - queue a pending review proposal (API-KEY-AUDIT

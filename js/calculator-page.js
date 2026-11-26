@@ -9084,47 +9084,52 @@
       return;
     }
     const pref = rollupPrefs();
+    // OWNER 2026-11-26: the labels below interpolate the percentages the user
+    // typed. Convert them to numbers here and escape the label in line(), so a
+    // value in a percentage box can never reach innerHTML as markup.
+    const designPct = parseFloat(pref.designC) || 0;
+    const constrPct = parseFloat(pref.constrC) || 0;
+    const escPct = parseFloat(pref.escPct) || 0;
+    const months = parseFloat(pref.months) || 0;
+    const discPct = parseFloat(pref.discPct) || 0;
+    const discAmt = parseFloat(pref.discAmt) || 0;
     const r = rollup({
       works: works,
       prelims: prelimsTotal(prelimItems, works).total,
-      designC: pref.designC,
-      constrC: pref.constrC,
-      escPct: pref.escPct,
-      months: pref.months,
-      discPct: pref.discPct,
-      discAmt: pref.discAmt
+      designC: designPct,
+      constrC: constrPct,
+      escPct: escPct,
+      months: months,
+      discPct: discPct,
+      discAmt: discAmt
     });
     const cur = CURRENCY[lastResult && lastResult.currency] || '$';
     const line = function (label, val) {
       return (
         '<div class="calc-line"><span>' +
-        label +
+        esc(label) +
         '</span><strong>' +
-        cur +
+        esc(cur) +
         Math.round(val).toLocaleString() +
         '</strong></div>'
       );
     };
     body.innerHTML =
       line('Works (priced bill, before overhead and tax)', r.works) +
-      line('Site &amp; other costs', r.prelims) +
+      line('Site & other costs', r.prelims) +
       (r.discount > 0
         ? line(
             'Discount' +
-              ((parseFloat(pref.discPct) || 0) > 0 && !(parseFloat(pref.discAmt) > 0)
-                ? ' (' + pref.discPct + '% off)'
-                : '') +
-              (parseFloat(pref.discAmt) > 0 ? ' (amount off)' : ''),
+              (discPct > 0 && !(discAmt > 0) ? ' (' + discPct + '% off)' : '') +
+              (discAmt > 0 ? ' (amount off)' : ''),
             -r.discount
           )
         : '') +
-      line('Design contingency (' + (parseFloat(pref.designC) || 0) + '%)', r.designC) +
-      line('Construction contingency (' + (parseFloat(pref.constrC) || 0) + '%)', r.constrC) +
-      (r.esc > 0
-        ? line('Escalation (' + r.escPct + '%/yr over ' + r.months + ' months)', r.esc)
-        : '') +
+      line('Design contingency (' + designPct + '%)', r.designC) +
+      line('Construction contingency (' + constrPct + '%)', r.constrC) +
+      (r.esc > 0 ? line('Escalation (' + escPct + '%/yr over ' + months + ' months)', r.esc) : '') +
       '<div class="calc-line calc-line-total"><span>Planning subtotal (works + site costs + contingency, before overhead and tax)</span><strong>' +
-      cur +
+      esc(cur) +
       Math.round(r.subtotal).toLocaleString() +
       '</strong></div>' +
       '<p class="calc-fine">This is a planning envelope, not the quoted estimate: it adds design and construction contingency and escalation. Overhead and tax are added separately when the bill is sent to a project.</p>';

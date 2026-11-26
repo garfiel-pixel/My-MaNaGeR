@@ -1051,18 +1051,51 @@ async function main() {
         return true;
       })()`
     );
-    const acceptBSettled = await until(
-      cdp,
-      `(function(){
+    // Do not read a busy Worker as a product failure. The accept POST shares
+    // the member's 30/min general bucket with G9's retry ladder, and on two
+    // consecutive main runs (2026-11-25) a 15s window here expired at exactly
+    // 15.0s while the same commit passed its PR run: the invitation HAD landed
+    // (the shared card and the client scope both existed), only the paint
+    // lagged. So: a 45s window, and only when the server still lists the
+    // invitation as pending, one more click - which is what a person seeing
+    // "slow down and try again" does. If the server says accepted and the
+    // panel still shows the row, that is a real paint defect and the gate
+    // fails with the condition names in the detail.
+    const settleExpr = `(function(){
         var btn = document.querySelector('#team-inv-list [data-team-accept]');
         var badge = document.getElementById('team-bell-count');
         if (btn) return false;
         if (badge && !badge.hidden) return false;
         var list = document.getElementById('shared-list');
-        return { shared: list ? list.textContent : '' };
-      })()`,
-      15000
-    );
+        var st = document.getElementById('team-pop-status');
+        return { shared: list ? list.textContent : '', status: st ? st.textContent : '' };
+      })()`;
+    const settleStart = Date.now();
+    let acceptBSettled = null;
+    for (let attempt = 0; attempt < 2 && !acceptBSettled; attempt++) {
+      if (attempt) {
+        const inbox = await api('/api/team/invitations', { headers: ck(memberToken) });
+        const stillPending = ((inbox.body && inbox.body.invitations) || []).some(function (i) {
+          return String(i.id) === String(acceptBReady.id);
+        });
+        if (!stillPending) {
+          break;
+        }
+        await cdp.ev(
+          `(function(){
+            var btn = document.querySelector('#team-inv-list [data-team-accept]');
+            if (!btn) return false;
+            btn.click();
+            return true;
+          })()`
+        );
+      }
+      acceptBSettled = await until(cdp, settleExpr, 45000);
+    }
+    const acceptSettleMs = Date.now() - settleStart;
+    if (acceptBSettled && acceptSettleMs > 5000) {
+      log('note: accept settled after ' + Math.round(acceptSettleMs / 1000) + 's');
+    }
     const openB = await until(
       cdp,
       `(function(){
@@ -1109,23 +1142,39 @@ async function main() {
       })()`,
       20000
     );
+    // Every condition is named so a red run says WHICH one broke. The old
+    // boolean chain only printed a detail object whose first 600 chars were
+    // the pre-click snapshot, so two red main runs (2026-11-25) could not be
+    // told apart from a rate-limit stall.
+    const g10 = {
+      snapshot: !!acceptedB,
+      bellShown: !!acceptedB && acceptedB.hidden === false,
+      badgeOne: !!acceptedB && acceptedB.badge === '1',
+      acceptReady: !!acceptBReady,
+      acceptClicked: acceptBClicked === true,
+      acceptSettled: !!acceptBSettled,
+      opened: openB === true,
+      clientPage: !!clientPage,
+      clientScope: !!clientPage && clientPage.clientScope === true,
+      teamBanner: !!clientPage && clientPage.teamBanner === true,
+      noGenericBanner: !!clientPage && clientPage.genericBanner === false,
+      clientCopy: !!clientPage && /Client/.test(clientPage.copy || ''),
+      wbsVisible: !!clientPage && clientPage.wbsHidden === false,
+      budHidden: !!clientPage && clientPage.budHidden === true
+    };
+    const g10Failed = Object.keys(g10).filter(function (k) {
+      return !g10[k];
+    });
     check(
       'G10 a team client sees only the shared sections and one banner',
-      !!acceptedB &&
-        acceptedB.hidden === false &&
-        acceptedB.badge === '1' &&
-        !!acceptBReady &&
-        acceptBClicked === true &&
-        !!acceptBSettled &&
-        openB === true &&
-        !!clientPage &&
-        clientPage.clientScope === true &&
-        clientPage.teamBanner === true &&
-        clientPage.genericBanner === false &&
-        /Client/.test(clientPage.copy) &&
-        clientPage.wbsHidden === false &&
-        clientPage.budHidden === true,
-      { acceptedB: acceptedB, ready: acceptBReady, clicked: acceptBClicked, clientPage: clientPage }
+      g10Failed.length === 0,
+      {
+        failed: g10Failed,
+        settleMs: acceptSettleMs,
+        settled: acceptBSettled,
+        openB: openB,
+        clientPage: clientPage
+      }
     );
     // render() is async and rewrites #cloud-section, which destroys the status
     // line. Calling both in one expression let the render land AFTER the

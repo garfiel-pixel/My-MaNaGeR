@@ -275,7 +275,18 @@ export async function handleOauthRevoke(request, env) {
 // here is enforced byte-for-byte at authorize, which is what keeps open
 // registration from becoming an open redirect.
 
-const MAX_REDIRECT_URIS = 5;
+// Google's Gemini custom connector registers SIX redirect URIs in one call
+// (production / sandbox / test relay hosts, each with an /r/ and an /a/ path).
+// A five-entry cap rejected the request with 400 invalid_redirect_uri, which is
+// exactly what Gemini reports as "The Google redirect URL was rejected by the
+// server" - the consent screen was never reached. Ten keeps room for one more
+// Microsoft-style connector without allowing an unbounded list.
+const MAX_REDIRECT_URIS = 10;
+
+// Secret-based methods a client may ASK for at registration. They are accepted
+// and then downgraded to a public client, because every token here is bound by
+// PKCE and an exact redirect match. 'private_key_jwt' and friends stay refused.
+const SECRET_AUTH_METHODS = ['client_secret_post', 'client_secret_basic'];
 
 export function isAllowedRedirectUri(raw) {
   if (typeof raw !== 'string' || !raw || raw.length > 2048) {
@@ -521,6 +532,67 @@ export function renderConsentHtml(params) {
   );
 }
 
+// ---- Google relay redirect bridge ------------------------------------------
+// Chrome and Edge apply the consent page's `form-action` directive to EVERY hop
+// of a form submission's redirect chain. Google's relay does not end the
+// navigation: it answers our 302 with a second, cross-origin redirect, so the
+// browser cancels the chain and Gemini never receives the code (the user sees
+// "Cannot Complete Request" and /token is never called).
+//
+// A meta-refresh page is an ordinary navigation, not a form submission, so
+// form-action no longer applies and the proven field fix is to answer the
+// Allow/Deny POST with this bridge instead of a 302. Scoped to Google's relay
+// hosts on purpose: Claude, ChatGPT and Cursor callbacks return directly and
+// keep the exact 302 they have always worked with.
+const GOOGLE_RELAY_HOSTS = [
+  'oauth-redirect.googleusercontent.com',
+  'oauth-redirect-sandbox.googleusercontent.com',
+  'oauth-redirect-test.googleusercontent.com'
+];
+
+function isGoogleRelayHost(host) {
+  return GOOGLE_RELAY_HOSTS.indexOf(host) > -1;
+}
+
+function redirectBridgeHtml(targetUrl) {
+  const href = escapeHtml(targetUrl);
+  return (
+    '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="robots" content="noindex,nofollow">' +
+    '<meta http-equiv="refresh" content="0;url=' +
+    href +
+    '">' +
+    '<title>Returning to Google | My MaNaGeR</title></head>' +
+    '<body style="font-family:system-ui,Arial,sans-serif;text-align:center;padding:3rem">' +
+    '<h1>Returning to Google</h1>' +
+    '<p><a href="' +
+    href +
+    '" rel="noreferrer">Continue</a></p>' +
+    '</body></html>'
+  );
+}
+
+// 302 for ordinary connectors; a no-store meta-refresh page for Google's relay.
+function completeAuthorizeRedirect(targetUrl, redirectUri) {
+  let host = '';
+  try {
+    host = new URL(redirectUri).host;
+  } catch (e) {
+    host = '';
+  }
+  if (!isGoogleRelayHost(host)) {
+    return Response.redirect(targetUrl, 302);
+  }
+  return new Response(redirectBridgeHtml(targetUrl), {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'referrer-policy': 'no-referrer'
+    }
+  });
+}
+
 // ---- RFC 9728 / RFC 8414 metadata endpoints -------------------------------
 
 export async function handleOauthMetadata(request, env, url) {
@@ -685,7 +757,7 @@ export async function handleOauthAuthorize(request, env, url) {
         (redirectUri.indexOf('?') > -1 ? '&' : '?') +
         'error=access_denied' +
         (state ? '&state=' + encodeURIComponent(state) : '');
-      return Response.redirect(denyUrl, 302);
+      return completeAuthorizeRedirect(denyUrl, redirectUri);
     }
     if (!form.code_challenge) {
       return new Response('Missing PKCE challenge.', { status: 400 });
@@ -712,7 +784,7 @@ export async function handleOauthAuthorize(request, env, url) {
       'code=' +
       encodeURIComponent(code) +
       (state ? '&state=' + encodeURIComponent(state) : '');
-    return Response.redirect(okUrl, 302);
+    return completeAuthorizeRedirect(okUrl, redirectUri);
   }
 
   return new Response('Method not allowed', { status: 405 });
@@ -773,11 +845,16 @@ export async function handleOauthToken(request, env) {
 export async function handleOauthRegister(request, env) {
   const body = await readForm(request);
   const authMethod = body.token_endpoint_auth_method;
-  if (authMethod && authMethod !== 'none') {
+  // Gemini asks for client_secret_post on every registration. This server only
+  // issues public PKCE clients (no secret to leak), and RFC 7591 section 3.2.1
+  // lets the server replace requested metadata - the response below states the
+  // method the client must actually use, so Gemini proceeds as a public client.
+  // Any other secret-based method is refused: it would need a real secret.
+  if (authMethod && SECRET_AUTH_METHODS.indexOf(authMethod) === -1 && authMethod !== 'none') {
     return json(
       {
         error: 'invalid_client_metadata',
-        error_description: 'only public clients (token_endpoint_auth_method none) are supported'
+        error_description: 'unsupported token_endpoint_auth_method; use none or client_secret_post'
       },
       400
     );
@@ -809,7 +886,7 @@ export async function handleOauthRegister(request, env) {
       token_endpoint_auth_method: 'none',
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
-      scope: 'account'
+      scope: SCOPES_SUPPORTED.join(' ')
     },
     201
   );

@@ -135,7 +135,7 @@ annotations via `tool-meta.js` (Google asks for exactly this).
 | # | Item | Affects | Severity | Shape of the change (planning only) |
 |---|---|---|---|---|
 | G1 | **Refresh tokens rotate.** `refreshTokens` revokes the old row and issues a new pair. Google explicitly asks for Persistent Linking: return the **same** refresh token and extend its expiry, or users are asked to link again. | Gemini | High (silent reconnect loop) | Keep the token row, extend `refresh_expires_at`, return the same refresh token. Rotation stays for clients that accept it only if a per-client flag is stored. |
-| G2 | **DCR request shape is unverified.** `handleOauthRegister` rejects any `token_endpoint_auth_method` other than `none` with 400 `invalid_client_metadata`, and requires 1 to 5 `redirect_uris`. If Gemini's registration asks for a confidential method, DCR fails and Gemini falls back to the manual Client ID / secret form, which cannot be satisfied. | Gemini | Blocker until observed | Observe the real registration body first. Only if it requests a secret, add confidential-client support: issue a secret once, store a hash, verify at `/token`. |
+| G2 | **DCR request shape.** OBSERVED 2026-11-26: Gemini posts six `redirect_uris` (production/sandbox/test relay hosts, each `/r/` and `/a/`) and asks for `token_endpoint_auth_method: client_secret_post`. The old handler allowed 1-5 URIs and only `none`, so it answered 400 twice over. | Gemini | **SHIPPED 2026-11-26** (see "Gemini DCR, observed body" below) | Cap raised to 10; a `client_secret_post`/`client_secret_basic` request is accepted and completed as a public PKCE client (RFC 7591 3.2.1 lets the server replace requested metadata; the response states `none`). No secret is issued. |
 | G3 | **`offline_access` is not advertised or accepted.** `scopes_supported` is `['account']`. OpenAI's guidance tells users to confirm the provider advertises `offline_access` or an equivalent, or ChatGPT may lose access after the first hour. | ChatGPT | Medium | Add `offline_access` to `scopes_supported` and accept it in the authorize `scope` without changing stored scope semantics. |
 | G4 | **No revocation endpoint.** Google lists it as optional; Claude and ChatGPT may call one on disconnect. Admin revoke exists, but a client-initiated disconnect leaves the token valid until expiry. | Both | Low | `POST /api/oauth/revoke`, hashed-token lookup, revoke row, 200 always. |
 | G5 | **No CIMD support.** DCR is deprecated in the current MCP spec. | Both (future) | Low now | Accept an HTTPS `client_id` that resolves to a client metadata JSON document; validate its `redirect_uris` with the same policy. |
@@ -273,11 +273,11 @@ Probed against production, read-only first and then one registration:
   client `mmgr_mc_44ad6b9150a7d6a530b81a47` (`token_endpoint_auth_method:
   none`). The row is unbound until a signed-in owner presses Allow.
 
-So **Dynamic Client Registration works with the Google redirect**, and the
-manual form is satisfiable too: paste that client id and leave the secret
-blank (the server issues none and never checks one). The remaining Gemini
-blockers were G1 and G3, both shipped above. The link should now survive past
-one hour instead of asking the owner to link again.
+That probe proved the redirect is *storable* when it arrives alone. It did NOT
+prove Gemini's own registration succeeds: a deliberate single-URI POST is not the
+body Gemini sends. The live attempt still failed with "The Google redirect URL
+was rejected by the server". The real body and the three blockers it exposed are
+recorded in the next section, and they were fixed on 2026-11-26.
 
 If the row is ever lost, recreate it with the same body:
 
@@ -290,6 +290,52 @@ POST https://mymanagerworkspace.com/api/oauth/register
 
 Keep the project surface static-key only. The app-wide URL is the ChatGPT and
 Gemini route; the project URL is the Cursor route.
+
+### Gemini DCR, observed body (2026-11-26, second attempt)
+
+Gemini still answered "The Google redirect URL was rejected by the server. Enter
+your OAuth client ID and client secret to connect." after the P1/P2 deploy. That
+message is emitted **at registration time**, before any consent page, so it
+points at `POST /api/oauth/register`, not at the browser flow. Field reports
+(litellm #46640, t3code #31308, the Google AI forum threads) show the body
+Gemini's `OpenAuth` client actually sends:
+
+```
+{"client_name":"Google",
+ "redirect_uris":[ six entries ],
+ "response_types":["code"],
+ "grant_types":["authorization_code","refresh_token"],
+ "token_endpoint_auth_method":"client_secret_post"}
+```
+
+Six URIs = `oauth-redirect{,-sandbox,-test}.googleusercontent.com` x `/r/` and
+`/a/` for the same `user_bound_custom-mcp-<id>`. Three defects followed:
+
+1. **`MAX_REDIRECT_URIS` was 5.** Six entries -> 400 `invalid_redirect_uri`.
+   Raised to 10. A cap below six is the single most-reported cause of this
+   exact Gemini screen.
+2. **Only `token_endpoint_auth_method: none` was accepted.** Gemini asks for
+   `client_secret_post` -> a second 400 `invalid_client_metadata`. Secret-based
+   requests are now accepted and answered as a public PKCE client, which is the
+   documented working shape for Gemini (register, blank secret).
+3. **The consent POST answered 302.** Chrome and Edge apply `form-action` to
+   every hop of a form submission's redirect chain; Google's relay answers that
+   302 with a second cross-origin redirect, so the Allow navigation is cancelled
+   and `/token` is never called ("Cannot Complete Request"). `form-action 'self'`
+   is unchanged: for Google's three relay hosts the POST now answers **200** with
+   a `Cache-Control: no-store` meta-refresh bridge page plus a Continue link -
+   an ordinary navigation, which `form-action` does not govern. Every other
+   connector keeps its exact 302.
+
+The session cookie is `SameSite=Lax`, so the consent GET arriving from Google's
+relay still carries the sign-in session.
+
+Gates: `tools/qa-appwide-mcp.cjs` O16 registers the real six-URI /
+`client_secret_post` body (201, all six stored, answered `none`, offline scope
+advertised) and still refuses `private_key_jwt`; O17 proves the relay approval
+is a 200 `no-store` bridge carrying the code, not a 302; O12 keeps the plain 302
+for an ordinary client; O13 keeps exact-match redirect enforcement. Suite result
+90/90.
 
 ## Deferred
 

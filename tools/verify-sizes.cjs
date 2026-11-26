@@ -153,16 +153,18 @@ const EXACT = {
   // cut-out that rings the whole .bcp-field instead of the bare input, and a
   // dim fallback for a viewport-sized target. The tour block is ~330 lines
   // and shares this file's IIFE helpers ($, clampX, the gap constants), so it
-  // could not be lifted out inside the wave; the next calculator feature
-  // should move the tour engine to js/calc-tour.js rather than raise this.
+  // could not be lifted out inside the wave. A later split into
+  // js/calc-tour.js was considered and CLOSED by the owner (2026-11-26): the
+  // tour engine stays in this file.
   // 2026-11-26 (finish level + labour note + one works base): raised
   // 614000 -> 618000 (617005 measured). The finish level gained a signed
   // custom percent with one label function shared by screen, sheet and
   // export; labour-only gained a reason-bearing status note; heavyPass now
   // hands renderPrelims no works override so the headline and the rollup
   // price the SAME base. ~3 KB of that is the explanatory comments that keep
-  // the D8/D9 pricing rules from being re-broken. The tour split is still
-  // owed and remains the next calculator refactor.
+  // the D8/D9 pricing rules from being re-broken. The tour split is closed
+  // (owner, 2026-11-26), so this cap is the accepted state: ask before
+  // raising it again.
   'js/calculator-page.js': 618000,
   // 2026-11-08 (C2 Task 2): raised 210000 -> 215000 for the intake panel,
   // nav group and idea sheet markup in project.html.

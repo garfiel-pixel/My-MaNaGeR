@@ -803,6 +803,100 @@ async function sessionCookie(env, sub) {
     siblingAuth.status
   );
 
+  section('OAUTH O16 — Gemini dynamic registration (six URIs, client_secret_post)');
+  const envGem = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
+  const geminiRedirects = [
+    'https://oauth-redirect-sandbox.googleusercontent.com/r/user_bound_custom-mcp-f6492779cacd5f618adb99b9',
+    'https://oauth-redirect-test.googleusercontent.com/r/user_bound_custom-mcp-f6492779cacd5f618adb99b9',
+    googleRedirect,
+    'https://oauth-redirect-sandbox.googleusercontent.com/a/user_bound_custom-mcp-f6492779cacd5f618adb99b9',
+    'https://oauth-redirect-test.googleusercontent.com/a/user_bound_custom-mcp-f6492779cacd5f618adb99b9',
+    'https://oauth-redirect.googleusercontent.com/a/user_bound_custom-mcp-f6492779cacd5f618adb99b9'
+  ];
+  const dcrRes = await oauth.handleOauthRegister(
+    new Request('http://localhost/api/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_name: 'Google',
+        redirect_uris: geminiRedirects,
+        response_types: ['code'],
+        grant_types: ['authorization_code', 'refresh_token'],
+        token_endpoint_auth_method: 'client_secret_post'
+      })
+    }),
+    envGem
+  );
+  const dcr = await dcrRes.json();
+  check('Gemini DCR with six redirect URIs is accepted', dcrRes.status === 201, {
+    status: dcrRes.status,
+    dcr
+  });
+  check(
+    'all six Google relay redirects are stored',
+    Array.isArray(dcr.redirect_uris) && dcr.redirect_uris.length === 6,
+    dcr.redirect_uris
+  );
+  check(
+    'a client_secret_post request is answered as a public PKCE client',
+    dcr.token_endpoint_auth_method === 'none' && !dcr.client_secret,
+    dcr.token_endpoint_auth_method
+  );
+  check(
+    'DCR advertises the offline scope Gemini asks for',
+    String(dcr.scope || '').indexOf('offline_access') > -1,
+    dcr.scope
+  );
+  const unsupportedRes = await oauth.handleOauthRegister(
+    new Request('http://localhost/api/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_name: 'key client',
+        redirect_uris: [googleRedirect],
+        token_endpoint_auth_method: 'private_key_jwt'
+      })
+    }),
+    envGem
+  );
+  check(
+    'an unsupported auth method is still refused',
+    unsupportedRes.status === 400,
+    unsupportedRes.status
+  );
+
+  section('OAUTH O17 — Google relay approval uses a meta-refresh bridge');
+  const gemCookie = await sessionCookie(envGem, 'sub-abc');
+  const gemApprove = await oauth.handleOauthAuthorize(
+    new Request('http://localhost/api/oauth/authorize', {
+      method: 'POST',
+      headers: { cookie: gemCookie, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        decision: 'approve',
+        client_id: dcr.client_id,
+        redirect_uri: googleRedirect,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state: 'g2'
+      })
+    }),
+    envGem,
+    new URL('http://localhost/api/oauth/authorize')
+  );
+  const gemBridge = await gemApprove.text();
+  check(
+    'Gemini approval answers 200, not a 302 the form-action check would cancel',
+    gemApprove.status === 200 && !gemApprove.headers.get('location'),
+    gemApprove.status
+  );
+  check(
+    'the bridge page is uncached and carries a meta refresh with the code',
+    gemApprove.headers.get('cache-control') === 'no-store' &&
+      gemBridge.indexOf('http-equiv="refresh"') > -1 &&
+      /[?&]code=/.test(gemBridge),
+    { cache: gemApprove.headers.get('cache-control'), head: gemBridge.slice(0, 120) }
+  );
+
   section('OAUTH O14 — RFC 7009 revocation');
   const envX = makeEnv({ config: null, subscription: null, projects: [], adoptions: [] });
   const issuedX = await oauth.issueTokens(envX, 'sub-abc', 'client-1');

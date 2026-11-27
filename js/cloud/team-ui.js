@@ -83,9 +83,22 @@ var MMGR = window.MMGR || {};
     templateBusy: false,
     // True while a read is in flight; drives the travelling line and the
     // "loading" sentence in the shared section.
-    busy: false
+    busy: false,
+    // OWNER 2026-11-27: the Collaborators tab showed "No cloud projects of
+    // your own to manage here" while the owned-projects read was still in
+    // flight (or had failed), which reads as "the server lost my projects".
+    // The empty sentence waits for a real answer now.
+    projectsLoaded: false,
+    projectsError: false,
+    // Set while the reader has unsaved input in the panel. A background
+    // refresh must never repaint over an edit in progress.
+    dirty: false
   };
   var els = {};
+  // Number of reads in flight. Two surfaces can load at the same time (the
+  // 60s poll and a tab switch), so a plain boolean would clear the line while
+  // the other read is still running.
+  var busyCount = 0;
 
   function $(id) {
     return document.getElementById(id);
@@ -268,16 +281,17 @@ var MMGR = window.MMGR || {};
      the panel and the shared section (never a spinner), and the "Needs a
      connection" note is reserved for the browser actually reporting offline. */
   function setBusy(on) {
-    state.busy = !!on;
+    busyCount = Math.max(0, busyCount + (on ? 1 : -1));
+    state.busy = busyCount > 0;
     var panelBar = $('team-progress');
     if (panelBar) {
-      panelBar.hidden = !on;
+      panelBar.hidden = !state.busy;
     }
     var sharedBar = $('shared-progress');
     if (sharedBar) {
-      sharedBar.hidden = !on;
+      sharedBar.hidden = !state.busy;
     }
-    if (on) {
+    if (state.busy) {
       if (els.status && !els.status.textContent) {
         els.status.textContent = 'Loading your projects...';
       }
@@ -340,7 +354,8 @@ var MMGR = window.MMGR || {};
         JSON.stringify({
           at: Date.now(),
           invitations: list.invitations,
-          memberships: list.memberships
+          memberships: list.memberships,
+          projects: list.projects
         })
       );
     } catch (e) {
@@ -378,7 +393,9 @@ var MMGR = window.MMGR || {};
       '<button type="button" class="team-x" data-team-close aria-label="Close team panel"><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-x"></use></svg></button>' +
       '</div>' +
       '<div class="team-pane" id="team-pane-inv" role="tabpanel" aria-labelledby="team-tab-inv"><div class="team-list" id="team-inv-list"></div></div>' +
-      '<div class="team-pane" id="team-pane-col" role="tabpanel" aria-labelledby="team-tab-col" hidden><div class="team-list" id="team-col-list"></div></div>' +
+      '<div class="team-pane" id="team-pane-col" role="tabpanel" aria-labelledby="team-tab-col" hidden>' +
+      '<div class="team-progress" id="team-own-progress" role="progressbar" aria-label="Loading your cloud projects" hidden></div>' +
+      '<div class="team-list" id="team-col-list"></div></div>' +
       '<div class="team-progress" id="team-progress" role="progressbar" aria-label="Loading your projects" hidden></div>' +
       '<div class="team-pop-foot"><span class="team-status" id="team-pop-status" role="status" aria-live="polite"></span><span class="team-offline" id="team-offline" hidden>Needs a connection</span></div>';
     document.body.appendChild(pop);
@@ -390,6 +407,16 @@ var MMGR = window.MMGR || {};
     els.tabCount = $('team-tab-count');
 
     pop.addEventListener('click', onPanelClick);
+    // OWNER 2026-11-27: the panel refreshes itself in the background (60s poll,
+    // focus, reconnect). While the reader has typed an address or changed an
+    // access level, a repaint threw that work away and the edit had to start
+    // over. Mark the panel dirty on any input so the refresh stays quiet.
+    pop.addEventListener('input', markDirty);
+    pop.addEventListener('change', markDirty);
+  }
+
+  function markDirty() {
+    state.dirty = true;
   }
 
   function onPanelClick(ev) {
@@ -586,6 +613,8 @@ var MMGR = window.MMGR || {};
     if (!els.pop) {
       return;
     }
+    // Closing drops the form, so the next refresh may paint again.
+    state.dirty = false;
     state.open = false;
     els.pop.hidden = true;
     var bell = document.querySelector('[data-team-bell]');
@@ -669,6 +698,12 @@ var MMGR = window.MMGR || {};
         // the cloud list cache in js/mmgr-cloud-dash.js.
         localStorage.removeItem(CACHE_KEY);
       }
+      // The cached list is gone, so the in-memory one must go too: the next
+      // account on this device must not see the previous account's names.
+      state.projects = [];
+      state.projectsLoaded = false;
+      state.projectsError = false;
+      lastPaintSig = '';
     } catch (e) {
       /* storage may be blocked */
     }
@@ -772,10 +807,36 @@ var MMGR = window.MMGR || {};
     });
   }
 
-  function renderCollaborators() {
+  // A background refresh must not repaint what is already correct: the DOM is
+  // replaced only when the data on screen actually differs, and never while
+  // the reader is mid-edit. This is the quiet half of the owner's request
+  // (2026-11-27: "the refresh can happen on the beholder, it doesn't need to
+  // show up on the web page").
+  var lastPaintSig = '';
+  function collaboratorsSignature() {
+    return JSON.stringify({
+      s: state.signedIn,
+      m: state.memberships || [],
+      p: state.projects || [],
+      l: !!state.projectsLoaded,
+      e: !!state.projectsError
+    });
+  }
+
+  function renderCollaborators(force) {
     if (!els.colList) {
       return;
     }
+    if (!force && state.dirty) {
+      // Unsaved edits are on screen. Keep them; the next refresh after they
+      // are saved (or the panel is closed) paints the latest rows.
+      return;
+    }
+    var sig = collaboratorsSignature();
+    if (!force && sig === lastPaintSig) {
+      return;
+    }
+    lastPaintSig = sig;
     var mine = state.memberships;
     var owned = ownedProjects();
     var html = '';
@@ -799,7 +860,16 @@ var MMGR = window.MMGR || {};
     }
     html += '</section><section class="team-block"><h4>Your projects</h4>';
     if (!owned.length) {
-      html += '<p class="team-empty-sub">No cloud projects of your own to manage here.</p>';
+      if (!state.projectsLoaded) {
+        // The read has not answered yet. Saying "no cloud projects" here was
+        // the false alarm the owner reported while the list was still loading.
+        html += '<p class="team-empty-sub">Loading your cloud projects.</p>';
+      } else if (state.projectsError) {
+        html +=
+          '<p class="team-empty-sub">Could not load your cloud projects. It tries again by itself.</p>';
+      } else {
+        html += '<p class="team-empty-sub">No cloud projects of your own to manage here.</p>';
+      }
     } else {
       owned.forEach(function (p) {
         html +=
@@ -1119,6 +1189,9 @@ var MMGR = window.MMGR || {};
     if (!box) {
       return;
     }
+    // Rebuilding this box drops whatever was typed into it, so the panel is
+    // no longer "mid-edit" and later refreshes may paint again.
+    state.dirty = false;
     box.hidden = false;
     box.innerHTML = '<p class="team-empty-sub">Loading people.</p>';
     var r = await jfetch('/api/cloud/projects/' + encodeURIComponent(pid) + '/team');
@@ -1368,6 +1441,9 @@ var MMGR = window.MMGR || {};
     }
     setStatus('Access saved.', false);
     toast('Access saved.', 'ok');
+    // The edit is on the server now, so a later background refresh may paint
+    // again without throwing work away.
+    state.dirty = false;
     await loadPeople(pid);
   }
 
@@ -1718,6 +1794,12 @@ var MMGR = window.MMGR || {};
       state.memberships = c.memberships;
       renderShared();
     }
+    // The owner's own cloud list is cached with the same contract: a reload
+    // shows the real project rows at once instead of an empty "Your projects".
+    if (Array.isArray(c.projects) && c.projects.length) {
+      state.projects = c.projects;
+      renderCollaborators();
+    }
     if (Array.isArray(c.invitations)) {
       state.invitations = c.invitations;
       renderInvitations();
@@ -1788,20 +1870,44 @@ var MMGR = window.MMGR || {};
     if (state.tab === 'collaborators') {
       await loadOwnedProjects();
     }
-    cache({ invitations: state.invitations, memberships: state.memberships });
+    cache({
+      invitations: state.invitations,
+      memberships: state.memberships,
+      projects: state.projects
+    });
   }
 
   async function loadOwnedProjects() {
+    var bar = $('team-own-progress');
+    // The line is for a wait that has nothing to show yet. A background
+    // refresh of a list already on screen stays silent.
+    if (bar && !state.projectsLoaded && !state.projects.length) {
+      bar.hidden = false;
+    }
     var r = await jfetch('/api/cloud/projects');
     if (r.ok && r.body && r.body.ok) {
       state.projects = r.body.projects || [];
-      renderCollaborators();
+      state.projectsLoaded = true;
+      state.projectsError = false;
+    } else {
+      // A slow or failed answer is not an empty account: keep the device's
+      // last list and say the read failed instead of claiming no projects.
+      state.projectsError = true;
     }
+    if (bar) {
+      bar.hidden = true;
+    }
+    renderCollaborators();
   }
 
   async function loadCollaborators() {
     setStatus('', false);
-    await Promise.all([loadMemberships(), loadOwnedProjects()]);
+    setBusy(true);
+    try {
+      await Promise.all([loadMemberships(), loadOwnedProjects()]);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function renderShared() {

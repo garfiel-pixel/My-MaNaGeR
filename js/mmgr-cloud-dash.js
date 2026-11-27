@@ -376,6 +376,16 @@
     }
   }
 
+  // OWNER 2026-11-27: the first read on a slow edge left the section looking
+  // empty. A thin line travels across it while the list is being read; a
+  // background refresh of cards already on screen stays silent.
+  function setListProgress(on) {
+    const bar = $('cloud-progress');
+    if (bar) {
+      bar.hidden = !on;
+    }
+  }
+
   // ---- fetch the session-gated project list ----
   async function loadList() {
     const dash = $(DASH);
@@ -396,6 +406,7 @@
     dash.hidden = false;
     if (!cached) {
       dash.setAttribute('aria-busy', 'true');
+      setListProgress(true);
       list.innerHTML = dashSkeleton();
       const railPre = $(RAIL_CLOUD);
       if (railPre && !railPre.hidden && !railPre.innerHTML.trim()) {
@@ -419,6 +430,7 @@
         dropCache();
         dash.hidden = true;
         dash.removeAttribute('aria-busy');
+        setListProgress(false);
         // ...and out of the DOM: a hidden section that still holds account
         // project names is one devtools tab away from the next person.
         list.innerHTML = '';
@@ -454,6 +466,7 @@
       return;
     }
     dash.removeAttribute('aria-busy');
+    setListProgress(false);
     const cached = readCache();
     if (cached) {
       paintList(cached.projects);
@@ -473,6 +486,7 @@
     }
     dash.hidden = false;
     dash.removeAttribute('aria-busy');
+    setListProgress(false);
     renderRailCloud(projects);
     if (!projects.length) {
       list.innerHTML =

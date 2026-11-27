@@ -815,7 +815,7 @@
 // full-width band, slides the rail in below it, and drops the duplicate
 // Settings label from the rail (brand is now My MaNaGeR, as in app.html).
 // admin.html is a SHELL asset, so returning clients must refetch.
-const CACHE = 'mmgr-shell-v718';
+const CACHE = 'mmgr-shell-v719';
 
 // v504 - RELATIONS TASK 3 (plan-openproject 2026-10-29): the blocked-by
 // board lens (#kb-lens select in the Kanban header, setRelLens delegated

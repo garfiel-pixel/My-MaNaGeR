@@ -589,6 +589,10 @@ html[data-perf='on'] body.db-page .sidebar-icons{transition:none;}
       <h2><svg class="ico" aria-hidden="true"><use href="css/mmgr-icons.svg#i-cloud"></use></svg> My Cloud Projects</h2>
       <span class="cd-sub">Linked to your account. Click a card to open one</span>
     </div>
+    <!-- OWNER 2026-11-27: the first read can take a moment on a slow edge.
+         A thin line travels here until the list lands, so the section never
+         looks empty while it is still loading. -->
+    <div class="cd-progress" id="cloud-progress" role="progressbar" aria-label="Loading cloud projects" hidden></div>
     <div class="cd-list" id="cloud-dash-list" role="list"></div>
     <div class="cd-status" id="cloud-dash-status" role="status" aria-live="polite"></div>
   </div>
